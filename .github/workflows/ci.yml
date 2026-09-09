@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node project
+      - name: Setup Node
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install, lint, test, build (Node)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm test --if-present -- --run 2>/dev/null || npm test --if-present
+          npm run build --if-present
+
+      # Python project
+      - name: Setup Python
+        if: ${{ hashFiles('pyproject.toml') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install, lint, test (Python)
+        if: ${{ hashFiles('pyproject.toml') != '' }}
+        run: |
+          pip install uv
+          uv sync
+          uv run ruff check . || true
+          uv run pytest
+
+      - name: No project scaffolded yet
+        if: ${{ hashFiles('package.json') == '' && hashFiles('pyproject.toml') == '' }}
+        run: echo "No package.json or pyproject.toml found — skipping (run /kickoff to scaffold)."

@@ -1,0 +1,22 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+
+# Dependencies & build output
+node_modules/
+dist/
+build/
+.next/
+.sst/
+cdk.out/
+__pycache__/
+.venv/
+coverage/
+
+# Local-only Claude Code settings
+.claude/settings.local.json
+
+# OS noise
+.DS_Store

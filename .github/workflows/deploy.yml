@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# OIDC: no stored AWS keys. scripts/aws-bootstrap.sh creates the role and
+# sets the AWS_DEPLOY_ROLE_ARN / AWS_REGION repo variables this consumes.
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Skips quietly until AWS is bootstrapped (/deploy handles first-time setup)
+    if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Setup Node
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Deploy
+        run: ./scripts/deploy.sh

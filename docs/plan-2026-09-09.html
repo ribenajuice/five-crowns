@@ -1,0 +1,333 @@
+<title>Five Crowns Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Code+Pro:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #f7f3ea;
+    --card:       #fffdf8;
+    --sunk:       #ede7da;
+    --ink:        #1e2530;
+    --ink-soft:   #55606f;
+    --ink-faint:  #8b8577;
+    --rule:       #ded5c4;
+    --rule-firm:  #bfb3a0;
+    --accent:     #9d2b32;
+    --accent-bg:  #f5e3e0;
+    --pencil:     #6b7280;
+    --good:       #2f6b46;
+    --good-bg:    #e0eee5;
+
+    --display: "Bitter", Georgia, "Times New Roman", serif;
+    --body:    "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    --mono:    "Source Code Pro", ui-monospace, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #16181c;
+      --card:      #1e2127;
+      --sunk:      #121417;
+      --ink:       #ece7dd;
+      --ink-soft:  #a9a294;
+      --ink-faint: #7d7668;
+      --rule:      #2e323a;
+      --rule-firm: #474c56;
+      --accent:    #e2767c;
+      --accent-bg: #331c1e;
+      --pencil:    #9aa1ad;
+      --good:      #7cc79a;
+      --good-bg:   #16291d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:     #16181c;
+    --card:      #1e2127;
+    --sunk:      #121417;
+    --ink:       #ece7dd;
+    --ink-soft:  #a9a294;
+    --ink-faint: #7d7668;
+    --rule:      #2e323a;
+    --rule-firm: #474c56;
+    --accent:    #e2767c;
+    --accent-bg: #331c1e;
+    --pencil:    #9aa1ad;
+    --good:      #7cc79a;
+    --good-bg:   #16291d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 18px 72px;
+  }
+
+  .wrap { max-width: 660px; margin: 0 auto; }
+
+  header.top { padding: 40px 0 20px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(34px, 9vw, 48px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--ink-soft); margin: 0; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 700;
+    margin: 44px 0 4px;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 26px 0 6px;
+  }
+  p { margin: 0 0 14px; }
+  .lede { color: var(--ink-soft); margin-bottom: 18px; }
+
+  code, .m { font-family: var(--mono); font-size: 0.86em; }
+
+  /* the idea that carries the plan */
+  .keystone {
+    background: var(--card);
+    border: 1px solid var(--rule-firm);
+    border-top: 4px solid var(--accent);
+    padding: 22px 20px;
+    margin: 26px 0;
+  }
+  .keystone h2 { margin-top: 0; }
+
+  /* a column of a scoresheet, adding up */
+  .column {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    padding: 16px 18px;
+    margin: 16px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .column .row { display: flex; justify-content: space-between; gap: 12px; }
+  .column .row span:first-child { color: var(--ink-faint); }
+  .column .sum {
+    border-top: 1px solid var(--rule-firm);
+    margin-top: 8px;
+    padding-top: 8px;
+    font-weight: 600;
+  }
+  .column .verdict { margin-top: 10px; font-family: var(--body); font-size: 14px; }
+  .ok   { color: var(--good); font-weight: 600; }
+  .bad  { color: var(--accent); font-weight: 600; }
+
+  /* the loop */
+  ol.loop { list-style: none; counter-reset: step; padding: 0; margin: 18px 0 0; }
+  ol.loop > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 20px 46px;
+    border-left: 1px solid var(--rule);
+    margin-left: 15px;
+  }
+  ol.loop > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.loop > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -15px;
+    top: -2px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--card);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+  }
+  ol.loop b { display: block; font-size: 17px; }
+  ol.loop p { margin: 4px 0 0; color: var(--ink-soft); font-size: 15.5px; }
+
+  ul.plain { padding-left: 20px; margin: 10px 0 0; }
+  ul.plain li { margin-bottom: 9px; }
+  ul.plain b { font-weight: 600; }
+
+  .pair {
+    border-top: 1px solid var(--rule);
+    padding: 14px 0 2px;
+  }
+  .pair:first-of-type { border-top: none; }
+  .pair .q { font-weight: 600; display: block; margin-bottom: 3px; }
+  .pair .a { color: var(--ink-soft); font-size: 15.5px; }
+
+  .warn {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    margin: 18px 0;
+    font-size: 15.5px;
+  }
+  .note {
+    background: var(--good-bg);
+    border-left: 3px solid var(--good);
+    padding: 14px 16px;
+    margin: 18px 0;
+    font-size: 15.5px;
+  }
+
+  .out { color: var(--ink-soft); }
+  .out b { color: var(--ink); }
+
+  footer {
+    margin-top: 52px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 14px;
+    color: var(--ink-faint);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Plan · not built · 9 Sep 2026</p>
+    <h1>Five Crowns Ledger</h1>
+    <p class="standfirst">The paper stays. You photograph the finished sheet, it becomes rows in a database, and <strong>years of games turn into something you can ask questions of.</strong></p>
+  </header>
+
+  <p class="lede">This is the plan, not the thing. Nothing is built and nothing should be until you have read this and said which half is wrong.</p>
+
+  <div class="keystone">
+    <h2>The sheet proves itself</h2>
+    <p>Reading handwriting is unreliable. A 7 becomes a 1, a 4 becomes a 9, and a photograph taken at an angle in kitchen light makes it worse. <strong>Normally that would make this a coin toss.</strong></p>
+    <p>But a Five Crowns sheet has a property most documents don't: <strong>eleven round scores per player, and a total at the bottom. The rounds must add up to the total.</strong></p>
+    <p style="margin-bottom:0">So every column carries its own proof. If the transcription doesn't add up, it is <em>wrong</em> — and the app knows that before you do.</p>
+
+    <div class="column">
+      <div class="row"><span>rounds 3–13</span><span>4 · 0 · 12 · 7 · 3 · 15 · 0 · 22 · 8 · 30 · 11</span></div>
+      <div class="row sum"><span>reads as</span><span>112</span></div>
+      <div class="row"><span>written total</span><span>112</span></div>
+      <div class="verdict"><span class="ok">✓ adds up</span> — saved without asking you</div>
+    </div>
+
+    <div class="column">
+      <div class="row"><span>rounds 3–13</span><span>4 · 0 · 12 · 1 · 3 · 15 · 0 · 22 · 8 · 30 · 11</span></div>
+      <div class="row sum"><span>reads as</span><span>106</span></div>
+      <div class="row"><span>written total</span><span>112</span></div>
+      <div class="verdict"><span class="bad">✗ six short</span> — one number in this column is misread, and you are shown which</div>
+    </div>
+
+    <p style="margin:14px 0 0"><strong>That is the difference between a tool you trust and a database quietly full of wrong numbers.</strong> Analytics built on unverified transcription is worse than no analytics — it is confidently wrong, and you would never know.</p>
+  </div>
+
+  <h2>What it does</h2>
+  <p class="lede">One loop, after the game, from wherever you are.</p>
+
+  <ol class="loop">
+    <li>
+      <b>Photograph the finished sheet</b>
+      <p>From a phone, at the table, before the pad goes back in the drawer. One photo, whatever the lighting.</p>
+    </li>
+    <li>
+      <b>It reads the grid</b>
+      <p>Five Crowns has a known shape — players across the top, eleven rounds down, totals at the bottom. Knowing the shape in advance is most of what makes reading it possible.</p>
+    </li>
+    <li>
+      <b>It shows you what it read, beside the photo</b>
+      <p>Every column that adds up is marked as sound. Every column that doesn't is flagged, with the round it is least sure about highlighted.</p>
+    </li>
+    <li>
+      <b>You correct what's wrong</b>
+      <p>Type over the numbers it got wrong. Usually none, sometimes one. <strong>Nothing is saved until the arithmetic agrees.</strong></p>
+    </li>
+    <li>
+      <b>It becomes a game in the log</b>
+      <p>Date, players, every round, the winner. The photo is kept with it, so any number can be checked against the paper for as long as the record exists.</p>
+    </li>
+  </ol>
+
+  <div class="note">
+    <b>Keeping the photo is not sentiment.</b> It is what lets you re-read a game in five years when the analytics say something surprising and you want to know whether the data or the conclusion is wrong.
+  </div>
+
+  <h2>What it deliberately is not</h2>
+  <p class="lede">Each of these is a decision, not an omission.</p>
+  <ul class="plain out">
+    <li><b>Not a scoreboard.</b> Nobody opens it during a game. The paper is the game; this is the archive.</li>
+    <li><b>It does not know the rules.</b> No wild cards, no going out, no scoring a hand. It reads what you wrote and adds it up. Every rule it learns is a rule that can disagree with the pad in your hand — and the pad wins.</li>
+    <li><b>No accounts, no other players logging in.</b> One keeper of the record, which is how the pad works now.</li>
+    <li><b>Analytics are not in the first version</b> — but every decision here is made so they are possible later. See below.</li>
+  </ul>
+
+  <h2>The analytics come later, and the plan is shaped for them now</h2>
+  <p>You said analytics eventually. That doesn't mean building them now — it means <strong>not storing the data in a way that forecloses them.</strong></p>
+  <p>Storing a game as one row with a final score would be the mistake. <strong>Storing every round separately</strong> costs nothing extra today and is what later makes these answerable:</p>
+  <ul class="plain">
+    <li>Who actually wins, over years rather than over a night</li>
+    <li>Whether the late rounds — the big hands — are where games are really decided</li>
+    <li>Whether anyone is genuinely consistent, or just occasionally lucky</li>
+    <li>What a typical round score looks like as the hands grow from three cards to thirteen</li>
+  </ul>
+  <p class="out" style="margin-top:12px">None of that needs building now. All of it needs the rounds kept.</p>
+
+  <h2>The risk, named plainly</h2>
+  <div class="warn">
+    <b>Handwriting recognition is the whole risk, and it will get things wrong.</b> The arithmetic check catches errors that change a column's total — which is most of them. <b>It cannot catch two errors that cancel out</b> (a 7 read as 1 and a 3 read as 9 in the same column), and it cannot catch a total you wrote down wrong yourself.
+    <br><br>
+    That is why you see what it read, next to the photo, every time — even when it adds up. <b>The app's job is to be checkable, not to be right.</b>
+  </div>
+
+  <h2>What I need from you</h2>
+  <p class="lede">These change the shape of the first version, so they are worth answering before anything is built.</p>
+
+  <div class="pair">
+    <span class="q">Is there a stack of old sheets to catch up on?</span>
+    <span class="a">If there are years of pads in a drawer, the first version is a <b>bulk import</b> — and that is a different app from one that takes a photo a week. If it starts from tonight, it is much simpler.</span>
+  </div>
+  <div class="pair">
+    <span class="q">Does the same group play, or does it vary?</span>
+    <span class="a">A fixed four or five means players are just names. A changing group means a player list, and "is this the same Sam as last year" becomes a real question the moment you run analytics.</span>
+  </div>
+  <div class="pair">
+    <span class="q">What does your sheet actually look like?</span>
+    <span class="a">A photo of one blank and one finished sheet is worth more than any description. <b>It decides how hard the reading is</b> — printed grid or hand-ruled, running totals or just a final, names at the top or down the side.</span>
+  </div>
+  <div class="pair">
+    <span class="q">Phone only, or the PC too?</span>
+    <span class="a">The photo is taken on a phone. Whether you also want to sit at the PC and go through a backlog changes what gets built first.</span>
+  </div>
+
+  <h2>What happens next</h2>
+  <ul class="plain">
+    <li><b>You answer those four</b> — the sheet photo is the important one</li>
+    <li><b>I write it up properly</b> as a PRD in its own repo, when you are back at the machine</li>
+    <li><b>First thing built is the reading step, alone</b>, tested against your real sheets. If a photograph of your actual pad cannot be read reliably, that is worth knowing in an afternoon rather than after a website exists around it.</li>
+  </ul>
+
+  <footer>
+    Written 9 Sep 2026 from four answers. Nothing here is built. The one idea worth keeping if the rest is wrong: <strong>the columns add up, so the sheet can check itself.</strong>
+  </footer>
+
+</div>

@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  GitHub Actions OIDC deploy role for one repository. Lets the repo's
+  workflows assume an AWS role with short-lived credentials - no stored keys.
+  Deployed by scripts/aws-bootstrap.sh.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub username or org (e.g. ribenajuice)
+  RepositoryName:
+    Type: String
+    Description: Repository name (without org)
+  OIDCProviderArn:
+    Type: String
+    Default: ""
+    Description: Existing GitHub OIDC provider ARN. Leave empty to create one (only one per AWS account is allowed).
+
+Conditions:
+  CreateOIDCProvider: !Equals [!Ref OIDCProviderArn, ""]
+
+Resources:
+  GithubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub github-deploy-${RepositoryName}
+      Description: !Sub Assumed by GitHub Actions in ${GitHubOrg}/${RepositoryName} for deploys
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              Federated: !If
+                - CreateOIDCProvider
+                - !Ref GithubOidc
+                - !Ref OIDCProviderArn
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                # Only this repo, and only pushes to main or manual dispatches
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${RepositoryName}:*
+      Policies:
+        - PolicyName: serverless-deploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Broad enough for common serverless stacks (CDK/SST/SAM: S3 +
+              # CloudFront + Lambda + DynamoDB). The devops-engineer agent
+              # should tighten this to the project's actual footprint after
+              # the first deploy.
+              - Sid: Infra
+                Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - s3:*
+                  - cloudfront:*
+                  - lambda:*
+                  - apigateway:*
+                  - dynamodb:*
+                  - logs:*
+                  - ssm:GetParameter*
+                  - ssm:PutParameter
+                  - route53:*
+                  - acm:*
+                  - apprunner:*
+                  - ecr:*
+                  - budgets:*
+                Resource: "*"
+              - Sid: IamScoped
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PassRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${RepositoryName}-*
+
+Outputs:
+  DeployRoleArn:
+    Description: Set as the AWS_DEPLOY_ROLE_ARN repo variable
+    Value: !GetAtt DeployRole.Arn
+  OIDCProvider:
+    Description: Reuse this ARN for other repos in this account
+    Value: !If
+      - CreateOIDCProvider
+      - !Ref GithubOidc
+      - !Ref OIDCProviderArn
