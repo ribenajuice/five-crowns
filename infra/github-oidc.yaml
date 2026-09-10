@@ -71,6 +71,18 @@ Resources:
                   - logs:*
                   - ssm:GetParameter*
                   - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:AddTagsToResource
+                  - ssm:ListTagsForResource
+                  - ssm:DescribeParameters
+                  # SecureStrings under /five-crowns/* use the AWS-managed
+                  # aws/ssm key. A customer-managed key would cost $1/month.
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:GenerateDataKey
+                  - scheduler:*
+                  - events:*
                   - route53:*
                   - acm:*
                   - apprunner:*
@@ -90,6 +102,12 @@ Resources:
                   - iam:AttachRolePolicy
                   - iam:DetachRolePolicy
                   - iam:PassRole
+                  # SST/Pulumi reads these while diffing an existing stack
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRoleTags
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:UntagRole
                 Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${RepositoryName}-*
 
 Outputs:

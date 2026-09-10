@@ -20,3 +20,7 @@ coverage/
 
 # OS noise
 .DS_Store
+
+# Real scoresheet photos and their transcriptions — local only, never committed.
+# Contains personal photos and real names; the repo is public.
+fixtures/
