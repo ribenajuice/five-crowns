@@ -14,6 +14,12 @@ Format:
 
 <!-- Entries go below this line -->
 
+> **Currency.** The founder is in Australia: **costs are quoted in Australian dollars (A$)**.
+> AWS, Anthropic and Turso all bill in **US dollars**, so entries dated before 2026-09-10 quote
+> their USD list prices as published. Conversions in this log assume **US$1 ≈ A$1.55**; re-check
+> the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
+> written as US$20).
+
 ## 2026-09-10 — Monotonicity is a floor, not an error detector (Milestone 0 verdict)
 
 - **Context**: the PRD, corrected on 2026-09-10, replaced the lost summation proof with three
@@ -61,7 +67,7 @@ Format:
 - **Consequences**:
   - ⚠️ Spike results carry a **fidelity caveat**: same model and images, but through the harness
     rather than the API with `output_config.format`. Error rates are indicative, not a benchmark.
-  - **Re-run the spike through the real API once a key exists** (~£0.20, and the sheets are kept),
+  - **Re-run the spike through the real API once a key exists** (~A$0.30, and the sheets are kept),
     before relying on its numbers for anything load-bearing.
   - No AWS or API spend is incurred before the founder decides to start it.
 
@@ -550,8 +556,9 @@ Format:
   and the photo bucket are all already AWS, and splitting the footprint across two providers costs
   more in operational surface than it saves.
 - **Consequences**:
-  - **Estimated cost: ~$0.01/month on AWS**, plus ~$0.40 of Anthropic and $0 of Turso — **about
-    $0.42/month all in, custom domain included.** Well inside the $20 ceiling.
+  - **Estimated cost: ~US$0.01/month on AWS**, plus ~US$0.40 of Anthropic and US$0 of Turso —
+    **about US$0.42/month all in (≈ A$0.65), custom domain included.** Well inside the ceiling
+    (US$20 ≈ A$30).
   - ✅ **Nothing bills while nobody is using the app.** *(Superseded detail: this ADR originally
     flagged a Route 53 hosted zone at $0.50/month as the one line that would. The custom-domain ADR
     above removes it — DNS lives in Lightsail, so no zone is created and the AWS bill is

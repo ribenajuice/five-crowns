@@ -15,5 +15,5 @@
   - ⚠️ **Monotonicity caught 0 of 9 misreads.** The human review screen is the entire quality control.
   - ⚠️ **Errors repeat deterministically** — do not build "transcribe twice and compare".
   - Damage is bounded: interior errors are self-cancelling in a running total, so totals, winners and the records board are safe; **hand-by-hand analytics are the exposed ones**.
-- **Development cost posture**: everything runs on the founder's Claude subscription. An API key arrives when Milestone 1's admin panel needs one. The spike is worth re-running through the real API (~£0.20) once it does.
+- **Development cost posture**: everything runs on the founder's Claude subscription. An API key arrives when Milestone 1's admin panel needs one. The spike is worth re-running through the real API (~A$0.30) once it does.
 - **Next up**: Milestone 1 — walking skeleton. Password gate, photograph a sheet, review screen (Column Sweep), manual override in full, location capture, save, games list, admin panel with the API key. Done when the founder photographs a real sheet on their own phone and the game lands in the record, correct and checkable against the photo.

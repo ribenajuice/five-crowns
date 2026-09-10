@@ -458,7 +458,8 @@ Nothing is readable without the password, photos included.
   ⚠️ **The cap is counted separately for full-sheet reads and column re-reads**, because a single
   legitimate session can involve one sheet and half a dozen close-ups, and a shared budget would
   punish exactly the behaviour we most want to encourage. **20 sheet reads and 60 column reads per
-  day** — far beyond any real evening (1–2 sheets a week), and a worst case of about $1.60/day if
+  day** — far beyond any real evening (1–2 sheets a week), and a worst case of about A$2.50/day
+  (US$1.60) if
   someone hammered both. The Anthropic console spend limit is the actual hard stop; the in-app cap
   is there to make hitting it slow and visible. The admin panel shows the month's usage and
   estimated spend, so the founder sees it without opening a billing console.

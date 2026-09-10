@@ -34,7 +34,7 @@ afterwards by searching every session transcript for any reference to it: none.
 subscription, not through the Anthropic API with `output_config.format` structured outputs
 as the product will. Same model, same images, same instructions; different plumbing, and
 no schema validation on the way out. The error *rates* below should be treated as
-indicative, not as a production benchmark. Re-running through the real API is a ~£0.20
+indicative, not as a production benchmark. Re-running through the real API is a ~A$0.30
 job once a key exists, and is worth doing before Milestone 1 ships.
 
 ## The numbers
