@@ -11,7 +11,10 @@
 set -euo pipefail
 
 STAGE="${STAGE:-prod}"
-export AWS_REGION="${AWS_REGION:-eu-west-2}"
+# REGION: ap-southeast-2 (Sydney) — the founder and players are in Australia.
+# See the region-correction ADR in docs/DECISIONS.md (2026-09-10). The ACM
+# certificate for CloudFront is still issued in us-east-1; that is not a mistake.
+export AWS_REGION="${AWS_REGION:-ap-southeast-2}"
 
 cd "$(dirname "$0")/.."
 
@@ -111,6 +114,21 @@ if [ -n "$APP_DOMAIN" ] && [ -n "$APP_CERT_ARN" ]; then
 else
   echo "▶ Custom domain: not configured — deploying to the CloudFront URL only."
   echo "  (See docs/ARCHITECTURE.md, 'Runbook: putting the app on fivecrowns.ribenajuice.xyz')"
+fi
+
+# The zero-spend budget alarm needs somewhere to send the alert. Optional, and
+# absent it the budget is skipped with a loud warning rather than created with
+# no subscriber, which would be an alarm nobody hears.
+BUDGET_ALERT_EMAIL=$(aws ssm get-parameter --name "/five-crowns/$STAGE/budget-alert-email" \
+  --query Parameter.Value --output text 2>/dev/null || true)
+
+if [ -n "$BUDGET_ALERT_EMAIL" ]; then
+  export BUDGET_ALERT_EMAIL
+  echo "▶ Zero-spend budget alerts: $BUDGET_ALERT_EMAIL"
+else
+  echo "⚠️  No budget alert address — the zero-spend alarm will not be created."
+  echo "     aws ssm put-parameter --region \"$AWS_REGION\" --overwrite --type String \\"
+  echo "       --name /five-crowns/$STAGE/budget-alert-email --value 'you@example.com'"
 fi
 
 echo "▶ sst deploy (CloudFront, Lambda, S3, secrets, nightly backup)"

@@ -9,11 +9,16 @@ node_modules/
 dist/
 build/
 .next/
+.open-next/
 .sst/
 cdk.out/
 __pycache__/
 .venv/
 coverage/
+*.tsbuildinfo
+
+# Local development database — a plain libSQL file, same schema as production.
+.data/
 
 # Local-only Claude Code settings
 .claude/settings.local.json

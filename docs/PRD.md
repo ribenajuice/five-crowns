@@ -179,7 +179,7 @@ The architect owns the schema; this is what has to be representable.
   - A roster is created the first time its exact set appears, and reused silently after that.
 - **Location** — *where* the game was played: a **thing picked from a list**, not free text.
   ⚠️ **Built on exactly the same pattern as Player, for exactly the same reason.** "Player C's
-  place", "darrens" and "Player C's House" typed on three different nights would fracture into three
+  place", "player cs" and "Player C's House" typed on three different nights would fracture into three
   locations and quietly ruin every location stat — the identical failure mode described under
   Player, and it needs the identical fix.
   - **Pick an existing location, or add a new one.** The list grows as new venues appear. Never
@@ -335,7 +335,7 @@ for two compounding reasons worth stating:
 - **Kept.** Close-up photos are stored with the game alongside the main sheet photo and are part of
   the permanent record, for exactly the same reason the main photo is: they are further evidence of
   what the paper said.
-- **Cost is not a consideration.** A second read is roughly the same few pence as the first, at one
+- **Cost is not a consideration.** A second read is roughly the same few cents as the first, at one
   or two sheets a week. ⚠️ **Nobody should design a cheap-out around this** — no limits on re-shots,
   no discarding close-ups to save space.
 
@@ -1016,9 +1016,14 @@ in Player B's column, winner Player B on 71. Ground truth is
     2 games, and 99 round rows**, each with **both** the running total as read and the derived hand
     score.
 65. `sheet-01` saves with **Player C (78)** as sole winner; `sheet-02` with **Player B (71)**.
-66. ⚠️ **The ties criterion.** QA edits a `sheet-01` draft so Player A's row 11 reads `78`. The final
-    row marks **both** Player A and Player C; the saved game names both; the games list row names
-    both. Nothing on any of the three screens implies a single winner, and nothing errors.
+66. ⚠️ **The ties criterion.** QA edits a `sheet-01` draft so **Player D's row 11 reads `78`**
+    (down from `111`). Player D's row 10 is `67`, so the column still climbs and the save is not
+    blocked — Player C and Player D now share the lowest total on `78`. The final row marks
+    **both**; the saved game names both; the games list row names both. Nothing on any of the three
+    screens implies a single winner, and nothing errors.
+    *(Reworded 2026-09-10: the original said to set Player A's row 11 to `78`, which is unbuildable
+    — Player A's row 10 is `123`, so that edit breaks monotonicity and criterion 26 blocks the save
+    before the tie can be observed.)*
 67. Re-entering `sheet-01`'s four players in a **different column order** matches the existing roster
     rather than creating a second one.
 68. A newly created roster displays a default name built from its members.

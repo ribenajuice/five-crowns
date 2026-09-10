@@ -1,8 +1,6 @@
-# <!-- KICKOFF: project name -->Project Name
+# Five Crowns Ledger
 
-<!-- KICKOFF: one-line description of what this product does and for whom -->
-
-> Run `/kickoff` if the KICKOFF placeholders in this file are still unfilled — this project hasn't been initialized yet.
+A permanent, searchable record of a group of friends' Five Crowns nights, built from photographs of the paper scoresheet.
 
 ## Who you're working with
 
@@ -50,11 +48,22 @@ Requests that arrive without a slash command still follow the same discipline: a
 
 ## Stack & commands
 
-<!-- KICKOFF: filled in during /kickoff -->
-- Stack:
-- Install: `<!-- e.g. npm install -->`
-- Dev server: `<!-- e.g. npm run dev -->`
-- Test: `<!-- e.g. npm test -->`
-- Lint/typecheck: `<!-- e.g. npm run lint && npm run typecheck -->`
-- Build: `<!-- e.g. npm run build -->`
-- Deploy: `scripts/deploy.sh` (CI runs it via `.github/workflows/deploy.yml`)
+- Stack: **Next.js 15 (App Router) + TypeScript on Node 22**, Tailwind CSS, Drizzle ORM over
+  **Turso (libSQL/SQLite)**, deployed to **AWS Lambda + CloudFront + S3 by SST v3**. Vitest for
+  tests. Full reasoning in `docs/ARCHITECTURE.md`.
+- Install: `npm ci` (first time: `npm install`)
+- Dev server: `npm run dev` — needs a `.env.local`; see `lib/config/README.md`
+- Test: `npm test` (`npm run test:watch` while working)
+- Lint/typecheck: `npm run lint && npm run typecheck`
+- Build: `npm run build`
+- Migrations: `npm run db:generate` then `npm run db:migrate` — never edit a live schema by hand,
+  and write the reversing file in `lib/db/migrations/down/` in the same commit
+- Password hash: `node scripts/hash-password.js` — no AWS, no network. First-time setup *and* the
+  admin lockout recovery path
+- Deploy: `scripts/deploy.sh` (CI runs it via `.github/workflows/deploy.yml`). It refuses to deploy
+  while either password hash or the session secret is missing from Parameter Store
+
+⚠️ **Secrets**: environment variables and SSM Parameter Store only. **No secret is ever stored in
+the database** — there is no table one could be in, which is what makes every export secret-free by
+construction. `sst.config.ts` and `lib/db/migrations/` are excluded from lint and typecheck (SST's
+globals are generated into the gitignored `.sst/`); review them by hand.

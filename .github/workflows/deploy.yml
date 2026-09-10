@@ -24,11 +24,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # v6 inputs checked against the action's action.yml on 2026-09-10:
+      # `role-to-assume` and `aws-region` are both still valid, `aws-region` is
+      # the only required one, and nothing used here was renamed. The single
+      # breaking change in v6.0.0 is that the action runs on Node 24, needing
+      # runner v2.327.1+ — fine on GitHub-hosted ubuntu-latest, worth knowing if
+      # this ever moves to a self-hosted runner.
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          # Falls back so a missing repo variable is a deploy in the right
+          # region rather than a required-input failure.
+          aws-region: ${{ vars.AWS_REGION || 'ap-southeast-2' }}
 
       - name: Setup Node
         if: ${{ hashFiles('package.json') != '' }}
@@ -37,5 +45,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      # scripts/deploy.sh refuses to deploy while either password hash — or the
+      # session secret — is missing from Parameter Store (PRD criterion 82).
+      # Passwords are never set by a deploy; see docs/ARCHITECTURE.md
+      # § Lockout recovery, which is also the first-time setup path.
       - name: Deploy
         run: ./scripts/deploy.sh

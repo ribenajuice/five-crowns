@@ -197,7 +197,7 @@ tweak, it is a shift in where the guarantee lives, and the review screen has to 
 | Vision | Anthropic Messages API, `claude-opus-5` | Founder decision |
 | Auth | One shared password → HMAC-signed session cookie | Founder decision |
 | Hosting | AWS Lambda + CloudFront + S3, deployed by **SST v3** | Scale-to-zero, one `sst deploy`, fits the existing OIDC CI |
-| Region | **eu-west-2 (London)** | Founder and players are UK-based; one region, prod only |
+| Region | **ap-southeast-2 (Sydney)** | Founder and players are in Australia — Sydney is the nearest region; one region, prod only. ⚠️ The CloudFront certificate is still issued in `us-east-1` |
 | Domain | **`fivecrowns.ribenajuice.xyz`** | Founder owns the apex. DNS is managed in **Lightsail**, so no Route 53 zone and **no AWS DNS cost at all** |
 | Secrets | SST Secrets → SSM Parameter Store (SecureString) | Free, never in git, injected at cold start |
 | CI/CD | GitHub Actions → OIDC → `scripts/deploy.sh` | Already wired; no stored AWS keys |
@@ -218,7 +218,7 @@ flowchart TB
         UI[Review screen<br/>grid beside zoomable photo]
     end
 
-    subgraph AWS["AWS — eu-west-2, prod only"]
+    subgraph AWS["AWS — ap-southeast-2, prod only"]
         CF[CloudFront<br/>TLS + CDN]
         L["Lambda — Next.js server<br/>pages + route handlers"]
         S3P[(S3: five-crowns-photos<br/>private, versioned)]
@@ -277,7 +277,13 @@ picked from a list of existing players rather than typed free-hand.
 **`game`** — one night, one sheet. Confirmed shape after the location change:
 `id`, `played_on` (ISO date — read off the sheet if one is written there, otherwise defaulting to
 today; always editable at review), **`location_id`** (nullable FK, indexed), `roster_id`, `note`,
-`created_at`. No `photo_id` (the photos point at the game, not the other way round) and no stored
+`created_at`.
+⚠️ **"Today" means today where the founder is, not on the server.** Lambda's clock is UTC and the
+founder is in Australia (UTC+10/+11), so a UTC `new Date()` names the *previous* day for the first
+ten-to-eleven hours of every local day — including a game entered the morning after it was played.
+The default date is therefore resolved from the **browser's local calendar day** and sent with the
+request; the server never invents one. `created_at` stays UTC, because it is a machine timestamp
+and nobody reads it as a date. No `photo_id` (the photos point at the game, not the other way round) and no stored
 winner. Indexed on `played_on`, `roster_id` and `location_id` — the three dimensions every report
 slices by.
 ⚠️ **No stored winner, deliberately.** The rule is settled — lowest final total wins, **ties are
@@ -313,7 +319,7 @@ product's whole ethic.
 question 2 (abandoned games, late joiners) can be answered later without a migration.
 
 **`location`** — where a game was played. ⚠️ **A table, not a text column on `game`**, for exactly
-the reason `player` is a table: free text fractures "Player C's place" / "darrens" / "Player C's House"
+the reason `player` is a table: free text fractures "Player C's place" / "player cs" / "Player C's House"
 into three rows, and every location stat is then quietly wrong in a way nothing on screen would
 reveal. It is the same failure mode as a fractured player, with the same silence.
 `id`, `name`, `slug`, **`name_key`** (unique — lowercased, trimmed, whitespace collapsed),
@@ -867,11 +873,11 @@ a documented way back that needs no code change and no developer:**
 node scripts/hash-password.js            # prompts, prints a hash
 
 # 2. Write it straight into Parameter Store
-aws ssm put-parameter --region eu-west-2 --overwrite --type SecureString \
+aws ssm put-parameter --region ap-southeast-2 --overwrite --type SecureString \
   --name /five-crowns/prod/admin-password-hash --value '<hash from step 1>'
 
 # 3. Invalidate any admin sessions that survived
-aws ssm put-parameter --region eu-west-2 --overwrite --type String \
+aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
   --name /five-crowns/prod/admin-session-epoch --value '<previous + 1>'
 ```
 
@@ -1009,7 +1015,7 @@ the right winner (Player C on sheet 1, Player B on sheet 2).
 
 ## Environments and configuration
 
-**prod only.** One region (`eu-west-2`), one stage, deployed from `main`. No staging, and there
+**prod only.** One region (`ap-southeast-2`, Sydney), one stage, deployed from `main`. No staging, and there
 will not be one until the PRD demands it; a second environment doubles the operational surface to
 protect a group of friends from a bad Thursday.
 
@@ -1092,6 +1098,11 @@ games played after it.
 
 Assumed volume: **8 uploads/month**, ~4 MB of photos each, a few hundred page views.
 
+> **Currency.** AWS, Anthropic and Turso all bill in **US dollars**, and every `$` figure in this
+> section is a **USD list price**. The founder is in Australia; at ~US$1 ≈ A$1.55 the all-in total
+> below is **about A$0.65/month**, against a ceiling of A$30. See the currency note at the top of
+> `docs/DECISIONS.md`.
+
 | Resource | Purpose | Est. cost/month |
 |---|---|---|
 | CloudFront | TLS, CDN, the single public origin | **$0.00** — 1 TB out + 10 M requests is an *always-free* tier; we use a rounding error of it |
@@ -1169,7 +1180,7 @@ themselves. So:
   None of the apex/ALIAS complications apply — that is the reason this stays a two-record job
   instead of a project.
 - ⚠️ **The ACM certificate must be issued in `us-east-1`**, even though the app runs in
-  `eu-west-2`. CloudFront accepts certificates from us-east-1 only. This is the most common way a
+  `ap-southeast-2`. CloudFront accepts certificates from us-east-1 only. This is the most common way a
   custom domain fails on AWS, and the error message never says so.
 
 **The first deploy is not blocked by any of this.** `sst.config.ts` attaches the custom domain only
@@ -1217,10 +1228,10 @@ this is the one ordering constraint in the whole process. Go and do something el
 (it starts `arn:aws:acm:us-east-1:`), then run:
 
 ```bash
-aws ssm put-parameter --region eu-west-2 --overwrite --type String \
+aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
   --name /five-crowns/prod/app-domain --value 'fivecrowns.ribenajuice.xyz'
 
-aws ssm put-parameter --region eu-west-2 --overwrite --type String \
+aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
   --name /five-crowns/prod/app-cert-arn --value 'arn:aws:acm:us-east-1:…'
 ```
 

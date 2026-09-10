@@ -20,6 +20,81 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-10 — Region correction: ap-southeast-2 (Sydney), not eu-west-2 (London)
+
+- **Context**: the hosting ADR below ("Stack and hosting", same date) placed the app in
+  **`eu-west-2` (London)** and justified it as *"founder and players are UK-based"*. ⚠️ **That
+  justification rested on a factual error: the founder is in Australia, not the UK.** It was never
+  a weighing of options that went the wrong way — the input was simply wrong, which is also why
+  this log now carries a currency note quoting costs in Australian dollars. The error was caught
+  **before anything was provisioned**: no stack has been deployed, and no AWS resource — bucket,
+  distribution, Lambda, parameter, schedule — exists in any region. The founder's AWS CLI is
+  already configured for `ap-southeast-2`, and the Stage 1 infrastructure code (`sst.config.ts`,
+  `scripts/deploy.sh`) was written against `ap-southeast-2`. **The code was right; the docs were
+  behind.** Fixing this today costs an editing session. Fixing it after a deploy means recreating
+  every resource, re-issuing DNS, and moving photos between buckets.
+- **Decision**: **the app region is `ap-southeast-2` (Sydney)**, one region, prod only. Everything
+  that has a region follows it:
+  - **Lambda, CloudFront's origin, SSM Parameter Store, CloudWatch Logs, EventBridge Scheduler** —
+    `ap-southeast-2`.
+  - **The S3 photo bucket `five-crowns-photos`** — `ap-southeast-2`, so browser uploads go to the
+    near bucket and the Lambda reads it in-region.
+  - **The Turso database** — its primary location is Sydney (`syd`), not London (`lhr`). The photo
+    upload and the vision call dominate the latency budget, but there is no reason to put the
+    database on the other side of the planet from the only thing that queries it.
+  - **The nightly backup Lambda and its S3 destination** — same region, same bucket.
+  - ⚠️ **The one thing that does *not* follow the app region: the ACM certificate for the custom
+    domain must still be issued in `us-east-1`.** CloudFront accepts certificates from `us-east-1`
+    only, whatever region the app runs in. This constraint is **unchanged by this ADR** and is the
+    single most common way a first deploy fails, because the error message never says so. The
+    runbook in `docs/ARCHITECTURE.md` is correct as written and was deliberately left alone.
+  - **The "Stack and hosting" ADR below is not rewritten.** This log is append-only; its region
+    line is marked superseded and points here, so the history of the mistake survives.
+- **Alternatives**: (a) *Stay in `eu-west-2`* — the only argument for it was a false premise, and
+  it carries a real cost (below). (b) *`us-east-1`* — cheapest headline prices and no certificate
+  special-casing, but ~200 ms away from every user of this app to save a fraction of a cent a
+  month. (c) *Multi-region or CloudFront-with-a-distant-origin-plus-caching* — the pages that
+  matter are authenticated and dynamic, so they do not cache; this would be complexity bought to
+  paper over a wrong region. (d) *Defer the change until the first deploy* — rejected; that is
+  precisely the moment it stops being free.
+- **Consequences**:
+  - **The consequence that actually matters is round-trip latency.** Sydney↔London is roughly
+    **250–300 ms of round trip**, and every uncached request in this app is a round trip to the
+    origin: the login POST, the presigned-URL request, the save, and every page of the archive.
+    Serving Australian users from London would have added that to all of them, and the photo
+    upload — several MB from a phone on domestic broadband — would have crossed the planet as
+    well. From Sydney the same requests are ~10–30 ms away. Nothing about the app's design changes;
+    it simply stops being needlessly slow for the only people who use it.
+  - **Cost is unchanged: still about A$0.65/month all in.** Checked rather than assumed, at this
+    volume (8 uploads/month, ~0.6 GB stored after a year, a few hundred page views):
+    - **Lambda** — the *always-free* 1 M requests + 400 k GB-s tier applies in `ap-southeast-2`
+      exactly as in `eu-west-2`, and this app uses a rounding error of it. **No difference.**
+    - **CloudFront** — priced by the **viewer's edge location, not the origin region**, so moving
+      the origin does not move the bill at all; and the always-free 1 TB/10 M-request tier covers
+      this app either way. **No difference.**
+    - **S3** — Sydney's per-GB Standard rate is within a fraction of a cent of London's. On ~0.6 GB
+      that is **well under one cent a month**, and it stays under a cent even at the decade-scale
+      ~6 GB projection.
+    - **Verdict: the difference is negligible — it does not move the A$0.65/month figure and is not
+      an open question.** No cost table anywhere needs a new number because of this change.
+  - ⚠️ **Anything already written down with `eu-west-2` in it is wrong.** `docs/ARCHITECTURE.md`
+    has been corrected throughout — the stack table, the system diagram, and every runbook command
+    carrying a `--region` flag, including the lockout-recovery and custom-domain procedures. If a
+    stray `eu-west-2` turns up later, it is a typo to fix, not a second opinion to reconcile.
+  - ⚠️ **Deploying with the CLI pointed at the wrong region is a silent way to create a second,
+    empty copy of the app.** `scripts/deploy.sh` pins the region; nobody should override it with
+    `AWS_REGION` or an `aws configure` profile that disagrees.
+  - **The same wrong assumption was swept for elsewhere, and it had left two other marks.**
+    ⚠️ **The date default is now specified as the browser's local calendar day, not the server's.**
+    Lambda runs on UTC; at UTC+0/+1 a UTC "today" is right nearly always, but at UTC+10/+11 it names
+    *yesterday* for the first ten-to-eleven hours of every local day — so a game entered the morning
+    after would have been filed a day early. This was latent under the UK assumption and is now
+    written down in `docs/ARCHITECTURE.md`. Separately, the PRD described a re-read as costing "a few
+    pence" (now "a few cents"), and the cost section of `docs/ARCHITECTURE.md` carries a note that
+    its bare `$` figures are USD list prices, ≈ A$0.65/month all in.
+  - **Revisit if**: the founder moves, or players outside Australia become a meaningful share of
+    use — neither of which is true of a game played around one kitchen table.
+
 ## 2026-09-10 — Monotonicity is a floor, not an error detector (Milestone 0 verdict)
 
 - **Context**: the PRD, corrected on 2026-09-10, replaced the lost summation proof with three
@@ -83,8 +158,9 @@ Format:
   configured with SST's external-DNS idiom — **`dns: false` plus an explicitly supplied certificate
   ARN** — and the founder adds two CNAMEs in Lightsail by hand, following a step-by-step runbook in
   `docs/ARCHITECTURE.md` written for a product manager rather than an engineer.
-  - The **ACM certificate is issued in `us-east-1`**, even though the app runs in `eu-west-2`,
-    because CloudFront accepts certificates from us-east-1 only.
+  - The **ACM certificate is issued in `us-east-1`**, even though the app runs in ~~`eu-west-2`~~
+    *(region superseded 2026-09-10 → `ap-southeast-2`)*, because CloudFront accepts certificates
+    from us-east-1 only. ⚠️ **The us-east-1 requirement is unaffected by the region correction.**
   - ⚠️ **`fivecrowns` is a subdomain, so a plain CNAME to the CloudFront distribution works** — no
     apex/ALIAS complication, which is the whole reason this stays a two-record job.
   - ⚠️ **The custom domain is not part of the first deploy.** `sst.config.ts` attaches it only when
@@ -120,7 +196,7 @@ Format:
   - **But designed to be dense**: the field defaults to the most recently used location, one tap to
     change. Most games happen in the same few places, so the common case is zero interaction.
 - **Alternatives**: (a) *A free-text column on `game`* — rejected for the same reason `player` is a
-  table: ⚠️ "Player C's place" / "darrens" / "Player C's House" become three rows, and every location
+  table: ⚠️ "Player C's place" / "player cs" / "Player C's House" become three rows, and every location
   stat is then quietly wrong in a way nothing on screen would reveal. It is the fractured-player
   failure mode with the same silence. (b) *Defer the whole thing to Milestone 3 with the analytics*
   — rejected, and the reason is the general principle below. (c) *Make location required* —
@@ -543,7 +619,12 @@ Format:
   `scripts/deploy.sh` as the single entrypoint. Traffic is 1–2 uploads a week and a handful of page
   views, so anything always-on is a fixed bill for an idle machine.
 - **Decision**: **Next.js 15 (App Router, TypeScript) + Tailwind**, deployed by **SST v3** to
-  **Lambda + CloudFront + S3** in **eu-west-2 (London)**, one stage (`prod`). Secrets are SST
+  **Lambda + CloudFront + S3** in **~~eu-west-2 (London)~~ → `ap-southeast-2` (Sydney)**
+  *(⚠️ **region superseded 2026-09-10** — see “Region correction: ap-southeast-2 (Sydney), not
+  eu-west-2 (London)” at the top of this log. The London choice rested on a factual error about
+  where the founder is; it was corrected before anything was provisioned. The original wording is
+  left struck through rather than edited, because this log is append-only.)*, one stage (`prod`).
+  Secrets are SST
   Secrets in SSM Parameter Store. `scripts/deploy.sh` runs `sst deploy --stage prod` then applies
   migrations through `sst shell`, and CI runs exactly that script under OIDC.
 - **Alternatives**: (a) *Vite SPA on S3+CloudFront plus a separate Hono Lambda* — simpler infra but
