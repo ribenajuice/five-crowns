@@ -14,6 +14,63 @@ Format:
 
 <!-- Entries go below this line -->
 
+> **Currency.** The founder is in Australia: **costs are quoted in Australian dollars (A$)**.
+> AWS, Anthropic and Turso all bill in **US dollars**, so entries dated before 2026-09-10 quote
+> their USD list prices as published. Conversions in this log assume **US$1 ≈ A$1.55**; re-check
+> the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
+> written as US$20).
+
+## 2026-09-10 — Monotonicity is a floor, not an error detector (Milestone 0 verdict)
+
+- **Context**: the PRD, corrected on 2026-09-10, replaced the lost summation proof with three
+  weaker checks and named monotonicity the main one. Milestone 0 existed to measure how much
+  work it actually does. Full workings in `docs/SPIKE-M0-READING.md`.
+- **Decision**: **treat monotonicity as a save-gate against impossible data and as nothing else.**
+  The spike measured **0 misreads caught out of 9; 9 of 9 slipped through.** ⚠️ **No product
+  wording, anywhere, may describe a transcription as checked, validated or verified.** The
+  strongest honest claim is *not obviously wrong*, which is already the PRD's wording.
+  ⚠️ **Do not build "transcribe twice and compare"** — the spike found errors repeat
+  deterministically on the same ambiguous digits (two cells were misread identically in 3 of 3
+  independent reads), so a second read returns the same wrong answer and manufactures false
+  confidence. Targeted per-column re-photograph survives, because it supplies new pixels rather
+  than a second opinion on the same ones, and must never be worded as "reading it again to check".
+  **Derived per-hand scores stay on the review screen as a reading aid, not as a validator** —
+  a wrong interior cell perturbs two adjacent hand scores in opposite directions and both remain
+  plausible.
+- **Alternatives**: (a) drop monotonicity entirely — no; it is free and it does stop genuinely
+  impossible states being saved. (b) Add a plausibility band on per-hand deltas — the spike's
+  slipped errors produced hands of 15, 12, 16 and 3, all ordinary; any band tight enough to catch
+  them would fire constantly on real play. (c) Second-model cross-read — unevaluated, and the
+  deterministic-error finding makes it likely to agree with the first.
+- **Consequences**:
+  - **The human review step is the entire quality control**, not most of it. Every argument for
+    the Column Sweep and against a "looks fine, save" shortcut is now evidence-backed.
+  - Exposure is **bounded**: a wrong interior cell is self-cancelling in a running total, so
+    final scores, winners and total-derived records are safe (**0 errors in row 11 across all six
+    reads; winner correct 6/6**). ⚠️ **Hand-by-hand analytics are the exposed ones** and will be
+    confidently wrong when a cell is wrong.
+  - Row 11 gets its own treatment on the review screen (`FinalRow`) — already in the design
+    system, now justified by evidence.
+  - The **name pick-list in M1 is load-bearing**: a player's name was misread in 2 of 6 reads.
+  - **Revisit if**: a re-run through the production API path with structured outputs shows a
+    materially different error profile, or a later model changes the numbers.
+
+## 2026-09-10 — Development runs on the founder's Claude subscription until an API key is needed
+
+- **Context**: the reading spike needed transcriptions, and no `ANTHROPIC_API_KEY` exists on the
+  machine. The founder asked to keep development costs inside the existing subscription for now.
+- **Decision**: **development and experiments run through the Claude Code session on the
+  subscription. The founder supplies an API key when the product itself needs to call the API** —
+  which is Milestone 1's admin panel, where the key is set and verified with a real call.
+- **Alternatives**: provision a key immediately — rejected by the founder for now; nothing before
+  M1 requires one.
+- **Consequences**:
+  - ⚠️ Spike results carry a **fidelity caveat**: same model and images, but through the harness
+    rather than the API with `output_config.format`. Error rates are indicative, not a benchmark.
+  - **Re-run the spike through the real API once a key exists** (~A$0.30, and the sheets are kept),
+    before relying on its numbers for anything load-bearing.
+  - No AWS or API spend is incurred before the founder decides to start it.
+
 ## 2026-09-10 — Custom domain on external (Lightsail) DNS; no Route 53 hosted zone
 
 - **Context**: the founder owns `ribenajuice.xyz` and wants the app at
@@ -499,8 +556,9 @@ Format:
   and the photo bucket are all already AWS, and splitting the footprint across two providers costs
   more in operational surface than it saves.
 - **Consequences**:
-  - **Estimated cost: ~$0.01/month on AWS**, plus ~$0.40 of Anthropic and $0 of Turso — **about
-    $0.42/month all in, custom domain included.** Well inside the $20 ceiling.
+  - **Estimated cost: ~US$0.01/month on AWS**, plus ~US$0.40 of Anthropic and US$0 of Turso —
+    **about US$0.42/month all in (≈ A$0.65), custom domain included.** Well inside the ceiling
+    (US$20 ≈ A$30).
   - ✅ **Nothing bills while nobody is using the app.** *(Superseded detail: this ADR originally
     flagged a Route 53 hosted zone at $0.50/month as the one line that would. The custom-domain ADR
     above removes it — DNS lives in Lightsail, so no zone is created and the AWS bill is

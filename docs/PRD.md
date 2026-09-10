@@ -71,8 +71,11 @@ against; the eleventh number is the total. The proof is gone.
 **What replaces it, and it is genuinely weaker:**
 
 1. **Monotonicity.** A running-total column can never decrease: every value must be greater than
-   or equal to the one above it. A misread digit usually breaks the sequence and is caught at
-   once.
+   or equal to the one above it. ⚠️ **Measured 2026-09-10 by the Milestone 0 spike: it catches
+   nothing.** 0 of 9 misreads caught, 9 of 9 slipped through — the reader is told columns never
+   decrease, so it reads in a way that satisfies the rule, and a check the transcriber already
+   obeyed is not an independent check. It stays as a save-gate against impossible data and
+   nothing more. See `docs/SPIKE-M0-READING.md`.
 2. **Per-hand scores are derived**, as the gap between consecutive rows (the first row's delta is
    itself). Player C's eleven hands above: 23, 0, 4, 7, 3, 7, 13, 14, 4, 3, 0. **The requirement to
    store every round separately is untouched** — the rounds are computed rather than read, and
@@ -86,8 +89,9 @@ column that didn't add up was wrong, full stop. **Monotonicity is only a partial
 that preserves the ordering slips straight through: 123 misread as 128, sitting quietly between
 118 and 137, passes clean. So:
 
-- ⚠️ **The human review step now carries most of the weight.** It is no longer a formality over a
-  proof; it is the check.
+- ⚠️ **The human review step carries *all* of the weight.** Written as "most" before the spike
+  measured it; there is no automated check standing behind it at all. It is not a formality over a
+  proof — it is the only quality control the product has.
 - **Showing the transcription beside the photo every single time goes from good practice to
   essential.** This was always the principle — **the app's job is to be *checkable*, not to be
   right** — and it is now doing far more work than when it was written.
@@ -589,15 +593,19 @@ Each is a decision, not an omission.
    is invisible to the app, and so is a running total the human wrote down wrong on the pad in the
    first place. A single wrong number also corrupts **two** derived hands, one either side of it.
    **Mitigation is mostly not technical**: the transcription sits beside the photo every time, the
-   derived per-hand scores are shown so implausible hands stand out, and the photo is kept forever
+   derived per-hand scores are shown as a reading aid — ⚠️ **the spike found they do not make a
+   slipped error stand out**, because one wrong interior cell perturbs two adjacent hands in
+   opposite directions and both stay plausible — and the photo is kept forever
    so any number can be re-read from the paper. The founder should expect to actually look. **The
    one technical lever that genuinely helps is the targeted re-photograph** — a close-up of a
    doubtful column is a far easier read than the same column on a full page, and it is available on
    any column, not just the ones that trip a check.
 2. **Reading conditions are hostile and permanent.** Hand-ruled columns with no fixed geometry,
    arbitrary rotation, hard shadow, glare, thumbs in shot, and crossings-out where the wrong value
-   is often the more legible one. This is the normal case. **This is what Milestone 0 exists to
-   measure.**
+   is often the more legible one. This is the normal case. **Measured by Milestone 0 on
+   2026-09-10: 97% of cells correct, 100% of final scores and winners correct, roughly one column
+   in three carrying an error.** Hostile conditions are survivable; the errors they produce are
+   invisible to every automated check, which is the real finding. See `docs/SPIKE-M0-READING.md`.
 
    ⚠️ **Manual override is the mitigation, and it is why this risk is survivable.** If Milestone 0
    comes back and says a hand-ruled pad cannot be read reliably, the fallback was always going to
@@ -631,7 +639,13 @@ Each is a decision, not an omission.
 
 ## Milestones
 
-### Milestone 0 — Reading spike (half a day, throwaway)
+### Milestone 0 — Reading spike (half a day, throwaway) — ✅ DONE 2026-09-10
+
+> **Complete. Verdict: reading works well enough to build on; the automated check does not.**
+> 97% cell accuracy, 100% of final scores and winners correct, and **monotonicity caught 0 of 9
+> misreads**. Full findings in `docs/SPIKE-M0-READING.md`; consequences recorded as an ADR.
+> Milestone 1 proceeds unchanged, manual override included.
+
 
 **Not a milestone the founder can touch, and deliberately not Milestone 1.** The question has
 changed since the two real sheets arrived. It is no longer *"can this be read at all"* — we have
