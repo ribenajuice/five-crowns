@@ -709,6 +709,488 @@ of them sideways.
 deleting a saved game, player and roster pages, and everything in the admin panel except the API
 key.
 
+### Milestone 1 — delivery spec
+
+*Written 2026-09-10, after the Milestone 0 verdict landed. This section is longer than the rest of
+this PRD on purpose: it is the build contract, not the decision document. Everything above it still
+governs. **Two founder decisions frame it:** M1 **finishes live** at `fivecrowns.ribenajuice.xyz`,
+so provisioning AWS, the database and the photo bucket are inside this milestone; and it is
+**delivered as five reviewed PRs** rather than one.*
+
+⚠️ **The wording constraint governs this whole milestone.** Monotonicity caught **0 of 9** misreads.
+**Nothing the app says — on screen, in a button, in a banner, in a confirmation — may describe a
+transcription as checked, validated, verified or confirmed.** The strongest honest claim is **"not
+obviously wrong"**. There are acceptance criteria below that test the wording itself, and they fail
+the build like any other.
+
+⚠️ **Do not build "transcribe twice and compare".** The spike found the same ambiguous digits misread
+identically across independent reads. **Targeted per-column re-photograph is the sanctioned second
+path**, and it is never worded as reading it again to check — it supplies new pixels, not a second
+opinion.
+
+#### User stories
+
+**Getting in**
+
+> As a member of the group, I want to enter one shared password to get in, so that nobody has to
+> make an account.
+
+- One password on the front page; nothing of the record is readable without it.
+- The device stays logged in; nobody retypes it every night.
+- The group password does not open the admin panel.
+
+**Getting a game in**
+
+> As a player, I want to photograph the finished sheet on my phone and have the numbers read off
+> it, so that the night is kept without anyone typing forty-four numbers.
+
+- The camera opens directly; a photo already on the phone works too.
+- Any rotation is accepted, and the founder turns it upright in one tap per quarter turn.
+- The photo is stored permanently, at full quality, before anything else happens.
+- What was read comes back as columns of eleven running totals with a name on each.
+
+> As a player, I want to read the transcription against the photo one column at a time, so that I
+> catch what the app cannot.
+
+- The photo sits beside the numbers **every time**, cropped to the column being read, on the same
+  row pitch, so paper line 7 is level with screen line 7.
+- Derived per-hand scores sit alongside the running totals and update as you type. ⚠️ **They are a
+  reading aid, not a check** — the spike proved they do not make a slipped error stand out.
+- A column that stops climbing is flagged at **both** numbers of the offending pair.
+- A repeated value is a zero-point hand. ⚠️ **Never a suspected duplicate read.**
+- The final row of every column is called out on its own, because a wrong number there changes who
+  won.
+- Save is unavailable while any column is short of eleven values or dips — and the screen says what
+  passing that means: **not obviously wrong**, not verified.
+
+**Manual override, all four rungs**
+
+> As a player, I want to fix any single number by tapping it, so that a nearly-right read costs me
+> ten seconds rather than the whole grid.
+
+- Every cell is editable at all times, including cells nothing flagged.
+- The editor shows that column's photo strip, a keypad, and the hand scores either side of the line
+  being edited.
+
+> As a player, I want to repair the *shape* of the grid when editing numbers cannot rescue it, so
+> that a missed column or a doubled row doesn't cost me the game.
+
+- Add or remove a player column; set or change who a column belongs to; reorder columns to match the
+  photo; insert or delete a value within a column and shift the rest.
+- ⚠️ **This is not a spreadsheet.** Four repairs, and deliberately nothing else.
+
+> As a player, I want to take a close-up of one doubtful column and have that column read on its
+> own, so that I get better numbers without typing them.
+
+- Offered on any column the app is unsure about, and **invokable on any column at any time**,
+  including ones the app thinks are fine.
+- The app names the column it wants: *"Photograph Player D's column."*
+- Only that column changes. Every hand correction elsewhere survives untouched.
+- The new reading is shown against the old and **rejected in one tap** if it came back worse.
+- Close-ups are kept forever with the game, accepted or rejected.
+
+> As a player, I want to type the whole grid myself whenever I like, so that a hopeless read never
+> costs me the record.
+
+- Reachable without re-uploading, without hitting an error first, and never worded as a failure.
+- The photo is still required and still stored.
+- The result is **a game indistinguishable from an imported one** — no badge, no flag, nowhere.
+- ⚠️ Not a bypass: columns must still climb, hands are still derived, save is still gated.
+
+**The night around the numbers**
+
+> As a player, I want the date and the venue recorded, so that the archive can be asked questions
+> about *when* and *where* years from now.
+
+- Date pre-fills from the sheet if it's written there, otherwise today, always editable.
+- Location pre-fills with the last one used, changed by picking from a list or adding a new one.
+  **Never raw free text.**
+- ⚠️ **Location never blocks a save**, and a game with none is shown as having none.
+
+> As a player, I want the names on the sheet tied to the right people, so that nobody quietly turns
+> into two people.
+
+- Every column's player is **picked from the list of existing players**, or explicitly created as
+  someone new. No automatic suggestion in M1.
+- The roster is matched to the exact set, or created with a default name from its members.
+
+> As a player, I want a tie recorded as two winners, so that the record matches what actually
+> happened at the table.
+
+- Lowest final total wins. **Two players on it means two winners**, on the review screen, in the
+  saved game, and in the games list.
+
+**The record**
+
+> As a player, I want to see the games I've saved and open one up beside its photo, so that the
+> archive is real rather than a promise.
+
+- Games list, newest first: date, venue, roster, winner or winners.
+- A game shows the eleven running totals as the paper has them, the derived hands alongside, the
+  final row called out, and the original photo — pinch-zoomable — plus any close-ups.
+
+**Keeping it running**
+
+> As the founder, I want to set the transcription API key from a password-protected panel, so that a
+> dead or leaked key is two minutes of my time rather than a developer's afternoon.
+
+- A second password, independent of the group one.
+- The key is **tested with a real call before it is accepted**.
+- ⚠️ **Write-only**: last four characters, when it was set, whether it currently works. Never shown
+  back.
+- ⚠️ **One job. Nothing else in the panel in M1.**
+
+#### Acceptance criteria
+
+*Executable by QA against the two fixture sheets. **`sheet-01-four-players.jpg`** — four players,
+portrait, six consecutive `64`s in Player D's column, a struck-through value in Player B's row 4, a
+genuine 51-point hand, winner Player C on 78. **`sheet-02-five-players-rotated.jpg`** — five
+players, written along the long edge and photographed sideways, `48` held for five consecutive rows
+in Player B's column, winner Player B on 71. Ground truth is
+`fixtures/sheets/GROUND-TRUTH.md`; it is founder-verified and not to be edited.*
+
+**Getting in**
+
+1. Requesting `/`, `/games`, any game URL, any `/review/{id}` or `/admin` with no session redirects
+   to `/login`, and **no fragment of the record appears in the returned HTML**.
+2. A wrong password is refused, sets no cookie, and says so; the correct password lands on the games
+   list.
+3. After a successful login, quitting the browser and reopening the app the following day lands on
+   the games list with no password prompt.
+4. Holding a valid **group** session and opening `/admin` produces the admin password prompt, not the
+   panel.
+5. Ten failed logins from one address inside ten minutes cause further attempts to be refused with a
+   plain "try again later", including a correct one.
+
+**The photo**
+
+6. On a phone, "add a game" opens the camera directly; choosing an existing photo also works.
+7. `sheet-01` photographed portrait appears upright without any rotation being needed (EXIF applied).
+8. `sheet-02` photographed sideways is turned upright with the rotate control — one tap per quarter
+   turn, four taps returns it to where it started — and **that orientation is what is shown from then
+   on, including on the saved game view days later**.
+9. After capture, exactly two objects exist at `photos/{photoId}/original.jpg` (long edge ≤ 3000px)
+   and `photos/{photoId}/model.jpg` (long edge ≤ 1568px). An unauthenticated GET on either is denied.
+10. There is **no path through the app that saves a game without a sheet photo** — including full
+    manual entry. QA attempts it and cannot reach save.
+11. A game typed entirely by hand and a game imported from a transcription are **identical on screen**:
+    QA compares the games list row and the game view of one of each and finds no badge, icon, label,
+    tooltip or wording distinguishing them.
+12. Photos are served by presigned URL; a URL copied out of the page stops working after five minutes.
+
+**The review screen**
+
+13. With `sheet-01`, the review screen shows **four** player chips with a status dot on each; with
+    `sheet-02` it shows **five**, in the same layout, with no configuration step and no horizontal
+    scrolling of the grid at 375px wide.
+14. For the selected column, the photo strip beside the grid is cropped to **that player's column
+    only** and shares the grid's row pitch: QA measures that paper line 7 and screen line 7 are level
+    within one row height on both fixtures.
+15. ⚠️ There is **no state of the review screen in which the photo is absent**, including a read where
+    nothing is flagged. QA reaches save from a clean read and confirms the photo strip is on screen at
+    the moment save is pressed. No "looks fine, save" shortcut exists anywhere.
+16. Tapping any cell — **including one nothing has flagged** — opens the cell editor showing (a) that
+    column's photo strip positioned at the edited row, (b) a numeric keypad, (c) the derived hand
+    score for the row above **and** the row below the edited value, and (d) previous/next line
+    controls.
+17. Changing a value updates the two neighbouring derived hand scores **on the keystroke**, with no
+    network round trip and no apply step.
+18. All 44 cells of `sheet-01` and all 55 of `sheet-02` are editable at every point in the review,
+    before and after any flag, re-read or structural repair.
+19. ⚠️ **The repeats criterion.** On `sheet-01`, Player D's column holds `64` for **six consecutive
+    rows**. QA confirms that **no warning, flag, dot, tint, icon, banner or wording of any kind**
+    appears on that column or those cells, and that the derived hands render as
+    `29, 0, 35, 0, 0, 0, 0, 0, 3, 0, 44` — five zeros in a row, shown as zero-point hands.
+20. The same on `sheet-02`, where Player B holds `48` for five consecutive rows: no duplicate-read
+    suspicion anywhere on screen.
+21. Editing `sheet-01` Player A's row 6 from `100` to `70` flags **both** `70` and the `74` above it,
+    with a border, a tint, an icon **and** a sentence naming the numbers — colour is never the only
+    signal — and save becomes unavailable.
+22. Restoring `100` clears the flag and re-enables save immediately, with no round trip.
+23. The final row is displayed on its own. On `sheet-01` it reads
+    `Player A 137 · Player B 109 · Player C 78 · Player D 111` with Player C marked as winner by
+    crown, label **and** colour. On `sheet-02` it marks Player B on 71.
+24. ⚠️ **The wording criterion.** With every column complete and climbing, QA reads the save area,
+    every banner, the button label, the confirmation and any toast, and finds **none of**: *checked,
+    validated, verified, confirmed, correct, looks right, all good*. The screen states that passing
+    means **"not obviously wrong"**. This is run in three states: clean read, read with a flag
+    resolved by hand, and fully manual entry.
+25. A cell the model could not read renders empty and flagged; the column reports **"10 of 11"**
+    rather than presenting a shorter game, and save stays unavailable until it is filled.
+26. Save is unavailable whenever any column has other than eleven values, any value is lower than the
+    one above it, or fewer than two columns have a player assigned.
+27. ⚠️ A soft warning **never** blocks a save: `sheet-01` Player B's genuine **51-point hand 4** may
+    be warned about, but save stays available and the game saves with `54` unchanged.
+28. The review survives the page being evicted: with half the corrections made, QA force-quits the
+    browser, reopens `/review/{draftId}`, and **every correction is still there** — including after
+    opening the camera for a close-up.
+
+**Structural repairs**
+
+29. A missed column can be **added**, assigned to a player and typed; it reports "0 of 11" until
+    complete and blocks save meanwhile.
+30. A spurious column invented from a margin can be **removed**, and every remaining column keeps its
+    values, its hand edits and its close-up photos.
+31. A column can be **reassigned** to a different existing player or to a new one; the handwritten name
+    as originally read is still stored with the saved game.
+32. Columns can be **reordered** to match the photo. QA re-reads one column, hand-edits a cell in
+    another, reorders both, and confirms the readings, the edits and the close-up photo all moved with
+    their columns.
+33. **Inserting** a value inside a column shifts the rest down, leaving twelve values; the column
+    reports "12 of 11" and blocks save. **Deleting** one leaves ten and reports "10 of 11". Either
+    repairs an off-by-one in one action rather than eleven retypes.
+34. There is **no free-form grid**: no way to make a game other than eleven hands, no formulas, no
+    multi-cell selection, no row labels other than 3s through Kings.
+35. Every structural repair leaves the derived hand scores and the column check correct immediately,
+    with no save/apply step.
+
+**Targeted re-photograph**
+
+36. "Re-photograph this column" is offered on any column that breaks monotonicity or that the model
+    flagged uncertain, **and is available on every column at all times, including clean ones**.
+37. The request names the player: *"Photograph Player D's column."*
+38. A close-up reading replaces **only that column's eleven values**. QA hand-types a correction in
+    another column first and confirms it is untouched afterwards.
+39. The new reading is shown **against the old**, with differing lines highlighted.
+40. Rejecting the new reading restores the previous values in **one tap, with no re-upload**, and the
+    close-up photo is still stored.
+41. The same column can be re-shot more than once and several columns re-shot in one session; every
+    reading a column has ever had is retained and reachable.
+42. Photographing the **wrong column** — QA shoots Player B's column when Player D's was asked for —
+    produces a **non-blocking** warning naming the mismatch. The founder can accept it anyway.
+43. A close-up that disagrees with a cell the founder typed **calls out that specific cell** —
+    "you typed 64; the close-up reads 84" — rather than silently overwriting it.
+44. A close-up returning fewer than eleven values is flagged as an incomplete column, save is blocked,
+    and the previous reading is one tap away.
+45. ⚠️ **The wording criterion, again.** QA reads every string in the re-photograph flow and finds
+    nothing describing it as checking, verifying, confirming or double-checking the earlier read.
+
+**Full manual entry**
+
+46. "Type it in by hand" is reachable **from the add-a-game screen without transcribing at all**, and
+    **from the review screen without first hitting an error**.
+47. Its wording nowhere presents it as a failure, a fallback or a last resort. QA reads the control,
+    its help text and the screen it leads to.
+48. Clearing a transcription and typing the grid leaves the photo attached and saves a game that
+    passes criterion 11.
+49. Manual entry is gated identically: `sheet-01` typed with Player C's row 7 as `47` (below the `44`
+    above it) blocks save with the same paired flag as an imported read.
+
+**Transcription**
+
+50. Photographing `sheet-01` through the app returns **four named columns of eleven values each**,
+    displayed beside the photo, within 60 seconds. ⚠️ **Exact agreement with the ground truth is not
+    an acceptance criterion** — the spike measured 97% cell accuracy and roughly one column in three
+    carrying an error. What is tested is that whatever comes back is **correctable to the ground truth
+    by hand and saves correctly**.
+51. Photographing `sheet-02` after the founder rotates it upright returns **five** named columns of
+    eleven values each.
+52. A progress state appears within two seconds of submitting, and a transcription taking 45 seconds
+    completes rather than being cut off at 30.
+53. An API error or timeout produces a clear message and a **Try again** button that reuses the photo
+    already uploaded. ⚠️ QA confirms the app **never asks for a re-photograph** on this path.
+54. Output that fails schema validation is recorded with its raw JSON and a failed status, and the
+    review screen opens with whatever parsed pre-filled and the rest empty and flagged.
+55. Every attempt — success, invalid or error — leaves a stored record with its raw response and token
+    counts.
+56. With the daily sheet cap exhausted, a vision call is refused with a plain message, **manual entry
+    still works**, and column re-reads are counted separately and still available.
+57. The API key never appears in any response to the browser, any page source, or any client-side
+    bundle. QA greps the served JavaScript.
+
+**Date, venue, people, winners**
+
+58. The date defaults to today when the sheet carries none — which is both fixtures — is editable, and
+    the saved game shows what was chosen.
+59. The venue field pre-fills with the **most recently used** location and is changed in one tap by
+    picking another. On a fresh database it is empty and offers "add a new one".
+60. There is **no path that stores a venue as raw free text** — every value is an entry in the list,
+    created deliberately.
+61. Leaving the venue empty still saves, and the game view and the games list show **"No location"**
+    rather than a gap.
+62. Adding "Player C's place" and then "  player c's place " resolves to **one** location, not two.
+63. Every column's player is set by picking from the existing list or explicitly creating someone new.
+    On the very first game the list is empty and all four are created; saving `sheet-02` afterwards,
+    QA picks the four returning players from the list and creates only **Player E**.
+64. After saving both fixtures the database holds exactly **5 players, 2 rosters (sizes 4 and 5),
+    2 games, and 99 round rows**, each with **both** the running total as read and the derived hand
+    score.
+65. `sheet-01` saves with **Player C (78)** as sole winner; `sheet-02` with **Player B (71)**.
+66. ⚠️ **The ties criterion.** QA edits a `sheet-01` draft so Player A's row 11 reads `78`. The final
+    row marks **both** Player A and Player C; the saved game names both; the games list row names
+    both. Nothing on any of the three screens implies a single winner, and nothing errors.
+67. Re-entering `sheet-01`'s four players in a **different column order** matches the existing roster
+    rather than creating a second one.
+68. A newly created roster displays a default name built from its members.
+
+**The record**
+
+69. The games list is newest first and each row shows date, venue (or "No location"), roster name and
+    the winner **or winners**.
+70. A game view shows the eleven running totals **in the paper's column order**, the derived hands
+    available alongside, the final row called out, the winner(s) marked, and the sheet photo
+    pinch-zoomable and pannable.
+71. Any close-ups taken during review appear on the game view **attached to the player whose column
+    they show**, including ones whose reading was rejected.
+72. With no games saved, the list says so and offers "add a game" rather than rendering blank.
+73. Every M1 screen works at **375px and 1280px**, every touch target is at least 44px, and focus is
+    visible on everything interactive.
+
+**The admin panel**
+
+74. `/admin` asks for the **admin** password. A valid group session grants nothing there.
+75. A valid key pasted in is saved, and the panel then shows **only** its last four characters, when it
+    was set, and whether it currently works.
+76. ⚠️ The key is **never rendered back**: QA reloads the panel, views source, and inspects every API
+    response, and the full key appears in none of them.
+77. An invalid key is **rejected by a real API call before being saved**, and the previously working
+    key stays in use.
+78. After saving a key the panel states plainly that it takes up to a minute to be in use everywhere,
+    and transcription works within 60 seconds **with no deploy**.
+79. ⚠️ **No secret is in the database.** A dump of every table contains no API key and no password
+    hash. **This is permanent, not a one-off check.**
+80. The M1 panel does **one thing**. QA confirms there is no password change, no download, no usage
+    page, no toggle and no theming.
+
+**Live, and done**
+
+81. CI runs on every PR: lint, typecheck and **real unit tests** over the fixture grids — monotonicity,
+    delta derivation including Player D's six 64s and Player B's 51-point hand, and roster-signature
+    order-independence. A deliberately broken derivation fails the build.
+82. Deploy runs from `main` through GitHub Actions by OIDC with **no stored AWS credentials**, and
+    refuses to deploy while either password hash is missing from Parameter Store.
+83. The nightly database dump lands in `s3://five-crowns-photos/backups/YYYY-MM-DD.sql`, and the
+    photo bucket has versioning on with no delete lifecycle.
+84. `https://fivecrowns.ribenajuice.xyz` answers with a valid certificate and no browser warning, and
+    the CloudFront URL keeps working alongside it.
+85. ⚠️ **Definition of done.** The founder, on their own phone, on the live domain, photographs a real
+    sheet, reviews it, saves it, and the game appears in the record **correct and checkable against
+    the photo, cell by cell**. Nothing else in this list substitutes for this one.
+86. A zero-spend AWS budget alarm exists. Expected running cost is **about A$0.65/month**, effectively
+    all of it Anthropic usage.
+
+**86 acceptance criteria.**
+
+#### The stages
+
+*Five PRs, each reviewed as it lands. The sequence differs from the sketch in two places and both
+are deliberate.*
+
+**Why the review screen is second and not third.** It carries all of the product's quality control,
+so it needs the founder's eyes on it earliest. It can land before transcription **honestly, not as a
+stub**, because full manual entry is a first-class path in its own right (rung 4) — a review screen
+fed by typing is a real, shippable way to use the app, not scaffolding. Transcription then lands into
+a screen the founder has already approved. The photo capture and upload move up with it, because
+**every save requires a photo**, typed or not.
+
+**Why the first deploy is first and not last.** M1 finishes live, and a first deploy saved for the
+end is where every unknown collects. Deploying an almost-empty app on day one turns the riskiest step
+into the cheapest one, and it is also the only way the founder can try stages 2–4 **on their phone**,
+which is the only device that matters.
+
+---
+
+**Stage 1 — Foundations: live, locked, and empty**
+
+*Scope*: the project scaffold (nothing exists yet — no `package.json`, no app code); the database
+schema and migrations; the pure scoring library (monotonicity, delta derivation, roster signature)
+with unit tests over the fixture grids; the password gate; AWS provisioned by SST — Lambda,
+CloudFront, the private versioned photo bucket, Parameter Store, the nightly backup; CI running lint,
+typecheck and real tests on every PR; deployed to the CloudFront URL.
+
+*Acceptance criteria*: 1–5, 72 (empty state), 79, 81, 82, 83, 86.
+
+*What the founder sees*: a real URL that asks for the password, lets them in, and shows an empty
+games list saying there's nothing here yet. Unimpressive on purpose — but it is deployed, it is
+private, and the numbers logic underneath it is already tested against both real sheets.
+
+*Founder action starts here*: the DNS and certificate runbook in `docs/ARCHITECTURE.md` takes about
+fifteen minutes of work and up to an hour of waiting. Starting it now means the domain is ready by
+stage 5 rather than holding it up.
+
+---
+
+**Stage 2 — The review screen, typed by hand**
+
+*Scope*: camera and photo picker, rotate, downscale, direct upload to S3; the persisted draft; the
+Column Sweep review screen — photo strip, grid, derived hands live, cell editor, paired
+monotonicity flags, the called-out final row, the save gate and its wording; full manual entry; date;
+venue pick-list; the player pick-list and roster matching; save; a games list row and a game view.
+
+*Acceptance criteria*: 6–28 (except 11 in part, which completes at stage 3), 46–49, 58–70, 73.
+
+*What the founder sees*: **the whole loop, working, on their phone.** They photograph a sheet, type
+the numbers in, and the game lands in the record with the right winner. This is the PR to look at
+hardest — it is the screen every later stage builds on, and the last easy moment to say the layout is
+wrong.
+
+---
+
+**Stage 3 — Transcription, and the key that pays for it**
+
+*Scope*: the admin panel skeleton behind its second password and the API key form (moved forward from
+the sketch — the app cannot transcribe without a key, and the two are one dependency); the vision
+path with its prompt, structured output schema, streaming and daily caps; pre-filling the draft;
+unread cells; the stored record of every attempt.
+
+*Acceptance criteria*: 11, 50–57, 74–80.
+
+*What the founder sees*: they paste their key in once, then photograph a fixture sheet and watch the
+numbers arrive in the screen they already approved. Expect to correct something — roughly one column
+in three carries an error, and that is the measured normal case, not a bad day.
+
+---
+
+**Stage 4 — The rest of the override ladder**
+
+*Scope*: the four structural repairs; the targeted per-column re-photograph, including the second
+transcription path, the old-versus-new comparison, one-tap rejection, the wrong-column warning and
+the typed-cell disagreement callout; close-up photos stored permanently.
+
+*Acceptance criteria*: 29–45, 71.
+
+*What the founder sees*: the two rungs that rescue a bad read. Worth testing on `sheet-02`'s
+overwritten Player A column, which the spike named as the least certain on either sheet.
+
+---
+
+**Stage 5 — Go live and prove it**
+
+*Scope*: the custom domain attached; end-to-end pass over both fixtures; the wording audit run across
+every screen; accessibility and 375px/1280px pass; README and status docs; the founder's own
+acceptance run.
+
+*Acceptance criteria*: 84, 85, plus a full re-run of all 86 against the live domain.
+
+*What the founder sees*: `fivecrowns.ribenajuice.xyz`, a real sheet from a real night going in, and
+the game sitting in the record where it will still be in ten years.
+
+*One cheap thing worth doing here*: re-run the Milestone 0 reading spike through the production API
+path now that a key exists — about **A$0.30**, and it turns the spike's indicative error rates into
+real ones.
+
+#### Explicitly out of scope for Milestone 1
+
+*Restated so nobody relitigates it mid-build. Each is a decision, not an oversight.*
+
+**From the PRD's "Cut from M1" list**: all analytics and the records board; name suggestion from the
+handwriting (the pick-list only); roster renaming; editing or deleting a saved game; player and roster
+pages; everything in the admin panel except the API key — no password changes, no score download, no
+usage or spend.
+
+**Also deferred, deliberately**:
+
+- **Merging two players, renaming or merging locations.** Names are consistent today; this is M2
+  insurance.
+- **Filtering the games list** by venue or roster. M3, with the analytics that need it.
+- **Any second read for confirmation.** ⚠️ Not deferred — **prohibited**. Errors repeat.
+- **Any plausibility rule that blocks a save.** Heuristics warn; humans decide.
+- **Format detection or a per-hand-score sheet format.** Running totals, unconditionally.
+- **Bulk import**, exports, printing, sharing links.
+- **A staging environment, a second region, a queue, an async job system.** Revisit only if
+  transcription regularly exceeds ~45 seconds.
+- **Any record of who did what.** There are no accounts. Accepted, with the risk written down.
+
 ### Milestone 2 — Identity, rosters, and the rest of the admin panel
 
 - **Admin panel completed**: change the group password; change the admin password (current one
