@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return apiError("bad_request", "That request did not make sense.");
+    return apiError("bad_request", "That request didn't make sense.");
   }
 
   const parsed = loginSchema.safeParse(body);

@@ -91,7 +91,7 @@ describe("POST /api/login — criterion 2", () => {
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({
-      error: { code: "invalid_credentials", message: "That password is wrong." },
+      error: { code: "invalid_credentials", message: "That password's wrong." },
     });
     expect(cookieJar).toHaveLength(0);
     expect(response.headers.get("set-cookie")).toBeNull();

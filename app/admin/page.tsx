@@ -1,4 +1,5 @@
 import { hasSession } from "@/lib/auth/session";
+import { AppBar } from "@/components/AppBar";
 import { PasswordGate } from "@/components/PasswordGate";
 
 /**
@@ -20,28 +21,30 @@ export default async function AdminPage() {
     return (
       <PasswordGate
         title="Admin"
-        hint="This needs the admin password, which is not the group one."
+        hint="This needs the admin password, which isn't the group one."
         action="/api/admin/login"
         next="/admin"
         label="Admin password"
+        back={{ href: "/games", label: "Back to games" }}
       />
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-[640px] px-4 py-8">
-      <h1
-        className="mb-6 text-[28px] font-bold"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        Admin
-      </h1>
-      <div className="rounded-[var(--radius)] border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
-        <p className="mb-2 font-bold">Nothing here yet.</p>
-        <p className="text-[var(--color-text-muted)]">
-          Setting the transcription API key arrives with transcription itself.
-        </p>
-      </div>
-    </main>
+    <>
+      <AppBar
+        title="Admin"
+        context="Five Crowns Ledger"
+        back={{ href: "/games", label: "Back to games" }}
+      />
+      <main className="mx-auto w-full max-w-read px-4 py-6">
+        <div className="rounded-[var(--radius)] border border-line bg-surface p-6">
+          <p className="mb-2 font-bold">Nothing here yet.</p>
+          <p className="text-text-muted">
+            Setting the transcription API key arrives with transcription itself.
+          </p>
+        </div>
+      </main>
+    </>
   );
 }

@@ -101,6 +101,6 @@ export async function attemptLogin(
  * not leak whether the password was right, or the limiter becomes an oracle.
  */
 export const RATE_LIMITED_MESSAGE = "Too many tries. Try again later.";
-export const INVALID_MESSAGE = "That password is wrong.";
+export const INVALID_MESSAGE = "That password's wrong.";
 export const NOT_CONFIGURED_MESSAGE =
   "This app has no password set yet. It needs setting up before anyone can get in.";

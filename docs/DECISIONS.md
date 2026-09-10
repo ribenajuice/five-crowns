@@ -20,6 +20,23 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — Fraunces loaded through next/font/google, self-hosted at build
+
+- **Context**: `docs/DESIGN-SYSTEM.md` names one webfont, Fraunces, "self-hosted and subset", but
+  the Stage 1 scaffold named it in CSS without ever loading it, so every heading fell back to
+  Georgia. Found by the Stage 1 design review.
+- **Decision**: load **Fraunces 700, Latin subset, `display: swap`** via **`next/font/google`**,
+  exposed as `--font-display` with a Georgia fallback. Next downloads the font at build time and
+  serves it from `/_next/static/media` — **the browser never contacts Google**, which keeps the
+  "self-hosted" requirement and adds no third-party request to a private app.
+- **Alternatives**: (a) *`next/font/local` with a committed woff2* — equally self-hosted, but a binary
+  in the repo to keep current and subset by hand. (b) *A `<link>` to Google Fonts* — a third-party
+  request on every page view of a private app; rejected.
+- **Consequences**: the build needs network access to Google Fonts (CI has it). The build emits
+  three subset files (Latin, Latin-ext, Vietnamese); only the ~18 KB Latin file is preloaded, and
+  the others are fetched only if a page renders those characters — `next/font/google` cannot drop
+  them. Revisit if builds must run offline: switch to `next/font/local`.
+
 ## 2026-09-11 — $-free password hash format
 
 - **Context**: QA followed `lib/config/README.md` § Local development verbatim and the app refused

@@ -48,6 +48,8 @@ const PROTECTED_PATHS = [
   "/",
   "/games",
   "/games/2026-09-10-abc123",
+  // The "Add a game" holding page (criterion 72). Private like everything else.
+  "/games/new",
   "/review/draft-01H",
   "/admin",
   "/records",

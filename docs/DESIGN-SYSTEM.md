@@ -81,6 +81,11 @@ everything else; `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for 
 | `--num` | 20px / 700 mono | Review cells, grids |
 | `--num-lg` | 27–34px / 800 mono | Record values, final scores |
 
+In code (`app/globals.css` `@theme`): `--text-xl` is fixed at **28px**, and the scale is used as
+Tailwind utilities `text-xl` … `text-xs` with `font-display` for the display face. The label
+letter-spacing is `--tracking-label` (`.07em`, utility `tracking-label`), and the content widths
+are `--container-read` (640px, `max-w-read`) and `--container-wide` (1120px, `max-w-wide`).
+
 **All numbers use `font-variant-numeric: tabular-nums`.** Columns of running totals must align on
 the digit; this is a correctness feature, not typography.
 
@@ -96,12 +101,12 @@ the digit; this is a correctness feature, not typography.
 
 | Component | Location | Notes |
 |---|---|---|
-| `AppBar` | every screen | Title + one-line context (date · venue), max one icon button |
+| `AppBar` | every screen except the two password gates | Title + one-line context (date · venue), max one icon button. On `/login` and the admin prompt there is no bar: the display-face `h1` is the wordmark |
 | `Card` / `CardSunk` | everywhere | Surface + 1px line + radius 14. The only container |
-| `Button` | everywhere | 48px tall; `primary` (brand fill), `ghost` (outline), `accent` (camera/re-read). Full width on phone |
+| `Button` | everywhere | 48px tall; `primary` (brand fill), `ghost` (outline), `accent` (camera/re-read). Full width on phone. Busy: `disabled` + `aria-busy="true"` + `opacity-60`, label becomes a present-tense verb with an ellipsis ("Checking…"). Disable only while busy, never because a field is empty; validate on submit and say what's missing |
 | `IconButton` | app bars | 44×44 minimum, always `aria-label`led. Inline SVG only — no icon font |
-| `Field` / `Input` | gate, review, admin | 52px tall, label above, uppercase-xs label |
-| `Banner` | review, admin | `error` / `warn` / `ok`. Bold first line = what, second line = what to do |
+| `Field` / `Input` | gate, review, admin | 52px tall, label above, uppercase-xs label. Outline is **1px `--text-muted`** (≥3:1 non-text contrast), never `--line`, which is decorative only |
+| `Banner` | gate, review, admin | `error` / `warn` / `ok`. Bold first line = what, second line = what to do. Every banner carries an **inline SVG icon** beside the bold line, so colour is never the only signal. Lockout after too many tries is `warn`, not `error`: the password typed may have been right |
 | `Pill` | review, records | Status chip; never the only signal |
 | `PhotoStrip` | review | One column of the sheet photo, cropped, rows on `--pitch`. Tap = full-screen zoom |
 | `SheetPhoto` | review, game view | Whole sheet, pinch-zoom and pan, presigned URL |
@@ -115,6 +120,14 @@ the digit; this is a correctness feature, not typography.
 | `Countdown` | records board | "N more nights and the board opens" |
 | `GameRow` | games list | Date · venue · roster · winner(s) |
 | `ScoreTable` | game view | Running totals as written, toggle for derived hands |
+
+## Screen rules
+
+- **Password gates** (`/login`, admin prompt): no `AppBar`; the `h1` in the display face is the
+  wordmark. The admin prompt adds a `ghost` **"Back to games"** button under the submit button.
+- **Games list, empty**: a `Card` saying so, plus a `primary` **"Add a game"** button linking to the
+  add-a-game route. Until that flow ships, the route renders a plain holding page; the button is
+  never hidden, because an empty list must always offer the way in.
 
 ## Review screen law
 
@@ -141,6 +154,13 @@ what to do next: *"Two things to sort"*, *"11 is lower than the 67 above it"*, *
 book"*. Records carry the banter — *the drought*, *the nearly man*, *the catastrophe*. **The admin
 panel is plain**: no jokes anywhere near the API key, the passwords or the download. Never claim
 more than the app knows — nothing on the review screen may imply a number has been verified.
+
+Fixed banner copy (bold line / second line):
+
+| Case | Tone | Copy |
+|---|---|---|
+| Wrong password | `error` | **That password's wrong.** / Check it with whoever set it up. |
+| Too many tries | `warn` | **Too many tries.** / Try again later. |
 
 ## Hard rules
 

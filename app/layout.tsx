@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { Fraunces } from "next/font/google";
 
 import "./globals.css";
+
+/**
+ * The one webfont (docs/DESIGN-SYSTEM.md § Type). `next/font/google` downloads
+ * it at build time and serves it from our own origin, so no request ever goes
+ * to Google from a visitor's browser. Weight 700, Latin subset only.
+ */
+const fraunces = Fraunces({
+  weight: "700",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-display",
+  fallback: ["Georgia", "Times New Roman", "serif"],
+});
 
 export const metadata: Metadata = {
   title: "Five Crowns Ledger",
@@ -19,7 +33,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" className={fraunces.variable}>
       <body>{children}</body>
     </html>
   );
