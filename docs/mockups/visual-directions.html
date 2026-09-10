@@ -1,0 +1,1275 @@
+<title>Five Crowns Ledger Directions</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Caveat:wght@400;700&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Playfair+Display:wght@600;800&display=swap');
+/* ---------- page chrome (not the product; this is the presentation shell) ---------- */
+:root{
+  --c-bg:#f6f4f0; --c-surface:#ffffff; --c-text:#1c1a17; --c-muted:#5d574d;
+  --c-line:#ddd7cd; --c-accent:#8a3312; --c-accent-soft:#f3e6de;
+  --sp:16px; --r:14px;
+  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --num: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --c-bg:#141311; --c-surface:#1d1b18; --c-text:#f2ece2; --c-muted:#b3aa9b;
+    --c-line:#33302b; --c-accent:#f0a184; --c-accent-soft:#2b211c;
+  }
+}
+:root[data-theme="dark"]{
+  --c-bg:#141311; --c-surface:#1d1b18; --c-text:#f2ece2; --c-muted:#b3aa9b;
+  --c-line:#33302b; --c-accent:#f0a184; --c-accent-soft:#2b211c;
+}
+*{box-sizing:border-box}
+body{background:var(--c-bg); color:var(--c-text); font-family:var(--ui); font-size:16px; line-height:1.5;}
+.skip{position:absolute;left:-9999px;top:0;background:var(--c-surface);color:var(--c-text);padding:12px 16px;z-index:99}
+.skip:focus{left:8px;top:8px}
+:focus-visible{outline:3px solid var(--c-accent); outline-offset:2px; border-radius:6px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 12px}
+@media(min-width:760px){ .wrap{padding:0 24px} }
+header.top{padding:28px 0 12px}
+header.top h1{font-size:26px;line-height:1.15;margin:0 0 8px;letter-spacing:-0.02em}
+header.top p{margin:0 0 8px;max-width:62ch;color:var(--c-muted)}
+header.top p.lead{color:var(--c-text)}
+nav.tabs{position:sticky;top:0;z-index:20;background:var(--c-bg);border-bottom:1px solid var(--c-line);
+  padding:8px 0;margin-bottom:20px}
+.tabrow{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{flex:0 0 auto;min-height:44px;padding:10px 14px;border-radius:999px;border:1px solid var(--c-line);
+  background:var(--c-surface);color:var(--c-text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--c-text);color:var(--c-bg);border-color:var(--c-text)}
+h2.dirname{font-size:24px;margin:6px 0 4px;letter-spacing:-0.02em}
+h3.grp{font-size:15px;text-transform:uppercase;letter-spacing:.09em;color:var(--c-muted);margin:34px 0 12px;
+  border-top:1px solid var(--c-line);padding-top:14px}
+.pitch{max-width:66ch;margin:0 0 14px}
+.pitch b{color:var(--c-text)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+.meta span{font-size:13px;background:var(--c-surface);border:1px solid var(--c-line);border-radius:999px;padding:5px 11px;color:var(--c-muted)}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;list-style:none}
+.swatches li{font-size:11px;font-family:var(--num);border-radius:9px;padding:9px 8px;min-width:78px;text-align:center;border:1px solid rgba(0,0,0,.15)}
+.shots{display:grid;gap:26px;grid-template-columns:1fr}
+@media(min-width:780px){ .shots{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))} }
+figure.shot{margin:0}
+figure.shot figcaption{margin-top:10px;font-size:14px;color:var(--c-muted);max-width:44ch}
+figure.shot figcaption b{color:var(--c-text)}
+figure.shot figcaption > b:first-child{display:block;font-size:15px;margin-bottom:2px}
+.note{background:var(--c-accent-soft);border-left:4px solid var(--c-accent);padding:12px 14px;border-radius:0 10px 10px 0;
+  margin:0 0 18px;max-width:66ch;font-size:15px}
+.note b{color:var(--c-text)}
+ol.decide{max-width:70ch;padding-left:22px}
+ol.decide li{margin-bottom:18px}
+ol.decide h4{margin:0 0 4px;font-size:17px}
+ol.decide p{margin:0 0 6px}
+.opt{font-size:15px;color:var(--c-muted)}
+.rec{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--c-accent);color:#fff;border-radius:999px;padding:3px 9px;margin-left:6px;vertical-align:2px}
+:root[data-theme="dark"] .rec, :root:not([data-theme="light"]) .rec{color:#241a15}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .rec{color:#fff} }
+footer.bot{margin:44px 0 60px;color:var(--c-muted);font-size:14px;border-top:1px solid var(--c-line);padding-top:16px}
+table.cmp{border-collapse:collapse;width:100%;font-size:14px;margin:0 0 20px}
+table.cmp th,table.cmp td{border:1px solid var(--c-line);padding:8px 10px;text-align:left;vertical-align:top}
+table.cmp th{background:var(--c-surface)}
+.scroller{overflow-x:auto}
+/* ================= PRODUCT MOCKUP TOKENS ================= */
+.phone{ --r:16px; --display:var(--ui); --pitch:46px; }
+
+/* 1 — Kitchen Table */
+.phone[data-dir="table"]{ --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --bg:#FAF3E7; --surface:#FFFDF8; --sunk:#F2E9D8; --text:#23201B; --muted:#6B6257; --line:#E0D5C0;
+  --brand:#17457A; --onbrand:#FFFDF8; --accent:#C1462F; --accent-ink:#9C3520; --accent-soft:#F8E4DC;
+  --ok:#1F6B45; --ok-soft:#E2EFE7; --warn:#8A5A00; --warn-soft:#F7EBD4; --err:#B3261E; --err-soft:#FBE4E1; --r:14px;}
+.phone[data-dir="table"][data-mode="dark"]{ --bg:#17140F; --surface:#211D17; --sunk:#2B251D; --text:#F3EADA; --muted:#B0A390;
+  --line:#3A3328; --brand:#7FB3E8; --onbrand:#17140F; --accent:#F0906E; --accent-ink:#F0906E; --accent-soft:#3A241C;
+  --ok:#7CCFA0; --ok-soft:#1D2C23; --warn:#E5B45C; --warn-soft:#2E2515; --err:#FF8B7E; --err-soft:#33191A;}
+
+/* 2 — The Card Room (dark-first) */
+.phone[data-dir="club"]{ --display:"Playfair Display",Georgia,serif;
+  --bg:#0F211B; --surface:#17332A; --sunk:#0B1A15; --text:#F2ECDD; --muted:#A9BDAF; --line:#2C4A3E;
+  --brand:#E0B24C; --onbrand:#14231C; --accent:#E4674A; --accent-ink:#E4674A; --accent-soft:#33221D;
+  --ok:#6FCF97; --ok-soft:#152E22; --warn:#F0B429; --warn-soft:#2E2411; --err:#FF7A6B; --err-soft:#331C1A; --r:10px;}
+.phone[data-dir="club"][data-mode="light"]{ --bg:#F5EFE2; --surface:#FFFBF2; --sunk:#EDE4D2; --text:#14261F; --muted:#5A6A60;
+  --line:#DCD1BC; --brand:#6C5410; --onbrand:#FFFBF2; --accent:#A83A25; --accent-ink:#A83A25; --accent-soft:#F7E5DF;
+  --ok:#1F6B45; --ok-soft:#E3EFE8; --warn:#7A5300; --warn-soft:#F6EBD3; --err:#B3261E; --err-soft:#FBE4E1;}
+
+/* 3 — Games Night */
+.phone[data-dir="arcade"]{ --display:"Baloo 2",var(--ui);
+  --bg:#FFF1E6; --surface:#FFFFFF; --sunk:#FCE6D5; --text:#2B1338; --muted:#6A5468; --line:#EBD6C6;
+  --brand:#5A2A7A; --onbrand:#FFFFFF; --accent:#F2611B; --accent-ink:#B03E06; --accent-soft:#FFE3D2;
+  --ok:#0C6F78; --ok-soft:#DAF0F1; --warn:#B03E06; --warn-soft:#FFE3D2; --err:#C0202B; --err-soft:#FCE0E2; --r:20px;}
+.phone[data-dir="arcade"][data-mode="dark"]{ --bg:#1B0F24; --surface:#271534; --sunk:#150B1D; --text:#FBEFE6; --muted:#C0A9C6;
+  --line:#3D2450; --brand:#C79BEA; --onbrand:#1B0F24; --accent:#FF9A4D; --accent-ink:#FF9A4D; --accent-soft:#3A2118;
+  --ok:#5FD3D8; --ok-soft:#122C2E; --warn:#FFB25C; --warn-soft:#33230F; --err:#FF8A8A; --err-soft:#361A1D;}
+
+/* ================= PHONE FRAME ================= */
+.phone{ width:100%; max-width:390px; margin:0 auto; background:var(--bg); color:var(--text);
+  border:1px solid var(--line); border-radius:26px; overflow:hidden; box-shadow:0 14px 34px rgba(20,14,6,.14);}
+.phone *{box-sizing:border-box}
+.screen{padding:14px 14px 20px; display:flex; flex-direction:column; gap:12px}
+.screen.flush{padding:0}
+.appbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;
+  background:var(--surface);border-bottom:1px solid var(--line)}
+.appbar h4{margin:0;font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:-.01em}
+.appbar .sub{font-size:12px;color:var(--muted);margin-top:1px}
+.iconbtn{min-width:44px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card.sunk{background:var(--sunk)}
+h5.ttl{margin:0 0 2px;font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.01em}
+p.sm{margin:0;font-size:13px;color:var(--muted);line-height:1.45}
+p.body{margin:0;font-size:15px;line-height:1.5}
+.btn{min-height:48px;border-radius:12px;border:1px solid transparent;background:var(--brand);color:var(--onbrand);
+  font:inherit;font-size:16px;font-weight:700;padding:12px 16px;width:100%;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:8px}
+.btn.ghost{background:transparent;color:var(--text);border-color:var(--line);font-weight:600}
+.btn.accent{background:var(--accent);color:#fff}
+.phone[data-dir="arcade"] .btn.accent{color:#2B1338}
+.btn.sm{min-height:44px;font-size:14px;padding:8px 12px;width:auto}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.field{display:block}
+.field span{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.input{width:100%;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);
+  color:var(--text);font:inherit;font-size:17px;padding:12px 14px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;
+  background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.pill.err{background:var(--err-soft);color:var(--err);border-color:transparent}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r);padding:12px 13px;font-size:14px;line-height:1.4}
+.banner.err{background:var(--err-soft);color:var(--err)}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner b{display:block;font-size:15px}
+.rowlist{display:flex;flex-direction:column;gap:8px}
+.lrow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);padding:12px 13px;min-height:56px;text-align:left;width:100%;font:inherit;color:var(--text);cursor:pointer}
+.lrow .grow{flex:1;min-width:0}
+.lrow b{display:block;font-size:15px}
+.lrow small{display:block;font-size:12.5px;color:var(--muted)}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.ic.big{width:26px;height:26px}
+
+/* ================= FAKE PHOTO: sheet + column strip ================= */
+.sheet-box{position:relative;width:100%;overflow:hidden;background:#08080a;border-radius:12px}
+.sheet-zoom{position:absolute;inset:0;transform:scale(var(--z,1));transform-origin:var(--ox,50%) var(--oy,50%);
+  transition:transform .35s ease}
+.sheet{position:absolute;left:0;top:0;width:320px;height:470px;transform-origin:0 0}
+.sheet .table-bg{position:absolute;inset:-40px;background:radial-gradient(120% 90% at 30% 10%,#1b1b1f 0%,#08080a 70%)}
+.sheet .page{position:absolute;left:14px;top:8px;width:296px;height:452px;background:#f7f4ea;border-radius:3px;
+  transform:rotate(-1.4deg);box-shadow:0 8px 24px rgba(0,0,0,.55);
+  background-image:repeating-linear-gradient(to bottom,transparent 0 25px,#bcd0e6 25px 26px)}
+.sheet .spiral{position:absolute;left:6px;top:6px;width:18px;height:456px;transform:rotate(-1.4deg);
+  background:repeating-linear-gradient(to bottom,transparent 0 6px,#9a9a9a 6px 13px,transparent 13px 19px);
+  border-radius:9px;opacity:.85}
+.sheet .ink{position:absolute;left:0;top:0;width:320px;height:470px;transform:rotate(-1.4deg);color:#1c2333}
+.sheet .vline{position:absolute;width:1.5px;background:#2a2f3d;opacity:.8}
+.sheet .hline{position:absolute;height:1.5px;background:#2a2f3d;opacity:.8}
+.sheet .hw{position:absolute;font-family:"Caveat",cursive;font-weight:700;color:#1d2440;white-space:nowrap;
+  transform:translate(-50%,-50%) rotate(var(--rot,0deg))}
+.sheet .hw.name{font-size:19px}
+.sheet .hw .out{position:relative;opacity:.75;margin-right:3px}
+.sheet .hw .out::after{content:"";position:absolute;left:-2px;right:-2px;top:52%;height:2px;background:#1d2440;transform:rotate(-8deg)}
+.sheet .shadow{position:absolute;inset:0;background:linear-gradient(118deg,transparent 42%,rgba(0,0,0,.55) 68%,rgba(0,0,0,.72) 100%);
+  pointer-events:none}
+.sheet .glare{position:absolute;inset:0;background:radial-gradient(38% 24% at 24% 18%,rgba(255,255,255,.42),transparent 70%);
+  pointer-events:none}
+.sheet .thumb{position:absolute;left:-6px;top:-8px;width:64px;height:86px;border-radius:50% 50% 44% 44%;
+  background:linear-gradient(150deg,#e8bda0,#c58f6d);transform:rotate(18deg);box-shadow:0 4px 10px rgba(0,0,0,.5)}
+.sheet .hilite{position:absolute;border:2.5px solid #ffd54a;border-radius:5px;box-shadow:0 0 0 9999px rgba(0,0,0,.32);
+  transition:all .3s ease}
+.sheet .chips{position:absolute;inset:0;transition:opacity .16s linear}
+.sheet .chip{position:absolute;transform:translate(-50%,-50%);font-family:var(--num);font-weight:700;font-size:11px;
+  padding:2px 5px;border-radius:5px;background:var(--brand);color:var(--onbrand);white-space:nowrap;
+  transition:opacity .18s linear}
+.sheet .chip.bad{background:var(--err);color:#fff}
+.sheet .chip.miss{background:var(--warn);color:#fff}
+
+/* column strip: a crop of one player's column, rows aligned to the grid beside it */
+.strip{position:relative;width:96px;flex:0 0 96px;border-radius:10px;overflow:hidden;background:#08080a}
+.strip .sp{position:absolute;left:-14px;right:-14px;top:-16px;bottom:-16px;background:#f7f4ea;transform:rotate(-1deg);
+  background-image:repeating-linear-gradient(to bottom,transparent 0 calc(var(--pitch) - 1px),#bcd0e6 calc(var(--pitch) - 1px) var(--pitch))}
+.strip .sv{position:absolute;top:-16px;bottom:-16px;width:1.5px;background:#2a2f3d;opacity:.75;transform:rotate(-1deg)}
+.strip .rows{position:relative;z-index:2}
+.strip .r{height:var(--pitch);display:flex;align-items:center;justify-content:center;font-family:"Caveat",cursive;
+  font-weight:700;font-size:27px;color:#1d2440}
+.strip .r span{display:inline-block;transform:translate(var(--dx,0),var(--dy,0)) rotate(var(--rot,0deg))}
+.strip .r i{position:relative;font-style:normal;opacity:.7;margin-right:4px}
+.strip .r i::after{content:"";position:absolute;left:-2px;right:-2px;top:50%;height:2.5px;background:#1d2440;transform:rotate(-7deg)}
+.strip .hd{height:38px;display:flex;align-items:center;justify-content:center;font-family:"Caveat",cursive;font-weight:700;
+  font-size:21px;color:#1d2440;position:relative;z-index:2}
+.strip .shadow{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:linear-gradient(160deg,transparent 46%,rgba(0,0,0,.42) 78%,rgba(0,0,0,.6) 100%)}
+.strip .glare{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(60% 16% at 40% 10%,rgba(255,255,255,.45),transparent 70%)}
+.strip .zoomtag{position:absolute;z-index:4;left:6px;bottom:6px;font-size:11px;font-weight:700;background:rgba(0,0,0,.62);
+  color:#fff;border-radius:7px;padding:3px 7px;display:flex;gap:4px;align-items:center}
+
+/* ================= REVIEW GRID ================= */
+.sweep{display:flex;gap:8px;align-items:flex-start}
+.sweep .grid{flex:1;min-width:0}
+.ghead{display:flex;align-items:center;height:38px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ghead .h1c{width:34px}.ghead .h2c{flex:1}.ghead .h3c{width:74px;text-align:right}
+.grow2{display:flex;align-items:center;height:var(--pitch);gap:6px;border-top:1px solid var(--line)}
+.grow2 .hand{width:34px;font-size:12px;color:var(--muted);font-weight:700}
+.cellbtn{flex:1;min-width:0;height:calc(var(--pitch) - 6px);border-radius:9px;border:1.5px solid transparent;background:transparent;
+  color:var(--text);font-family:var(--num);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;text-align:left;
+  padding:0 8px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.cellbtn:hover{background:var(--sunk)}
+.cellbtn.bad{border-color:var(--err);background:var(--err-soft);color:var(--err)}
+.cellbtn.miss{border-color:var(--warn);background:var(--warn-soft);color:var(--warn);font-style:italic}
+.cellbtn.edited{border-color:var(--brand);background:var(--sunk)}
+.cellbtn .pen{width:13px;height:13px;opacity:.75}
+.delta{width:74px;text-align:right;font-family:var(--num);font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.delta b{color:var(--text);font-weight:700}
+.delta.zero{opacity:.55}
+.inline-flag{display:flex;gap:8px;align-items:flex-start;background:var(--err-soft);color:var(--err);border-radius:10px;
+  padding:9px 11px;font-size:13px;line-height:1.4;margin:6px 0}
+.pager{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.pager button{flex:0 0 auto;min-height:44px;padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);
+  background:var(--surface);color:var(--text);font:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;gap:6px;align-items:center}
+.pager button[aria-current="true"]{background:var(--brand);color:var(--onbrand);border-color:var(--brand)}
+.pager .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.pager .dot.bad{background:var(--err)} .pager .dot.warn{background:var(--warn)} .pager .dot.todo{background:var(--muted);opacity:.5}
+.final{display:flex;flex-direction:column;gap:6px}
+.frow{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--sunk)}
+.frow.win{background:var(--ok-soft);color:var(--ok);font-weight:700}
+.frow.bad{background:var(--err-soft);color:var(--err)}
+.frow .nm{flex:1;font-size:15px;font-weight:600}
+.frow .sc{font-family:var(--num);font-size:19px;font-weight:800}
+.compare{display:flex;gap:8px}
+.compare > div{flex:1;border-radius:10px;border:1.5px solid var(--line);padding:8px}
+.compare .hdr{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.compare.new .hdr{color:var(--ok)}
+.compare ol{list-style:none;margin:0;padding:0;font-family:var(--num);font-size:15px;line-height:1.75}
+.compare li.diff{background:var(--warn-soft);color:var(--warn);font-weight:800;border-radius:5px;padding:0 5px;margin:0 -5px}
+.sheetup{position:relative;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -8px 24px rgba(0,0,0,.10)}
+.sheetup .grab{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 4px}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);
+  font:inherit;font-family:var(--num);font-size:22px;font-weight:700;cursor:pointer}
+.menu{display:flex;flex-direction:column;gap:2px}
+.menu button{display:flex;gap:12px;align-items:center;min-height:52px;background:transparent;border:0;border-radius:10px;
+  color:var(--text);font:inherit;font-size:15px;text-align:left;padding:8px 10px;cursor:pointer;width:100%}
+.menu button:hover{background:var(--sunk)}
+.menu button small{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+.menu button b{font-weight:700}
+.progress{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--brand)}
+
+/* ================= RECORDS BOARD ================= */
+.board{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;
+  flex-direction:column;gap:3px;min-height:104px;text-align:left;color:var(--text);font:inherit;cursor:pointer}
+.rec-card .lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.rec-card .val{font-family:var(--num);font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.rec-card .who{font-family:var(--display);font-size:15px;font-weight:700}
+.rec-card .sub{font-size:11.5px;color:var(--muted);margin-top:auto}
+.rec-card.wide{grid-column:1/-1;min-height:0}
+.rec-card.hero{grid-column:1/-1;background:var(--brand);color:var(--onbrand);border-color:transparent}
+.rec-card.hero .lbl,.rec-card.hero .sub{color:var(--onbrand);opacity:.8}
+.rec-card.sealed{background:var(--sunk);border-style:dashed;align-items:flex-start;justify-content:center;cursor:default}
+.rec-card.sealed .val{font-family:var(--display);font-size:15px;font-weight:700;color:var(--muted)}
+.seal{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink);margin-bottom:4px}
+.countdown{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r);background:var(--accent-soft);color:var(--accent-ink)}
+.countdown .big{font-family:var(--display);font-size:34px;font-weight:800;line-height:1}
+/* card room honours list */
+.plaque{display:flex;align-items:baseline;gap:10px;padding:11px 12px;border-radius:8px;background:var(--surface);
+  border:1px solid var(--line);border-left:4px solid var(--brand)}
+.plaque .lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex:1}
+.plaque .who{font-family:var(--display);font-size:16px;font-weight:700}
+.plaque .val{font-family:var(--num);font-size:17px;font-weight:800;color:var(--brand)}
+.plaque.sealed{border-left-color:var(--line);background:var(--sunk)}
+.plaque.sealed .who{color:var(--muted);font-style:italic;font-size:14px}
+/* arcade badges */
+.badge-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.badge{border-radius:20px;padding:13px;background:var(--surface);border:2px solid var(--text);
+  box-shadow:4px 4px 0 var(--text);display:flex;flex-direction:column;gap:2px;min-height:112px;text-align:left;color:var(--text);font:inherit;cursor:pointer}
+.badge .lbl{font-family:var(--display);font-size:13px;font-weight:800;line-height:1.15;text-transform:uppercase}
+.badge .val{font-family:var(--num);font-size:30px;font-weight:800;line-height:1}
+.badge .who{font-size:14px;font-weight:700}
+.badge .sub{font-size:11px;color:var(--muted);margin-top:auto}
+.badge.hot{background:var(--accent);color:#2B1338;border-color:#2B1338;box-shadow:4px 4px 0 #2B1338}
+.badge.hot .sub{color:#2B1338;opacity:.75}
+.badge.wide{grid-column:1/-1;min-height:0}
+.badge.locked{background:var(--sunk);border-style:dashed;box-shadow:none;cursor:default}
+.badge.locked .val{font-family:var(--display);font-size:15px;color:var(--muted)}
+/* misc */
+.seg{display:flex;background:var(--sunk);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;
+  font-size:14px;font-weight:700;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.tablegrid{width:100%;border-collapse:collapse;font-family:var(--num);font-variant-numeric:tabular-nums}
+.tablegrid th{font-family:var(--ui);font-size:12px;color:var(--muted);font-weight:700;padding:6px 4px;text-align:right;
+  position:sticky;top:0;background:var(--surface)}
+.tablegrid th:first-child,.tablegrid td:first-child{text-align:left;font-family:var(--ui);font-size:11px;color:var(--muted)}
+.tablegrid td{padding:0;text-align:right}
+.tablegrid td button{width:100%;min-height:44px;border:1.5px solid transparent;background:transparent;color:var(--text);
+  font:inherit;font-family:var(--num);font-size:17px;font-weight:700;text-align:right;padding:4px 6px;border-radius:8px;cursor:pointer}
+.tablegrid td button small{display:block;font-size:10.5px;font-weight:600;color:var(--muted);font-family:var(--ui)}
+.tablegrid td button[aria-current="true"]{border-color:var(--brand);background:var(--sunk)}
+.tablegrid td button.bad{border-color:var(--err);background:var(--err-soft);color:var(--err)}
+.tablegrid td button.miss{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+.tablegrid tr.last td button{background:var(--sunk);border-color:var(--line)}
+.gatewrap{min-height:520px;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:26px 20px}
+.crest{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:var(--onbrand);
+  margin:0 auto;font-family:var(--display);font-weight:800;font-size:26px}
+.suits{display:flex;gap:8px;justify-content:center;font-size:20px;color:var(--muted)}
+</style>
+<a class="skip" href="#main">Skip to the directions</a>
+<div class="wrap">
+<header class="top">
+  <h1>Five Crowns Ledger — three visual directions</h1>
+  <p class="lead">Three different-looking apps, and — more importantly — <b>three different answers to the review screen</b>: how you compare a photo of the pad against the numbers we read off it, on a phone, at a kitchen table, in bad light.</p>
+  <p>Every screen below is a real mockup at phone width. The names are yours and the numbers are off the two sheets you sent. Tap through all three, then jump to <b>“What I need you to pick”</b> at the end.</p>
+</header>
+<nav class="tabs" aria-label="Directions">
+  <div class="tabrow" role="tablist">
+    <button class="tab" role="tab" id="t-table" aria-controls="dir-table" aria-selected="true">1 · Kitchen Table</button>
+    <button class="tab" role="tab" id="t-club" aria-controls="dir-club" aria-selected="false">2 · The Card Room</button>
+    <button class="tab" role="tab" id="t-arcade" aria-controls="dir-arcade" aria-selected="false">3 · Games Night</button>
+    <button class="tab" role="tab" id="t-decide" aria-controls="dir-decide" aria-selected="false">What I need you to pick</button>
+  </div>
+</nav>
+<main id="main">
+<section id="dir-table" role="tabpanel" aria-labelledby="t-table">
+  <h2 class="dirname">Direction 1 — Kitchen Table</h2>
+  <p class="pitch"><b>The app looks like the pad.</b> Warm paper, biro-blue ink, a soft serif for the headings and big tabular numbers. It is quiet, it is legible in bad light, and it never competes with the photo for attention. The personality lives in the words, not the decoration.</p>
+  <p class="pitch"><b>Its answer to the review screen: the Column Sweep.</b> You never compare a whole grid against a whole photo. You check <em>one player's column at a time</em>, with that column of the photo cropped out and stood right next to the numbers, row for row. Four or five short comparisons instead of one impossible one.</p>
+  <ul class="swatches">
+    <li style="background:#FAF3E7;color:#23201B">paper<br>#FAF3E7</li>
+    <li style="background:#17457A;color:#FFFDF8">ink blue<br>#17457A</li>
+    <li style="background:#C1462F;color:#fff">biro red<br>#C1462F</li>
+    <li style="background:#23201B;color:#FAF3E7">text<br>#23201B</li>
+    <li style="background:#1F6B45;color:#fff">ok<br>#1F6B45</li>
+    <li style="background:#B3261E;color:#fff">error<br>#B3261E</li>
+  </ul>
+  <div class="meta"><span>Fraunces + system stack</span><span>Light-first, dark supported</span><span>Radius 14px</span><span>Quietest of the three</span></div>
+
+  <h3 class="grp">The front door, and waiting</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush"><div class="gatewrap">
+        <div class="crest">5♛</div>
+        <div style="text-align:center">
+          <h5 class="ttl" style="font-size:24px">Five Crowns Ledger</h5>
+          <p class="sm" style="margin-top:4px">Every night we've ever written down.</p>
+        </div>
+        <label class="field"><span>Password</span><input class="input" type="password" value="••••••••••" readonly></label>
+        <button class="btn">Open the book</button>
+        <p class="sm" style="text-align:center">It's in the group chat. This phone stays open once you're in.</p>
+        <div class="suits" aria-hidden="true">♠ ♥ ♦ ♣ ★</div>
+      </div></div></div>
+      <figcaption><b>Password gate</b>One field, a crest, and a line that tells you where the password is. No “sign in”, no “account”, no email.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="sheet-box" data-sheet="1|thumb"></div>
+        </div>
+        <div class="card">
+          <h5 class="ttl">Reading the sheet…</h5>
+          <p class="sm" style="margin:6px 0 10px">Four columns spotted. This takes about half a minute — you can put the phone down.</p>
+          <div class="progress"><i style="width:62%"></i></div>
+        </div>
+        <button class="btn ghost">Skip this and type it in myself</button>
+        <p class="sm" style="text-align:center">The photo is already saved either way.</p>
+      </div></div>
+      <figcaption><b>After the photo</b>The real conditions — shadow, glare, a thumb, a tilt. <b>Typing it in yourself is offered here</b>, before anything has gone wrong, so it never reads as a failure path.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The review screen — Column Sweep</h3>
+  <p class="note"><b>The problem:</b> a wrong digit that still climbs is invisible to the app. Only you can catch it, on a phone, against a photo of handwriting. <b>The answer here:</b> crop the photo down to one player's column, put it beside that player's numbers with the rows lined up, and let you sweep down eleven pairs. The eye travels about a centimetre, and the row you are on is never in doubt.</p>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar">
+          <div><h4>Check the sheet</h4><div class="sub">Sat 12 Sept · Venue A</div></div>
+          <button class="iconbtn" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+        </div>
+        <div class="screen" style="padding-top:12px">
+          <div class="banner err"><svg class="ic big" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span><b>Two things to sort</b>Player B has a number we couldn't read, and Player D's column drops at the bottom.</span></div>
+          <div class="pager">
+            <button><span class="dot"></span>Player A</button>
+            <button><span class="dot warn"></span>Player B</button>
+            <button><span class="dot"></span>Player C</button>
+            <button aria-current="true"><span class="dot bad"></span>Player D</button>
+          </div>
+          <div class="card" style="padding:12px 12px 10px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <h5 class="ttl" style="flex:1">Player D</h5>
+              <button class="btn sm ghost">Not Player D?</button>
+            </div>
+            <div class="sweep">
+              <div class="strip" data-strip="1|D"></div>
+              <div class="grid" data-sweep="1|D" data-flagnote="11 is lower than the 67 above it. One of these two is misread — we can't tell which."></div>
+            </div>
+            <button class="btn accent" style="margin-top:10px"><svg class="ic" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Photograph this column close up</button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>A flagged column</b>The photo strip and the numbers share a row height, so line 11 on paper sits beside line 11 on screen. <b>Both</b> numbers in the broken pair are flagged, because we can't know which one is wrong. The hand column on the right is the second safeguard: five zeros in a row are normal here, and it says so rather than calling them duplicates.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Check the sheet</h4><div class="sub">Sat 12 Sept · Venue A</div></div>
+          <button class="iconbtn" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="pager">
+            <button aria-current="true"><span class="dot"></span>Player A</button>
+            <button><span class="dot warn"></span>Player B</button>
+            <button><span class="dot"></span>Player C</button>
+            <button><span class="dot bad"></span>Player D</button>
+          </div>
+          <div class="card" style="padding:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <h5 class="ttl" style="flex:1">Player A</h5><span class="pill">nothing flagged</span></div>
+            <div class="sweep">
+              <div class="strip" data-strip="1|A"></div>
+              <div class="grid" data-sweep="1|A"></div>
+            </div>
+          </div>
+          <button class="btn ghost">Checked — next column</button>
+        </div>
+      </div></div>
+      <figcaption><b>A column the app thinks is fine</b>Look at the Queens row: the paper says <b>123</b>, we read <b>128</b>. It climbs, so nothing flags it — this is exactly the error class the app cannot see. The hand column is the tell (<b>+5</b> then <b>+9</b>, where the paper gives 0 then 14), and <b>every cell is tappable anyway</b>. Nothing is ever presented as beyond correction.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Player B · 6s</h4><div class="sub">4th line down</div></div>
+          <button class="iconbtn" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="card sunk" style="padding:0;overflow:hidden;display:flex;gap:0">
+            <div class="strip" data-strip="1|B" style="flex:0 0 110px;width:110px"></div>
+            <div style="flex:1;padding:12px">
+              <p class="sm">On the paper, something is crossed out and <b style="color:var(--text)">54</b> is written after it. The surviving number is the one that counts.</p>
+              <div style="margin-top:10px;font-family:var(--num);font-size:34px;font-weight:800">54<span style="opacity:.35">|</span></div>
+              <p class="sm" style="margin-top:4px">This hand: <b style="color:var(--text)">+51</b> · next hand: <b style="color:var(--text)">+26</b></p>
+            </div>
+          </div>
+          <div class="keypad">
+            <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button>
+            <button>7</button><button>8</button><button>9</button><button aria-label="Clear">⌫</button><button>0</button><button class="btn" style="min-height:52px">Done</button>
+          </div>
+          <div style="display:flex;gap:8px"><button class="btn ghost sm" style="flex:1">↑ Previous line</button><button class="btn ghost sm" style="flex:1">Next line ↓</button></div>
+        </div>
+      </div></div>
+      <figcaption><b>Rung 1 — tap a cell</b>The photo strip stays on screen while you type, scrolled to the line you're editing. The two hand scores either side update as you type, because one wrong number damages both. Previous/next line keeps you on the keypad for a whole column.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Player D, re-read</h4><div class="sub">from the close-up</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="banner ok"><svg class="ic big" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+            <span><b>One number changed</b>The close-up reads <b>111</b> where the full sheet read 11. The column climbs now.</span></div>
+          <div class="compare">
+            <div><div class="hdr">Before</div><ol><li>29</li><li>29</li><li>64</li><li>64</li><li>64</li><li>64</li><li>64</li><li>64</li><li>67</li><li>67</li><li class="diff">11</li></ol></div>
+            <div class="new"><div class="hdr">Close-up</div><ol><li>29</li><li>29</li><li>64</li><li>64</li><li>64</li><li>64</li><li>64</li><li>64</li><li>67</li><li>67</li><li class="diff">111</li></ol></div>
+          </div>
+          <button class="btn">Use the close-up</button>
+          <button class="btn ghost">Keep what I had</button>
+          <p class="sm" style="text-align:center">Nothing else moves. Your typed corrections in other columns are untouched, and the close-up is kept with the game either way.</p>
+        </div>
+      </div></div>
+      <figcaption><b>Rung 3 — re-photograph one column</b>The new reading is shown <b>against</b> the old with the changed lines picked out, and rejecting it is one tap. A re-read is never automatically right.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div style="height:120px;background:var(--sunk);display:grid;place-items:center;color:var(--muted);font-size:13px">the review screen, dimmed</div>
+        <div class="sheetup">
+          <div class="grab"></div>
+          <h5 class="ttl">Fix the shape of the grid</h5>
+          <p class="sm" style="margin-bottom:4px">For when editing numbers can't rescue it.</p>
+          <div class="menu">
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span><b>Add a player column</b><small>We missed one on the sheet</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M5 12h14"/></svg><span><b>Remove this column</b><small>It's a margin or a stray line, not a player</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg><span><b>Who is this column?</b><small>Pick a player, or add someone new</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span><b>Reorder columns to match the photo</b><small>Drag them into the order on the paper</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" opacity=".5"/><path d="M3 3h18v18H3z" opacity=".25"/></svg><span><b>Insert or delete a line</b><small>Shifts the rest of the column — fixes an off-by-one in one go</small></span></button>
+          </div>
+          <hr style="border:0;border-top:1px solid var(--line);margin:4px 0">
+          <button class="btn ghost">Type this sheet in by hand</button>
+        </div>
+      </div></div>
+      <figcaption><b>Rung 2 and rung 4</b>Five structural repairs and nothing more — this is not a spreadsheet. “Type it in by hand” sits at the bottom of the same sheet, always reachable, phrased as an ordinary choice.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen">
+        <div class="card">
+          <h5 class="ttl">How it finished</h5>
+          <p class="sm" style="margin:2px 0 10px">The line that decides who won. Check it hardest.</p>
+          <div class="final">
+            <div class="frow"><span class="nm">Player A</span><span class="sc num">137</span></div>
+            <div class="frow"><span class="nm">Player B</span><span class="sc num">109</span></div>
+            <div class="frow"><span class="nm">Player C</span><span class="sc num">78</span></div>
+            <div class="frow bad"><span class="nm">Player D</span><span class="sc num">11</span><span class="pill err">can't be right</span></div>
+          </div>
+          <div class="inline-flag" style="margin-top:10px"><svg class="ic" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><span>As it stands this game says <b>Player D won on 11</b>. Fix the last line before that goes in the book.</span></div>
+        </div>
+        <div class="card">
+          <h5 class="ttl">How it finished</h5>
+          <p class="sm" style="margin:2px 0 10px">After the close-up.</p>
+          <div class="final">
+            <div class="frow"><span class="nm">Player A</span><span class="sc num">137</span></div>
+            <div class="frow"><span class="nm">Player B</span><span class="sc num">109</span></div>
+            <div class="frow win"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5z"/></svg><span class="nm">Player C</span><span class="sc num">78</span></div>
+            <div class="frow"><span class="nm">Player D</span><span class="sc num">111</span></div>
+          </div>
+        </div>
+        <label class="field"><span>Played on</span><input class="input" value="Sat 12 September 2026" readonly></label>
+        <label class="field"><span>Where</span><input class="input" value="Venue A" readonly></label>
+        <p class="sm">Last time you played at Venue A. Tap to pick another or add one.</p>
+        <button class="btn">Put it in the book</button>
+        <p class="sm" style="text-align:center">Everything climbs and every column has eleven numbers. That means <b>not obviously wrong</b> — it doesn't mean we checked it for you.</p>
+      </div></div>
+      <figcaption><b>The final row, called out on its own</b>Before and after. A misread on the last line is the one error that changes who won, so it gets its own card and its own sentence. The save copy deliberately doesn't claim the numbers are verified.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Check the sheet</h4><div class="sub">Fri 12 Aug · Venue B · 5 players</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="pager">
+            <button><span class="dot"></span>Player A</button>
+            <button aria-current="true"><span class="dot"></span>Player B</button>
+            <button><span class="dot todo"></span>Player E</button>
+            <button><span class="dot todo"></span>Player D</button>
+            <button><span class="dot todo"></span>Player C</button>
+          </div>
+          <div class="card" style="padding:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><h5 class="ttl" style="flex:1">Player B</h5><span class="pill">2 of 5 checked</span></div>
+            <div class="sweep">
+              <div class="strip" data-strip="2|B"></div>
+              <div class="grid" data-sweep="2|B"></div>
+            </div>
+          </div>
+          <div class="card sunk">
+            <h5 class="ttl" style="font-size:15px">Five columns, same screen</h5>
+            <p class="sm" style="margin-top:4px">Because you only ever see one column at a time, four players and five look identical. Nothing shrinks, nothing scrolls sideways.</p>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Five players</b>The sideways sheet, straightened. The five held 48s are four zero-point hands and the screen says so. This is the strongest argument for the sweep: the layout doesn't change when the roster does.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The records board</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>The Book</h4><div class="sub">All-time honours</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="countdown"><span class="big">6</span><span style="font-size:14px;line-height:1.35"><b>more nights and the board opens.</b><br>4 games in. Nothing gets crowned on four games — it'd just be luck with a straight face.</span></div>
+          <div class="board">
+            <div class="rec-card sealed"><div class="seal"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><div class="lbl">Most wins</div><div class="val">Sealed</div></div>
+            <div class="rec-card sealed"><div class="seal"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><div class="lbl">Longest streak</div><div class="val">Sealed</div></div>
+            <div class="rec-card sealed"><div class="seal"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><div class="lbl">Lowest average</div><div class="val">Sealed</div></div>
+            <div class="rec-card sealed"><div class="seal"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><div class="lbl">Most hands won</div><div class="val">Sealed</div></div>
+            <div class="rec-card wide sunk" style="background:var(--sunk)"><div class="lbl">Also waiting</div><p class="sm" style="margin-top:4px">Best game ever · Worst game ever · The catastrophe · Cleanest sheet · The drought · The nearly man · Biggest hammering · Home advantage</p></div>
+          </div>
+          <div class="card">
+            <h5 class="ttl" style="font-size:15px">Player E has played 1</h5>
+            <p class="sm" style="margin-top:3px">Nobody holds a record until they've played 5. One player set aside for now.</p>
+          </div>
+          <button class="btn">Add a game</button>
+          <button class="btn ghost">Browse the 4 games we have</button>
+        </div>
+      </div></div>
+      <figcaption><b>Not enough games yet</b>Records are <b>sealed, not shrunk</b>. The countdown makes the emptiness feel like a countdown rather than a bug, and the app is honest about which players are set aside and why.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>The Book</h4><div class="sub">All-time · 34 games</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="board">
+            <button class="rec-card hero"><div class="lbl">Most wins</div><div class="val">11</div><div class="who">Player C</div><div class="sub">from 34 games · tap to see them</div></button>
+            <button class="rec-card"><div class="lbl">Longest streak</div><div class="val">4</div><div class="who">Player B</div><div class="sub">Mar–Apr 2026</div></button>
+            <button class="rec-card"><div class="lbl">Lowest average</div><div class="val">118.4</div><div class="who">Player C</div><div class="sub">over 31 games</div></button>
+            <button class="rec-card"><div class="lbl">Most hands won</div><div class="val">96</div><div class="who">Player B</div><div class="sub">374 hands played</div></button>
+            <button class="rec-card"><div class="lbl">The stalwart</div><div class="val">34</div><div class="who">Player A</div><div class="sub">every single night</div></button>
+            <button class="rec-card"><div class="lbl">Best game ever</div><div class="val">71</div><div class="who">Player B</div><div class="sub">12 Aug 2026 · Venue B</div></button>
+            <button class="rec-card"><div class="lbl">Worst game ever</div><div class="val">240</div><div class="who">Player D</div><div class="sub">12 Aug 2026 · Venue B</div></button>
+            <button class="rec-card"><div class="lbl">The catastrophe</div><div class="val">55</div><div class="who">Player D</div><div class="sub">one hand · 8s · 12 Aug 2026</div></button>
+            <button class="rec-card"><div class="lbl">Cleanest sheet</div><div class="val">41</div><div class="who">Player B</div><div class="sub">hands scored nothing</div></button>
+            <button class="rec-card"><div class="lbl">The drought</div><div class="val">9</div><div class="who">Player E</div><div class="sub">games since a win</div></button>
+            <button class="rec-card"><div class="lbl">The nearly man</div><div class="val">8</div><div class="who">Player A</div><div class="sub">second places</div></button>
+            <button class="rec-card"><div class="lbl">Biggest hammering</div><div class="val">31</div><div class="who">Player C</div><div class="sub">over the runner-up · 12 Sept</div></button>
+            <div class="rec-card sealed wide" style="min-height:0"><div class="lbl">Home advantage</div><div class="val" style="font-size:14px">Sealed — needs 5 games at one venue. Venue B has 3.</div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>The board, open</b>Holder and number readable at arm's length; every card says what it's drawn from. One record stays sealed even on a full board, which is what keeps the rest believable.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table" data-mode="dark"><div class="screen flush">
+        <div class="appbar"><div><h4>The Book</h4><div class="sub">All-time · 34 games</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="board">
+            <button class="rec-card hero"><div class="lbl">Most wins</div><div class="val">11</div><div class="who">Player C</div><div class="sub">from 34 games</div></button>
+            <button class="rec-card"><div class="lbl">Longest streak</div><div class="val">4</div><div class="who">Player B</div><div class="sub">Mar–Apr 2026</div></button>
+            <button class="rec-card"><div class="lbl">Lowest average</div><div class="val">118.4</div><div class="who">Player C</div><div class="sub">over 31 games</div></button>
+            <button class="rec-card"><div class="lbl">The drought</div><div class="val">9</div><div class="who">Player E</div><div class="sub">games since a win</div></button>
+            <button class="rec-card"><div class="lbl">Cleanest sheet</div><div class="val">41</div><div class="who">Player B</div><div class="sub">hands scored nothing</div></button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Dark mode</b>Same tokens, swapped values. Every direction supports both; the phone decides.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">Browsing, and the plain bit</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Games</h4><div class="sub">34 nights</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="rowlist">
+            <button class="lrow"><span class="grow"><b>Sat 12 Sept 2026</b><small>Venue A · A, B, C &amp; D</small></span><span style="text-align:right"><b class="num" style="font-size:19px">78</b><small style="font-size:12px;color:var(--muted)">Player C</small></span></button>
+            <button class="lrow"><span class="grow"><b>Fri 12 Aug 2026</b><small>Venue B · A, B, C, D &amp; E</small></span><span style="text-align:right"><b class="num" style="font-size:19px">71</b><small style="font-size:12px;color:var(--muted)">Player B</small></span></button>
+            <button class="lrow"><span class="grow"><b>Sun 26 Jul 2026</b><small>Venue A · A, B, C &amp; D</small></span><span style="text-align:right"><b class="num" style="font-size:19px">96</b><small style="font-size:12px;color:var(--muted)">B &amp; C — shared</small></span></button>
+            <button class="lrow"><span class="grow"><b>Sat 4 Jul 2026</b><small><span style="opacity:.75">no venue recorded</span> · A, C &amp; D</small></span><span style="text-align:right"><b class="num" style="font-size:19px">102</b><small style="font-size:12px;color:var(--muted)">Player A</small></span></button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Games list</b>Date, venue, roster, winner — and a shared win shows <b>both</b> names, because that's a normal result. A game with no venue says so rather than looking blank.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Sat 12 Sept 2026</h4><div class="sub">Venue A · four players</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="banner ok"><svg class="ic big" viewBox="0 0 24 24"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5z"/></svg><span><b>Player C won on 78</b>13 points ahead of the pack.</span></div>
+          <div class="seg"><button aria-pressed="true">As written</button><button aria-pressed="false">Per hand</button></div>
+          <div class="card" style="padding:8px">
+            <div class="scroller"><table class="tablegrid">
+              <thead><tr><th>hand</th><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
+              <tbody>
+                <tr><td>3s</td><td>28</td><td>0</td><td>23</td><td>29</td></tr>
+                <tr><td>4s</td><td>32</td><td>3</td><td>23</td><td>29</td></tr>
+                <tr><td>5s</td><td>60</td><td>3</td><td>27</td><td>64</td></tr>
+                <tr><td>6s</td><td>71</td><td>54</td><td>34</td><td>64</td></tr>
+                <tr><td>7s</td><td>74</td><td>80</td><td>37</td><td>64</td></tr>
+                <tr><td>8s</td><td>100</td><td>88</td><td>44</td><td>64</td></tr>
+                <tr><td>9s</td><td>118</td><td>105</td><td>57</td><td>64</td></tr>
+                <tr><td>10s</td><td>123</td><td>105</td><td>71</td><td>64</td></tr>
+                <tr><td>J</td><td>123</td><td>109</td><td>75</td><td>67</td></tr>
+                <tr><td>Q</td><td>123</td><td>109</td><td>78</td><td>67</td></tr>
+                <tr class="last"><td>K</td><td>137</td><td>109</td><td>78</td><td>111</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden"><div class="sheet-box" data-sheet="1"></div></div>
+          <p class="sm">The paper, kept for good. Pinch to zoom. One column close-up attached (Player D).</p>
+        </div>
+      </div></div>
+      <figcaption><b>One game, forever checkable</b>The grid the way the pad has it, a toggle for the derived hands, and the photo underneath. This screen is the promise the whole product rests on.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="table"><div class="screen flush">
+        <div class="appbar"><div><h4>Admin</h4><div class="sub">Second password</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="card"><h5 class="ttl" style="font-size:15px">Transcription API key</h5>
+            <p class="sm" style="margin:4px 0 8px">Ends <span class="num">4f9c</span> · set 12 Sept 2026 · <span class="pill ok">working</span></p>
+            <label class="field"><span>Replace it</span><input class="input" placeholder="Paste a new key" readonly></label>
+            <p class="sm" style="margin:8px 0">We test it with a real call before saving. Never shown back after that.</p>
+            <button class="btn">Save key</button></div>
+          <div class="card"><h5 class="ttl" style="font-size:15px">Passwords</h5>
+            <p class="sm" style="margin:4px 0 8px">Changing the group password signs every phone out.</p>
+            <button class="btn ghost">Change group password</button></div>
+          <div class="card"><h5 class="ttl" style="font-size:15px">Download the scores</h5>
+            <p class="sm" style="margin:4px 0 8px">Players, games, running totals, hands, rosters — a ZIP of CSVs.</p>
+            <div class="banner warn"><svg class="ic big" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><span><b>This is not a backup</b>The photos aren't in it. It's the numbers only.</span></div></div>
+          <div class="card"><h5 class="ttl" style="font-size:15px">This month</h5>
+            <p class="sm" style="margin-top:4px">6 sheet reads · 4 column re-reads · about £1.42</p></div>
+        </div>
+      </div></div>
+      <figcaption><b>Admin — deliberately plain</b>No personality, no colour, no jokes. The one screen where boring is the right answer. Same tokens, nothing decorative.</figcaption>
+    </figure>
+  </div>
+</section>
+<section id="dir-club" role="tabpanel" aria-labelledby="t-club" hidden>
+  <h2 class="dirname">Direction 2 — The Card Room</h2>
+  <p class="pitch"><b>Dark green baize, brass and ivory.</b> A members' room rather than a kitchen: the password screen is a door, the records board is an honours board screwed to the wall, and winning gets engraved. Warm, but grown-up-warm — candlelight rather than crayons. It is also the easiest of the three to read at night on the sofa, and the hardest to read in bright sun.</p>
+  <p class="pitch"><b>Its answer to the review screen: the Loupe.</b> The whole sheet stays pinned at the top of the screen, all the time. The full grid of numbers sits underneath. <b>Tapping any number drives the photo</b> — it zooms and pans to that exact cell and rings it. You keep the whole page in view and let the app do the finger-work of finding the line.</p>
+  <ul class="swatches">
+    <li style="background:#0F211B;color:#F2ECDD">baize<br>#0F211B</li>
+    <li style="background:#E0B24C;color:#14231C">brass<br>#E0B24C</li>
+    <li style="background:#F2ECDD;color:#14261F">ivory<br>#F2ECDD</li>
+    <li style="background:#E4674A;color:#fff">card red<br>#E4674A</li>
+    <li style="background:#6FCF97;color:#0F211B">ok<br>#6FCF97</li>
+    <li style="background:#FF7A6B;color:#331C1A">error<br>#FF7A6B</li>
+  </ul>
+  <div class="meta"><span>Playfair Display + system stack</span><span>Dark-first, light supported</span><span>Radius 10px</span><span>Most “occasion”</span></div>
+
+  <h3 class="grp">The door</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush"><div class="gatewrap">
+        <div class="crest">V</div>
+        <div style="text-align:center">
+          <h5 class="ttl" style="font-size:26px">The Five Crowns Ledger</h5>
+          <p class="sm" style="margin-top:6px;letter-spacing:.12em;text-transform:uppercase;font-size:11px">Members only</p>
+        </div>
+        <label class="field"><span>Password</span><input class="input" type="password" value="••••••••••" readonly></label>
+        <button class="btn">Come in</button>
+        <p class="sm" style="text-align:center">Ask in the group chat. Your phone remembers you after this.</p>
+      </div></div></div>
+      <figcaption><b>Password gate</b>A door with a brass plate on it. Same single field as everywhere else — the difference is entirely in how it feels to arrive.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="club" data-mode="light"><div class="screen flush"><div class="gatewrap">
+        <div class="crest">V</div>
+        <div style="text-align:center">
+          <h5 class="ttl" style="font-size:26px">The Five Crowns Ledger</h5>
+          <p class="sm" style="margin-top:6px;letter-spacing:.12em;text-transform:uppercase;font-size:11px">Members only</p>
+        </div>
+        <label class="field"><span>Password</span><input class="input" type="password" value="••••••••••" readonly></label>
+        <button class="btn">Come in</button>
+        <p class="sm" style="text-align:center">Ask in the group chat. Your phone remembers you after this.</p>
+      </div></div></div>
+      <figcaption><b>The same door in light mode</b>Dark-first doesn't mean dark-only. Ivory paper, deep green ink, brass goes to a darker gold so it still passes contrast as text.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The review screen — the Loupe</h3>
+  <p class="note"><b>The bet this direction makes:</b> that you'd rather see the whole page and have the app find the line for you, than have the page chopped into columns. It needs no clever cropping of the photo, and it is the only one of the three where you can see two columns of handwriting at once. The cost is that the numbers are smaller and the eye has further to travel.</p>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush" data-loupe>
+        <div class="appbar"><div><h4>The read</h4><div class="sub">12 Sept · Venue A</div></div>
+          <button class="iconbtn" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+        <div style="position:relative;background:#08080a">
+          <div class="sheet-box" data-sheet="1|hilite" data-fith data-noheight style="height:230px;border-radius:0"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,.8))">
+            <span data-loupelabel style="flex:1;color:#F2ECDD;font-size:13px;font-weight:700">Player D · the Kings</span>
+            <button class="btn sm ghost" data-loupereset style="background:rgba(0,0,0,.55);color:#F2ECDD;border-color:rgba(255,255,255,.35)">Whole sheet</button>
+          </div>
+        </div>
+        <div class="screen" style="padding-top:12px">
+          <div class="banner err"><svg class="ic big" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span><b>Two to sort</b>D drops at the Kings; B has a line we couldn't read.</span></div>
+          <div class="card" style="padding:6px">
+            <div class="scroller" data-tbl="1|cur"></div>
+          </div>
+          <p class="sm">Tap any number to bring the photo to it. The small figure under each is that hand on its own.</p>
+        </div>
+      </div></div>
+      <figcaption><b>Try it</b>These cells are live — tap one and the photo above zooms to that cell and rings it. The whole grid is on one screen, with the derived hand under every running total. At five players the table scrolls sideways with the hand column pinned.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush">
+        <div class="appbar"><div><h4>The result</h4><div class="sub">check this line hardest</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="card" style="border-left:4px solid var(--brand)">
+            <div class="final">
+              <div class="frow"><span class="nm">Player A</span><span class="sc num">137</span></div>
+              <div class="frow"><span class="nm">Player B</span><span class="sc num">109</span></div>
+              <div class="frow win"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5z"/></svg><span class="nm">Player C</span><span class="sc num">78</span></div>
+              <div class="frow"><span class="nm">Player D</span><span class="sc num">111</span></div>
+            </div>
+          </div>
+          <h5 class="ttl" style="margin-top:6px">If it's badly wrong</h5>
+          <div class="menu">
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span><b>Re-photograph a column</b><small>Close up, one player at a time — much easier to read</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span><b>Fix the shape of the grid</b><small>Add, remove, reassign, reorder, shift a column</small></span></button>
+            <button><svg class="ic big" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span><b>Type the sheet in by hand</b><small>Perfectly normal. Same checks, same result</small></span></button>
+          </div>
+          <button class="btn">Enter it in the ledger</button>
+        </div>
+      </div></div>
+      <figcaption><b>The final row and the ladder</b>Same four rungs as direction 1, gathered into one list below the result rather than spread through the screen. Fewer buttons on the grid itself; one more tap to reach them.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The honours board</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush">
+        <div class="appbar"><div><h4>Honours</h4><div class="sub">All-time · 34 games</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px;gap:8px">
+          <div class="card" style="border:0;background:var(--brand);color:var(--onbrand);text-align:center;padding:18px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Most wins, all time</div>
+            <div class="num" style="font-size:44px;font-weight:800;line-height:1.05">11</div>
+            <div style="font-family:var(--display);font-size:20px;font-weight:700">Player C</div>
+            <div style="font-size:12px;opacity:.75">from 34 games</div>
+          </div>
+          <div class="plaque"><span class="lbl">Longest streak</span><span class="who">Player B</span><span class="val">4</span></div>
+          <div class="plaque"><span class="lbl">Lowest average</span><span class="who">Player C</span><span class="val">118.4</span></div>
+          <div class="plaque"><span class="lbl">Most hands won</span><span class="who">Player B</span><span class="val">96</span></div>
+          <div class="plaque"><span class="lbl">The stalwart</span><span class="who">Player A</span><span class="val">34</span></div>
+          <div class="plaque"><span class="lbl">Best game ever</span><span class="who">Player B</span><span class="val">71</span></div>
+          <div class="plaque"><span class="lbl">Worst game ever</span><span class="who">Player D</span><span class="val">240</span></div>
+          <div class="plaque"><span class="lbl">The catastrophe</span><span class="who">Player D</span><span class="val">55</span></div>
+          <div class="plaque"><span class="lbl">Cleanest sheet</span><span class="who">Player B</span><span class="val">41</span></div>
+          <div class="plaque"><span class="lbl">The drought</span><span class="who">Player E</span><span class="val">9</span></div>
+          <div class="plaque"><span class="lbl">The nearly man</span><span class="who">Player A</span><span class="val">8</span></div>
+          <div class="plaque sealed"><span class="lbl">Home advantage</span><span class="who">not enough games at one venue</span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Honours board</b>A list, not a grid — it reads like a wall of engraved plates and scans top-to-bottom in one thumb-scroll. Each line is tappable through to the games behind it.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush">
+        <div class="appbar"><div><h4>Honours</h4><div class="sub">4 games in</div></div></div>
+        <div class="screen" style="padding-top:12px;gap:8px">
+          <div class="card" style="text-align:center;border-color:var(--brand)">
+            <div style="font-family:var(--display);font-size:38px;font-weight:800;color:var(--brand);line-height:1">6</div>
+            <h5 class="ttl" style="font-size:17px">nights until the board opens</h5>
+            <p class="sm" style="margin-top:6px">Four games in the book. Nothing is engraved on four games — we'd only have to scratch it off again.</p>
+          </div>
+          <div class="plaque sealed"><span class="lbl">Most wins</span><span class="who">sealed</span></div>
+          <div class="plaque sealed"><span class="lbl">Longest streak</span><span class="who">sealed</span></div>
+          <div class="plaque sealed"><span class="lbl">Lowest average</span><span class="who">sealed</span></div>
+          <div class="plaque sealed"><span class="lbl">Most hands won</span><span class="who">sealed</span></div>
+          <div class="plaque sealed"><span class="lbl">Best game ever</span><span class="who">sealed</span></div>
+          <div class="plaque sealed"><span class="lbl">The drought</span><span class="who">sealed</span></div>
+          <p class="sm" style="margin-top:4px">Player E has played 1 night. Five are needed before anyone can hold a record.</p>
+          <button class="btn">Add tonight's sheet</button>
+        </div>
+      </div></div>
+      <figcaption><b>Not enough games yet</b>Empty plates on the wall, waiting to be engraved. Same rule as everywhere: withheld, never shrunk.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="club"><div class="screen flush">
+        <div class="appbar"><div><h4>Games</h4><div class="sub">34 nights</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="rowlist">
+            <button class="lrow"><span class="grow"><b>Sat 12 Sept 2026</b><small>Venue A · A, B, C &amp; D</small></span><span style="text-align:right"><b class="num" style="font-size:19px;color:var(--brand)">78</b><small style="font-size:12px;color:var(--muted)">Player C</small></span></button>
+            <button class="lrow"><span class="grow"><b>Fri 12 Aug 2026</b><small>Venue B · five players</small></span><span style="text-align:right"><b class="num" style="font-size:19px;color:var(--brand)">71</b><small style="font-size:12px;color:var(--muted)">Player B</small></span></button>
+            <button class="lrow"><span class="grow"><b>Sun 26 Jul 2026</b><small>Venue A · A, B, C &amp; D</small></span><span style="text-align:right"><b class="num" style="font-size:19px;color:var(--brand)">96</b><small style="font-size:12px;color:var(--muted)">B &amp; C — shared</small></span></button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Games list</b>Identical information architecture to direction 1 — the browse and admin screens differ only in skin, which is why I've only drawn them once each.</figcaption>
+    </figure>
+  </div>
+</section>
+<section id="dir-arcade" role="tabpanel" aria-labelledby="t-arcade" hidden>
+  <h2 class="dirname">Direction 3 — Games Night</h2>
+  <p class="pitch"><b>Loud, chunky and funny.</b> Deep plum and tangerine, fat rounded shapes, hard offset shadows, a heavy display face. Records are stickers you'd want to win. This is the direction that most obviously isn't a business dashboard — “the player getting absolutely wrecked” looks at home here in a way it doesn't in the other two.</p>
+  <p class="pitch"><b>Its answer to the review screen: Overlay &amp; Blink.</b> There is no side-by-side at all. What we read is printed <em>on top of</em> the photo, exactly where the number is, and a three-way switch flicks between <b>Paper</b>, <b>Both</b> and <b>Ours</b>. Anything we got wrong jumps out as a change when you flick — the same trick astronomers use to spot a moving dot between two photographs.</p>
+  <ul class="swatches">
+    <li style="background:#FFF1E6;color:#2B1338">peach<br>#FFF1E6</li>
+    <li style="background:#5A2A7A;color:#fff">plum<br>#5A2A7A</li>
+    <li style="background:#F2611B;color:#2B1338">tangerine<br>#F2611B</li>
+    <li style="background:#2B1338;color:#FFF1E6">ink<br>#2B1338</li>
+    <li style="background:#0C6F78;color:#fff">ok<br>#0C6F78</li>
+    <li style="background:#C0202B;color:#fff">error<br>#C0202B</li>
+  </ul>
+  <div class="meta"><span>Baloo 2 + system stack</span><span>Light-first, dark supported</span><span>Radius 20px</span><span>Most personality, least quiet</span></div>
+
+  <h3 class="grp">The front door</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush"><div class="gatewrap">
+        <div class="crest">♛</div>
+        <div style="text-align:center">
+          <h5 class="ttl" style="font-size:30px;line-height:1.05">Five Crowns<br>Ledger</h5>
+          <p class="sm" style="margin-top:8px;font-size:15px">Who goes there?</p>
+        </div>
+        <label class="field"><span>Password</span><input class="input" type="password" value="••••••••••" readonly></label>
+        <button class="btn accent">Let me in</button>
+        <p class="sm" style="text-align:center">It's in the group chat. You'll only do this once on this phone.</p>
+      </div></div></div>
+      <figcaption><b>Password gate</b>Same one field, much more voice. The playfulness is in the copy and the shapes, never at the cost of the field being obvious.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="arcade" data-mode="dark"><div class="screen flush"><div class="gatewrap">
+        <div class="crest">♛</div>
+        <div style="text-align:center">
+          <h5 class="ttl" style="font-size:30px;line-height:1.05">Five Crowns<br>Ledger</h5>
+          <p class="sm" style="margin-top:8px;font-size:15px">Who goes there?</p>
+        </div>
+        <label class="field"><span>Password</span><input class="input" type="password" value="••••••••••" readonly></label>
+        <button class="btn accent">Let me in</button>
+        <p class="sm" style="text-align:center">It's in the group chat. You'll only do this once on this phone.</p>
+      </div></div></div>
+      <figcaption><b>Dark mode</b>Plum deepens to near-black, tangerine lifts to amber so it still passes contrast on the dark ground.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The review screen — Overlay &amp; Blink</h3>
+  <p class="note"><b>The bet this direction makes:</b> that the fastest way to compare two things is to put them in the same place and switch between them, rather than to look from one to the other. It's the boldest of the three and the riskiest — it depends on us knowing precisely where each number sits on the paper, and it gets crowded with five columns on a small screen. <b>Both switches below are live — try flicking between Paper and Ours.</b></p>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush" data-blink>
+        <div class="appbar"><div><h4>Check it</h4><div class="sub">12 Sept · Venue A</div></div>
+          <button class="iconbtn" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="seg">
+            <button data-blinkmode="paper" aria-pressed="false">Paper</button>
+            <button data-blinkmode="both" aria-pressed="false">Both</button>
+            <button data-blinkmode="read" aria-pressed="true">Ours</button>
+          </div>
+          <p class="sm" data-blinknote>What we read, sitting exactly where the number is. Flick back to Paper to compare.</p>
+          <div class="sheet-box" data-sheet="1|chips|thumb"></div>
+          <div class="banner err"><svg class="ic big" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span><b>2 to sort</b>Red = the column stops climbing. Orange = we couldn't read it.</span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Ours over the paper</b>Every number we read sits on its handwritten twin. Flick to <b>Paper</b> and the Queens line in the first column changes from 128 to 123 — that's the error nothing can flag, caught by eye in half a second. Pinch to zoom does what you'd expect.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush" data-blink>
+        <div class="appbar"><div><h4>Player D</h4><div class="sub">one column, close up</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="seg">
+            <button data-blinkmode="paper" aria-pressed="false">Paper</button>
+            <button data-blinkmode="both" aria-pressed="true">Both</button>
+            <button data-blinkmode="read" aria-pressed="false">Ours</button>
+          </div>
+          <div class="card" style="padding:10px">
+            <div class="sweep">
+              <div class="strip" data-strip="1|D" style="flex:0 0 120px;width:120px"></div>
+              <div style="flex:1">
+                <div class="final" style="gap:4px">
+                  <div class="frow" style="padding:6px 8px"><span class="nm">Kings, as read</span><span class="sc num">11</span></div>
+                  <div class="frow win" style="padding:6px 8px"><span class="nm">Close-up says</span><span class="sc num">111</span></div>
+                </div>
+                <p class="sm" style="margin-top:10px">The full-page photo gives each digit a couple of dozen pixels. A close-up of one column gives it ten times that — same phone, same reader, far better odds.</p>
+                <button class="btn accent sm" style="width:100%;margin-top:10px">Use 111</button>
+                <button class="btn ghost sm" style="width:100%;margin-top:6px">Keep 11</button>
+              </div>
+            </div>
+          </div>
+          <p class="sm">Rejecting a re-read puts the old numbers straight back. The close-up is filed with the game either way.</p>
+        </div>
+      </div></div>
+      <figcaption><b>Rung 3, this direction's version</b>The close-up gets its own screen with the old and new value stacked. Same rule as everywhere: a re-read is an offer, never an overwrite.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush">
+        <div class="appbar"><div><h4>Check it</h4><div class="sub">the numbers</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="card" style="padding:6px"><div class="scroller" data-tbl="1"></div></div>
+          <div class="card" style="background:var(--accent);border-color:var(--text);color:#2B1338">
+            <div style="font-family:var(--display);font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">The line that decides it</div>
+            <p style="margin:6px 0 0;font-size:16px;font-weight:700">A 137 · B 109 · <span style="text-decoration:underline">C 78</span> · D 111</p>
+            <p style="margin:6px 0 0;font-size:13px">Player C by 31. If that's not what happened, the last line is where to look.</p>
+          </div>
+          <button class="btn accent">Save the night</button>
+        </div>
+      </div></div>
+      <figcaption><b>The grid, and the result</b>The same table as direction 2 is available underneath the overlay for anyone who'd rather read numbers than look at paper. The final row gets shouted.</figcaption>
+    </figure>
+  </div>
+
+  <h3 class="grp">The records board</h3>
+  <div class="shots">
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush">
+        <div class="appbar"><div><h4>The Board</h4><div class="sub">All-time · 34 games</div></div>
+          <button class="iconbtn" aria-label="Add a game"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="badge-grid">
+            <button class="badge hot wide"><div class="lbl">Most wins ever</div><div style="display:flex;align-items:baseline;gap:10px"><div class="val">11</div><div class="who" style="font-size:18px">Player C</div></div><div class="sub">out of 34 nights</div></button>
+            <button class="badge"><div class="lbl">On a heater</div><div class="val">4</div><div class="who">Player B</div><div class="sub">in a row, Mar–Apr</div></button>
+            <button class="badge"><div class="lbl">Quietly deadly</div><div class="val">118.4</div><div class="who">Player C</div><div class="sub">average, 31 games</div></button>
+            <button class="badge"><div class="lbl">Most hands won</div><div class="val">96</div><div class="who">Player B</div><div class="sub">of 374</div></button>
+            <button class="badge"><div class="lbl">Cleanest sheet</div><div class="val">41</div><div class="who">Player B</div><div class="sub">hands scored nowt</div></button>
+            <button class="badge"><div class="lbl">The catastrophe</div><div class="val">55</div><div class="who">Player D</div><div class="sub">one hand · 12 Aug</div></button>
+            <button class="badge"><div class="lbl">Absolutely wrecked</div><div class="val">240</div><div class="who">Player D</div><div class="sub">worst night ever</div></button>
+            <button class="badge"><div class="lbl">The drought</div><div class="val">9</div><div class="who">Player E</div><div class="sub">games since a win</div></button>
+            <button class="badge"><div class="lbl">The nearly man</div><div class="val">8</div><div class="who">Player A</div><div class="sub">second places</div></button>
+            <div class="badge locked wide"><div class="lbl">Home advantage</div><div class="val">Locked — needs 5 games at one venue</div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Stickers, not plaques</b>Records you'd screenshot into the group chat. Note the record names carry the banter (“on a heater”, “absolutely wrecked”) — the same numbers as the other two directions, a different mouth.</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone" data-dir="arcade"><div class="screen flush">
+        <div class="appbar"><div><h4>The Board</h4><div class="sub">4 games in</div></div></div>
+        <div class="screen" style="padding-top:12px">
+          <div class="card" style="background:var(--brand);color:#fff;border-color:var(--brand);text-align:center">
+            <div style="font-family:var(--display);font-size:52px;font-weight:800;line-height:1">6</div>
+            <div style="font-family:var(--display);font-size:19px;font-weight:800">more nights to go</div>
+            <p style="margin:8px 0 0;font-size:14px;opacity:.9">Then the board opens and somebody has to live with it. Four games isn't a record, it's a rumour.</p>
+          </div>
+          <div class="badge-grid">
+            <div class="badge locked"><div class="lbl">Most wins</div><div class="val">Locked</div></div>
+            <div class="badge locked"><div class="lbl">On a heater</div><div class="val">Locked</div></div>
+            <div class="badge locked"><div class="lbl">Quietly deadly</div><div class="val">Locked</div></div>
+            <div class="badge locked"><div class="lbl">The drought</div><div class="val">Locked</div></div>
+            <div class="badge locked wide"><div class="lbl">And eight more</div><div class="val">Best game · worst game · the catastrophe · cleanest sheet · the nearly man · biggest hammering · the stalwart · home advantage</div></div>
+          </div>
+          <p class="sm">Player E has played 1. Five nights needed before anyone can hold a record.</p>
+          <button class="btn accent">Add tonight's sheet</button>
+        </div>
+      </div></div>
+      <figcaption><b>Not enough games yet</b>The countdown is the hero and the locked stickers are the prize. Same withholding rule, played as anticipation.</figcaption>
+    </figure>
+  </div>
+</section>
+<section id="dir-decide" role="tabpanel" aria-labelledby="t-decide" hidden>
+  <h2 class="dirname">What I need you to pick</h2>
+  <p class="pitch">The look and the review mechanic are <b>separate choices</b> — you can have the Kitchen Table palette with the Loupe, or Games Night colours with the Column Sweep. Answer 1 and 2 and everything else can follow later.</p>
+
+  <h3 class="grp">The three review screens, side by side</h3>
+  <div class="scroller">
+  <table class="cmp">
+    <thead><tr><th>&nbsp;</th><th>Column Sweep <em>(dir 1)</em></th><th>Loupe <em>(dir 2)</em></th><th>Overlay &amp; Blink <em>(dir 3)</em></th></tr></thead>
+    <tbody>
+      <tr><th>How you compare</th><td>One player's column of photo, cropped and stood beside their numbers, rows aligned</td><td>Whole sheet pinned above the whole grid; tapping a number zooms the photo to it</td><td>Our numbers printed on the photo; a switch flicks between paper and ours</td></tr>
+      <tr><th>Eye travel</th><td>About a centimetre. Rows can't be confused</td><td>Top of screen to bottom, plus finding the line</td><td>None — the two things are in the same place</td></tr>
+      <tr><th>Four vs five players</th><td>Identical. You only ever see one column</td><td>Table scrolls sideways at five</td><td>Gets tight at five on a small phone</td></tr>
+      <tr><th>Leads naturally into</th><td>Re-photographing that column (you're already on it)</td><td>Free browsing of the page</td><td>Zoom and pan</td></tr>
+      <tr><th>Build risk</th><td>Needs the photo cropped per column — the model gives us column positions, and you can drag the crop if it's off</td><td>Lowest. Nothing needs locating on the photo</td><td>Highest. Needs each number located on a skewed, shadowed page</td></tr>
+      <tr><th>Weakness</th><td>You never see two columns at once</td><td>Least guided — easy to skim and miss a line</td><td>Crowded; and if registration drifts it's actively misleading</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <ol class="decide">
+    <li>
+      <h4>Which look?</h4>
+      <p>Kitchen Table (paper &amp; biro) · The Card Room (baize &amp; brass) · Games Night (plum &amp; tangerine).</p>
+      <p class="opt"><b>My recommendation: Kitchen Table<span class="rec">recommended</span></b> — it's the one that stays legible in the conditions you actually use it in, and it lets the photo be the loudest thing on the review screen. Games Night is the most fun and I'd happily build it; my only worry is that the review screen is a serious screen and this palette shouts on it. The Card Room is the best-looking at night and the worst in a bright kitchen.</p>
+    </li>
+    <li>
+      <h4>Which review mechanic?</h4>
+      <p>This is the real decision. Everything else is paint.</p>
+      <p class="opt"><b>My recommendation: Column Sweep as the main path, with the whole sheet always one tap away<span class="rec">recommended</span></b> — it's the only one that guarantees you're looking at the right line, it turns one impossible comparison into four or five short ones, and it flows straight into the close-up re-photograph, which is the single biggest accuracy lever we have. If you'd rather see the whole page, say so and I'll make the Loupe primary instead.</p>
+    </li>
+    <li>
+      <h4>Should marking a column “checked” be required before saving?</h4>
+      <p>The sweep shows a tick per column. It could be a progress aid, or a gate.</p>
+      <p class="opt"><b>My recommendation: an aid, not a gate.</b> A forced tick teaches you to tap four times without looking, and then the tick means nothing. Save stays blocked only on the hard checks — eleven numbers per column, always climbing.</p>
+    </li>
+    <li>
+      <h4>Before 10 games, do you want an “unofficial” table?</h4>
+      <p>The board is sealed until 10 games. I could show a scoreboard marked “doesn't count yet” underneath the countdown.</p>
+      <p class="opt"><b>My recommendation: no.</b> An unofficial table is the thing everyone screenshots, and then the sealing was pointless. The countdown plus the games list is enough. Easy to add later if the wait annoys you.</p>
+    </li>
+    <li>
+      <h4>Should the app hint at hands that “look odd”?</h4>
+      <p>We can flag an unusually big single hand as a soft, non-blocking warning. But one of your real sheets has a genuine 51-point hand that any such rule would flag wrongly.</p>
+      <p class="opt"><b>My recommendation: no warning, but keep the hand column prominent.</b> A hint that cries wolf on real numbers trains you to ignore it — and that same instinct is what makes the review step work at all.</p>
+    </li>
+    <li>
+      <h4>The voice.</h4>
+      <p>“Put it in the book” · “Two things to sort” · “Nothing gets crowned on four games” · “The drought”. Warm, dry, a bit blunt, no exclamation marks.</p>
+      <p class="opt">Tell me if it's too matey or not matey enough. The admin panel stays completely plain either way — no jokes near the API key.</p>
+    </li>
+    <li>
+      <h4>One display font, or system only?</h4>
+      <p>Each direction uses one personality face for headings and numbers (Fraunces / Playfair Display / Baloo 2) over the phone's own font for body text.</p>
+      <p class="opt"><b>My recommendation: keep the one face.</b> It's most of what makes each direction feel like something rather than a form. It costs one small font file.</p>
+    </li>
+    <li>
+      <h4>Dark mode: follow the phone, or force one?</h4>
+      <p class="opt"><b>My recommendation: follow the phone.</b> You'll be using it in a dim kitchen and on a sofa at midnight. Both modes are drawn and both pass contrast.</p>
+    </li>
+  </ol>
+  <p class="note"><b>Once you've picked 1 and 2</b>, I'll commit that direction into <code>docs/DESIGN-SYSTEM.md</code> — it currently holds the Kitchen Table tokens as a provisional default, with the other two recorded underneath so nothing is lost if you go another way.</p>
+</section>
+</main>
+<footer class="bot">
+  <p>Mockups only — nothing here is built. Handwriting, paper and shadow are drawn in the browser to stand in for the real photo; the layouts, numbers and states are the real proposal.</p>
+  <p>Design tokens, type scale and contrast ratios: <code>docs/DESIGN-SYSTEM.md</code>.</p>
+</footer>
+</div>
+<script>
+/* ---------- data: the two real sheets, names anonymised ---------- */
+var HANDS=['3s','4s','5s','6s','7s','8s','9s','10s','J','Q','K'];
+var G1=[
+ {id:'A',name:'Player A',paper:[28,32,60,71,74,100,118,123,123,123,137],read:[28,32,60,71,74,100,118,123,123,128,137]},
+ {id:'B',name:'Player B',paper:[0,3,3,54,80,88,105,105,109,109,109],read:[0,3,3,null,80,88,105,105,109,109,109],struck:{3:'57'}},
+ {id:'C',name:'Player C',paper:[23,23,27,34,37,44,57,71,75,78,78],read:[23,23,27,34,37,44,57,71,75,78,78]},
+ {id:'D',name:'Player D',paper:[29,29,64,64,64,64,64,64,67,67,111],read:[29,29,64,64,64,64,64,64,67,67,11]}
+];
+var G1FIXED=G1.map(function(c){var o=Object.assign({},c);o.read=c.paper.slice();return o;});
+var G2=[
+ {id:'A',name:'Player A',paper:[29,29,29,42,91,129,148,187,216,216,222]},
+ {id:'B',name:'Player B',paper:[10,16,48,48,48,48,48,56,56,68,71]},
+ {id:'E',name:'Player E',paper:[0,30,41,41,66,101,137,137,140,154,154]},
+ {id:'D',name:'Player D',paper:[31,53,66,86,90,145,162,162,198,225,240]},
+ {id:'C',name:'Player C',paper:[16,44,76,78,78,87,105,134,134,134,144]}
+];
+G2.forEach(function(c){c.read=c.paper.slice();});
+function byId(g,id){for(var i=0;i<g.length;i++){if(g[i].id===id)return g[i];}return null;}
+function h(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return (x>>>0)/4294967295;}
+function jit(seed){return{dx:(h(seed+'x')*8-4).toFixed(1)+'px',dy:(h(seed+'y')*7-3.5).toFixed(1)+'px',r:(h(seed+'r')*7-3.5).toFixed(1)+'deg'};}
+function deltas(v){return v.map(function(n,i){ if(n===null||n===undefined)return null; if(i===0)return n; var p=v[i-1]; return (p===null||p===undefined)?null:n-p; });}
+function flags(v){var bad={},miss={};for(var i=0;i<v.length;i++){ if(v[i]===null||v[i]===undefined){miss[i]=1;continue;} if(i>0&&v[i-1]!==null&&v[i-1]!==undefined&&v[i]<v[i-1]){bad[i]=1;bad[i-1]=1;} } return {bad:bad,miss:miss};}
+var PEN='<svg class="ic pen" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+/* ---------- fake photo: one column, rows aligned to the grid beside it ---------- */
+function stripHTML(col,opts){
+  opts=opts||{};
+  var rows=col.paper.map(function(v,i){
+    var j=jit(col.id+i), s=(col.struck&&col.struck[i])?'<i>'+col.struck[i]+'</i>':'';
+    return '<div class="r"><span style="--dx:'+j.dx+';--dy:'+j.dy+';--rot:'+j.r+'">'+s+v+'</span></div>';
+  }).join('');
+  return '<div class="sp"></div><div class="sv" style="left:6px"></div><div class="sv" style="right:8px"></div>'
+   +'<div class="hd">'+(opts.hand||col.name.replace('Player ','P'))+'</div><div class="rows">'+rows+'</div>'
+   +'<div class="glare"></div><div class="shadow"></div>'
+   +'<div class="zoomtag"><svg class="ic" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/></svg>the photo</div>';
+}
+/* ---------- fake photo: the whole sheet ---------- */
+function sheetHTML(cols,o){
+  o=o||{}; var n=cols.length;
+  var xs=n===4?[60,128,196,264]:[46,102,158,214,270];
+  var divs=n===4?[94,162,230]:[74,130,186,242];
+  var y0=72,pitch=26;
+  var s='<div class="table-bg"></div><div class="page"></div><div class="spiral"></div><div class="ink">';
+  divs.forEach(function(x){ s+='<div class="vline" style="left:'+x+'px;top:30px;height:340px"></div>'; });
+  s+='<div class="hline" style="left:26px;top:352px;width:266px"></div>';
+  s+='<div class="hline" style="left:26px;top:378px;width:266px"></div>';
+  cols.forEach(function(c,ci){
+    var jn=jit('n'+c.id);
+    s+='<div class="hw name" style="left:'+xs[ci]+'px;top:44px;--rot:'+jn.r+'">'+c.name.replace('Player ','P.')+'</div>';
+    c.paper.forEach(function(v,i){
+      var j=jit(c.id+i), st=(c.struck&&c.struck[i])?'<span class="out">'+c.struck[i]+'</span>':'';
+      s+='<div class="hw" style="left:'+(xs[ci]+parseFloat(j.dx))+'px;top:'+(y0+i*pitch+parseFloat(j.dy))+'px;--rot:'+j.r+';font-size:16px">'+st+v+'</div>';
+    });
+  });
+  s+='</div>';
+  if(o.chips){
+    s+='<div class="chips">';
+    cols.forEach(function(c,ci){
+      var f=flags(c.read);
+      c.read.forEach(function(v,i){
+        var cl=f.bad[i]?' bad':(f.miss[i]?' miss':'');
+        s+='<div class="chip'+cl+'" style="left:'+xs[ci]+'px;top:'+(y0+i*pitch)+'px">'+(v===null?'??':v)+'</div>';
+      });
+    });
+    s+='</div>';
+  }
+  if(o.hilite){ s+='<div class="hilite" data-hilite style="left:'+(xs[o.hilite[0]]-27)+'px;top:'+(y0+o.hilite[1]*pitch-13)+'px;width:54px;height:26px"></div>'; }
+  s+='<div class="glare"></div><div class="shadow"></div>';
+  if(o.thumb) s+='<div class="thumb"></div>';
+  return {html:s,xs:xs,y0:y0,pitch:pitch};
+}
+/* ---------- review grid beside the strip ---------- */
+function sweepHTML(col,o){
+  o=o||{}; var f=flags(col.read), d=deltas(col.read), out='';
+  out+='<div class="ghead"><span class="h1c">hand</span><span class="h2c">running total</span><span class="h3c">this hand</span></div>';
+  col.read.forEach(function(v,i){
+    var cl=f.bad[i]?' bad':(f.miss[i]?' miss':'');
+    if(o.edited&&o.edited[i]!==undefined) cl=' edited';
+    var dv=d[i]===null?'—':(d[i]===0?'0':'+'+d[i]);
+    out+='<div class="grow2"><span class="hand">'+HANDS[i]+'</span>'
+      +'<button class="cellbtn'+cl+'">'+(v===null?'not read':v)+PEN+'</button>'
+      +'<span class="delta'+(d[i]===0?' zero':'')+'">'+(d[i]===null?'—':'<b>'+dv+'</b>')+'</span></div>';
+    if(o.flagNote&&f.bad[i]&&!f.bad[i+1]) out+='<div class="inline-flag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><span>'+o.flagNote+'</span></div>';
+  });
+  return out;
+}
+/* ---------- whole-grid table (directions 2 and 3) ---------- */
+function tableHTML(g,o){
+  o=o||{};
+  var ds=g.map(function(c){return deltas(c.read);}), fs=g.map(function(c){return flags(c.read);});
+  var s='<table class="tablegrid"><thead><tr><th>hand</th>'+g.map(function(c){return '<th>'+c.name.replace('Player ','')+'</th>';}).join('')+'</tr></thead><tbody>';
+  for(var i=0;i<11;i++){
+    s+='<tr'+(i===10?' class="last"':'')+'><td>'+HANDS[i]+'</td>';
+    g.forEach(function(c,ci){
+      var v=c.read[i], cl=fs[ci].bad[i]?'bad':(fs[ci].miss[i]?'miss':'');
+      var d=ds[ci][i], dt=d===null?'—':(d===0?'0':(d>0?'+'+d:''+d));
+      var cur=(o.cur&&o.cur[0]===ci&&o.cur[1]===i)?' aria-current="true"':'';
+      s+='<td><button class="'+cl+'"'+cur+' data-cell="'+ci+','+i+'" data-label="'+c.name+' · the '+HANDS[i]+'">'+(v===null?'??':v)
+        +(o.hands===false?'':'<small>'+dt+'</small>')+'</button></td>';
+    });
+    s+='</tr>';
+  }
+  return s+'</tbody></table>';
+}
+/* ---------- mount everything ---------- */
+function mount(){
+  document.querySelectorAll('[data-tbl]').forEach(function(el){
+    var p=el.getAttribute('data-tbl').split('|');
+    el.innerHTML=tableHTML(p[0]==='2'?G2:G1,{cur:p[1]?[3,10]:null});
+  });
+  document.querySelectorAll('[data-strip]').forEach(function(el){
+    var p=el.getAttribute('data-strip').split('|'), g=p[0]==='2'?G2:(p[0]==='1f'?G1FIXED:G1);
+    el.innerHTML=stripHTML(byId(g,p[1]),{});
+  });
+  document.querySelectorAll('[data-sweep]').forEach(function(el){
+    var p=el.getAttribute('data-sweep').split('|'), g=p[0]==='2'?G2:(p[0]==='1f'?G1FIXED:G1);
+    el.innerHTML=sweepHTML(byId(g,p[1]),{flagNote:el.getAttribute('data-flagnote')||null});
+  });
+  document.querySelectorAll('[data-sheet]').forEach(function(box){
+    var p=box.getAttribute('data-sheet').split('|'), g=p[0]==='2'?G2:G1;
+    var o={chips:p.indexOf('chips')>-1,thumb:p.indexOf('thumb')>-1};
+    if(p.indexOf('hilite')>-1) o.hilite=[3,10];
+    var r=sheetHTML(g,o);
+    box.innerHTML='<div class="sheet-zoom"><div class="sheet">'+r.html+'</div></div>';
+    box._geo=r;
+  });
+  fit();
+}
+function fit(){
+  document.querySelectorAll('[data-sheet]').forEach(function(box){
+    var sheet=box.querySelector('.sheet'); if(!sheet)return;
+    var zoomBase=parseFloat(box.getAttribute('data-zoombase')||'1');
+    if(box.hasAttribute('data-fith')){
+      var s2=(box.clientHeight/470)*zoomBase, tx=Math.max(0,(box.clientWidth-320*s2)/2);
+      sheet.style.transform='translateX('+tx+'px) scale('+s2+')';
+      return;
+    }
+    var s=(box.clientWidth/320)*zoomBase;
+    sheet.style.transform='scale('+s+')';
+    if(!box.hasAttribute('data-noheight')) box.style.height=Math.round(470*s)+'px';
+  });
+}
+window.addEventListener('resize',fit);
+mount();
+
+/* ---------- tabs ---------- */
+var tabs=Array.prototype.slice.call(document.querySelectorAll('.tab'));
+tabs.forEach(function(t){ t.addEventListener('click',function(){
+  tabs.forEach(function(o){ o.setAttribute('aria-selected', o===t?'true':'false');
+    var panel=document.getElementById(o.getAttribute('aria-controls')); if(panel) panel.hidden = (o!==t); });
+  window.scrollTo({top:0,behavior:'smooth'}); fit();
+});});
+
+/* ---------- direction 2: the loupe ---------- */
+document.querySelectorAll('[data-loupe]').forEach(function(scope){
+  var box=scope.querySelector('[data-sheet]');
+  scope.querySelectorAll('[data-cell]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      scope.querySelectorAll('[data-cell]').forEach(function(b){b.removeAttribute('aria-current');});
+      btn.setAttribute('aria-current','true');
+      var p=btn.getAttribute('data-cell').split(','), c=+p[0], i=+p[1], geo=box._geo;
+      var x=geo.xs[c], y=geo.y0+i*geo.pitch;
+      var z=box.querySelector('.sheet-zoom');
+      z.style.setProperty('--z','2.9'); z.style.setProperty('--ox',(x/320*100)+'%'); z.style.setProperty('--oy',(y/470*100)+'%');
+      var hl=box.querySelector('[data-hilite]');
+      if(hl){ hl.style.left=(x-27)+'px'; hl.style.top=(y-13)+'px'; }
+      var lab=scope.querySelector('[data-loupelabel]');
+      if(lab) lab.textContent=btn.getAttribute('data-label');
+    });
+  });
+  var reset=scope.querySelector('[data-loupereset]');
+  if(reset) reset.addEventListener('click',function(){
+    var z=box.querySelector('.sheet-zoom'); z.style.setProperty('--z','1');
+    var lab=scope.querySelector('[data-loupelabel]'); if(lab) lab.textContent='Whole sheet';
+  });
+});
+
+/* ---------- direction 3: paper / both / read ---------- */
+document.querySelectorAll('[data-blink]').forEach(function(scope){
+  var chips=scope.querySelector('.chips');
+  scope.querySelectorAll('[data-blinkmode]').forEach(function(b){
+    b.addEventListener('click',function(){
+      scope.querySelectorAll('[data-blinkmode]').forEach(function(o){o.setAttribute('aria-pressed','false');});
+      b.setAttribute('aria-pressed','true');
+      var m=b.getAttribute('data-blinkmode');
+      if(chips) chips.style.opacity = m==='paper'?'0' : (m==='both'?'0.62':'1');
+      var note=scope.querySelector('[data-blinknote]');
+      if(note) note.textContent = m==='paper'?'Just the paper. Nothing of ours on top of it.'
+        : (m==='both'?'Ours ghosted over the paper — the digits underneath still show through.'
+        : 'What we read, sitting exactly where the number is. Flick back to Paper to compare.');
+    });
+  });
+});
+
+/* ---------- mockup buttons are inert ---------- */
+document.querySelectorAll('.phone button').forEach(function(b){
+  if(b.hasAttribute('data-cell')||b.hasAttribute('data-blinkmode')||b.hasAttribute('data-loupereset'))return;
+  b.addEventListener('click',function(e){e.preventDefault();});
+});
+</script>
