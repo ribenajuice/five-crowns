@@ -185,7 +185,8 @@ describe("⚠️ criterion 79 — permanent, not a one-off check", () => {
   it("the dump of every table contains no secret", async () => {
     const body = withoutComments(await backupOnce("2026-09-10T14:15:00Z"));
 
-    expect(body).not.toContain("scrypt$");
+    expect(body).not.toContain("scrypt:");
+    expect(body).not.toContain("scrypt$"); // the retired format, for good measure
     expect(body).not.toContain("sk-ant");
   });
 

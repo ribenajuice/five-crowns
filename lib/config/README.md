@@ -40,7 +40,8 @@ CONFIG_SOURCE=env
 # 32 random bytes: openssl rand -base64 32
 SESSION_SECRET=
 
-# node scripts/hash-password.js — prompts, prints a hash
+# node scripts/hash-password.js — prompts, prints a hash. Paste it as-is,
+# e.g. FIVE_CROWNS_GROUP_PASSWORD_HASH=scrypt:16384:8:1:<salt>:<hash>
 FIVE_CROWNS_GROUP_PASSWORD_HASH=
 FIVE_CROWNS_ADMIN_PASSWORD_HASH=
 
@@ -56,6 +57,14 @@ mkdir -p .data
 npm run db:migrate
 npm run dev
 ```
+
+A password hash looks like `scrypt:16384:8:1:<salt>:<hash>` and contains only
+letters, digits, `:`, `_` and `-`, so it needs **no quoting or escaping** — here
+or in a shell. ⚠️ Next's env loader expands every `$` in `.env.local`, quoted
+or not, which is exactly why the format has none. If login refuses the right
+password and the server log shows `login.malformed_password_hash`, the value
+was mistyped or is from the retired `scrypt$…` format: regenerate it.
+(`tests/config/local-env.test.ts` proves this section works as written.)
 
 ⚠️ `.env.local` holds a signing secret and two password hashes. It is covered by
 the `.env.*` rule in `.gitignore` and must stay that way.

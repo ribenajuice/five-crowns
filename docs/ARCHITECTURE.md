@@ -870,7 +870,7 @@ a documented way back that needs no code change and no developer:**
 
 ```bash
 # 1. Generate a scrypt hash locally (no AWS, no app, no network)
-node scripts/hash-password.js            # prompts, prints a hash
+node scripts/hash-password.js            # prompts, prints scrypt:16384:8:1:<salt>:<hash>
 
 # 2. Write it straight into Parameter Store
 aws ssm put-parameter --region ap-southeast-2 --overwrite --type SecureString \
@@ -880,6 +880,10 @@ aws ssm put-parameter --region ap-southeast-2 --overwrite --type SecureString \
 aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
   --name /five-crowns/prod/admin-session-epoch --value '<previous + 1>'
 ```
+
+The hash contains only letters, digits, `:`, `_` and `-` — deliberately no `$` — so it pastes into
+the shell command above, or a `.env.local`, without any quoting or escaping surviving by luck
+(`docs/DECISIONS.md`, "$-free password hash format").
 
 The same three commands can be run from the AWS console instead. **This is the same path used for
 first-time setup**, which matters more than it looks: the recovery procedure is exercised on day

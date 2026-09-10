@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 
@@ -170,6 +170,48 @@ describe("attemptLogin — the failure path", () => {
     } finally {
       process.env.FIVE_CROWNS_GROUP_PASSWORD_HASH = saved;
       invalidateAllParameters();
+    }
+  });
+
+  it("logs a malformed password hash instead of passing it off as a wrong password", async () => {
+    // The QA finding behind tests/config/local-env.test.ts: a mangled hash
+    // refused the right password and nothing in the logs said why.
+    const { attemptLogin } = await import("@/lib/auth/login");
+    const { invalidateAllParameters } = await import("@/lib/config");
+
+    const saved = process.env.FIVE_CROWNS_GROUP_PASSWORD_HASH;
+    // What the retired `scrypt$…` format became after dotenv expansion.
+    process.env.FIVE_CROWNS_GROUP_PASSWORD_HASH = "scrypt==";
+    invalidateAllParameters();
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const outcome = await attemptLogin("group", "the-right-one", "192.0.2.71");
+      // Still locked out — a broken hash must never let anybody in.
+      expect(outcome.status).toBe("invalid");
+
+      const lines = errors.mock.calls.map((call) => String(call[0]));
+      const line = lines.find((l) => l.includes("login.malformed_password_hash"));
+      expect(line).toBeDefined();
+      expect(line).toContain('"scope":"group"');
+      expect(line).not.toContain("scrypt==");
+    } finally {
+      errors.mockRestore();
+      process.env.FIVE_CROWNS_GROUP_PASSWORD_HASH = saved;
+      invalidateAllParameters();
+    }
+  });
+
+  it("does not log a well-formed hash as malformed", async () => {
+    const { attemptLogin } = await import("@/lib/auth/login");
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      await attemptLogin("group", "a-wrong-one", "192.0.2.72");
+      const lines = errors.mock.calls.map((call) => String(call[0]));
+      expect(lines.some((l) => l.includes("malformed_password_hash"))).toBe(false);
+    } finally {
+      errors.mockRestore();
     }
   });
 });

@@ -40,6 +40,7 @@ describe("scripts/hash-password.js", () => {
     // node — which means nothing else stops the two implementations diverging.
     const hash = await runScript("a-password-for-the-group");
 
+    expect(hash).toMatch(/^scrypt:16384:8:1:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$/);
     expect(parseHash(hash)).toMatchObject({ N: 16384, r: 8, p: 1 });
     await expect(
       verifyPassword("a-password-for-the-group", hash),

@@ -34,8 +34,18 @@ describe("hashPassword", () => {
 
   it("records its cost parameters, so they can be raised later", async () => {
     const stored = await hashPassword("x");
-    expect(stored.startsWith("scrypt$16384$8$1$")).toBe(true);
+    expect(stored.startsWith("scrypt:16384:8:1:")).toBe(true);
     expect(parseHash(stored)).toMatchObject({ N: 16384, r: 8, p: 1 });
+  });
+
+  it("uses only characters no .env loader or shell will rewrite", async () => {
+    // ⚠️ The format's whole reason to exist (lib/auth/password.ts). No `$`,
+    // `#`, quote, backslash, `+`, `/`, `=` or whitespace — whatever the salt.
+    for (let i = 0; i < 8; i += 1) {
+      const stored = await hashPassword(`password-${i}`);
+      expect(stored).toMatch(/^[A-Za-z0-9:_-]+$/);
+      expect(stored.split(":")).toHaveLength(6);
+    }
   });
 
   it("normalises unicode, so the same typed password always matches", async () => {
@@ -53,11 +63,20 @@ describe("verifyPassword — malformed stored hashes lock people out, never in",
   const malformed = [
     "",
     "not-a-hash",
-    "scrypt$16384$8$1$onlyfourparts",
-    "bcrypt$16384$8$1$c2FsdA==$aGFzaA==",
-    "scrypt$0$8$1$c2FsdA==$aGFzaA==",
-    "scrypt$16384$8$1$$aGFzaA==",
-    "scrypt$16384$8$1$c2FsdA==$",
+    "scrypt:16384:8:1:onlyfiveparts",
+    "bcrypt:16384:8:1:c2FsdA:aGFzaA",
+    "scrypt:0:8:1:c2FsdA:aGFzaA",
+    "scrypt:16384:0:1:c2FsdA:aGFzaA",
+    "scrypt:16384:8:1::aGFzaA",
+    "scrypt:16384:8:1:c2FsdA:",
+    "scrypt:-16384:8:1:c2FsdA:aGFzaA",
+    "scrypt:16384:8:1:c2FsdA:aGFzaA:extra",
+    // Standard-base64 characters are refused rather than half-decoded.
+    "scrypt:16384:8:1:c2Fs+dA==:aGFz/aA==",
+    // The retired `$` form, which dotenv expansion mangled. Refused outright.
+    "scrypt$16384$8$1$c2FsdA==$aGFzaA==",
+    // What that form looked like after expansion: the salt and hash gone.
+    "scrypt==",
   ];
 
   for (const stored of malformed) {

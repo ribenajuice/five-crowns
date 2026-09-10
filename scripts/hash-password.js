@@ -16,6 +16,10 @@
  *     --type SecureString --name /five-crowns/prod/group-password-hash \
  *     --value '<hash>'
  *
+ * or, for local development, paste it into `.env.local` as-is. The output
+ * (`scrypt:16384:8:1:<salt>:<hash>`) contains only `[A-Za-z0-9:_-]`, so neither
+ * the shell nor Next's env loader can alter it, quoted or not.
+ *
  * ⚠️ Deliberately dependency-free and deliberately **not** importing
  * `lib/auth/password.ts`: that file is TypeScript and this script must run with
  * a bare `node`. The two are kept in step by `tests/auth/hash-password.test.ts`,
@@ -42,8 +46,18 @@ function hash(plaintext) {
       { N, r: R, p: P, maxmem: 256 * 1024 * 1024 },
       (error, derived) => {
         if (error) return reject(error);
+        // `scrypt:N:r:p:salt:hash`, base64url. No `$`, `#`, quote or space,
+        // so it survives a `.env.local` and a shell command untouched — see
+        // the format note in lib/auth/password.ts.
         resolve(
-          ["scrypt", N, R, P, salt.toString("base64"), derived.toString("base64")].join("$"),
+          [
+            "scrypt",
+            N,
+            R,
+            P,
+            salt.toString("base64url"),
+            derived.toString("base64url"),
+          ].join(":"),
         );
       },
     );

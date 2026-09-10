@@ -9,19 +9,21 @@
  * FIVE_CROWNS_GROUP_PASSWORD_HASH=
  * ```
  *
- * Next.js loads `.env.local` through dotenv **with variable expansion on**. A
- * scrypt hash is `scrypt$N$r$p$salt$hash` — five `$` signs — so expansion eats
- * every `$`-prefixed run that looks like a variable name and the app is left
- * with a corrupt hash.
+ * Next.js loads `.env.local` through dotenv **with variable expansion on**. The
+ * original hash format was `scrypt$N$r$p$salt$hash` — five `$` signs — so
+ * expansion ate every `$`-prefixed run that looked like a variable name and the
+ * app was left with a corrupt hash.
  *
- * The symptom is the worst possible one: **the app starts fine and quietly
- * refuses the correct password with "That password is wrong."** Nothing in the
- * logs says the hash was mangled. Found by QA on 2026-09-10 while following
+ * The symptom was the worst possible one: **the app started fine and quietly
+ * refused the correct password with "That password is wrong."** Nothing in the
+ * logs said the hash was mangled. Found by QA on 2026-09-10 while following
  * the README verbatim.
  *
- * These tests fail until the setup documented in the README produces a usable
- * hash — whether that is fixed in the README, in the hash format, or by having
- * `lib/config` repair what it reads.
+ * Fixed in the format (docs/DECISIONS.md, "$-free password hash format"): a
+ * hash is now `scrypt:N:r:p:salt:hash` in base64url, using only
+ * `[A-Za-z0-9:_-]`, so there is nothing for expansion to touch. The first block
+ * below proves the README path works as written; the second pins down why `$`
+ * was fatal, with **fixed strings only**, so no outcome depends on a random salt.
  */
 
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -98,6 +100,20 @@ describe("the local setup documented in lib/config/README.md", () => {
     expect(await verifyPassword(plaintext, loaded[VARIABLE] ?? "")).toBe(true);
   });
 
+  it("carries every character a hash can contain — so no salt is ever unlucky", async () => {
+    // The two tests above use a random salt, so on their own they only prove
+    // the salts they happened to draw. This fixed value contains every
+    // character the format can produce (lib/auth/password.ts: `[A-Za-z0-9:_-]`),
+    // including a segment starting with `-` and one starting with `_`, which
+    // makes the guarantee hold for all of them.
+    const everyCharacter =
+      "scrypt:16384:8:1:-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_:_-0123456789";
+
+    const loaded = await loadAsNextWould(`${VARIABLE}=${everyCharacter}\n`);
+
+    expect(loaded[VARIABLE]).toBe(everyCharacter);
+  });
+
   it("carries the session secret intact — base64 has no $, so it was never at risk", async () => {
     const secret = "kEXAMPLEbase64Secret+with/slashes+and=padding=";
     const loaded = await loadAsNextWould(`SESSION_SECRET=${secret}\n`);
@@ -106,35 +122,52 @@ describe("the local setup documented in lib/config/README.md", () => {
   });
 });
 
-describe("why it breaks, pinned down so the fix is obvious", () => {
-  it("dotenv expansion is what destroys it", async () => {
-    const loaded = await loadAsNextWould(
-      `${VARIABLE}=scrypt$16384$8$1$SaltSaltSalt==$HashHashHash=\n`,
-    );
+describe("why the old `$` format broke — fixed strings, so nothing here is random", () => {
+  /** Shaped exactly like a hash in the retired format. */
+  const DOLLAR_HASH = "scrypt$16384$8$1$SaltSaltSalt==$HashHashHash=";
 
-    // Every `$` followed by something name-shaped is treated as a variable
-    // reference and expanded to nothing.
+  it("dotenv expansion deletes every $-prefixed name, taking the salt and hash with it", async () => {
+    const loaded = await loadAsNextWould(`${VARIABLE}=${DOLLAR_HASH}\n`);
+
+    // `$HashHashHash`, `$SaltSaltSalt`, `$8`, `$1`… are all read as references
+    // to unset variables and replaced with nothing.
+    expect(loaded[VARIABLE]).not.toBe(DOLLAR_HASH);
     expect(loaded[VARIABLE]).not.toContain("SaltSaltSalt");
     expect(loaded[VARIABLE]).not.toContain("HashHashHash");
   });
 
-  it("escaping every $ as \\$ is what makes it survive — one available fix", async () => {
-    const hash = await hashPassword("another-password");
-    const escaped = hash.replaceAll("$", "\\$");
+  it("⚠️ single quotes do NOT save it — dotenv strips them before expansion runs", async () => {
+    const loaded = await loadAsNextWould(
+      `QUOTED='${DOLLAR_HASH}'\nBARE=${DOLLAR_HASH}\n`,
+    );
+
+    expect(loaded.QUOTED).not.toBe(DOLLAR_HASH);
+    expect(loaded.QUOTED).not.toContain("SaltSaltSalt");
+    // Quoting changes nothing at all: the same mangled value either way.
+    expect(loaded.QUOTED).toBe(loaded.BARE);
+  });
+
+  it("escaping every $ as \\$ does — but only if a human remembers to, every time", async () => {
+    const escaped = DOLLAR_HASH.replaceAll("$", "\\$");
 
     const loaded = await loadAsNextWould(`${VARIABLE}=${escaped}\n`);
 
-    expect(loaded[VARIABLE]).toBe(hash);
-    expect(await verifyPassword("another-password", loaded[VARIABLE] ?? "")).toBe(
-      true,
-    );
+    expect(loaded[VARIABLE]).toBe(DOLLAR_HASH);
   });
 
-  it("⚠️ single quotes do NOT save it, so 'just quote it' is not the fix", async () => {
-    const hash = await hashPassword("yet-another-password");
+  it("whether a random $-hash survived was luck — which is why it looked intermittent", async () => {
+    // The expander works backwards from the last `$` and gives up entirely if
+    // that `$` is not followed by a name character. Standard base64 can start
+    // with `+` or `/`, so roughly one hash in 32 came through whole by chance.
+    // Pinned here with fixed strings so the explanation cannot itself be flaky.
+    const lucky = "scrypt$16384$8$1$SaltSaltSalt==$+HashHashHash=";
+    const unlucky = "scrypt$16384$8$1$SaltSaltSalt==$HashHashHash=";
 
-    const loaded = await loadAsNextWould(`${VARIABLE}='${hash}'\n`);
+    const loaded = await loadAsNextWould(
+      `LUCKY=${lucky}\nUNLUCKY=${unlucky}\n`,
+    );
 
-    expect(loaded[VARIABLE]).not.toBe(hash);
+    expect(loaded.LUCKY).toBe(lucky);
+    expect(loaded.UNLUCKY).not.toBe(unlucky);
   });
 });

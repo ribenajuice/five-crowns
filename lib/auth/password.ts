@@ -40,8 +40,24 @@ export const SCRYPT_P = 1;
 export const SCRYPT_KEYLEN = 32;
 const SALT_BYTES = 16;
 
-/** `scrypt$N$r$p$salt$hash`, all base64. Self-describing, so it can be upgraded. */
+/**
+ * The stored format: `scrypt:N:r:p:salt:hash`, salt and hash in unpadded
+ * base64url. Self-describing, so the cost parameters can be raised later.
+ *
+ * ⚠️ **Every character is in `[A-Za-z0-9:_-]`, deliberately.** The hash is
+ * pasted by hand into two places that rewrite special characters without
+ * warning: a `.env.local` (Next's loader expands every `$`) and an
+ * `aws ssm put-parameter` shell command (`$` in double quotes, `#` and spaces
+ * unquoted). The earlier `scrypt$N$r$p$salt$hash` form was silently mangled by
+ * the first, so the correct password was refused with no clue why. With no
+ * `$`, `#`, quote, backslash, `+`, `/`, `=` or whitespace there is nothing for
+ * either to touch, however it is quoted (docs/DECISIONS.md, "$-free password
+ * hash format"; pinned by tests/config/local-env.test.ts).
+ */
 const PREFIX = "scrypt";
+const SEPARATOR = ":";
+const HASH_PATTERN =
+  /^scrypt:([0-9]{1,10}):([0-9]{1,10}):([0-9]{1,10}):([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)$/;
 
 export class PasswordHashError extends Error {
   override name = "PasswordHashError";
@@ -71,9 +87,9 @@ export async function hashPassword(plaintext: string): Promise<string> {
     SCRYPT_N,
     SCRYPT_R,
     SCRYPT_P,
-    salt.toString("base64"),
-    derived.toString("base64"),
-  ].join("$");
+    salt.toString("base64url"),
+    derived.toString("base64url"),
+  ].join(SEPARATOR);
 }
 
 /**
@@ -113,13 +129,22 @@ interface ParsedHash {
   hash: Buffer;
 }
 
-/** Exported for tests. Returns null rather than throwing on anything malformed. */
+/**
+ * Parse a stored hash. Exported for tests and for the login path's diagnostic.
+ * Returns null rather than throwing on anything malformed.
+ *
+ * Strict on purpose: Node's base64 decoder silently skips characters it does
+ * not recognise, so a lenient parse would turn a mangled value into a
+ * *different* valid-looking salt and fail later as a plain "wrong password".
+ * Anything outside the exact format — including the retired `$` form — is
+ * rejected here, where it can be logged as what it is.
+ */
 export function parseHash(stored: string): ParsedHash | null {
   if (typeof stored !== "string") return null;
 
-  const parts = stored.split("$");
-  if (parts.length !== 6) return null;
-  const [prefix, rawN, rawR, rawP, rawSalt, rawHash] = parts as [
+  const match = HASH_PATTERN.exec(stored);
+  if (!match) return null;
+  const [, rawN, rawR, rawP, rawSalt, rawHash] = match as unknown as [
     string,
     string,
     string,
@@ -127,18 +152,14 @@ export function parseHash(stored: string): ParsedHash | null {
     string,
     string,
   ];
-  if (prefix !== PREFIX) return null;
 
   const N = Number.parseInt(rawN, 10);
   const r = Number.parseInt(rawR, 10);
   const p = Number.parseInt(rawP, 10);
-  if (!Number.isInteger(N) || !Number.isInteger(r) || !Number.isInteger(p)) {
-    return null;
-  }
   if (N < 2 || r < 1 || p < 1) return null;
 
-  const salt = Buffer.from(rawSalt, "base64");
-  const hash = Buffer.from(rawHash, "base64");
+  const salt = Buffer.from(rawSalt, "base64url");
+  const hash = Buffer.from(rawHash, "base64url");
   if (salt.length === 0 || hash.length === 0) return null;
 
   return { N, r, p, salt, hash };

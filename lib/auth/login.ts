@@ -13,7 +13,7 @@ import { z } from "zod";
 import { passwordHash, sessionEpoch, MissingParameterError } from "@/lib/config";
 import { log } from "@/lib/log";
 
-import { verifyPassword } from "./password";
+import { parseHash, verifyPassword } from "./password";
 import {
   checkRateLimit,
   pruneOldAttempts,
@@ -66,6 +66,17 @@ export async function attemptLogin(
       return { status: "not_configured" };
     }
     throw error;
+  }
+
+  if (parseHash(stored) === null) {
+    // ⚠️ The person typing is told only "that password is wrong" — it would be
+    // an oracle otherwise — so this line is the one place a corrupted or
+    // mistyped hash shows up at all. Without it, a mangled hash looks exactly
+    // like a forgotten password. The value itself is never logged.
+    log.error("login.malformed_password_hash", {
+      scope,
+      hint: "Regenerate it with node scripts/hash-password.js and store it again.",
+    });
   }
 
   const ok = await verifyPassword(password, stored);

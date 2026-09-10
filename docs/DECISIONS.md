@@ -20,6 +20,30 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — $-free password hash format
+
+- **Context**: QA followed `lib/config/README.md` § Local development verbatim and the app refused
+  the correct password with nothing in the logs. The stored hash was `scrypt$N$r$p$salt$hash`, and
+  Next's `.env.local` loader expands every `$` (quoted or not — the quotes are gone before
+  expansion runs), so the salt and hash were silently deleted. Whether a given hash survived
+  depended on its random bytes, which also made one test flaky. The same hash is pasted into an
+  `aws ssm put-parameter` command in the first-time-setup / lockout runbook, where a `$` in double
+  quotes is mangled the same way. Nothing has been deployed and no hash exists anywhere yet.
+- **Decision**: the stored format is now **`scrypt:N:r:p:salt:hash`, with salt and hash in unpadded
+  base64url** — only `[A-Za-z0-9:_-]`. scrypt and its parameters (N=16384, r=8, p=1, 32-byte key,
+  16-byte salt) and the constant-time compare are unchanged. The parser is strict and **the old `$`
+  form is not accepted**. The login path now logs `login.malformed_password_hash` (never the value)
+  when the stored hash does not parse, so this failure can never again look like a wrong password.
+- **Alternatives**: (a) *Document "escape every `$` as `\$`"* — works, but relies on a human doing
+  it perfectly at a lockout, and the README's plain paste would still break. (b) *Have `lib/config`
+  repair the value* — impossible; expansion destroys the bytes. (c) *Tell people to quote it* — does
+  nothing, as `tests/config/local-env.test.ts` shows. (d) *Keep reading the `$` form too* — nothing
+  holds one, and a second accepted format is a second thing to get wrong.
+- **Consequences**: the hash pastes safely into `.env.local`, a shell command or the AWS console
+  with no quoting rules to remember. Any `$`-format hash generated before this change (e.g. in a
+  developer's `.env.local`) must be regenerated with `node scripts/hash-password.js`; the log line
+  says so. Revisit if the hash algorithm changes — the new format must keep to the same alphabet.
+
 ## 2026-09-10 — Region correction: ap-southeast-2 (Sydney), not eu-west-2 (London)
 
 - **Context**: the hosting ADR below ("Stack and hosting", same date) placed the app in
