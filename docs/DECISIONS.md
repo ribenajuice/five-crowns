@@ -20,6 +20,27 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — One address: the CloudFront URL closes once the custom domain is attached
+
+- **Context**: criterion 84 asked for `fivecrowns.ribenajuice.xyz` to work *and* for the CloudFront URL
+  (`darn4m0ss1uf4.cloudfront.net`) to keep working alongside it, as a spare way in. After the domain
+  was attached, the CloudFront URL answered **403** (`x-cache: FunctionGeneratedResponse`). SST
+  injects a block into the site's CloudFront function (`CF_BLOCK_CLOUDFRONT_URL_INJECTION`,
+  `ssr-site.ts`) whenever a custom domain is set, and it has no option to disable it. The docs call
+  it a feature: "Disable CloudFront default URL if custom domain is set".
+- **Decision** (founder, 2026-09-11): **keep SST's behaviour.** The site has one address. Criterion 84
+  is reworded to match.
+- **Alternatives**: *Force the CloudFront URL open* by transforming SST's generated CloudFront
+  function to strip the block on every deploy. It works, but it patches generated code that SST can
+  change in any release, and it would fail silently when it did. Rejected as fragile for a benefit
+  the recovery below already provides.
+- **Consequences**: one address for bookmarks, sessions and the login cookie (cookies are per
+  hostname, so two addresses would have meant two separate logins anyway). **Recovery if the domain
+  breaks:** delete `/five-crowns/prod/app-domain` and `/five-crowns/prod/app-cert-arn` from Parameter
+  Store (region `ap-southeast-2`) and deploy once. SST then stops injecting the block, and the
+  CloudFront URL answers again in about 15 minutes. *Revisit-if*: SST adds an option to keep the
+  default URL, or the domain proves unreliable.
+
 ## 2026-09-11 — The Turso database lives in Tokyo, because Turso has no Sydney location
 
 - **Context**: the region-correction ADR below put the Turso database in Sydney (`syd`) beside the
@@ -42,7 +63,11 @@ Format:
   (about 110 ms). A page doing two or three queries is a few tenths of a second slower than a
   same-region database. That's acceptable for a private app used once or twice a week. Cost is
   unchanged: the free plan covers this, and data transfer at this volume is negligible. Measured
-  after the first deploy: *see below*.
+  after the first deploy (2026-09-11), from Adelaide through CloudFront: a warm login attempt,
+  which makes two or three database round trips plus a ~50 ms scrypt check, took **0.45–0.58 s**.
+  A page load that touches no database took **0.13–0.21 s**. So each Sydney↔Tokyo query adds roughly
+  **110–130 ms**, as estimated. The first request after a deploy (Lambda cold start) took 3.9 s,
+  which is unrelated to Tokyo. Verdict: acceptable, and the decision stands.
   *Revisit-if*: pages feel slow on a phone, Turso adds an Australian location (move it: `turso db
   create` there, restore from `npm run db:backup`, update the two SST secrets), or the review
   screen's save turns out to need many sequential queries.
@@ -383,7 +408,9 @@ Format:
   founder performs alone — hence the runbook, which spells out the record shapes, the 5–30 minute
   ACM wait, and ⚠️ the one real ordering constraint (**the certificate must reach *Issued* before
   CloudFront will serve the domain**). Milestone 1 can be finished, demonstrated and used before the
-  domain exists, and the CloudFront URL keeps working permanently alongside it, so a mistyped record
+  domain exists, and the CloudFront URL ~~keeps working permanently alongside it~~ *(⚠️ superseded 2026-09-11: SST
+  closes the CloudFront URL once the domain is attached, and the founder chose one address. See "One
+  address" at the top of this log.)*, so a mistyped record
   can never take the app down. **Revisit if** DNS ever moves into Route 53 for other reasons, at
   which point automatic validation becomes free to switch on.
 
