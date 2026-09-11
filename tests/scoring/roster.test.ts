@@ -156,4 +156,10 @@ describe("rosterDisplayName — the auto-name (criterion 68)", () => {
     const b = rosterDisplayName(["Player C", "Player D", "Player A", "Player E", "Player B"]);
     expect(a).toBe(b);
   });
+
+  it("⚠️ sorts case-insensitively — a raw code-point sort puts every capital before every lower-case letter", () => {
+    expect(rosterDisplayName(["player c", "Player D", "Player A"])).toBe(
+      "Player A, player c & Player D",
+    );
+  });
 });
