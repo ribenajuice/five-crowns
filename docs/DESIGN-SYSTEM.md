@@ -250,7 +250,10 @@ the digit; this is a correctness feature, not typography.
   populates it yet).
 
 - **Games list row.** `GameRow`, newest first: date in the display face, then venue-or-**"No
-  location"** and the roster name on one muted line, and the winner right-aligned — a single name,
+  location"** and the roster name on one muted line. The roster name is the roster's own name or, until someone
+  names it, **its members' display names in alphabetical order (ignoring case), joined as
+  "Player A, Player B, Player C & Player D"** ("Player A & Player B" for two). The row truncates it
+  with an ellipsis if it doesn't fit, and the game view shows it in full (criterion 68), and the winner right-aligned — a single name,
   or **"{A} & {B} — shared"** when the game was tied (criterion 69).
 
 ## Review screen law
