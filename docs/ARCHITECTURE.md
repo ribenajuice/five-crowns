@@ -191,7 +191,7 @@ tweak, it is a shift in where the guarantee lives, and the review screen has to 
 | Language | TypeScript (Node 22, ARM64) | One language front to back; Claude Code is strongest here |
 | Framework | Next.js 15, App Router | One codebase for pages *and* API. Server Components render browse/stats pages straight from SQL |
 | Styling | Tailwind CSS | Mobile-first by default; see `docs/DESIGN-SYSTEM.md` |
-| Database | **Turso** (libSQL / SQLite), HTTP driver — database `five-crowns` in **Tokyo** (`aws-ap-northeast-1`) | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda. ⚠️ Turso has no Australian location, so each query crosses Sydney↔Tokyo (~110 ms) — see the ADR "The Turso database lives in Tokyo" |
+| Database | **Turso** (libSQL / SQLite), HTTP driver (`@libsql/client/http`, pure JS, no native addon — required on the arm64 Lambda) — database `five-crowns` in **Tokyo** (`aws-ap-northeast-1`) | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda. ⚠️ Turso has no Australian location, so each query crosses Sydney↔Tokyo (~110 ms) — see the ADR "The Turso database lives in Tokyo" |
 | ORM / migrations | Drizzle ORM + drizzle-kit | Typed queries, plain-SQL migration files we can read |
 | Photo storage | S3, private bucket, versioned, presigned URLs | Permanent, cheap, direct browser upload |
 | Vision | Anthropic Messages API, `claude-opus-5` | Founder decision |
