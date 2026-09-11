@@ -9,7 +9,12 @@
 - **Currently in flight**: [PR #7](https://github.com/ribenajuice/five-crowns/pull/7), branch `feat/m1-foundations`.
   - QA: criteria 1–5, 72, 79, 81, 83 **PASS** against a production build (twice — before and after fixes).
     82, 86 and the bucket half of 83 are config-verified; live checks happen at `/deploy`.
-  - Security: initial audit SHIP WITH FIXES → re-check **SHIP**. 345 tests, lint, typecheck, build green.
+  - Security: initial audit SHIP WITH FIXES → re-check **SHIP**. 345 tests, lint, typecheck, build green —
+    **and green on CI** (PR #7's third run; the first two failed on an npm-10-incompatible lock file and on the
+    anonymised `tests/fixtures/sheets.ts` being swallowed by an unanchored `fixtures/` ignore rule — both fixed.
+    The private top-level `fixtures/` photos and real names were verified never committed on any branch).
+  - Local Node should be **22** (`.nvmrc`): the founder's machine runs Node 24 / npm 11, whose lock files CI's npm 10
+    rejects. If `npm install` is ever run on Node 24, re-check `npx npm@10 ci --dry-run` before pushing.
 - **Decisions made today** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`) — the old format was silently mangled by `.env.local`.
     Any local hash made before 2026-09-11 must be regenerated with `node scripts/hash-password.js`.
