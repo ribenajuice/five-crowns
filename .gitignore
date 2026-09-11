@@ -32,4 +32,6 @@ coverage/
 
 # Real scoresheet photos and their transcriptions — local only, never committed.
 # Contains personal photos and real names; the repo is public.
-fixtures/
+# Anchored to the repo root on purpose: tests/fixtures/ is the anonymised
+# (Player A–E) copy of the grids that CI's scoring tests need, and it IS committed.
+/fixtures/
