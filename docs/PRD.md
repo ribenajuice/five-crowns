@@ -634,6 +634,12 @@ Each is a decision, not an omission.
    and not the photos, so on its own it does not preserve the product's central promise that any
    number can be checked against the paper. Photos are backed up separately and automatically; the
    risk is one of *expectation*, and the mitigation is naming and describing the download honestly.
+7. **Recent scores can be lost, and that is accepted.** The database is backed up **by hand, on
+   demand** (`npm run db:backup`), never on a schedule. If the hosted database lost data, every game
+   saved since the last manual backup would go with it. The founder accepted this on 2026-09-11:
+   *"this isnt sensitive data, its just a pet project. if something gets lost, its not the end of
+   the world."* ⚠️ **Photos are not part of this risk**: the photo bucket is versioned with no
+   delete lifecycle, so every sheet photo is kept permanently whatever happens to the database.
 
 ---
 
@@ -1064,8 +1070,15 @@ in Player B's column, winner Player B on 71. Ground truth is
     order-independence. A deliberately broken derivation fails the build.
 82. Deploy runs from `main` through GitHub Actions by OIDC with **no stored AWS credentials**, and
     refuses to deploy while either password hash is missing from Parameter Store.
-83. The nightly database dump lands in `s3://five-crowns-photos/backups/YYYY-MM-DD.sql`, and the
-    photo bucket has versioning on with no delete lifecycle.
+83. The photo bucket has **versioning on with no delete lifecycle**. Running the documented manual
+    backup command, `npm run db:backup`, writes a dated `YYYY-MM-DD.sql` file to the machine it is
+    run on. The dump is **complete**: restored into an empty database, every table has the same row
+    count as the live one. It is **secret-free**: it contains no API key and no password hash. No
+    scheduled backup exists.
+    *(Reworded 2026-09-11: the original required a nightly automated dump to
+    `s3://five-crowns-photos/backups/`. The founder cut it: "this isnt sensitive data, its just a
+    pet project. if something gets lost, its not the end of the world." Database backups are now
+    manual and on demand. Photos are unaffected and are still kept forever.)*
 84. `https://fivecrowns.ribenajuice.xyz` answers with a valid certificate and no browser warning, and
     the CloudFront URL keeps working alongside it.
 85. ⚠️ **Definition of done.** The founder, on their own phone, on the live domain, photographs a real
@@ -1100,8 +1113,9 @@ which is the only device that matters.
 *Scope*: the project scaffold (nothing exists yet — no `package.json`, no app code); the database
 schema and migrations; the pure scoring library (monotonicity, delta derivation, roster signature)
 with unit tests over the fixture grids; the password gate; AWS provisioned by SST — Lambda,
-CloudFront, the private versioned photo bucket, Parameter Store, the nightly backup; CI running lint,
-typecheck and real tests on every PR; deployed to the CloudFront URL.
+CloudFront, the private versioned photo bucket, Parameter Store; the documented manual database backup
+command (`npm run db:backup`, run by hand, no schedule); CI running lint, typecheck and real tests on
+every PR; deployed to the CloudFront URL.
 
 *Acceptance criteria*: 1–5, 72 (empty state), 79, 81, 82, 83, 86.
 
@@ -1195,6 +1209,8 @@ usage or spend.
 - **A staging environment, a second region, a queue, an async job system.** Revisit only if
   transcription regularly exceeds ~45 seconds.
 - **Any record of who did what.** There are no accounts. Accepted, with the risk written down.
+- **Automated or scheduled database backups.** Cut by the founder on 2026-09-11. The backup is a
+  manual command run on demand; see Risk 7.
 
 ### Milestone 2 — Identity, rosters, and the rest of the admin panel
 
