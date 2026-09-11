@@ -1265,13 +1265,19 @@ themselves. So:
 when both `APP_DOMAIN` and `APP_CERT_ARN` are present (read from optional SSM parameters by
 `scripts/deploy.sh`); when they are absent the app deploys and works normally on its
 `d1234.cloudfront.net` URL. So Milestone 1 can be finished, demonstrated and used before the domain
-exists, and a mistyped DNS record can never take the app down — the CloudFront URL keeps working
-alongside the custom domain permanently.
+exists.
+
+⚠️ **Once the domain is attached, the CloudFront URL deliberately stops working (it answers 403).**
+SST blocks the default address whenever a custom domain is set, and has no option to turn that off.
+The founder chose to keep one address (ADR 2026-09-11, "One address"). **If the domain ever
+breaks:** delete `/five-crowns/prod/app-domain` and `/five-crowns/prod/app-cert-arn` (region
+`ap-southeast-2`) and deploy once. The CloudFront URL then answers again.
 
 #### 📋 Runbook: putting the app on `fivecrowns.ribenajuice.xyz`
 
 *One-time, done by the founder. Roughly 15 minutes of work plus up to an hour of waiting. It is
-safe to stop after any step and come back — the app stays up on its CloudFront URL throughout.*
+safe to stop after any step and come back. The app stays up on its CloudFront URL until Step 7, and
+on the custom domain from then on.*
 
 **Step 1 — Deploy the app first.** Push to `main` and let it deploy. Note the CloudFront address it
 prints; it looks like `d1a2b3c4d5e6f7.cloudfront.net`. Check the app works there before touching
@@ -1336,15 +1342,17 @@ aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
 ```
 
 **Step 7 — Deploy again.** Push to `main`, or run `./scripts/deploy.sh`. This time CloudFront is
-configured to answer for the custom domain. The deploy prints the CloudFront address again — you
-need it for the next step.
+configured to answer for the custom domain, and the deploy prints `https://fivecrowns.ribenajuice.xyz`
+as the app's address. ⚠️ **From this deploy on, the CloudFront URL answers 403 by design** (see
+above).
 
-**Step 8 — Point the domain at the app.** Back in Lightsail DNS, add one more **CNAME**:
+**Step 8 — Point the domain at the app.** Back in Lightsail DNS, add one more **CNAME**. It does no
+harm before Step 7, so it can be added any time after Step 1.
 
 | Lightsail box | What goes in it | Worked example (fake) |
 |---|---|---|
 | **Subdomain** | `fivecrowns` — just that word | `fivecrowns` |
-| **Maps to** | The CloudFront address from Step 7 — no `https://`, no `/` | `d1a2b3c4d5e6f7.cloudfront.net` |
+| **Maps to** | The CloudFront address from **Step 1** — no `https://`, no `/`. It doesn't change between deploys, and `aws cloudfront list-distributions` shows it too. | `d1a2b3c4d5e6f7.cloudfront.net` |
 
 **Check it**: `dig +short fivecrowns.ribenajuice.xyz CNAME` must print the `….cloudfront.net.`
 address.
@@ -1353,9 +1361,14 @@ address.
 padlock should be there with no warning. If the browser complains the certificate is wrong, Step 7
 has not run since the certificate was issued — deploy again.
 
-**If it goes wrong**: the app is still on its CloudFront URL, and nothing about the record is at
-risk. The two records added in Steps 4 and 8 are the only changes made to the domain, and deleting
-them puts everything back.
+**If it goes wrong**: nothing else on `ribenajuice.xyz` is at risk. The two records added in Steps 4
+and 8 are the only changes made to the domain. To get the app back on its CloudFront URL while you
+sort the domain out, delete the two parameters from Step 6 and deploy once. With no custom domain
+set, SST stops blocking the CloudFront URL.
+
+⚠️ **Keep the Step 4 record even after the certificate is issued.** ACM uses it to renew the
+certificate automatically each year. Deleting it means the certificate quietly expires, and the
+padlock with it.
 
 ### One-time setup
 

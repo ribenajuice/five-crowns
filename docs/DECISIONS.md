@@ -408,7 +408,9 @@ Format:
   founder performs alone — hence the runbook, which spells out the record shapes, the 5–30 minute
   ACM wait, and ⚠️ the one real ordering constraint (**the certificate must reach *Issued* before
   CloudFront will serve the domain**). Milestone 1 can be finished, demonstrated and used before the
-  domain exists, and the CloudFront URL keeps working permanently alongside it, so a mistyped record
+  domain exists, and the CloudFront URL ~~keeps working permanently alongside it~~ *(⚠️ superseded 2026-09-11: SST
+  closes the CloudFront URL once the domain is attached, and the founder chose one address. See "One
+  address" at the top of this log.)*, so a mistyped record
   can never take the app down. **Revisit if** DNS ever moves into Route 53 for other reasons, at
   which point automatic validation becomes free to switch on.
 
