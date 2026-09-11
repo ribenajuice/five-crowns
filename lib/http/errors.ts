@@ -25,7 +25,13 @@ export type ErrorCode =
   | "not_found"
   | "unsupported_media_type"
   | "not_configured"
-  | "server_error";
+  | "server_error"
+  /** A draft's grid fails a hard check (11 values, non-decreasing, ≥2 players). */
+  | "invalid_grid"
+  /** Saving requires a `photo` row (kind='sheet') with both S3 objects present. */
+  | "missing_photo"
+  /** A draft that has already been saved cannot be edited or saved again. */
+  | "conflict";
 
 const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
@@ -37,6 +43,9 @@ const STATUS: Record<ErrorCode, number> = {
   not_found: 404,
   not_configured: 503,
   server_error: 500,
+  invalid_grid: 422,
+  missing_photo: 409,
+  conflict: 409,
 };
 
 export interface ApiErrorBody {

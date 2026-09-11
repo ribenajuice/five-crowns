@@ -86,3 +86,20 @@ export function isSameRoster(
 export function isPlayableRoster(playerIds: readonly string[]): boolean {
   return new Set(playerIds).size >= MIN_PLAYERS;
 }
+
+/**
+ * A roster's default display name, built from its members — used whenever
+ * `roster.name` is null (PRD criterion 68). `docs/DESIGN-SYSTEM.md` does not
+ * yet specify this format; per the Stage 2 build contract, falling back to
+ * **alphabetical order, joined "A, B, C & D"** — told to the architect.
+ *
+ * Not locale-aware, deliberately: the members are already display names, and
+ * a stable, predictable order matters more here than perfect collation.
+ */
+export function rosterDisplayName(memberDisplayNames: readonly string[]): string {
+  const names = [...memberDisplayNames].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}

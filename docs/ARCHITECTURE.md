@@ -469,6 +469,10 @@ design changes because location exists.
 `invalid_credentials` (401), `unauthorised` (401), `unsupported_media_type` (415) — wrong
 `Content-Type` — `forbidden` (403) — cross-site `Origin` — `rate_limited` (429), `not_found` (404),
 `not_configured` (503), `server_error` (500). Never a stack trace or an internal message.
+⚠️ **Stage 2 adds three**, all used by `POST /api/games` and `PUT /api/drafts/{id}`: `invalid_grid`
+(422) — the grid fails a hard check, the response body carries the issues alongside `error` —
+`missing_photo` (409) — no `photo` row, or an S3 object is missing — and `conflict` (409) — a draft
+that has already been saved cannot be saved or edited again.
 
 **What this protects against**: search engines, random visitors, anyone who stumbles on the URL.
 Nothing is readable without the password, photos included.
