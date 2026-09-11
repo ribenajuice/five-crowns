@@ -20,6 +20,46 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — Trust only what our own proxy wrote: client address, attempt counting, and same-origin login posts
+
+- **Context**: pre-ship security review, code review and QA on Milestone 1 Stage 1 found the login
+  rate limiter could be bypassed three ways: (1) it keyed on the left-most `X-Forwarded-For` entry,
+  which is client-typed — rotating it gave QA a fresh bucket per guess, and prepending a fake entry
+  let a correct password through while the real address was blocked; (2) the failure count was read,
+  then scrypt ran (~50 ms), then the failure was recorded — so N parallel guesses all read the same
+  stale count and all got evaluated; (3) the login routes accepted any `Content-Type` and any
+  `Origin`, so a hostile page could burn a household's ten attempts with a cross-site form post, no
+  script permission needed.
+- **Decision**:
+  - **Client address**: `CloudFront-Viewer-Address` first (see the ADR below this one for why that
+    header can be trusted — the Function URL is behind OAC with edge signing, so only our
+    CloudFront distribution can call it and a client-forged header is overwritten). If that header
+    is absent **and we are running on Lambda, `X-Forwarded-For` is never consulted** — AWS Lambda
+    Function URLs truncate an inbound `X-Forwarded-For` to its left-most (client) entry rather than
+    appending, so off-Lambda that header would just be handing the bypass back. Off Lambda (local
+    dev, or any future non-Lambda host), the **right-most** `X-Forwarded-For` entry is used instead
+    — the one a trusted proxy appends, never the client-supplied left end. Failing all of that,
+    every caller shares one `"unknown"` bucket: a nuisance, never a bypass.
+  - **Count first, verify second**: `reserveAttempt()` increments the attempt row and re-reads the
+    window sum *before* the password is compared, so the k-th concurrent request always sees a
+    total of at least k and no more than 10 can ever be evaluated in a window. Only a wrong password
+    keeps its increment; a refusal, a success or a server fault releases it. A **successful login
+    does not clear the counter** — kept as-is, since PRD criterion 5 requires a correct password to
+    still be refused while blocked, and the window aging out is simpler than an explicit reset.
+  - **Same-origin only**: both login routes now require `Content-Type: application/json` (415
+    otherwise) and, when `Origin` is present, that it match the `Host` / `X-Forwarded-Host` the app
+    actually sees (403 otherwise) — comparing against `X-Forwarded-Host` rather than `Host` alone is
+    what keeps this working behind CloudFront, where `Host` is the Lambda's own address. Two new
+    API error codes: `unsupported_media_type` (415) and `forbidden` (403).
+- **Alternatives**: (a) *Trust the left-most XFF entry* — the status quo, and the thing QA broke.
+  (b) *`SELECT ... FOR UPDATE` / a mutex around check-then-record* — libSQL/Turso has no row locking
+  primitive worth relying on here; an atomic increment-then-read does the same job with plain SQL.
+  (c) *Clear the counter on success* — rejected, it would let a blocked address in in exactly the
+  case criterion 5 is about.
+- **Consequences**: a distribution that ever stops forwarding `CloudFront-Viewer-Address` degrades
+  to the shared `"unknown"` bucket rather than reopening the bypass — see the post-deploy check in
+  `docs/ARCHITECTURE.md`. `docs/ARCHITECTURE.md` § Flow 1 and § API errors are updated to match.
+
 ## 2026-09-11 — Least-privilege runtime grants, a server function only CloudFront can call, and a deploy role only `main` can reach
 
 - **Context**: the pre-ship security review of Milestone 1 Stage 1, before anything is deployed,

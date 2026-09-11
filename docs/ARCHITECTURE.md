@@ -435,12 +435,28 @@ design changes because location exists.
 
 1. Any request without a valid session cookie is redirected to `/login` by Next.js middleware.
    Middleware **denies by default**; only `/login` and `POST /api/login` are on the allowlist.
+   ⚠️ Middleware checks only the cookie's signature and expiry, **not its epoch** — it has no AWS
+   client. The epoch check (what makes revocation real) happens in `requireGroupSession()` /
+   `hasSession()`, which every page and every non-allowlisted route must call before doing
+   anything else. `/admin` and `POST /api/admin/login` both call it first, so a device logged out
+   by a group-password rotation is sent back to `/login` before it can even try admin passwords.
+   ⚠️ **Stage 2 hazard**: the matcher also skips any path ending in an image extension (`.jpg`,
+   `.png`, `.svg`, …), session or not — needed because photos are served by presigned S3 URL, never
+   through this app. Any future photo route or `/review/{id}` route must call
+   `requireGroupSession()` (or the API equivalent) itself; it cannot rely on the matcher.
 2. We store **only a scrypt hash**, in SSM at `/five-crowns/prod/group-password-hash`. The
    plaintext exists nowhere in the repo, the database, or the pipeline. The founder sets and
    rotates it from the admin panel.
-3. `POST /api/login` verifies with a constant-time compare, after a `login_attempt` check (block
-   an IP after ~10 attempts in 10 minutes). scrypt's cost plus the rate limit makes online
-   brute-forcing pointless.
+3. `POST /api/login` first rejects anything that is not `Content-Type: application/json` (415) or
+   whose `Origin`, if present, doesn't match the `Host` / `X-Forwarded-Host` we're actually being
+   called on (403) — closing a cross-site-form-post path that would otherwise burn the household's
+   ten attempts. It then verifies with a constant-time compare, after a `login_attempt` check that
+   **counts the attempt before comparing the password** (blocks an address at 10 failures in 10
+   minutes; see `docs/DECISIONS.md` "Trust only what our own proxy wrote" for why check-then-record
+   was replaced with count-first). The address counted against is `CloudFront-Viewer-Address` when
+   present, else (off Lambda only) the right-most `X-Forwarded-For` entry, else a shared
+   `"unknown"` bucket — never the client-supplied left end. scrypt's cost plus the rate limit makes
+   online brute-forcing pointless.
 4. On success: a **HMAC-signed token** cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`,
    `Max-Age` 400 days — the browser cap). Payload `{v, iat, exp}`, signed with `SESSION_SECRET`.
    **Stateless — no session table.**
@@ -448,6 +464,11 @@ design changes because location exists.
    `/five-crowns/prod/group-session-epoch`. Rotating the group password bumps it and logs every
    device out at once. That is the revocation story, and it is the whole revocation story — see
    the admin panel section.
+
+**API error codes** (`lib/http/errors.ts`), stable and safe to key UI copy on: `bad_request` (400),
+`invalid_credentials` (401), `unauthorised` (401), `unsupported_media_type` (415) — wrong
+`Content-Type` — `forbidden` (403) — cross-site `Origin` — `rate_limited` (429), `not_found` (404),
+`not_configured` (503), `server_error` (500). Never a stack trace or an internal message.
 
 **What this protects against**: search engines, random visitors, anyone who stumbles on the URL.
 Nothing is readable without the password, photos included.
