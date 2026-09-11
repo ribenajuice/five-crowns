@@ -11,7 +11,10 @@
 set -euo pipefail
 
 STAGE="${STAGE:-prod}"
-export AWS_REGION="${AWS_REGION:-eu-west-2}"
+# REGION: ap-southeast-2 (Sydney) — the founder and players are in Australia.
+# See the region-correction ADR in docs/DECISIONS.md (2026-09-10). The ACM
+# certificate for CloudFront is still issued in us-east-1; that is not a mistake.
+export AWS_REGION="${AWS_REGION:-ap-southeast-2}"
 
 cd "$(dirname "$0")/.."
 
@@ -40,6 +43,10 @@ echo "  region:  $AWS_REGION"
 echo "  account: $(aws sts get-caller-identity --query Account --output text)"
 echo ""
 
+# Installed before the secrets check: `sst secret list` runs from node_modules.
+echo "▶ Installing dependencies"
+if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
 # --- Secrets check -----------------------------------------------------------
 # Every secret lives in SSM Parameter Store, never in code and never in the
 # database (see docs/ARCHITECTURE.md "The admin panel"). Two owners:
@@ -47,11 +54,15 @@ echo ""
 #   * app parameters   - rotatable by the founder from the admin panel
 # Missing ones only fail at runtime, so catch them here instead.
 
+# SST v4 keeps its secrets encrypted in its own state (not as one SSM parameter
+# each), so ask SST. `sst secret list` prints KEY=value: only the names survive
+# this pipeline — no value reaches this script's output or the CI log.
+SST_SECRET_NAMES=$(npx sst secret list --stage "$STAGE" 2>/dev/null \
+  | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' | cut -d= -f1 || true)
+
 MISSING_SST=""
 for secret in TURSO_DATABASE_URL TURSO_AUTH_TOKEN; do
-  aws ssm get-parameter \
-      --name "/sst/five-crowns/$STAGE/Secret/$secret/value" \
-      --with-decryption >/dev/null 2>&1 || MISSING_SST="$MISSING_SST $secret"
+  printf '%s\n' "$SST_SECRET_NAMES" | grep -qx "$secret" || MISSING_SST="$MISSING_SST $secret"
 done
 
 MISSING_APP=""
@@ -94,9 +105,6 @@ fi
 
 # --- Build & deploy ----------------------------------------------------------
 
-echo "▶ Installing dependencies"
-if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
 # Optional custom domain. Absent until the founder has completed the DNS
 # runbook in docs/ARCHITECTURE.md; the app deploys fine on its CloudFront URL
 # without them, so a DNS mistake can never block a deploy.
@@ -113,13 +121,34 @@ else
   echo "  (See docs/ARCHITECTURE.md, 'Runbook: putting the app on fivecrowns.ribenajuice.xyz')"
 fi
 
-echo "▶ sst deploy (CloudFront, Lambda, S3, secrets, nightly backup)"
+# The zero-spend budget alarm needs somewhere to send the alert. Optional, and
+# absent it the budget is skipped with a loud warning rather than created with
+# no subscriber, which would be an alarm nobody hears.
+# ⚠️ The address itself is never printed: Actions logs on a public repo are public.
+BUDGET_ALERT_EMAIL=$(aws ssm get-parameter --name "/five-crowns/$STAGE/budget-alert-email" \
+  --query Parameter.Value --output text 2>/dev/null || true)
+
+if [ -n "$BUDGET_ALERT_EMAIL" ]; then
+  export BUDGET_ALERT_EMAIL
+  echo "▶ Zero-spend budget alerts: configured"
+else
+  echo "⚠️  No budget alert address — the zero-spend alarm will not be created."
+  echo "     aws ssm put-parameter --region \"$AWS_REGION\" --overwrite --type String \\"
+  echo "       --name /five-crowns/$STAGE/budget-alert-email --value 'you@example.com'"
+fi
+
+echo "▶ sst deploy (CloudFront, Lambda, S3, secrets)"
 npx sst deploy --stage "$STAGE"
 
-# Migrations run through `sst shell` so they get the same secrets the app does
-# (TURSO_DATABASE_URL / TURSO_AUTH_TOKEN) without ever printing them.
+# Migrations run through `sst shell` so they get the same Turso credentials the
+# app does without ever printing them. ⚠️ SST v4's shell exposes linked secrets
+# only as SST_RESOURCE_* JSON — not as TURSO_DATABASE_URL — and drizzle.config.ts
+# falls back to the local dev file without it, which would "succeed" against a
+# throwaway file. turso-env.mjs maps the names and refuses anything but the
+# remote database.
 echo "▶ Applying database migrations"
-npx sst shell --stage "$STAGE" -- npx drizzle-kit migrate
+npx sst shell --stage "$STAGE" -- \
+  node scripts/turso-env.mjs --require-remote -- npx drizzle-kit migrate
 
 echo ""
 echo "✅ Deployed. The app URL is in the sst output above."

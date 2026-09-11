@@ -1,98 +1,88 @@
-# 🚀 Product Team Template
+# Five Crowns Ledger
 
-A project template that gives you a full software team inside Claude Code. You act as the product manager; a roster of specialist agents (PM, architect, UI designer, developers, QA, DevOps, security, tech writer) handles the rest — wired into GitHub for CI/PRs and AWS for keyless deploys.
+Five Crowns Ledger is a private, permanent record of our group's Five Crowns nights. You photograph
+the finished paper scoresheet, and the app turns it into a searchable history of every game.
 
-> **Already scaffolded a project from this?** This README gets rewritten by the tech-writer agent to describe *your product*. The template manual below is for starting fresh.
+**Where it's at:** Milestone 1 is under way and nothing is deployed yet. Today the app has a
+password gate and an empty games list. You can't photograph a sheet yet. See `docs/STATUS.md`.
 
-## Starting a new project
+## Run it on your computer
+
+You need Node 22 or newer. You don't need an AWS account.
+
+1. Install the dependencies:
+
+   ```bash
+   npm ci
+   ```
+
+2. Create a `.env.local` file. [`lib/config/README.md`](lib/config/README.md) lists what goes in
+   it. For each of the two passwords (group and admin), run this and type the password:
+
+   ```bash
+   node scripts/hash-password.js
+   ```
+
+   It prints one line that starts with `scrypt:`. Paste that line straight into `.env.local`
+   exactly as printed. Don't add quotes or escape anything. The script works offline.
+
+3. Set up the local database and start the app:
+
+   ```bash
+   mkdir -p .data
+   npm run db:migrate
+   npm run dev
+   ```
+
+4. Open <http://localhost:3000> and sign in with the group password.
+
+**Right password refused?** Check the server log. If it shows `login.malformed_password_hash`, the
+hash was mistyped or is in the old format from before 11 September 2026 (it contains `$`). Run
+`node scripts/hash-password.js` again and paste the new value.
+
+## Check your changes
 
 ```bash
-# 1. Copy the template into a new repo (private by default)
-gh repo create my-new-project --template ribenajuice/product-team-template --private --clone
-cd my-new-project
-
-# 2. Open Claude Code and kick off
-claude
-> /kickoff
+npm test                              # the test suite
+npm run lint && npm run typecheck     # code style and type errors
 ```
 
-`/kickoff` interviews you (5 product questions, ~2 minutes), then the team writes the PRD, picks the stack, shows you visual directions as clickable mockups, scaffolds the code, and wires up CI. That's the whole setup.
+CI runs all three on every pull request.
 
-## Day-to-day: the five commands
+## Taking a backup
 
-| Command | What it does |
+There's no automatic backup. Run this whenever you want a copy of the scores:
+
+```bash
+npm run db:backup
+```
+
+It writes a dated `.sql` file into `backups/` (or `$BACKUP_DIR`, if you set one) and prints the
+path. It works against your local database or, via `npx sst shell --stage prod -- npm run
+db:backup`, production. Photos aren't included — they live in S3 and are kept forever separately.
+
+## How it deploys
+
+Every merge to `main` deploys by itself. GitHub Actions runs `scripts/deploy.sh`, which signs in to
+AWS without any stored keys. The app runs in AWS's Sydney region (`ap-southeast-2`).
+
+The deploy refuses to run until the session secret and both password hashes are in AWS Parameter
+Store. It prints the exact commands you need.
+
+- **First time:** follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) § One-time setup.
+- **Your own domain:** see the runbook for `fivecrowns.ribenajuice.xyz` in the same file. The app
+  works on its CloudFront address without it.
+- **Forgot the admin password:** see § Lockout recovery in the same file. You don't need a
+  developer.
+
+## Where the docs live
+
+| Doc | What's in it |
 |---|---|
-| `/kickoff` | One-time project start: interview → PRD → architecture → design → scaffold |
-| `/feature add CSV export` | Builds a feature end-to-end: spec → branch → build → QA → PR. You approve the spec at the start and review the PR at the end — that's it. |
-| `/ship` | Merges the approved PR, deploys to AWS, verifies production |
-| `/deploy` | Deploys main directly; also does first-time AWS setup |
-| `/status` | 60-second catch-up: what shipped, what's in flight, what needs you |
-
-A typical week: `/status` to catch up → `/feature <idea>` a few times → review the PRs → `/ship`.
-
-## The team
-
-Agents live in `.claude/agents/` — each has a role, standards, and rules:
-
-- **product-manager** — PRDs, user stories, cutting scope
-- **architect** — stack choices (boring, cheap, serverless-first), decision log
-- **ui-designer** — design system + HTML mockups you can view before code exists
-- **frontend-developer / backend-developer** — implementation
-- **qa-engineer** — verifies acceptance criteria by actually exercising the app
-- **devops-engineer** — CI/CD, AWS infra, cost guardrails
-- **security-reviewer** — pre-ship audits on auth/payments/data changes
-- **tech-writer** — README, changelog, user-facing copy
-
-The project's shared memory lives in `docs/` (PRD, architecture, decision log, design system, status). Every session reads these, so you never re-explain your project.
-
-## One-time machine setup (prerequisites)
-
-Only needed once per computer — you likely have these already:
-
-```bash
-gh auth login        # GitHub CLI
-aws configure        # AWS CLI credentials (or aws sso login)
-```
-
-## AWS deploys (per project, when ready)
-
-Run `/deploy` in Claude Code, or manually:
-
-```bash
-./scripts/aws-bootstrap.sh
-```
-
-This creates a **GitHub OIDC deploy role** via CloudFormation — GitHub Actions gets short-lived AWS credentials scoped to this one repo. No AWS keys are ever stored in GitHub. After that, every merge to `main` deploys automatically via `.github/workflows/deploy.yml`, and a budget alarm guards your bill.
-
-## What's in the box
-
-```
-.claude/agents/      # the team (9 specialist agents)
-.claude/skills/      # the workflows (/kickoff /feature /ship /deploy /status)
-.claude/settings.json# pre-approved safe commands (fewer permission prompts)
-CLAUDE.md            # how the team operates (filled in by /kickoff)
-docs/                # PRD, architecture, decisions, design system, status
-.github/workflows/   # CI on every PR; OIDC deploy to AWS on merge to main
-.github/             # PR template, issue forms, dependabot
-infra/github-oidc.yaml   # CloudFormation for keyless AWS deploys
-scripts/aws-bootstrap.sh # one-command AWS wiring
-scripts/deploy.sh        # single deploy entrypoint (CI runs exactly this)
-```
-
-## Models: one dial, with per-agent overrides
-
-By default every agent **inherits your session's model** — run Claude Code on your strongest model (Fable 5 / Opus) and the whole team uses it. One setting controls everything.
-
-If you hit rate limits or want to stretch usage on a big build, tier the *execution* roles down without touching the *judgment* roles: each agent file in `.claude/agents/` has a commented `# model:` line in its frontmatter — uncomment it to pin that agent.
-
-| Tier | Agents | Suggested pin |
-|---|---|---|
-| Judgment — decisions and reviews; mistakes are expensive | product-manager, architect, security-reviewer | keep inherited (or `opus`) |
-| Execution — builds against clear specs; the QA gate catches slips | frontend-developer, backend-developer, qa-engineer, ui-designer, tech-writer | `sonnet` |
-| Infra — touches live AWS; tier down last | devops-engineer | keep inherited |
-
-Rule of thumb: don't tier down preemptively — run fully inherited until cost actually bites.
-
-## Improving the template
-
-When a project teaches you something (a better agent rule, a new workflow), edit it in the **template repo** so every future project gets it. The template is the asset; projects are copies.
+| [`docs/PRD.md`](docs/PRD.md) | What we're building and why |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it works, plus setup and recovery runbooks |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Every decision and the reasoning behind it |
+| [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) | Look and feel |
+| [`docs/STATUS.md`](docs/STATUS.md) | What's done, what's next |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, in plain language |
+| [`CLAUDE.md`](CLAUDE.md) | How the agent team works on this repo |

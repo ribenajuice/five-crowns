@@ -1,14 +1,14 @@
 name: Deploy
 
 on:
+  # Manual re-deploy of main (e.g. after rotating a parameter). The job-level
+  # `if` below refuses any other ref, and the production environment's
+  # deployment-branch policy refuses it again on GitHub's side.
   workflow_dispatch:
   push:
     branches: [main]
 
-# OIDC: no stored AWS keys. scripts/aws-bootstrap.sh creates the role and
-# sets the AWS_DEPLOY_ROLE_ARN / AWS_REGION repo variables this consumes.
 permissions:
-  id-token: write
   contents: read
 
 concurrency:
@@ -18,24 +18,46 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Skips quietly until AWS is bootstrapped (/deploy handles first-time setup)
-    if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+    # main only, and skips quietly until AWS is bootstrapped (/deploy handles
+    # first-time setup and sets AWS_DEPLOY_ROLE_ARN).
+    if: ${{ github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != '' }}
+    # ⚠️ Load-bearing. The OIDC deploy role trusts exactly
+    # repo:ribenajuice/five-crowns:environment:production
+    # (infra/github-oidc.yaml), and GitHub only lets main deploy to this
+    # environment (set by scripts/aws-bootstrap.sh). Rename it and the role
+    # can no longer be assumed.
     environment: production
+    # OIDC: no stored AWS keys. id-token is granted to this job only.
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@v7
+      # Third-party actions are pinned to full commit SHAs (tags can be moved).
+      # To bump: gh api repos/<owner>/<repo>/git/ref/tags/<tag>, dereferencing
+      # annotated tags, and update the SHA and the version comment together.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # v6 runs on Node 24 and needs runner v2.327.1+ — fine on GitHub-hosted
+      # ubuntu-latest, worth knowing if this ever moves to a self-hosted runner.
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          # Falls back so a missing repo variable is a deploy in the right
+          # region rather than a required-input failure.
+          aws-region: ${{ vars.AWS_REGION || 'ap-southeast-2' }}
 
       - name: Setup Node
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
 
+      # scripts/deploy.sh refuses to deploy while either password hash — or the
+      # session secret — is missing from Parameter Store (PRD criterion 82).
+      # Passwords are never set by a deploy; see docs/ARCHITECTURE.md
+      # § Lockout recovery, which is also the first-time setup path.
       - name: Deploy
         run: ./scripts/deploy.sh

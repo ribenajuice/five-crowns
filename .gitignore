@@ -9,11 +9,20 @@ node_modules/
 dist/
 build/
 .next/
+.open-next/
 .sst/
 cdk.out/
 __pycache__/
 .venv/
 coverage/
+*.tsbuildinfo
+
+# Local development database — a plain libSQL file, same schema as production.
+.data/
+
+# Manual database backups (`npm run db:backup`). Real score data and real
+# names — the repo is public, so they never go to GitHub.
+/backups/
 
 # Local-only Claude Code settings
 .claude/settings.local.json
@@ -23,4 +32,6 @@ coverage/
 
 # Real scoresheet photos and their transcriptions — local only, never committed.
 # Contains personal photos and real names; the repo is public.
-fixtures/
+# Anchored to the repo root on purpose: tests/fixtures/ is the anonymised
+# (Player A–E) copy of the grids that CI's scoring tests need, and it IS committed.
+/fixtures/
