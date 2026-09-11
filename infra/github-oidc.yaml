@@ -114,6 +114,22 @@ Resources:
               # policy) for OpenNext's cache-revalidation events. Found at the
               # first deploy: sqs:CreateQueue was refused. Scoped to this app's
               # queues by name, like the IAM roles below.
+              # SST's KvKeys step writes the site's routing entries into a
+              # CloudFront KeyValueStore through the separate
+              # cloudfront-keyvaluestore API, which `cloudfront:*` does not
+              # cover. Found at the fifth deploy attempt. KVS ARNs carry a UUID,
+              # not a name, so this is scoped to the account's stores, and it is
+              # no wider than `cloudfront:*` above, which can already manage them.
+              - Sid: CloudFrontKeyValueStore
+                Effect: Allow
+                Action:
+                  - cloudfront-keyvaluestore:DescribeKeyValueStore
+                  - cloudfront-keyvaluestore:GetKey
+                  - cloudfront-keyvaluestore:ListKeys
+                  - cloudfront-keyvaluestore:PutKey
+                  - cloudfront-keyvaluestore:DeleteKey
+                  - cloudfront-keyvaluestore:UpdateKeys
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:key-value-store/*
               - Sid: SqsScoped
                 Effect: Allow
                 Action: sqs:*
