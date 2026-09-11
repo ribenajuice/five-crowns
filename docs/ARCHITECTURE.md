@@ -1432,6 +1432,11 @@ that would mean the header is not arriving and everyone shares one bucket.
 3. **The first deploy creates Lambda's replication service-linked role**, which the Lambda@Edge
    request signer needs and this account does not have yet. The deploy role may create exactly
    that role (`AWSServiceRoleForLambdaReplicator`) and nothing else.
+4. **The deploy role needs SQS, scoped to `five-crowns-*` queues.** SST's `Nextjs` component
+   creates a FIFO queue and its queue policy for OpenNext's cache-revalidation events. The first
+   deploy was refused `sqs:CreateQueue` until this was added (statement `SqsScoped` in
+   `infra/github-oidc.yaml`). Everything else the component creates (DynamoDB table, Lambda
+   functions and URLs, CloudFront pieces, IAM roles, log groups) was already covered.
 
 ---
 

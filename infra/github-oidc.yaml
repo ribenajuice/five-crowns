@@ -110,6 +110,14 @@ Resources:
                   - ecr:*
                   - budgets:*
                 Resource: "*"
+              # SST's Nextjs component creates a FIFO queue (plus its queue
+              # policy) for OpenNext's cache-revalidation events. Found at the
+              # first deploy: sqs:CreateQueue was refused. Scoped to this app's
+              # queues by name, like the IAM roles below.
+              - Sid: SqsScoped
+                Effect: Allow
+                Action: sqs:*
+                Resource: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${RepositoryName}-*
               - Sid: IamScoped
                 Effect: Allow
                 Action:
