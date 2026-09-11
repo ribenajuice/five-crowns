@@ -31,9 +31,12 @@ beforeAll(async () => {
 
   const { getDb } = await import("@/lib/db");
   const { player } = await import("@/lib/db/schema");
+  const { nameKey } = await import("@/lib/draft/state");
   for (const name of ["Player C", "Player A", "Player B"]) {
     const id = `player-${randomUUID()}`;
-    await getDb().insert(player).values({ id, displayName: name, slug: `${name}-${id}` });
+    await getDb()
+      .insert(player)
+      .values({ id, displayName: name, slug: `${name}-${id}`, nameKey: nameKey(name) });
   }
 });
 

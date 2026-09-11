@@ -19,6 +19,7 @@ import { getDb } from "@/lib/db";
 import { draft as draftTable } from "@/lib/db/schema";
 import { updateDraftSchema } from "@/lib/draft/state";
 import { apiError, serverError } from "@/lib/http/errors";
+import { parseUuidParam } from "@/lib/http/params";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 
 export const runtime = "nodejs";
@@ -31,7 +32,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return apiError("unauthorised", "You need the password for this.");
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseUuidParam(rawId);
+  if (!id) return apiError("bad_request", "That id isn't valid.");
 
   try {
     const row = (
@@ -58,7 +61,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return apiError("unauthorised", "You need the password for this.");
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseUuidParam(rawId);
+  if (!id) return apiError("bad_request", "That id isn't valid.");
 
   let body: unknown;
   try {

@@ -65,7 +65,7 @@ async function makeSheetPhoto(): Promise<string> {
   const { getDb } = await import("@/lib/db");
   const { photo } = await import("@/lib/db/schema");
   const { photoKey } = await import("@/lib/photos/keys");
-  const photoId = `photo-${randomUUID()}`;
+  const photoId = randomUUID();
   await getDb()
     .insert(photo)
     .values({
@@ -146,6 +146,28 @@ describe("POST /api/drafts", () => {
     const second = await POST(req("/api/drafts", "POST", { photoId, state }));
     expect(second.status).toBe(409);
   });
+
+  it("⚠️ security review LOW 7: two concurrent creates for the same photo — exactly one wins, no orphan draft", async () => {
+    const photoId = await makeSheetPhoto();
+    const state = draftStateFromSheet(SHEET_01, { photoId });
+    const { POST } = await import("@/app/api/drafts/route");
+
+    const [a, b] = await Promise.all([
+      POST(req("/api/drafts", "POST", { photoId, state })),
+      POST(req("/api/drafts", "POST", { photoId, state })),
+    ]);
+    const statuses = [a.status, b.status].sort();
+    expect(statuses).toEqual([201, 409]);
+
+    const { getDb } = await import("@/lib/db");
+    const { draft: draftTable, photo } = await import("@/lib/db/schema");
+    const photoRow = (await getDb().select().from(photo).where(eq(photo.id, photoId)))[0]!;
+    const drafts = await getDb()
+      .select()
+      .from(draftTable)
+      .where(eq(draftTable.id, photoRow.draftId ?? ""));
+    expect(drafts).toHaveLength(1); // no orphan draft row from the loser
+  });
 });
 
 describe("GET /api/drafts/{id}", () => {
@@ -159,12 +181,21 @@ describe("GET /api/drafts/{id}", () => {
     requestCookies.set("fc_session", await signSession({ s: "group", v: 0 }, process.env.SESSION_SECRET!));
   });
 
-  it("404s an unknown draft", async () => {
+  it("404s an unknown (but validly shaped) draft id", async () => {
+    const { GET } = await import("@/app/api/drafts/[id]/route");
+    const unknownId = randomUUID();
+    const response = await GET(req(`/api/drafts/${unknownId}`, "GET"), {
+      params: Promise.resolve({ id: unknownId }),
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("⚠️ security review LOW 5: 400s a draft id that isn't a UUID", async () => {
     const { GET } = await import("@/app/api/drafts/[id]/route");
     const response = await GET(req("/api/drafts/nope", "GET"), {
       params: Promise.resolve({ id: "nope" }),
     });
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(400);
   });
 
   it("returns the stored state, updatedAt and a null savedGameId for a fresh draft", async () => {

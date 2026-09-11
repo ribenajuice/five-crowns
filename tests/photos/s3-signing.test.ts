@@ -21,6 +21,10 @@ function paramsOf(url: string): URLSearchParams {
   return new URL(url).searchParams;
 }
 
+function decodePolicy(base64Policy: string): { expiration: string; conditions: unknown[] } {
+  return JSON.parse(Buffer.from(base64Policy, "base64").toString("utf8"));
+}
+
 describe("s3PhotoStorage — presigned GET", () => {
   it("points at photos/{photoId}/{original,model}.jpg on the configured bucket", async () => {
     const { s3PhotoStorage } = await import("@/lib/photos/s3");
@@ -41,38 +45,52 @@ describe("s3PhotoStorage — presigned GET", () => {
     const { url } = await storage.presignGet(PHOTO_ID, "original");
     expect(paramsOf(url).get("X-Amz-Expires")).toBe("300");
   });
+
+  it("⚠️ security review LOW 3: the response is told it's image/jpeg (response-content-type)", async () => {
+    const { s3PhotoStorage } = await import("@/lib/photos/s3");
+    const storage = s3PhotoStorage();
+    const { url } = await storage.presignGet(PHOTO_ID, "model");
+    expect(paramsOf(url).get("response-content-type")).toBe("image/jpeg");
+  });
 });
 
-describe("s3PhotoStorage — presigned PUT", () => {
-  it("points at photos/{photoId}/model.jpg on the configured bucket, five minutes out", async () => {
+describe("s3PhotoStorage — presigned POST (security review MEDIUM 1)", () => {
+  it("carries the exact key as a field, and Content-Type: image/jpeg (the shape the front end posts as multipart/form-data)", async () => {
     const { s3PhotoStorage } = await import("@/lib/photos/s3");
     const storage = s3PhotoStorage();
-    const { url } = await storage.presignPut(PHOTO_ID, "model");
+    const { url, fields } = await storage.presignPost(PHOTO_ID, "model");
 
-    const parsed = new URL(url);
-    expect(parsed.hostname).toBe(BUCKET_HOST);
-    expect(parsed.pathname).toBe(`/photos/${PHOTO_ID}/model.jpg`);
-    expect(paramsOf(url).get("X-Amz-Expires")).toBe("300");
+    expect(url).toBe(`https://${BUCKET_HOST}/`);
+    expect(fields.key).toBe(`photos/${PHOTO_ID}/model.jpg`);
+    expect(fields.bucket).toBe("five-crowns-photos");
+    expect(fields["Content-Type"]).toBe("image/jpeg");
+    // Every field is a string, ready to drop straight into a FormData.
+    for (const value of Object.values(fields)) {
+      expect(typeof value).toBe("string");
+    }
   });
 
-  it("⚠️ content-type is NOT among the signed headers — a library limitation, documented rather than hidden", async () => {
-    // `S3RequestPresigner.prepareRequest`, inside `@aws-sdk/s3-request-presigner`
-    // itself, unconditionally runs `unsignableHeaders.add("content-type")` for
-    // every presigned request, with no option that overrides it. So while
-    // `presignPut` puts `ContentType: "image/jpeg"` on the `PutObjectCommand` —
-    // which becomes the object's stored content-type *if* the browser's PUT
-    // sends that exact header — a PUT sent with a different `Content-Type` is
-    // not refused by SigV4: `content-type` never appears in
-    // `X-Amz-SignedHeaders`, so there is nothing for the signature to check it
-    // against. `docs/ARCHITECTURE.md`'s "Content-Type: image/jpeg signed in"
-    // is aspirational against this SDK version; flagged back to the architect
-    // rather than asserted here as something it doesn't do.
+  it("policy conditions: the exact key, 1–8,000,000 bytes, and Content-Type: image/jpeg", async () => {
     const { s3PhotoStorage } = await import("@/lib/photos/s3");
     const storage = s3PhotoStorage();
-    const { url } = await storage.presignPut(PHOTO_ID, "original");
+    const { fields } = await storage.presignPost(PHOTO_ID, "original");
 
-    const signedHeaders = paramsOf(url).get("X-Amz-SignedHeaders");
-    expect(signedHeaders).toBe("host");
-    expect(signedHeaders).not.toContain("content-type");
+    const policy = decodePolicy(fields.Policy!);
+    expect(policy.conditions).toContainEqual(["eq", "$key", `photos/${PHOTO_ID}/original.jpg`]);
+    expect(policy.conditions).toContainEqual(["content-length-range", 1, 8_000_000]);
+    expect(policy.conditions).toContainEqual(["eq", "$Content-Type", "image/jpeg"]);
+  });
+
+  it("⚠️ criterion 12: expires five minutes from now", async () => {
+    const { s3PhotoStorage } = await import("@/lib/photos/s3");
+    const storage = s3PhotoStorage();
+    const before = Date.now();
+    const { fields } = await storage.presignPost(PHOTO_ID, "original");
+    const policy = decodePolicy(fields.Policy!);
+
+    const expiresAt = new Date(policy.expiration).getTime();
+    const seconds = (expiresAt - before) / 1000;
+    expect(seconds).toBeGreaterThan(295);
+    expect(seconds).toBeLessThanOrEqual(305);
   });
 });

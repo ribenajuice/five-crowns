@@ -5,13 +5,21 @@
  * stores the initial state, which must have `state.photoId === photoId`
  * (enforced by `createDraftSchema`). Rejects a photo already linked to
  * another draft.
+ *
+ * ⚠️ Security review LOW 7. The early `photoRow.draftId` check below is a
+ * cheap, obvious-case shortcut — it does not, on its own, close the race
+ * between two concurrent `POST /api/drafts` for the same photo. The actual
+ * guarantee is the transaction beneath it: the photo is *claimed* with a
+ * conditional `UPDATE … WHERE draft_id IS NULL`, and a lost race (`rowsAffected
+ * === 0`) rolls the whole transaction back — no orphan draft row left behind
+ * — and answers 409.
  */
 
 import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { hasSession } from "@/lib/auth/session";
@@ -23,6 +31,10 @@ import { rejectCrossSitePost } from "@/lib/http/same-origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+class PhotoAlreadyClaimedError extends Error {
+  override name = "PhotoAlreadyClaimedError";
+}
 
 export async function POST(request: Request) {
   const crossSite = rejectCrossSitePost(request, "drafts.create");
@@ -63,17 +75,34 @@ export async function POST(request: Request) {
     const draftId = randomUUID();
     const now = new Date().toISOString();
 
-    await db.insert(draftTable).values({
-      id: draftId,
-      stateJson: JSON.stringify(parsed.data.state),
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(draftTable).values({
+          id: draftId,
+          stateJson: JSON.stringify(parsed.data.state),
+          createdAt: now,
+          updatedAt: now,
+        });
 
-    await db
-      .update(photo)
-      .set({ draftId })
-      .where(eq(photo.id, parsed.data.photoId));
+        // The actual guarantee: claim the photo only if it is still free.
+        const claim = await tx
+          .update(photo)
+          .set({ draftId })
+          .where(and(eq(photo.id, parsed.data.photoId), isNull(photo.draftId)));
+
+        if ((claim.rowsAffected ?? 0) === 0) {
+          throw new PhotoAlreadyClaimedError();
+        }
+      });
+    } catch (error) {
+      if (error instanceof PhotoAlreadyClaimedError) {
+        return apiError(
+          "conflict",
+          "That photo is already attached to another draft.",
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({ draftId, updatedAt: now }, { status: 201 });
   } catch (error) {

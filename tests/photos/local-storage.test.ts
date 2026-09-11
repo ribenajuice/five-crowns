@@ -24,6 +24,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Matches `presignPost`'s `fields`, so a form can be built without a browser. */
+function formFrom(fields: Record<string, string>, fileBytes: BlobPart): FormData {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) form.set(key, value);
+  form.set("file", new Blob([fileBytes], { type: "image/jpeg" }), "photo.jpg");
+  return form;
+}
+
 describe("photoStorageMode / localDevPhotosAllowed", () => {
   it("is local when PHOTOS_STORAGE=local, s3 when a bucket is set and not forced local", async () => {
     const { photoStorageMode } = await import("@/lib/photos/storage");
@@ -52,27 +60,26 @@ describe("photoStorageMode / localDevPhotosAllowed", () => {
 });
 
 describe("the local driver, end to end through the dev-photos route", () => {
-  it("PUTs an object, then GETs the same bytes back", async () => {
+  it("POSTs a multipart upload, then GETs the same bytes back", async () => {
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
+    const photoId = randomUUID();
 
-    const putUrl = (await storage.presignPut(photoId, "original")).url;
-    const { PUT, GET } = await import(
+    const { url, fields } = await storage.presignPost(photoId, "original");
+    const { POST, GET } = await import(
       "@/app/api/dev-photos/[photoId]/[variant]/route"
     );
 
     const bytes = new TextEncoder().encode("a real jpeg, honestly");
-    const putResponse = await PUT(
-      new Request(`https://five-crowns.test${putUrl}`, {
-        method: "PUT",
-        headers: { "content-type": "image/jpeg" },
-        body: bytes,
+    const postResponse = await POST(
+      new Request(`https://five-crowns.test${url}`, {
+        method: "POST",
+        body: formFrom(fields, bytes),
       }),
       { params: Promise.resolve({ photoId, variant: "original.jpg" }) },
     );
-    expect(putResponse.status).toBe(200);
+    expect(postResponse.status).toBe(204);
 
     expect(await storage.objectExists(photoId, "original")).toBe(true);
     expect(await storage.objectExists(photoId, "model")).toBe(false);
@@ -88,30 +95,77 @@ describe("the local driver, end to end through the dev-photos route", () => {
 
   it("⚠️ criterion 9: a GET with no signature at all is denied", async () => {
     const { GET } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+    const photoId = randomUUID();
     const response = await GET(
-      new Request(`https://five-crowns.test/api/dev-photos/anything/original.jpg`),
-      { params: Promise.resolve({ photoId: "anything", variant: "original.jpg" }) },
+      new Request(`https://five-crowns.test/api/dev-photos/${photoId}/original.jpg`),
+      { params: Promise.resolve({ photoId, variant: "original.jpg" }) },
     );
     expect(response.status).toBe(403);
   });
 
-  it("refuses a PUT whose body isn't declared image/jpeg", async () => {
+  it("⚠️ security review LOW 5: a photoId that isn't a UUID 404s rather than 403ing", async () => {
+    const { GET } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+    const response = await GET(
+      new Request("https://five-crowns.test/api/dev-photos/not-a-uuid/original.jpg"),
+      { params: Promise.resolve({ photoId: "not-a-uuid", variant: "original.jpg" }) },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("⚠️ security review MEDIUM 1: refuses an upload whose Content-Type field isn't image/jpeg", async () => {
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
-    const putUrl = (await storage.presignPut(photoId, "model")).url;
-    const { PUT } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+    const photoId = randomUUID();
+    const { url, fields } = await storage.presignPost(photoId, "model");
+    const { POST } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
 
-    const response = await PUT(
-      new Request(`https://five-crowns.test${putUrl}`, {
-        method: "PUT",
-        headers: { "content-type": "text/plain" },
-        body: "not a photo",
+    const response = await POST(
+      new Request(`https://five-crowns.test${url}`, {
+        method: "POST",
+        body: formFrom({ ...fields, "Content-Type": "text/plain" }, new TextEncoder().encode("not a photo")),
       }),
       { params: Promise.resolve({ photoId, variant: "model.jpg" }) },
     );
     expect(response.status).toBe(415);
+  });
+
+  it("⚠️ security review MEDIUM 1: refuses an upload over the size cap", async () => {
+    const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
+    resetPhotoStorage();
+    const storage = getPhotoStorage();
+    const photoId = randomUUID();
+    const { url, fields } = await storage.presignPost(photoId, "original");
+    const { POST } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+    const { MAX_UPLOAD_BYTES } = await import("@/lib/photos/types");
+
+    const response = await POST(
+      new Request(`https://five-crowns.test${url}`, {
+        method: "POST",
+        body: formFrom(fields, new Uint8Array(MAX_UPLOAD_BYTES + 1)),
+      }),
+      { params: Promise.resolve({ photoId, variant: "original.jpg" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(await storage.objectExists(photoId, "original")).toBe(false);
+  });
+
+  it("refuses an upload with a tampered signature field", async () => {
+    const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
+    resetPhotoStorage();
+    const storage = getPhotoStorage();
+    const photoId = randomUUID();
+    const { url, fields } = await storage.presignPost(photoId, "original");
+    const { POST } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+
+    const response = await POST(
+      new Request(`https://five-crowns.test${url}`, {
+        method: "POST",
+        body: formFrom({ ...fields, "x-fc-sig": "0".repeat(64) }, new TextEncoder().encode("bytes")),
+      }),
+      { params: Promise.resolve({ photoId, variant: "original.jpg" }) },
+    );
+    expect(response.status).toBe(403);
   });
 
   it("⚠️ criterion 12: a link stops working after five minutes", async () => {
@@ -121,7 +175,7 @@ describe("the local driver, end to end through the dev-photos route", () => {
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
+    const photoId = randomUUID();
     await import("@/lib/photos/local").then(({ writeLocalPhoto }) =>
       writeLocalPhoto(photoId, "original", Buffer.from("hello")),
     );
@@ -145,11 +199,11 @@ describe("the local driver, end to end through the dev-photos route", () => {
     expect(expired.status).toBe(403);
   });
 
-  it("refuses a signature that has been tampered with", async () => {
+  it("refuses a GET signature that has been tampered with", async () => {
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
+    const photoId = randomUUID();
     await import("@/lib/photos/local").then(({ writeLocalPhoto }) =>
       writeLocalPhoto(photoId, "original", Buffer.from("hello")),
     );
@@ -169,7 +223,7 @@ describe("⚠️ impossible in production — refused unless the local driver AN
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
+    const photoId = randomUUID();
     await import("@/lib/photos/local").then(({ writeLocalPhoto }) =>
       writeLocalPhoto(photoId, "original", Buffer.from("hello")),
     );
@@ -191,7 +245,7 @@ describe("⚠️ impossible in production — refused unless the local driver AN
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
     resetPhotoStorage();
     const storage = getPhotoStorage();
-    const photoId = `photo-${randomUUID()}`;
+    const photoId = randomUUID();
     await import("@/lib/photos/local").then(({ writeLocalPhoto }) =>
       writeLocalPhoto(photoId, "original", Buffer.from("hello")),
     );
@@ -208,6 +262,30 @@ describe("⚠️ impossible in production — refused unless the local driver AN
     } finally {
       process.env.PHOTOS_STORAGE = "local";
       delete process.env.PHOTOS_BUCKET;
+    }
+  });
+
+  it("refuses even a validly signed POST when running on a deployed Lambda", async () => {
+    const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
+    resetPhotoStorage();
+    const storage = getPhotoStorage();
+    const photoId = randomUUID();
+    const { url, fields } = await storage.presignPost(photoId, "original");
+
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "five-crowns-prod-web";
+    try {
+      const { POST } = await import("@/app/api/dev-photos/[photoId]/[variant]/route");
+      const response = await POST(
+        new Request(`https://five-crowns.test${url}`, {
+          method: "POST",
+          body: formFrom(fields, new TextEncoder().encode("bytes")),
+        }),
+        { params: Promise.resolve({ photoId, variant: "original.jpg" }) },
+      );
+      expect(response.status).toBe(404);
+      expect(await storage.objectExists(photoId, "original")).toBe(false);
+    } finally {
+      delete process.env.AWS_LAMBDA_FUNCTION_NAME;
     }
   });
 });

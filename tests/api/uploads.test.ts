@@ -89,7 +89,7 @@ describe("POST /api/uploads", () => {
     expect(response.status).toBe(400);
   });
 
-  it("happy path: 201, a photo row, and two presigned PUT urls", async () => {
+  it("happy path: 201, a photo row, and two presigned POSTs with Content-Type: image/jpeg fields", async () => {
     const { POST } = await import("@/app/api/uploads/route");
     const response = await POST(post({ kind: "sheet", rotation: 90, width: 1200, height: 1600 }));
     expect(response.status).toBe(201);
@@ -98,6 +98,8 @@ describe("POST /api/uploads", () => {
     expect(typeof body.photoId).toBe("string");
     expect(body.original.url).toContain("original.jpg");
     expect(body.model.url).toContain("model.jpg");
+    expect(body.original.fields["Content-Type"]).toBe("image/jpeg");
+    expect(body.model.fields["Content-Type"]).toBe("image/jpeg");
 
     const { getDb } = await import("@/lib/db");
     const { photo } = await import("@/lib/db/schema");
@@ -108,5 +110,26 @@ describe("POST /api/uploads", () => {
     expect(row.height).toBe(1600);
     expect(row.draftId).toBeNull();
     expect(row.gameId).toBeNull();
+  });
+
+  it("⚠️ security review MEDIUM 1: 429 rate_limited once the daily cap is reached, and no photo row is created", async () => {
+    const { getDb } = await import("@/lib/db");
+    const { usageDay, photo } = await import("@/lib/db/schema");
+    const today = new Date().toISOString().slice(0, 10);
+
+    await getDb()
+      .insert(usageDay)
+      .values({ day: today, sheetUploads: 40 })
+      .onConflictDoUpdate({ target: usageDay.day, set: { sheetUploads: 40 } });
+
+    const before = (await getDb().select().from(photo)).length;
+
+    const { POST } = await import("@/app/api/uploads/route");
+    const response = await POST(post({ kind: "sheet", rotation: 0, width: 100, height: 100 }));
+    expect(response.status).toBe(429);
+    expect((await response.json()).error.code).toBe("rate_limited");
+
+    const after = (await getDb().select().from(photo)).length;
+    expect(after).toBe(before);
   });
 });

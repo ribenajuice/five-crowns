@@ -18,13 +18,22 @@
  * of the same draft is closed *inside* the transaction with a conditional
  * update on `photo.game_id IS NULL`; `photo_one_sheet_per_game` is the
  * database-level backstop.
+ *
+ * ⚠️ **Security review, MEDIUM 2.** `state.columns[].playerId` and
+ * `state.locationId` are client-supplied ids — a crafted request could name
+ * an id that was never actually offered by `GET /api/players` or
+ * `GET /api/locations`, or one belonging to a player already merged away
+ * (Milestone 2). Every such id is looked up inside the transaction and the
+ * save is refused (422) if it doesn't resolve to a real, non-merged row.
+ * `PRAGMA foreign_keys = ON` is also attempted as defence in depth — see the
+ * comment at its call site for why it's best-effort, not the guarantee.
  */
 
 import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
@@ -54,7 +63,7 @@ import {
   validateGrid,
   type GridValidation,
 } from "@/lib/scoring";
-import { log } from "@/lib/log";
+import { describeError, log } from "@/lib/log";
 
 import { uniqueSlug } from "./slug";
 
@@ -71,6 +80,22 @@ export class InvalidGridError extends Error {
 
 export class MissingPhotoError extends Error {
   override name = "MissingPhotoError";
+}
+
+/**
+ * ⚠️ Security review MEDIUM 2: a client-supplied `playerId` or `locationId`
+ * that doesn't resolve to a real, usable row. Mapped to 422 by the route,
+ * same status as `InvalidGridError` — it's the same family of "this save
+ * cannot go ahead" failure, just discovered a step later.
+ */
+export class InvalidReferenceError extends Error {
+  override name = "InvalidReferenceError";
+  constructor(
+    public readonly kind: "player" | "location",
+    public readonly id: string,
+  ) {
+    super(`That ${kind} no longer exists. Pick again.`);
+  }
 }
 
 export interface SaveGameResult {
@@ -131,6 +156,21 @@ export async function saveGame(
   const valuesByColumnId = new Map(gridColumns.map((c) => [c.id, c.values]));
   const orderedColumns = [...state.columns].sort((a, b) => a.order - b.order);
 
+  // ⚠️ Best-effort defence in depth (security review MEDIUM 2), not the
+  // guarantee — SQLite treats `PRAGMA foreign_keys` as a no-op once a
+  // transaction has begun, so it has to run out here, on `db`, before
+  // `db.transaction()` opens one. Whether that setting actually survives
+  // into the transaction that follows depends on the connection persisting
+  // across both calls, which the native driver (tests, local dev) does and
+  // Turso's HTTP driver may not. Failure is swallowed and logged; the
+  // explicit `InvalidReferenceError` checks below are what actually enforces
+  // this, on every driver, every time.
+  try {
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+  } catch (error) {
+    log.warn("games.save.pragma_foreign_keys_failed", describeError(error));
+  }
+
   try {
     const gameId = await db.transaction(async (tx) => {
       // Guard the double-submit race: re-check inside the transaction.
@@ -143,6 +183,7 @@ export async function saveGame(
 
       const locationId = await resolveLocation(tx, state);
       const resolved = await resolvePlayers(tx, orderedColumns);
+      assertNoDuplicatePlayers(resolved);
 
       const memberIds = resolved.map((r) => r.playerId);
       const rosterId = await upsertRoster(tx, memberIds);
@@ -243,7 +284,14 @@ async function resolveLocation(
   tx: Tx,
   state: DraftState,
 ): Promise<string | null> {
-  if (state.locationId) return state.locationId;
+  if (state.locationId) {
+    // ⚠️ Security review MEDIUM 2: a client-supplied id, looked up for real.
+    const found = (
+      await tx.select().from(location).where(eq(location.id, state.locationId))
+    )[0];
+    if (!found) throw new InvalidReferenceError("location", state.locationId);
+    return state.locationId;
+  }
   if (!state.newLocationName) return null;
 
   const key = nameKey(state.newLocationName);
@@ -275,11 +323,20 @@ interface ResolvedColumn {
 }
 
 /**
- * Resolve every column to a player id, creating one player row per distinct
- * pending name (grouped by `nameKey`, so retyping the same new name in two
- * columns creates one player, not two — though `validateGrid`'s
- * `duplicate_player` check, run just before this, already rejects that shape
- * via `columnPlayerKey`). Then re-check for duplicates, defensively.
+ * Resolve every column to a player id.
+ *
+ * - An existing player (`column.playerId`) is looked up for real and must
+ *   exist with no `merged_into_id` (security review MEDIUM 2).
+ * - A pending name (`column.newPlayerName`) resolves by `name_key` against an
+ *   existing player first — ⚠️ security review LOW 4: without this, retyping
+ *   an existing player's name as "someone new" minted a second row for the
+ *   same person — and only creates one when no match exists, grouped by
+ *   `nameKey` so two columns with the same new name share one new player.
+ *
+ * `assertNoDuplicatePlayers`, called on the result, is what turns a name that
+ * resolves onto a player already used in another column into `duplicate_player`
+ * (criterion: caught *after* resolution, because before it a pending name and
+ * an existing player's id are different `columnPlayerKey`s and look distinct).
  */
 async function resolvePlayers(
   tx: Tx,
@@ -292,6 +349,12 @@ async function resolvePlayers(
     let playerId: string;
 
     if (column.playerId) {
+      const found = (
+        await tx.select().from(player).where(eq(player.id, column.playerId))
+      )[0];
+      if (!found || found.mergedIntoId) {
+        throw new InvalidReferenceError("player", column.playerId);
+      }
       playerId = column.playerId;
     } else if (column.newPlayerName) {
       const key = nameKey(column.newPlayerName);
@@ -299,12 +362,28 @@ async function resolvePlayers(
       if (cached) {
         playerId = cached;
       } else {
-        playerId = randomUUID();
-        await tx.insert(player).values({
-          id: playerId,
-          displayName: column.newPlayerName.trim(),
-          slug: uniqueSlug(column.newPlayerName),
-        });
+        const existing = (
+          await tx.select().from(player).where(eq(player.nameKey, key))
+        )[0];
+        if (existing) {
+          playerId = existing.id;
+        } else {
+          const newId = randomUUID();
+          await tx
+            .insert(player)
+            .values({
+              id: newId,
+              displayName: column.newPlayerName.trim(),
+              slug: uniqueSlug(column.newPlayerName),
+              nameKey: key,
+            })
+            .onConflictDoNothing({ target: player.nameKey });
+
+          const row = (
+            await tx.select().from(player).where(eq(player.nameKey, key))
+          )[0];
+          playerId = (row?.id as string) ?? newId;
+        }
         newPlayerIdByKey.set(key, playerId);
       }
     } else {
@@ -315,15 +394,37 @@ async function resolvePlayers(
     resolved.push({ column, playerId });
   }
 
-  const seen = new Set<string>();
-  for (const { playerId } of resolved) {
-    if (seen.has(playerId)) {
-      throw new Error("duplicate_player survived validation — this is a bug.");
-    }
-    seen.add(playerId);
-  }
-
   return resolved;
+}
+
+/**
+ * ⚠️ Security review LOW 4. Genuinely reachable now that pending names
+ * resolve against existing players: an existing player picked directly in one
+ * column and typed as "someone new" (in a name that resolves to them) in
+ * another now collide here rather than earlier, since their `columnPlayerKey`s
+ * — `id:x` versus `new:namekey` — look different until resolution.
+ */
+function assertNoDuplicatePlayers(resolved: ResolvedColumn[]): void {
+  const seenAt = new Map<string, string>();
+  for (const { column, playerId } of resolved) {
+    const firstColumnId = seenAt.get(playerId);
+    if (firstColumnId) {
+      throw new InvalidGridError({
+        ok: false,
+        columns: {},
+        issues: [
+          {
+            code: "duplicate_player",
+            message:
+              "The same player is picked for more than one column. Pick a different player for each.",
+            indices: [],
+            columnIds: [firstColumnId, column.id],
+          },
+        ],
+      });
+    }
+    seenAt.set(playerId, column.id);
+  }
 }
 
 async function upsertRoster(tx: Tx, memberIds: string[]): Promise<string> {

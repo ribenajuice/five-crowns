@@ -47,7 +47,7 @@ async function makePhoto(): Promise<string> {
   const { getDb } = await import("@/lib/db");
   const { photo } = await import("@/lib/db/schema");
   const { photoKey } = await import("@/lib/photos/keys");
-  const photoId = `photo-${randomUUID()}`;
+  const photoId = randomUUID();
   await getDb()
     .insert(photo)
     .values({
@@ -81,12 +81,23 @@ describe("GET /api/photos/{id}/url", () => {
     expect(response.status).toBe(400);
   });
 
-  it("404s an unknown photo", async () => {
+  it("404s an unknown (but validly shaped) photo id", async () => {
     const { GET } = await import("@/app/api/photos/[id]/url/route");
-    const response = await GET(new Request(`${ORIGIN}/api/photos/ghost/url?variant=model`), {
-      params: Promise.resolve({ id: "ghost" }),
-    });
+    const unknownId = randomUUID();
+    const response = await GET(
+      new Request(`${ORIGIN}/api/photos/${unknownId}/url?variant=model`),
+      { params: Promise.resolve({ id: unknownId }) },
+    );
     expect(response.status).toBe(404);
+  });
+
+  it("⚠️ security review LOW 5: 400s a photo id that isn't a UUID", async () => {
+    const { GET } = await import("@/app/api/photos/[id]/url/route");
+    const response = await GET(
+      new Request(`${ORIGIN}/api/photos/ghost/url?variant=model`),
+      { params: Promise.resolve({ id: "ghost" }) },
+    );
+    expect(response.status).toBe(400);
   });
 
   it("happy path: a presigned URL, five minutes out (criterion 12)", async () => {

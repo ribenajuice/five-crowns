@@ -11,6 +11,7 @@ import { saveGameSchema } from "@/lib/draft/state";
 import {
   DraftNotFoundError,
   InvalidGridError,
+  InvalidReferenceError,
   MissingPhotoError,
   saveGame,
 } from "@/lib/games/save";
@@ -58,6 +59,11 @@ export async function POST(request: Request) {
         },
         { status: 422 },
       );
+    }
+    if (error instanceof InvalidReferenceError) {
+      // ⚠️ Security review MEDIUM 2: a client-supplied player or location id
+      // that doesn't resolve to a real, usable row.
+      return apiError("invalid_grid", error.message);
     }
     if (error instanceof MissingPhotoError) {
       return apiError("missing_photo", "This draft has no sheet photo to save with.");

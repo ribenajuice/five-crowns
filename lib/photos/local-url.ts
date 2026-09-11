@@ -16,7 +16,7 @@ import type { PhotoVariant } from "./types";
 export interface LocalPhotoUrlPayload {
   photoId: string;
   variant: PhotoVariant;
-  method: "GET" | "PUT";
+  method: "GET" | "POST";
   /** Unix seconds. */
   exp: number;
 }

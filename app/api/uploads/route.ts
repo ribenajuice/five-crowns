@@ -2,9 +2,17 @@
  * POST /api/uploads — the first step of Flow 2.
  *
  * Creates the `photo` row (kind='sheet', pending — nothing in S3 yet) and
- * returns two presigned PUTs, five minutes, `Content-Type: image/jpeg` signed
- * in. The browser has already rotated and downscaled both images; this route
- * never sees the bytes (`docs/ARCHITECTURE.md` § Flow 2, Step 3).
+ * returns two presigned **POSTs**, five minutes, policy-constrained to the
+ * exact key, 1–8,000,000 bytes and `Content-Type: image/jpeg`. The browser
+ * has already rotated and downscaled both images; this route never sees the
+ * bytes (`docs/ARCHITECTURE.md` § Flow 2, Step 3).
+ *
+ * ⚠️ Security review MEDIUM 1: a presigned POST, not a PUT — S3's policy
+ * conditions refuse a wrong-shaped upload itself, rather than this app
+ * trusting whatever showed up at the key afterwards. Also capped at 40 sheet
+ * uploads/UTC day (`lib/photos/upload-cap.ts`), refused with 429
+ * `rate_limited` beyond that — far more than the real 1–2 sheets a week, and
+ * counted separately from the vision-call caps.
  */
 
 import "server-only";
@@ -21,6 +29,7 @@ import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 import { photoKey } from "@/lib/photos/keys";
 import { getPhotoStorage } from "@/lib/photos/storage";
+import { reserveSheetUpload } from "@/lib/photos/upload-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +55,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const reservation = await reserveSheetUpload();
+    if (!reservation.allowed) {
+      return apiError(
+        "rate_limited",
+        "That's the day's upload limit reached. Try again tomorrow.",
+      );
+    }
+
     const photoId = randomUUID();
 
     await getDb()
@@ -62,15 +79,15 @@ export async function POST(request: Request) {
 
     const storage = getPhotoStorage();
     const [original, model] = await Promise.all([
-      storage.presignPut(photoId, "original"),
-      storage.presignPut(photoId, "model"),
+      storage.presignPost(photoId, "original"),
+      storage.presignPost(photoId, "model"),
     ]);
 
     return NextResponse.json(
       {
         photoId,
-        original: { url: original.url },
-        model: { url: model.url },
+        original: { url: original.url, fields: original.fields },
+        model: { url: model.url, fields: model.fields },
       },
       { status: 201 },
     );

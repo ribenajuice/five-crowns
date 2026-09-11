@@ -119,6 +119,18 @@ describe("POST /api/games", () => {
     expect(body.issues.ok).toBe(false);
   });
 
+  it("⚠️ security review MEDIUM 2: 422 invalid_grid when a playerId doesn't exist", async () => {
+    const { setUpDraft } = await import("../helpers/draft");
+    const { draftId, state } = await setUpDraft(SHEET_01, {
+      playerIds: { "Player A": "not-a-real-player-id" },
+    });
+
+    const { POST } = await import("@/app/api/games/route");
+    const response = await POST(post({ draftId, state }));
+    expect(response.status).toBe(422);
+    expect((await response.json()).error.code).toBe("invalid_grid");
+  });
+
   it("happy path: 201 then idempotent 200 on a repeat", async () => {
     const { draftId, state } = await setUpDraft(SHEET_01);
 

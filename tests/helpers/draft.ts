@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { draft as draftTable, photo, player } from "@/lib/db/schema";
-import { emptyDraftState, type DraftState } from "@/lib/draft/state";
+import { emptyDraftState, nameKey, type DraftState } from "@/lib/draft/state";
 import { photoKey } from "@/lib/photos/keys";
 import { writeLocalPhoto } from "@/lib/photos/local";
 
@@ -35,7 +35,10 @@ export function draftStateFromSheet(
   sheet: FixtureSheet,
   options: DraftFromSheetOptions = {},
 ): DraftState {
-  const photoId = options.photoId ?? `photo-${randomUUID()}`;
+  // ⚠️ A bare UUID, not `photo-${...}` — matches what `POST /api/uploads`
+  // actually mints, since `GET /api/photos/{id}/url` and the dev-photos route
+  // now validate this as a path param (security review LOW 5).
+  const photoId = options.photoId ?? randomUUID();
   const columnIds = sheet.columns.map(() => `col-${randomUUID()}`);
   const state = emptyDraftState({
     photoId,
@@ -72,11 +75,12 @@ export async function createPlayers(
   const db = getDb();
   const ids: Record<string, string> = {};
   for (const label of labels) {
-    const id = `player-${randomUUID()}`;
+    const id = randomUUID();
     await db.insert(player).values({
       id,
       displayName: label,
       slug: `${label.toLowerCase().replace(/\s+/g, "-")}-${id.slice(-8)}`,
+      nameKey: nameKey(label),
     });
     ids[label] = id;
   }
@@ -116,7 +120,9 @@ export async function createSheetPhoto(
 /** A `draft` row, with its photo linked, the way `POST /api/drafts` leaves it. */
 export async function createDraft(state: DraftState): Promise<string> {
   const db = getDb();
-  const draftId = `draft-${randomUUID()}`;
+  // ⚠️ A bare UUID — `GET/PUT /api/drafts/{id}` now validate this as a path
+  // param (security review LOW 5), matching what `POST /api/drafts` mints.
+  const draftId = randomUUID();
   const now = new Date().toISOString();
 
   await db.insert(draftTable).values({

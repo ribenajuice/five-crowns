@@ -444,3 +444,120 @@ describe("⚠️ all or nothing — a failure part-way through leaves nothing pe
     expect(draftRow.savedGameId).toBeNull();
   });
 });
+
+describe("⚠️ security review MEDIUM 2 — the save doesn't trust client ids", () => {
+  it("refuses (InvalidReferenceError, 422 invalid_grid at the route) a playerId that doesn't exist", async () => {
+    const { saveGame, InvalidReferenceError } = await import("@/lib/games/save");
+    const { draftId, state } = await setUpDraft(SHEET_01, {
+      playerIds: { "Player A": "not-a-real-player-id" },
+    });
+
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(InvalidReferenceError);
+  });
+
+  it("refuses a playerId belonging to a player who has been merged away", async () => {
+    const { saveGame, InvalidReferenceError } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { player } = await import("@/lib/db/schema");
+
+    const playerIds = await createPlayers(SHEET_01.columns.map((c) => c.player));
+    const mergedId = playerIds[SHEET_01.columns[0]!.player]!;
+    await getDb()
+      .update(player)
+      .set({ mergedIntoId: playerIds[SHEET_01.columns[1]!.player]! })
+      .where(eq(player.id, mergedId));
+
+    const { draftId, state } = await setUpDraft(SHEET_01, { playerIds });
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(InvalidReferenceError);
+  });
+
+  it("refuses a locationId that doesn't exist", async () => {
+    const { saveGame, InvalidReferenceError } = await import("@/lib/games/save");
+    const { draftId, state } = await setUpDraft(SHEET_01, {
+      locationId: "not-a-real-location-id",
+    });
+
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(InvalidReferenceError);
+  });
+
+  it("still saves cleanly when every id is real", async () => {
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { location } = await import("@/lib/db/schema");
+
+    const playerIds = await createPlayers(SHEET_01.columns.map((c) => c.player));
+    const locationId = "a-real-location";
+    await getDb()
+      .insert(location)
+      .values({ id: locationId, name: "The venue", slug: "the-venue", nameKey: "the venue" });
+
+    const { draftId, state } = await setUpDraft(SHEET_01, { playerIds, locationId });
+    const result = await saveGame(draftId, state);
+    expect(result.alreadySaved).toBe(false);
+  });
+});
+
+describe("⚠️ security review LOW 4 — a retyped existing name resolves, not duplicates", () => {
+  it("'Player A' typed as new when Player A already exists resolves to them, not a second row", async () => {
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { player, gamePlayer } = await import("@/lib/db/schema");
+
+    const existingId = (await createPlayers(["Player A"]))["Player A"]!;
+
+    // Every column typed as "someone new" — including Player A's, by name.
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const result = await saveGame(draftId, state);
+
+    const rows = await getDb().select().from(player).where(eq(player.displayName, "Player A"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.id).toBe(existingId);
+
+    const gp = (
+      await getDb()
+        .select()
+        .from(gamePlayer)
+        .where(and(eq(gamePlayer.gameId, result.gameId), eq(gamePlayer.playerId, existingId)))
+    )[0]!;
+    expect(gp.sheetName).toBe("Player A");
+  });
+
+  it("⚠️ picking an existing player AND typing their name as new in another column is duplicate_player", async () => {
+    const { saveGame, InvalidGridError } = await import("@/lib/games/save");
+    const playerIds = await createPlayers(["Player A"]);
+
+    const { draftId, state } = await setUpDraft(SHEET_01, {
+      playerIds: { "Player A": playerIds["Player A"]! },
+    });
+    // Column 0 (Player A) picked the existing player directly; make column 1
+    // (Player B) a pending name that resolves to the SAME existing player.
+    state.columns[1]!.playerId = null;
+    state.columns[1]!.newPlayerName = "Player A";
+
+    expect.assertions(2);
+    try {
+      await saveGame(draftId, state);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InvalidGridError);
+      expect((error as InstanceType<typeof InvalidGridError>).validation.issues[0]?.code).toBe(
+        "duplicate_player",
+      );
+    }
+  });
+
+  it("case- and whitespace-insensitive: '  player a ' resolves to 'Player A'", async () => {
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { player } = await import("@/lib/db/schema");
+
+    const existingId = (await createPlayers(["Player A"]))["Player A"]!;
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    state.columns[0]!.newPlayerName = "  player a ";
+
+    await saveGame(draftId, state);
+
+    const rows = await getDb().select().from(player).where(eq(player.nameKey, "player a"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.id).toBe(existingId);
+  });
+});

@@ -16,6 +16,7 @@ import { hasSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db";
 import { photo } from "@/lib/db/schema";
 import { apiError, serverError } from "@/lib/http/errors";
+import { parseUuidParam } from "@/lib/http/params";
 import { getPhotoStorage } from "@/lib/photos/storage";
 import type { PhotoVariant } from "@/lib/photos/types";
 
@@ -33,7 +34,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     return apiError("unauthorised", "You need the password for this.");
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseUuidParam(rawId);
+  if (!id) return apiError("bad_request", "That id isn't valid.");
+
   const variant = parseVariant(new URL(request.url).searchParams.get("variant"));
   if (!variant) {
     return apiError("bad_request", "variant must be 'original' or 'model'.");
