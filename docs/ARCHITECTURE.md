@@ -196,7 +196,7 @@ tweak, it is a shift in where the guarantee lives, and the review screen has to 
 | Photo storage | S3, private bucket, versioned, presigned URLs | Permanent, cheap, direct browser upload |
 | Vision | Anthropic Messages API, `claude-opus-5` | Founder decision |
 | Auth | One shared password → HMAC-signed session cookie | Founder decision |
-| Hosting | AWS Lambda + CloudFront + S3, deployed by **SST v3** | Scale-to-zero, one `sst deploy`, fits the existing OIDC CI |
+| Hosting | AWS Lambda + CloudFront + S3, deployed by **SST v4** (4.17) | Scale-to-zero, one `sst deploy`, fits the existing OIDC CI |
 | Region | **ap-southeast-2 (Sydney)** | Founder and players are in Australia — Sydney is the nearest region; one region, prod only. ⚠️ The CloudFront certificate is still issued in `us-east-1` |
 | Domain | **`fivecrowns.ribenajuice.xyz`** | Founder owns the apex. DNS is managed in **Lightsail**, so no Route 53 zone and **no AWS DNS cost at all** |
 | Secrets | SST Secrets → SSM Parameter Store (SecureString) | Free, never in git, injected at cold start |
@@ -561,8 +561,10 @@ cut it off. Two cheap mitigations:
 - `/api/transcribe` is a **streaming route handler**: it emits a progress event immediately, so
   time-to-first-byte is milliseconds and the origin timeout never comes into play. The phone shows
   a real progress state instead of a spinner and a hope.
-- CloudFront's origin read timeout is raised to 60 s regardless, Lambda timeout to 120 s, memory
-  1024 MB.
+- Lambda timeout 120 s, memory 1024 MB. In SST v4 the Lambda timeout also sets CloudFront's origin
+  read timeout (applied per request, up to 120 s). ⚠️ CloudFront's default per-origin response
+  timeout quota is 60 s: the first deploy must check a real transcription, and if it is cut off at
+  60 s, request the free quota increase to 120 s or lower the timeout to 60 s.
 
 *Revisit-if*: if the reading spike shows transcription regularly exceeding ~45 s, move to an
 asynchronous Lambda invoke plus client polling. Not before — that is a moving part we do not need.
@@ -748,7 +750,7 @@ of close-up photos to save space.**
 | The wrong column gets photographed | The close-up prompt asks the model to read the name it sees **without being told what to expect**; the server compares afterwards and warns "this looks like Player B's column, not Player D's". Non-blocking — the founder may know better |
 | A close-up returns fewer than 11 values | Usually the bottom row was cropped off. Flagged as an incomplete column, save blocked, previous reading one tap away |
 | Daily transcription cap hit | Vision call refused with a plain message. Nothing else is blocked; manual entry still works. Sheet and close-up budgets are counted separately so re-shooting several columns cannot exhaust the day |
-| Turso unreachable | The app is down. The nightly S3 dump means the *record* is never at risk, only availability |
+| Turso unreachable | The app is down. Availability is the risk; the record rests on Turso's own durability plus the founder's manual dumps (`npm run db:backup`) and admin-panel downloads. Games since the last manual dump could be lost — accepted by the founder (ADR 2026-09-11) |
 | S3 PUT fails mid-upload | Nothing recorded but a pending `photo` row. Retake or retry |
 
 ### Flow 3 — Browsing and stats
@@ -788,7 +790,7 @@ must be impossible by construction, not by remembering to avoid it.
 
 > **No secret is ever stored in the database.** The API key, both password hashes and the cookie
 > signing secret live in **SSM Parameter Store as SecureStrings**. There is no table they could be
-> in, so no dump — the on-demand download *or* the nightly backup — can contain one, however the
+> in, so no dump — the on-demand download *or* a manual database backup — can contain one, however the
 > export is written.
 
 **Reconciling this with `CLAUDE.md`'s "environment variables only, never in code".** This looks
@@ -907,7 +909,7 @@ reconstruction needs this file *plus* the contents of the `five-crowns-photos` b
 (`aws s3 sync s3://five-crowns-photos ./photos`). This is stated here, on screen in the panel, and
 in the README of the download itself, because it is precisely the kind of thing that gets
 discovered at the moment it matters most. The photos are separately protected by bucket versioning
-and no delete lifecycle; the database is separately protected by the nightly dump.
+and no delete lifecycle; the database by this download and the manual `npm run db:backup` dump.
 
 **Format: a ZIP of CSVs** — `players.csv`, `games.csv`, `rosters.csv`, `roster_members.csv`,
 `round_scores.csv`, plus a denormalised `games-wide.csv` (one row per player per game, the eleven
@@ -928,11 +930,39 @@ the year 2100.
   bill. SecureStrings use the AWS-managed `aws/ssm` key, which carries **no monthly charge** —
   ⚠️ a customer-managed key would be $1/month, so we deliberately do not create one. KMS decrypt
   requests are $0.03 per 10,000; with a 60-second cache and this traffic, under a cent a month.
-- The **Lambda execution role** (created in `sst.config.ts`) needs `ssm:GetParameter*`,
-  `ssm:GetParametersByPath` and `ssm:PutParameter` scoped to `/five-crowns/prod/*`, plus
-  `kms:Encrypt`, `kms:Decrypt`, `kms:DescribeKey` and `kms:GenerateDataKey` on the `aws/ssm` key.
-- The **OIDC deploy role** in `infra/github-oidc.yaml` has been extended with the matching KMS and
-  SSM actions. ⚠️ **`scripts/aws-bootstrap.sh` must be re-run** for those to take effect.
+- The **web Lambda's role** (`sst.config.ts`, written out by hand, never granted through SST
+  `link`) may:
+  - `ssm:GetParameter`/`ssm:GetParameters` and `ssm:PutParameter` on exactly the five app-owned
+    parameters under `/five-crowns/prod/`: `group-password-hash`, `admin-password-hash`,
+    `group-session-epoch`, `admin-session-epoch` and `anthropic-api-key`. Nothing else under the
+    prefix. The session secret is injected at deploy. The domain and budget parameters are read
+    only by `scripts/deploy.sh`.
+  - `s3:GetObject`/`s3:PutObject` on `five-crowns-photos/*`. ⚠️ **Never `s3:DeleteObject*` and
+    no bucket-level action** (`PutBucket*`, `PutLifecycle*`, `PutEncryption*`, versioning,
+    public-access block). The internet-facing code cannot undo the versioning that makes a deletion
+    recoverable. ⚠️ SST's `link` on a Bucket grants `s3:*` on the bucket and every object, so the
+    photo bucket is **never linked**.
+  - **No KMS statement.** The AWS-managed `aws/ssm` key's own policy lets any principal in the
+    account use it *through Parameter Store only* (`kms:ViaService =
+    ssm.ap-southeast-2.amazonaws.com`, `kms:CallerAccount`). This was verified read-only on
+    2026-09-11. An IAM grant would only add a way to call KMS directly.
+- ⚠️ **The server function cannot be called directly.** `protection: "oac-with-edge-signing"` in
+  `sst.config.ts` has three effects:
+  - The Lambda function URL requires IAM auth.
+  - Only this CloudFront distribution may invoke it.
+  - SST's small Lambda@Edge function signs request bodies, so browser POSTs work.
+
+  This is what makes `CloudFront-Viewer-Address` trustworthy for the login rate limiter.
+  CloudFront adds that header through SST's `Managed-AllViewerExceptHostHeader` origin request
+  policy, and nothing can reach the function except through CloudFront. ⚠️ Request bodies through
+  the app are capped at **1 MB**, so photos must go to S3 by presigned URL, never through a route
+  handler. See the post-deploy checks under Deployment.
+- The **OIDC deploy role** (`infra/github-oidc.yaml`) trusts exactly
+  `repo:ribenajuice/five-crowns:environment:production`. The `production` GitHub environment
+  accepts deploys from `main` only; `scripts/aws-bootstrap.sh` sets that up. For a job that names
+  an environment, GitHub puts the environment, not the branch, in the token. So the environment's
+  branch rule is what stops a feature branch deploying. ⚠️ **Re-run `scripts/aws-bootstrap.sh`**
+  whenever `infra/github-oidc.yaml` changes.
 
 ### Milestone constraint
 
@@ -945,20 +975,37 @@ skeleton and the key form are M1 scope.
 
 ## Backups
 
-The record is meant to be permanent, and the database is the one part AWS does not host.
+**Database backups are manual — by founder decision** (ADR 2026-09-11: "leave the backups as
+manual, this isnt sensitive data, its just a pet project. if something gets lost, its not the end
+of the world"). There is no scheduled job, and nothing is written to S3.
 
-- A scheduled Lambda (EventBridge, nightly) writes a SQL dump of the whole database to
-  `s3://five-crowns-photos/backups/YYYY-MM-DD.sql`, with a 90-day lifecycle rule.
-- At this volume the dump is a few hundred kilobytes. The cost is a rounding error.
-- The photos bucket has **versioning on** and **no delete lifecycle**, so an accidental or
-  malicious deletion is recoverable — which matters when everyone shares one password and the PRD
-  now allows anyone to delete a saved game.
-- ⚠️ **The nightly dump and the admin panel's download are both secret-free by construction**, not
-  by filtering: no secret is ever written to the database at all. See the admin panel above.
+- **📋 To take a backup** (a few seconds; no AWS changes, nothing uploaded):
 
-Losing Turso entirely therefore costs at most one day of games and an afternoon restoring into a
-fresh libSQL database. Cheap insurance on the one dependency we do not own — and the founder holds
-their own copy of the numbers whenever they want it, from the admin panel.
+  ```bash
+  npx sst shell --stage prod -- npm run db:backup     # production
+  npm run db:backup                                   # the local dev database
+  ```
+
+  It writes `five-crowns-YYYY-MM-DD.sql` into `backups/` in the repo folder (gitignored — the
+  file holds real names and the repo is public; set `BACKUP_DIR` to put it elsewhere) and prints
+  the path. It is a replayable SQL script of every table. Running it twice in a day replaces that
+  day's file. The Turso token is never printed.
+- **To restore**: replay the file into a fresh libSQL/Turso database (`turso db shell <db> <
+  five-crowns-YYYY-MM-DD.sql`, or `sqlite3 new.db < five-crowns-YYYY-MM-DD.sql` locally).
+- The admin panel's download (below) is the other copy of the numbers, taken whenever the founder
+  wants it.
+- The photos bucket has **versioning on**, **public access blocked** and **no delete lifecycle**,
+  so an accidental or malicious deletion is recoverable — which matters when everyone shares one
+  password and the PRD allows anyone to delete a saved game. The web app can read and write
+  objects but cannot delete a version or change any bucket setting (see Footprint and IAM).
+- ⚠️ **Every dump and the admin panel's download are secret-free by construction**, not by
+  filtering: no secret is ever written to the database at all. See the admin panel above.
+
+**What this accepts**: if Turso lost the database, games since the founder's last manual dump or
+download would be gone. The photos would not — they are in S3 — so the lost games could be
+re-entered from them. *Revisit-if*: the founder wants a guarantee, the group starts relying on the
+record for something that matters to them, or Turso's free tier changes terms. Re-adding a nightly
+job is a `Cron` in `sst.config.ts` around `dumpDatabase` — about A$0.00/month.
 
 ---
 
@@ -1111,13 +1158,12 @@ Assumed volume: **8 uploads/month**, ~4 MB of photos each, a few hundred page vi
 |---|---|---|
 | CloudFront | TLS, CDN, the single public origin | **$0.00** — 1 TB out + 10 M requests is an *always-free* tier; we use a rounding error of it |
 | Lambda — Next.js server (ARM64, 1024 MB) | Pages, API, the vision call | **$0.00** — 1 M requests + 400 k GB-s always-free. ~8 transcriptions × 40 s ≈ 320 GB-s/month |
-| Lambda — nightly backup | DB dump to S3 | **$0.00** |
-| S3 — `five-crowns-photos` (versioned) | Permanent sheet photos, column close-ups, DB backups | **<$0.01** — close-ups add roughly 50% to photo volume; ~0.6 GB after a year, ~6 GB after a decade (≈$0.14/mo then) |
+| S3 — `five-crowns-photos` (versioned) | Permanent sheet photos and column close-ups | **<$0.01** — close-ups add roughly 50% to photo volume; ~0.6 GB after a year, ~6 GB after a decade (≈$0.14/mo then) |
 | S3 — static assets + SST state | Build output, Pulumi state | **~$0.01** |
 | SSM Parameter Store (standard) | Secrets and runtime config | **$0.00** — standard parameters and their reads are free |
 | KMS (`aws/ssm` AWS-managed key) | SecureString encryption | **$0.00** — AWS-managed keys carry no monthly charge; decrypt requests are $0.03/10k and the 60 s cache keeps us under a cent. ⚠️ A customer-managed key would be $1/month, so we do not create one |
 | CloudWatch Logs (14-day retention) | Lambda logs | **$0.00** — far under the 5 GB free ingest |
-| EventBridge Scheduler | Nightly backup trigger | **$0.00** |
+| Lambda@Edge — request signer (us-east-1) | Lets CloudFront, and only CloudFront, call the server function | **<$0.01** — $0.60 per million requests; a few thousand a month. No free tier |
 | ACM certificate | TLS for a custom domain | **$0.00** |
 | AWS Budgets | One zero-spend alarm | **$0.00** — first two budgets free |
 | Route 53 | *Not used* | **$0.00** — DNS is managed in Lightsail, which the founder already runs. ⚠️ A hosted zone would have been $0.50/month, and would have been the only line billing while nobody used the app |
@@ -1146,7 +1192,7 @@ Outside AWS:
 - AWS accounts opened after mid-2025 are on the credit-based free plan rather than the old 12-month
   one. The *always-free* tiers above apply either way, so this design's cost is unchanged.
 - **Turso's free tier is a company's commercial decision, not a contract.** If it disappears, the
-  paid tier is $5/month and the nightly S3 dump means we walk away with the data intact.
+  paid tier is $5/month and the manual dumps and the admin-panel download mean we walk away with the data.
 - The only cost that can run away is **Anthropic**, and only via a leaked password. Capped twice:
   the daily transcription cap in the app, and a spend limit on the API key.
 - A zero-spend AWS Budget alarm is created, so any surprise arrives by email rather than by
@@ -1163,8 +1209,11 @@ One command, locally or in CI:
 ```
 
 It runs `sst deploy --stage prod` — which provisions or updates *everything* in the AWS table above
-from `sst.config.ts` — then applies database migrations through `sst shell`, so the migration
-runner gets the same secrets the app does. The custom domain is attached only when the two optional
+from `sst.config.ts`. It then applies database migrations through `sst shell` and
+`scripts/turso-env.mjs`, so the migration runner gets the same Turso credentials the app does and
+refuses to run against anything but the remote database. ⚠️ SST v4's `sst shell` exposes linked
+secrets only as `SST_RESOURCE_*`. Without that mapping, drizzle would quietly "migrate" a local
+file and report success. The custom domain is attached only when the two optional
 domain parameters are present, so the script behaves identically before and after the DNS runbook. GitHub Actions runs exactly this script, authenticating
 by OIDC. **No AWS keys are stored anywhere.**
 
@@ -1179,7 +1228,8 @@ themselves. So:
 - ⚠️ **SST must not attempt automatic DNS validation or record creation.** It cannot write to
   Lightsail DNS, and a config that silently waits on a validation record that will never appear is
   a miserable first deploy. The domain is configured with **`dns: false`** and an explicitly
-  supplied certificate ARN — the SST v3 idiom for "I manage DNS myself".
+  supplied certificate ARN — the SST v4 idiom for "I manage DNS myself" (unchanged from v3; SST
+  refuses `dns: false` without a `cert`).
 - ✅ **`fivecrowns` is a subdomain, so a plain CNAME to the CloudFront distribution is all it takes.**
   None of the apex/ALIAS complications apply — that is the reason this stays a two-record job
   instead of a project.
@@ -1209,19 +1259,41 @@ CloudFront will only accept a certificate from there. Open **Certificate Manager
 certificate → Request a public certificate**, enter `fivecrowns.ribenajuice.xyz`, and choose **DNS
 validation**. It will sit in state *Pending validation*.
 
-**Step 3 — Copy the validation record.** Open the certificate. AWS shows one CNAME record to create,
-looking like:
+**Step 3 — Find the two values ACM wants.** Open the certificate. Under **Domains** it shows a
+**CNAME name** and a **CNAME value**. Both are long and random-looking — that is correct. You need
+both, and ⚠️ **they go into two different boxes in Lightsail**. A worked example, with fake values
+(yours will differ):
 
-| Type | Name | Value |
+| ACM shows | Worked example (fake) |
+|---|---|
+| **CNAME name** | `_1a2b3c4d5e6f7a8b9c0d.fivecrowns.ribenajuice.xyz.` |
+| **CNAME value** | `_9f8e7d6c5b4a3f2e1d0c.abcdefghij.acm-validations.aws.` |
+
+**Step 4 — Add it in Lightsail.** Lightsail → **Domains & DNS** → `ribenajuice.xyz` → **DNS
+records** → **Add record** → type **CNAME**. Fill in the two boxes like this:
+
+| Lightsail box | What goes in it | Worked example (fake) |
 |---|---|---|
-| CNAME | `_a1b2c3d4e5f6.fivecrowns.ribenajuice.xyz` | `_9z8y7x6w.acm-validations.aws.` |
+| **Subdomain** | The ACM **CNAME name**, with **only** `.ribenajuice.xyz.` taken off the end. ⚠️ It **still ends in `.fivecrowns`**. | `_1a2b3c4d5e6f7a8b9c0d.fivecrowns` |
+| **Maps to** | The ACM **CNAME value** — the long one ending in `acm-validations.aws`. ⚠️ **Never** the domain name. (Drop the final dot if Lightsail rejects it.) | `_9f8e7d6c5b4a3f2e1d0c.abcdefghij.acm-validations.aws` |
 
-The long random-looking names are correct — copy them exactly, including the trailing dot on the
-value if Lightsail asks for one.
+Lightsail shows `.ribenajuice.xyz` after the Subdomain box, so the saved record should read
+`_1a2b3c4d5e6f7a8b9c0d.fivecrowns.ribenajuice.xyz` → `_9f8e7d6c5b4a3f2e1d0c.abcdefghij.acm-validations.aws`.
 
-**Step 4 — Add that record in Lightsail.** Lightsail → **Domains & DNS** → `ribenajuice.xyz` → **DNS
-records** → add a **CNAME** with the name and value from Step 3. Lightsail may want the name without
-the `.ribenajuice.xyz` on the end — if so, enter just the `_a1b2c3d4e5f6.fivecrowns` part.
+The two mistakes to avoid (both have happened):
+- **Subdomain without `.fivecrowns`** (`_1a2b3c4d5e6f7a8b9c0d`) puts the record at
+  `_1a2b….ribenajuice.xyz`, where ACM never looks.
+- **Maps to the domain** (`fivecrowns.ribenajuice.xyz`) gives ACM a record with the wrong answer.
+  The certificate never validates.
+
+**Check it**, a minute or two after saving, from any terminal (use *your* CNAME name):
+
+```bash
+dig +short _1a2b3c4d5e6f7a8b9c0d.fivecrowns.ribenajuice.xyz CNAME
+```
+
+It must print the `…acm-validations.aws.` value. **Nothing printed** means the Subdomain box is
+wrong (check `.fivecrowns` is there). **Anything else printed** means the Maps to box is wrong.
 
 **Step 5 — Wait for the certificate to be issued.** Usually **5–30 minutes**; occasionally longer.
 The ACM page changes from *Pending validation* to **Issued** on its own. ⚠️ **Nothing else will work
@@ -1243,11 +1315,15 @@ aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
 configured to answer for the custom domain. The deploy prints the CloudFront address again — you
 need it for the next step.
 
-**Step 8 — Point the domain at the app.** Back in Lightsail DNS, add one more record:
+**Step 8 — Point the domain at the app.** Back in Lightsail DNS, add one more **CNAME**:
 
-| Type | Name | Value |
+| Lightsail box | What goes in it | Worked example (fake) |
 |---|---|---|
-| CNAME | `fivecrowns` | `d1a2b3c4d5e6f7.cloudfront.net` |
+| **Subdomain** | `fivecrowns` — just that word | `fivecrowns` |
+| **Maps to** | The CloudFront address from Step 7 — no `https://`, no `/` | `d1a2b3c4d5e6f7.cloudfront.net` |
+
+**Check it**: `dig +short fivecrowns.ribenajuice.xyz CNAME` must print the `….cloudfront.net.`
+address.
 
 **Step 9 — Check it.** Give it 5–10 minutes, then open `https://fivecrowns.ribenajuice.xyz`. The
 padlock should be there with no warning. If the browser complains the certificate is wrong, Step 7
@@ -1259,15 +1335,66 @@ them puts everything back.
 
 ### One-time setup
 
-1. `./scripts/aws-bootstrap.sh` — creates the OIDC deploy role, sets the repo variables.
-2. `npx sst secret set …` for the two Turso secrets.
-3. Create the session secret and both password hashes in SSM — `scripts/deploy.sh` prints the exact
-   commands and refuses to deploy until they exist.
-4. Push to `main`. The app comes up on its CloudFront URL — ⚠️ **the custom domain is deliberately
-   not part of the first deploy**; see the runbook above, which can be done later.
-5. Open `/admin` and set the Claude API key.
+1. `./scripts/aws-bootstrap.sh` does three things:
+   - creates the OIDC deploy role;
+   - creates the `production` GitHub environment **restricted to deploys from `main`**;
+   - sets the repo variables last, because setting them is what switches deploys on.
 
-### ⚠️ Two things devops must get right
+   ⚠️ **The `main`-only rule is load-bearing.** The deploy role trusts the `production`
+   environment, not a branch. Without the rule, any branch whose workflow names `production` could
+   deploy. If it ever has to be set by hand: GitHub → **Settings → Environments → production →
+   Deployment branches and tags → Selected branches and tags → add `main`**, and nothing else.
+   Check it with
+   `gh api repos/ribenajuice/five-crowns/environments/production/deployment-branch-policies`,
+   which should list `main` only.
+2. `npx sst secret set …` for the two Turso secrets.
+3. Create the session secret and both password hashes in SSM. `scripts/deploy.sh` prints the exact
+   commands and refuses to deploy until they exist.
+4. Push to `main`. The app comes up on its CloudFront URL. ⚠️ **The custom domain is deliberately
+   not part of the first deploy**; see the runbook above, which can be done later.
+5. Run the **post-deploy security checks** below before sharing the URL.
+6. Open `/admin` and set the Claude API key.
+
+### ✅ Post-deploy security checks
+
+Run these after the first deploy, and after any change to the `Web` component in `sst.config.ts`.
+`APP` is the CloudFront URL (or the custom domain).
+
+**1 — The server function refuses direct calls.** Only CloudFront may call it; that is what makes
+the login limiter's `CloudFront-Viewer-Address` trustworthy.
+
+```bash
+FN=$(aws lambda list-functions --region ap-southeast-2 \
+  --query "Functions[?contains(FunctionName, 'WebServer')].FunctionName | [0]" --output text)
+aws lambda get-function-url-config --region ap-southeast-2 --function-name "$FN" \
+  --query '[AuthType, FunctionUrl]' --output text        # must say AWS_IAM
+curl -s -o /dev/null -w '%{http_code}\n' "$(aws lambda get-function-url-config \
+  --region ap-southeast-2 --function-name "$FN" --query FunctionUrl --output text)"   # must print 403
+curl -s -o /dev/null -w '%{http_code}\n' "$APP/login"   # through CloudFront: must print 200
+```
+
+**2 — A forged `CloudFront-Viewer-Address` gets no fresh rate-limit bucket.** ⚠️ This locks *your*
+connection out of the group login for ten minutes. Run it before telling the group, or from a
+phone hotspot.
+
+```bash
+# Eleven wrong passwords from one machine: ten 401s, then 429.
+for i in $(seq 1 11); do
+  curl -s -o /dev/null -w '%{http_code} ' -X POST "$APP/api/login" \
+    -H 'content-type: application/json' -d '{"password":"deliberately-wrong"}'
+done; echo
+
+# The same machine, now claiming to be someone else. Must STILL be 429.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$APP/api/login" \
+  -H 'content-type: application/json' -H 'CloudFront-Viewer-Address: 198.51.100.7:4444' \
+  -d '{"password":"deliberately-wrong"}'
+```
+
+A **401** on the last line means the forged header was believed. Stop and fix it before anyone
+else uses the app. The same applies if every request in the loop returns 429 from the first one:
+that would mean the header is not arriving and everyone shares one bucket.
+
+### ⚠️ Things devops must get right
 
 1. **The SST app name must be `five-crowns`.** The OIDC role in `infra/github-oidc.yaml` scopes IAM
    permissions to `arn:aws:iam::…:role/five-crowns-*` (templated from the repository name). SST
@@ -1278,6 +1405,9 @@ them puts everything back.
    `iam:UpdateAssumeRolePolicy`, `iam:UntagRole`, plus `ssm:AddTagsToResource` and
    `ssm:DeleteParameter`). These have been added to `infra/github-oidc.yaml`; re-running
    `aws-bootstrap.sh` applies them.
+3. **The first deploy creates Lambda's replication service-linked role**, which the Lambda@Edge
+   request signer needs and this account does not have yet. The deploy role may create exactly
+   that role (`AWSServiceRoleForLambdaReplicator`) and nothing else.
 
 ---
 

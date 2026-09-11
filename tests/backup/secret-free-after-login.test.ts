@@ -14,9 +14,12 @@
  * knows about rather than the hand-kept `ALL_TABLES` list, so a migration that
  * adds a secret-bearing column fails here.
  *
- * No AWS, no network: S3 and `next/headers` are stubbed. A file-backed database
- * because `runBackup` opens its own connection, and a second `:memory:`
- * connection would be a different, empty database.
+ * No AWS, no network: `next/headers` is stubbed. A file-backed database
+ * because the route handlers open their own connection, and a second
+ * `:memory:` connection would be a different, empty database.
+ *
+ * The dump is `dumpDatabase` — exactly what `npm run db:backup` writes. (It
+ * was the nightly Lambda until backups became manual; ADR 2026-09-11.)
  */
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -26,20 +29,6 @@ import { fileURLToPath } from "node:url";
 
 import { createClient, type Client } from "@libsql/client";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-
-const puts: { Key?: string; Body?: string }[] = [];
-
-vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: class {
-    async send(command: { input: { Key?: string; Body?: string } }) {
-      puts.push(command.input);
-      return {};
-    }
-  },
-  PutObjectCommand: class {
-    constructor(public input: { Key?: string; Body?: string }) {}
-  },
-}));
 
 const minted: string[] = [];
 /**
@@ -120,10 +109,8 @@ beforeAll(async () => {
   expect((await admin(post("/api/admin/login", ADMIN_PASSWORD, "203.0.113.2"))).status).toBe(200);
   expect(minted).toHaveLength(2);
 
-  const { runBackup } = await import("@/lib/backup/handler");
-  await runBackup(new Date("2026-09-11T14:15:00Z"));
-  expect(puts).toHaveLength(1);
-  dump = puts[0]!.Body ?? "";
+  const { dumpDatabase } = await import("@/lib/backup/dump");
+  dump = (await dumpDatabase(client, new Date("2026-09-11T14:15:00Z"))).sql;
 });
 
 afterAll(async () => {

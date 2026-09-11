@@ -47,9 +47,16 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-              StringLike:
-                # Only this repo, and only pushes to main or manual dispatches
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${RepositoryName}:*
+                # Exactly one subject: a job in this repo that declares
+                # `environment: production` (.github/workflows/deploy.yml).
+                # No other branch, pull request, fork or repo can assume this.
+                #
+                # For such a job GitHub puts the ENVIRONMENT in the subject,
+                # not the branch - so the branch gate is the production
+                # environment's deployment-branch policy (main only), which
+                # scripts/aws-bootstrap.sh sets. Without that policy, any
+                # branch whose workflow names the environment would match.
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${RepositoryName}:environment:production
       Policies:
         - PolicyName: serverless-deploy
           PolicyDocument:
@@ -109,6 +116,18 @@ Resources:
                   - iam:UpdateAssumeRolePolicy
                   - iam:UntagRole
                 Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${RepositoryName}-*
+              # The server function sits behind CloudFront OAC with a
+              # Lambda@Edge request signer (sst.config.ts `protection`).
+              # Attaching an edge function needs Lambda's replication
+              # service-linked role, which this account does not have yet.
+              # Scoped to exactly that role.
+              - Sid: LambdaEdgeReplicator
+                Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/replicator.lambda.amazonaws.com/AWSServiceRoleForLambdaReplicator
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName: replicator.lambda.amazonaws.com
 
 Outputs:
   DeployRoleArn:

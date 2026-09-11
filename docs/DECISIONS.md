@@ -20,6 +20,96 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — Least-privilege runtime grants, a server function only CloudFront can call, and a deploy role only `main` can reach
+
+- **Context**: the pre-ship security review of Milestone 1 Stage 1, before anything is deployed,
+  found four infrastructure problems:
+  (1) the photo bucket was **linked** to the web app and the backup job, and SST's Bucket link
+  grants `s3:*` on the bucket and every object. That let the internet-facing Lambda delete old
+  versions, suspend versioning, and rewrite the lifecycle rules and the public-access block, which
+  undoes the protection criterion 83 relies on;
+  (2) the GitHub OIDC deploy role trusted `repo:ribenajuice/five-crowns:*`, so a workflow on any
+  branch could assume the production role;
+  (3) the web Lambda could `ssm:PutParameter` anything under `/five-crowns/prod/*`, the session
+  secret included, and held unconditioned KMS actions on `*`;
+  (4) the login rate limiter trusts only `CloudFront-Viewer-Address`, but SST's default leaves the
+  server's Lambda function URL public, so anyone could call it directly with a forged header and
+  get a fresh bucket for every guess.
+  Checking against the installed **SST 4.17.1** (the docs said v3) also found that v4's `Nextjs`
+  takes `permissions` at the top level. The old `server.permissions` grants would have been
+  **silently dropped**.
+- **Decision**:
+  - **S3**: the bucket is never linked. The web app gets `s3:GetObject` and `s3:PutObject` on
+    `five-crowns-photos/*` only. It gets no delete action and no bucket-level action. The bucket
+    keeps versioning on, public access blocked, `forceDestroy: false`, and no expiry rule. (The
+    only lifecycle rule left aborts abandoned multipart uploads. It never expires an object or a
+    version.)
+  - **SSM**: reads and writes are limited to exactly the five app-owned parameters
+    (`group-password-hash`, `admin-password-hash`, `group-session-epoch`,
+    `admin-session-epoch`, `anthropic-api-key`). The session secret is injected at deploy. The
+    domain and budget parameters are read only by `scripts/deploy.sh`.
+  - **KMS: no statement at all.** The AWS-managed `aws/ssm` key's own policy already allows any
+    principal in the account to use it *through Parameter Store only* (`kms:ViaService =
+    ssm.ap-southeast-2.amazonaws.com` plus `kms:CallerAccount`). This was read from the live key
+    on 2026-09-11. An IAM grant would only add a way to call KMS directly.
+  - **Server function**: `protection: "oac-with-edge-signing"`. The function URL requires IAM
+    auth, and only this CloudFront distribution may invoke it. SST's Lambda@Edge function adds the
+    body hash that Origin Access Control needs on POST, PUT and PATCH. SST uses the
+    `Managed-AllViewerExceptHostHeader` origin request policy (verified in the 4.17.1 source),
+    which forwards CloudFront's viewer-location headers, `CloudFront-Viewer-Address` among them.
+    `docs/ARCHITECTURE.md` has a post-deploy check proving a forged header gets nothing.
+  - **Deploy role**: trusts exactly `repo:ribenajuice/five-crowns:environment:production` with
+    `StringEquals`. The `production` GitHub environment accepts deploys from `main` only
+    (`scripts/aws-bootstrap.sh`). `deploy.yml` also refuses any other ref at job level. For a job
+    that names an environment, GitHub puts the environment, not the branch, in the token. So the
+    environment's branch rule is the real gate, and the other two are belt and braces.
+- **Alternatives**: (a) *Keep `link` and add Deny statements*. Deny lists over `s3:*` are brittle,
+  and the link is what grants the access. Rejected. (b) *Subject `ref:refs/heads/main`*. This
+  never matches: a job with an environment sends `environment:production`. (c) *Plain
+  `protection: "oac"`*. Every POST would need a client-computed `x-amz-content-sha256`, which
+  browsers never send, so logins would break. Rejected. (d) *A secret header injected by
+  CloudFront and checked in middleware*. That is a second secret to create and rotate. It depends
+  on SST's per-request origin rewrite keeping custom origin headers, and one middleware slip would
+  silently reopen the hole. Kept as the fallback if edge signing ever has to go. (e) *KMS with a
+  `ViaService` condition*. Harmless but redundant with the key policy, so it was dropped.
+- **Consequences**:
+  - Lambda@Edge costs under A$0.01/month (US$0.60 per million requests, no free tier) and adds a
+    few milliseconds to each POST.
+  - Request bodies through the app are capped at **1 MB**. Photos must go to S3 by presigned URL,
+    never through a route handler.
+  - Removing the stage takes 5–10 minutes while edge replicas are deleted.
+  - The first deploy creates Lambda's replication service-linked role. The deploy role may create
+    exactly that role and nothing else.
+  - Any later feature needing another AWS action must add it by hand in `sst.config.ts`. That is
+    the point.
+  - *Revisit-if*: a feature needs large bodies through the app (use presigned S3, don't loosen
+    this), GitHub changes the OIDC subject format, or edge signing causes a production problem.
+    In that case switch to (d); don't switch back to `"none"`.
+
+## 2026-09-11 — Database backups are manual
+
+- **Context**: the architecture had a nightly Lambda writing a SQL dump to
+  `s3://five-crowns-photos/backups/`, with a 90-day expiry rule. The founder reviewed it and
+  decided: *"leave the backups as manual, this isnt sensitive data, its just a pet project. if
+  something gets lost, its not the end of the world."*
+- **Decision**: no scheduled backup. `npm run db:backup` (`scripts/db-backup.mjs`, reusing
+  `lib/backup/dump.ts`) writes `five-crowns-YYYY-MM-DD.sql` to the gitignored `backups/` folder,
+  or to `$BACKUP_DIR`, and prints the path. For production, run it under `npx sst shell --stage
+  prod`. It needs no S3 and makes no AWS changes. The nightly Lambda, its schedule, its S3 grant
+  and the `backups/` expiry rule are removed. The admin panel's download stays.
+- **Alternatives**: (a) *Nightly dump kept 90 days* (the previous design). It cost about A$0.00,
+  but it meant a scheduled Lambda, an IAM grant into the photo bucket, and an expiry rule on a
+  bucket that is otherwise "no delete lifecycle". The founder judged those moving parts not worth
+  it for this data. (b) *Nightly dump kept forever*. It needs the same moving parts, plus a
+  storage line that grows forever. Rejected for the same reason.
+- **Consequences**:
+  - If Turso lost the database, games since the last manual dump or download would be lost.
+  - The photos are unaffected. They stay in the versioned bucket, and lost games can be
+    re-entered from them.
+  - The photo bucket now has no expiry rule at all.
+  - *Revisit-if*: the founder wants a guarantee, the group starts relying on the record, or
+    Turso's free tier changes. Re-adding the nightly job is a `Cron` around `dumpDatabase`.
+
 ## 2026-09-11 — Fraunces loaded through next/font/google, self-hosted at build
 
 - **Context**: `docs/DESIGN-SYSTEM.md` names one webfont, Fraunces, "self-hosted and subset", but

@@ -9,6 +9,14 @@
  * `eslint.config.mjs`; reviewed by hand instead. Run `npx sst install` once
  * locally and your editor will type it properly.
  *
+ * **SST v4** (`package.json` pins `sst` ^4.17.1, Pulumi AWS provider v7). Two v4
+ * facts this file depends on, checked against the v4.17.1 source:
+ *  - `Nextjs` takes `permissions` at the **top level**. There is no
+ *    `server.permissions`; a grant put there is silently ignored.
+ *  - CloudFront's origin read timeout is derived from `server.timeout`. There
+ *    is no separate knob, and transforming `cdn.origins` only reaches a
+ *    placeholder origin.
+ *
  * ⚠️ **The app name must stay `five-crowns`.** `infra/github-oidc.yaml` scopes
  * IAM to `role/five-crowns-*`, and SST names the roles it creates after the app.
  * Any other name fails with an IAM denial that reads like something else.
@@ -27,8 +35,20 @@ const REGION = "ap-southeast-2";
 /** The permanent photo bucket, named in docs/ARCHITECTURE.md § Backups. */
 const PHOTOS_BUCKET = "five-crowns-photos";
 
-/** How long a nightly dump is kept. Photos themselves are kept forever. */
-const BACKUP_RETENTION_DAYS = 90;
+/**
+ * The parameters the **app** owns — `lib/config/parameters.ts` and the table
+ * in `lib/config/README.md`. These five are the only parameters the web
+ * Lambda may read or write. The session secret is not among them: it is read
+ * at deploy time and injected as `SESSION_SECRET`, so the running app never
+ * needs Parameter Store access to it.
+ */
+const APP_PARAMETERS = [
+  "group-password-hash",
+  "admin-password-hash",
+  "group-session-epoch",
+  "admin-session-epoch",
+  "anthropic-api-key",
+];
 
 export default $config({
   app(input) {
@@ -48,43 +68,46 @@ export default $config({
   async run() {
     const stage = $app.stage;
     const parameterPrefix = `/${APP}/${stage}`;
+    const accountId = aws.getCallerIdentityOutput({}).accountId;
 
     /* ------------------------------------------------------------ storage */
 
     /**
-     * Photos, column close-ups and the nightly database dumps.
+     * Photos and column close-ups. Nothing else lives here: database backups
+     * are manual and local (`npm run db:backup`; ADR 2026-09-11).
      *
-     * ⚠️ **Versioning on, and no delete lifecycle on the photos.** Everyone
-     * shares one password and the PRD lets anyone delete a saved game, so an
-     * accidental or malicious deletion has to be recoverable. The only
-     * expiry rule below is scoped to the `backups/` prefix.
+     * ⚠️ **Versioning on, public access blocked, and no delete lifecycle.**
+     * Everyone shares one password and the PRD lets anyone delete a saved
+     * game, so an accidental or malicious deletion has to be recoverable.
+     * No `access` option means private: SST's public-access block sets all
+     * four blocks. Photos are served by 5-minute presigned URL only, so a
+     * copied image link is not a permanent hole in the gate.
+     *
+     * ⚠️ **Never `link` this bucket.** SST's Bucket link grants `s3:*` on the
+     * bucket and every object — including deleting old versions, suspending
+     * versioning, and rewriting the lifecycle rules and the public-access
+     * block. Grants are written out by hand in `permissions` below.
      */
     const photos = new sst.aws.Bucket("Photos", {
       versioning: true,
-      // Private. Access is by 5-minute presigned URL only, so a copied image
-      // link is not a permanent hole in the gate.
-      access: undefined,
       transform: {
         bucket: {
           bucket: PHOTOS_BUCKET,
+          // SST defaults to true. A bucket holding the only copy of the photos
+          // must never be emptied as a side effect of an infrastructure change.
+          forceDestroy: false,
         },
       },
     });
 
-    new aws.s3.BucketLifecycleConfigurationV2("PhotosLifecycle", {
+    // Housekeeping only. Abandoned multipart uploads are not objects: they are
+    // invisible in the console while still costing storage. This rule never
+    // expires an object or a version — it is not a delete lifecycle.
+    // (Pulumi AWS v7 name: the `…V2` resources are deprecated.)
+    new aws.s3.BucketLifecycleConfiguration("PhotosLifecycle", {
       bucket: photos.name,
       rules: [
         {
-          id: "expire-database-backups",
-          status: "Enabled",
-          // ⚠️ Scoped to backups/ ONLY. Nothing here may ever expire a photo.
-          filter: { prefix: "backups/" },
-          expiration: { days: BACKUP_RETENTION_DAYS },
-          noncurrentVersionExpiration: { noncurrentDays: BACKUP_RETENTION_DAYS },
-        },
-        {
-          // Housekeeping only: abandoned multipart uploads are not objects and
-          // are invisible in the console while still costing storage.
           id: "abort-incomplete-uploads",
           status: "Enabled",
           filter: {},
@@ -116,37 +139,42 @@ export default $config({
     }).value;
 
     /**
-     * The parameters the **app** owns — the two password hashes, the two
-     * session epochs and the Anthropic API key — are deliberately *not*
-     * declared here. They are written by the founder from the admin panel or by
-     * hand during setup, and a deploy that could set them would reintroduce the
-     * first-run land-grab the design exists to avoid.
+     * The app-owned parameters are deliberately *not* declared here. They are
+     * written by the founder from the admin panel or by hand during setup, and
+     * a deploy that could set them would reintroduce the first-run land-grab
+     * the design exists to avoid.
      */
-    const appParameterArn = $interpolate`arn:aws:ssm:${REGION}:${aws.getCallerIdentityOutput({}).accountId}:parameter${parameterPrefix}/*`;
+    const appParameterArns = APP_PARAMETERS.map(
+      (name) =>
+        $interpolate`arn:aws:ssm:${REGION}:${accountId}:parameter${parameterPrefix}/${name}`,
+    );
 
-    const parameterAccess = [
+    /**
+     * Everything the internet-facing Lambda may do, and nothing else.
+     *
+     * ⚠️ No KMS statement, on purpose. SecureStrings use the AWS-managed
+     * `aws/ssm` key, whose key policy already allows any principal in this
+     * account to use it *through Parameter Store only* (`kms:ViaService` +
+     * `kms:CallerAccount`). An IAM grant adds nothing but a way to call KMS
+     * directly. ⚠️ A customer-managed key would be $1/month, so we deliberately
+     * do not create one.
+     */
+    const webPermissions = [
       {
-        actions: [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath",
-          "ssm:PutParameter",
-        ],
-        resources: [appParameterArn],
+        actions: ["ssm:GetParameter", "ssm:GetParameters"],
+        resources: appParameterArns,
       },
       {
-        // SecureStrings use the AWS-managed aws/ssm key. ⚠️ A customer-managed
-        // key would be $1/month, so we deliberately do not create one.
-        actions: [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:DescribeKey",
-          "kms:GenerateDataKey",
-        ],
-        resources: ["*"],
-        // Scoped by the service the request came through rather than by key
-        // ARN, which is not knowable for an AWS-managed key at deploy time.
-        // (Pulumi passes conditions through unchanged.)
+        // Rotating the API key and passwords, bumping session epochs.
+        actions: ["ssm:PutParameter"],
+        resources: appParameterArns,
+      },
+      {
+        // Presigned upload and view URLs. ⚠️ Never s3:DeleteObject*, never
+        // s3:PutBucket* / s3:PutLifecycle* / s3:PutEncryption*: the Lambda
+        // cannot undo the versioning that makes a deletion recoverable.
+        actions: ["s3:GetObject", "s3:PutObject"],
+        resources: [$interpolate`${photos.arn}/*`],
       },
     ];
 
@@ -157,10 +185,11 @@ export default $config({
      * the first deploy is never blocked on DNS and a mistyped record can never
      * take the app down — the CloudFront URL keeps working alongside it.
      *
-     * ⚠️ `dns: false` on purpose. DNS for ribenajuice.xyz is managed in
-     * Lightsail, and no Route 53 hosted zone is created: that is the difference
-     * between $0.50/month forever and $0.00, and it is the last line in the
-     * design that would bill while nobody is using the app.
+     * ⚠️ `dns: false` on purpose (valid in v4: SST then requires `cert`). DNS
+     * for ribenajuice.xyz is managed in Lightsail, and no Route 53 hosted zone
+     * is created: that is the difference between $0.50/month forever and
+     * $0.00, and it is the last line in the design that would bill while
+     * nobody is using the app.
      * ⚠️ The certificate must be issued in **us-east-1**, whatever region the
      * app runs in. CloudFront accepts nothing else.
      */
@@ -172,7 +201,29 @@ export default $config({
         : undefined;
 
     const web = new sst.aws.Nextjs("Web", {
-      link: [photos, tursoUrl, tursoToken],
+      // Secrets only — linking a Secret grants no IAM. ⚠️ Not `photos`: see
+      // the bucket above.
+      link: [tursoUrl, tursoToken],
+      // ⚠️ Top level in SST v4. Under `server` this would be silently dropped.
+      permissions: webPermissions,
+      /**
+       * ⚠️ The server function cannot be called except through CloudFront.
+       * SST's default ("none") leaves its Lambda function URL public, and the
+       * login rate limiter trusts `CloudFront-Viewer-Address` — a header anyone
+       * could forge by calling the function URL directly.
+       *
+       * With this mode (checked against the SST 4.17.1 source) the function URL
+       * requires IAM auth, only this distribution may invoke it (CloudFront
+       * Origin Access Control), and SST's small Lambda@Edge function adds the
+       * `x-amz-content-sha256` header OAC needs on POST/PUT/PATCH — which
+       * browsers never send, so plain "oac" would break every login.
+       *
+       * Costs: <A$0.01/month (US$0.60 per million requests, no free tier);
+       * request bodies through the app are capped at 1 MB (photos go to S3 by
+       * presigned URL, never through a route handler); removing the stage
+       * takes 5–10 minutes while the edge replicas are deleted.
+       */
+      protection: "oac-with-edge-signing",
       ...(domain ? { domain } : {}),
       environment: {
         CONFIG_SOURCE: "ssm",
@@ -188,69 +239,17 @@ export default $config({
       server: {
         architecture: "arm64",
         // A vision call with adaptive thinking over a photograph takes tens of
-        // seconds. 120 s of Lambda, 60 s of CloudFront origin read timeout.
+        // seconds, and /api/transcribe streams a progress event immediately.
+        //
+        // In SST v4 this one value is both the Lambda timeout and CloudFront's
+        // origin read timeout (set per request by SST's CloudFront Function via
+        // updateRequestOrigin, which accepts up to 120 s).
+        // ⚠️ UNVERIFIED until the first deploy: CloudFront's default per-origin
+        // response-timeout quota is 60 s. Check a real transcription on the
+        // first deploy; if it is cut off at 60 s, request the (free) quota
+        // increase to 120 s, or lower this to "60 seconds".
         timeout: "120 seconds",
         memory: "1024 MB",
-        permissions: parameterAccess,
-      },
-      transform: {
-        // ⚠️ CloudFront's default 30 s origin read timeout would cut off a
-        // vision call. /api/transcribe streams a progress event immediately so
-        // the timeout never comes into play, but this is the belt to that pair
-        // of braces.
-        //
-        // ⚠️ UNVERIFIED: this transform has never been run — no deploy has been
-        // attempted (the AWS account is still being settled with the founder).
-        // Wrapped in $output so it works whether `origins` arrives as a plain
-        // array or as a Pulumi Output, but the first `sst deploy` should check
-        // the distribution's origin timeout really is 60 and not 30.
-        cdn: (args) => {
-          args.origins = $output(args.origins).apply((origins) =>
-            origins.map((origin) =>
-              origin.customOriginConfig
-                ? {
-                    ...origin,
-                    customOriginConfig: {
-                      ...origin.customOriginConfig,
-                      originReadTimeout: 60,
-                      originKeepaliveTimeout: 60,
-                    },
-                  }
-                : origin,
-            ),
-          );
-        },
-      },
-    });
-
-    /* ------------------------------------------------------ nightly dump */
-
-    /**
-     * PRD criterion 83: the dump lands in
-     * `s3://five-crowns-photos/backups/YYYY-MM-DD.sql`.
-     *
-     * 14:15 UTC is a quarter past midnight in Sydney — after any game night has
-     * been written up, and nowhere near a deploy.
-     */
-    new sst.aws.Cron("NightlyBackup", {
-      schedule: "cron(15 14 * * ? *)",
-      function: {
-        handler: "lib/backup/handler.handler",
-        architecture: "arm64",
-        timeout: "5 minutes",
-        memory: "512 MB",
-        link: [photos, tursoUrl, tursoToken],
-        environment: {
-          PHOTOS_BUCKET: photos.name,
-          TURSO_DATABASE_URL: tursoUrl.value,
-          TURSO_AUTH_TOKEN: tursoToken.value,
-        },
-        permissions: [
-          {
-            actions: ["s3:PutObject"],
-            resources: [$interpolate`${photos.arn}/backups/*`],
-          },
-        ],
       },
     });
 
