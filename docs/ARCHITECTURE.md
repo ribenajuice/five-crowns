@@ -191,7 +191,7 @@ tweak, it is a shift in where the guarantee lives, and the review screen has to 
 | Language | TypeScript (Node 22, ARM64) | One language front to back; Claude Code is strongest here |
 | Framework | Next.js 15, App Router | One codebase for pages *and* API. Server Components render browse/stats pages straight from SQL |
 | Styling | Tailwind CSS | Mobile-first by default; see `docs/DESIGN-SYSTEM.md` |
-| Database | **Turso** (libSQL / SQLite), HTTP driver | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda |
+| Database | **Turso** (libSQL / SQLite), HTTP driver (`@libsql/client/http`, pure JS, no native addon — required on the arm64 Lambda) — database `five-crowns` in **Tokyo** (`aws-ap-northeast-1`) | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda. ⚠️ Turso has no Australian location, so each query crosses Sydney↔Tokyo (~110 ms) — see the ADR "The Turso database lives in Tokyo" |
 | ORM / migrations | Drizzle ORM + drizzle-kit | Typed queries, plain-SQL migration files we can read |
 | Photo storage | S3, private bucket, versioned, presigned URLs | Permanent, cheap, direct browser upload |
 | Vision | Anthropic Messages API, `claude-opus-5` | Founder decision |
@@ -979,7 +979,10 @@ the year 2100.
   the app are capped at **1 MB**, so photos must go to S3 by presigned URL, never through a route
   handler. See the post-deploy checks under Deployment.
 - The **OIDC deploy role** (`infra/github-oidc.yaml`) trusts exactly
-  `repo:ribenajuice/five-crowns:environment:production`. The `production` GitHub environment
+  `repo:ribenajuice@75055493/five-crowns@1362884474:environment:production`. ⚠️ This repo uses
+  GitHub's **immutable** OIDC subject format (owner and repo IDs, not just names), so the classic
+  `repo:ribenajuice/five-crowns:…` form is refused. `scripts/aws-bootstrap.sh` reads the exact
+  prefix from `gh api repos/ribenajuice/five-crowns/actions/oidc/customization/sub`; never type it. The `production` GitHub environment
   accepts deploys from `main` only; `scripts/aws-bootstrap.sh` sets that up. For a job that names
   an environment, GitHub puts the environment, not the branch, in the token. So the environment's
   branch rule is what stops a feature branch deploying. ⚠️ **Re-run `scripts/aws-bootstrap.sh`**
@@ -1429,6 +1432,33 @@ that would mean the header is not arriving and everyone shares one bucket.
 3. **The first deploy creates Lambda's replication service-linked role**, which the Lambda@Edge
    request signer needs and this account does not have yet. The deploy role may create exactly
    that role (`AWSServiceRoleForLambdaReplicator`) and nothing else.
+4. **The deploy role needs SQS, scoped to `five-crowns-*` queues.** SST's `Nextjs` component
+   creates a FIFO queue and its queue policy for OpenNext's cache-revalidation events. The first
+   deploy was refused `sqs:CreateQueue` until this was added (statement `SqsScoped` in
+   `infra/github-oidc.yaml`). Everything else the component creates (DynamoDB table, Lambda
+   functions and URLs, CloudFront pieces, IAM roles, log groups) was already covered.
+5. **SST shortens long role names, and they lose the `five-crowns-` prefix.** SST names roles
+   `five-crowns-prod-<Component>…`, but when the component name is long it drops the app name to
+   fit IAM's 64-character limit. The queue subscriber's role became
+   `prod-WebRevalidationEventsSubscriberOabasvFunctionRole-…`, and the first deploy was refused
+   `iam:CreateRole`. Other projects share this AWS account, so the deploy role may create and
+   manage `prod-*` roles **only when they carry SST's tag `sst:app = five-crowns`**. SST applies
+   that tag in the create call itself. See statements `IamTruncatedCreate` and
+   `IamTruncatedManage` in `infra/github-oidc.yaml`. ⚠️ **`iam:PassRole` is the exception.** It
+   ignores the role's tags: the fourth deploy was refused it even though the role was tagged. So
+   handing a shortened role to a service is gated on `iam:PassedToService = lambda.amazonaws.com`
+   instead (statement `IamTruncatedPass`). That lets it be handed to Lambda and nothing else, and
+   it gives no power to change the role.
+6. **The deploy role needs `cloudfront-keyvaluestore:*`-family actions, which `cloudfront:*` does
+   not include.** SST's `KvKeys` step writes the site's routing entries into a CloudFront
+   KeyValueStore through that separate API. It's granted as statement `CloudFrontKeyValueStore`,
+   covering the six operations on the account's key-value stores. ⚠️ **How to find the next gap
+   of this kind:** some SST steps (`KvKeys`, `BucketFiles`, `DistributionDeploymentWaiter`, …)
+   are carried out by the SST command-line program itself, not declared as AWS resources. So
+   searching `.sst/platform` for resources misses the calls they make. List the `sst:aws:*` step
+   types in a deploy log and check that each one's AWS permission family is granted. If a tag condition ever proves too
+   brittle, the fallback is a global `$transform(aws.iam.Role, …)` in `sst.config.ts` that puts
+   every role under an IAM path `/five-crowns/` and scopes the deploy role to that path.
 
 ---
 

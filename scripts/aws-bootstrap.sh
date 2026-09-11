@@ -27,10 +27,26 @@ REPO="${REPO_FULL##*/}"
 STACK="github-oidc-${REPO}"
 ENVIRONMENT="production"
 
+# The OIDC subject prefix exactly as GitHub will send it. Repos on GitHub's
+# immutable subject format send `repo:<owner>@<owner-id>/<repo>@<repo-id>`,
+# not `repo:<owner>/<repo>` — assuming the classic form made the first deploy
+# fail with "Not authorized to perform sts:AssumeRoleWithWebIdentity".
+# (gh's built-in --jq, so no separate jq install is needed.)
+OIDC_API="repos/${REPO_FULL}/actions/oidc/customization/sub"
+if [ "$(gh api "$OIDC_API" --jq '.use_default')" != "true" ]; then
+  echo "❌ This repo uses a custom OIDC subject template (include_claim_keys)."
+  echo "   The deploy role expects '<prefix>:environment:${ENVIRONMENT}'. Reset it with:"
+  echo "   gh api --method PUT ${OIDC_API} -F use_default=true"
+  exit 1
+fi
+SUB_PREFIX=$(gh api "$OIDC_API" --jq '.sub_claim_prefix // empty')
+SUB_PREFIX="${SUB_PREFIX:-repo:${REPO_FULL}}"
+
 echo "Repo:        ${REPO_FULL}"
 echo "Region:      ${REGION}"
 echo "Stack:       ${STACK}"
 echo "Environment: ${ENVIRONMENT} (deploys from main only)"
+echo "OIDC sub:    ${SUB_PREFIX}:environment:${ENVIRONMENT}"
 
 # --- AWS: OIDC provider + deploy role ----------------------------------------
 
@@ -53,6 +69,7 @@ aws cloudformation deploy \
     GitHubOrg="$ORG" \
     RepositoryName="$REPO" \
     OIDCProviderArn="$EXISTING_PROVIDER" \
+    SubjectPrefix="$SUB_PREFIX" \
   --tags Project="$REPO" ManagedBy=claude-template
 
 ROLE_ARN=$(aws cloudformation describe-stacks \
@@ -94,7 +111,7 @@ gh variable set AWS_REGION --body "$REGION"
 echo ""
 echo "✅ Done. GitHub Actions can now deploy to AWS via OIDC (no stored keys)."
 echo "   Role: ${ROLE_ARN}"
-echo "   Trusts only: repo:${REPO_FULL}:environment:${ENVIRONMENT}"
+echo "   Trusts only: ${SUB_PREFIX}:environment:${ENVIRONMENT}"
 echo "   Environment '${ENVIRONMENT}' accepts deploys from main only."
 echo "   Repo variables AWS_DEPLOY_ROLE_ARN and AWS_REGION are set."
 echo ""

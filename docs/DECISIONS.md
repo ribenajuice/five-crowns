@@ -20,6 +20,33 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — The Turso database lives in Tokyo, because Turso has no Sydney location
+
+- **Context**: the region-correction ADR below put the Turso database in Sydney (`syd`) beside the
+  app. At the first deploy, `turso db locations` offered only six locations, **none in Australia**:
+  Tokyo (`aws-ap-northeast-1`), Mumbai (`aws-ap-south-1`, Turso's default), Ireland, Virginia,
+  Ohio and Oregon. The `syd` code belonged to Turso's older platform and is no longer offered.
+- **Decision**: the database `five-crowns` lives in **Tokyo (`aws-ap-northeast-1`)**, in a Turso
+  group named `default` created there. The app stays in **Sydney**: Lambda, CloudFront origin, the
+  photo bucket and Parameter Store are unchanged.
+- **Alternatives**: (a) *Mumbai*, Turso's default. Roughly 150 ms each way from Sydney, against
+  about 110 ms for Tokyo, so it's strictly worse. (b) *Move the whole app to Tokyo, next to the
+  database*. Each page would then pay one 110 ms trip from the phone instead of one per query. But
+  photo uploads would cross the sea too, and it would undo a region move made the day before,
+  requiring edits to `sst.config.ts`, `deploy.sh`, the OIDC stack and every runbook.
+  Not worth it at a handful of users. (c) *A different database host with a Sydney region*. That
+  reopens the stack decision for a latency cost nobody has felt yet. (d) *Turso embedded replicas*
+  (a local read copy inside Lambda). A real option if reads ever feel slow, but it's complexity
+  bought in advance.
+- **Consequences**: every database query from the app waits one Sydney↔Tokyo round trip
+  (about 110 ms). A page doing two or three queries is a few tenths of a second slower than a
+  same-region database. That's acceptable for a private app used once or twice a week. Cost is
+  unchanged: the free plan covers this, and data transfer at this volume is negligible. Measured
+  after the first deploy: *see below*.
+  *Revisit-if*: pages feel slow on a phone, Turso adds an Australian location (move it: `turso db
+  create` there, restore from `npm run db:backup`, update the two SST secrets), or the review
+  screen's save turns out to need many sequential queries.
+
 ## 2026-09-11 — Trust only what our own proxy wrote: client address, attempt counting, and same-origin login posts
 
 - **Context**: pre-ship security review, code review and QA on Milestone 1 Stage 1 found the login
@@ -98,8 +125,13 @@ Format:
     `Managed-AllViewerExceptHostHeader` origin request policy (verified in the 4.17.1 source),
     which forwards CloudFront's viewer-location headers, `CloudFront-Viewer-Address` among them.
     `docs/ARCHITECTURE.md` has a post-deploy check proving a forged header gets nothing.
-  - **Deploy role**: trusts exactly `repo:ribenajuice/five-crowns:environment:production` with
-    `StringEquals`. The `production` GitHub environment accepts deploys from `main` only
+  - **Deploy role**: trusts exactly `<subject prefix>:environment:production` with `StringEquals`.
+    *(Corrected 2026-09-11 at the first deploy: this repo uses GitHub's **immutable** OIDC subject
+    format, `repo:ribenajuice@75055493/five-crowns@1362884474`, so the originally written
+    `repo:ribenajuice/five-crowns:…` never matched and the first deploy was refused with "Not
+    authorized to perform sts:AssumeRoleWithWebIdentity". `aws-bootstrap.sh` now reads the prefix
+    from GitHub's API. The immutable form is the stronger one: a renamed, recreated or transferred
+    repo cannot match it.)* The `production` GitHub environment accepts deploys from `main` only
     (`scripts/aws-bootstrap.sh`). `deploy.yml` also refuses any other ref at job level. For a job
     that names an environment, GitHub puts the environment, not the branch, in the token. So the
     environment's branch rule is the real gate, and the other two are belt and braces.
@@ -210,7 +242,9 @@ Format:
     `ap-southeast-2`.
   - **The S3 photo bucket `five-crowns-photos`** — `ap-southeast-2`, so browser uploads go to the
     near bucket and the Lambda reads it in-region.
-  - **The Turso database** — its primary location is Sydney (`syd`), not London (`lhr`). The photo
+  - **The Turso database** — *(⚠️ superseded 2026-09-11: Turso no longer offers Sydney; the
+    database is in **Tokyo**. See "The Turso database lives in Tokyo" at the top of this log.)*
+    Its primary location is ~~Sydney (`syd`)~~, not London (`lhr`). The photo
     upload and the vision call dominate the latency budget, but there is no reason to put the
     database on the other side of the planet from the only thing that queries it.
   - **The nightly backup Lambda and its S3 destination** — same region, same bucket.

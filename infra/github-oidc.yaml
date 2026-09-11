@@ -15,6 +15,13 @@ Parameters:
     Type: String
     Default: ""
     Description: Existing GitHub OIDC provider ARN. Leave empty to create one (only one per AWS account is allowed).
+  SubjectPrefix:
+    Type: String
+    AllowedPattern: "^repo:[^:]+$"
+    Description: >-
+      The OIDC subject prefix exactly as GitHub sends it for this repo, e.g.
+      repo:owner@123/repo@456 (immutable format) or repo:owner/repo (classic).
+      scripts/aws-bootstrap.sh reads it from GitHub's API; never type it by hand.
 
 Conditions:
   CreateOIDCProvider: !Equals [!Ref OIDCProviderArn, ""]
@@ -56,7 +63,14 @@ Resources:
                 # environment's deployment-branch policy (main only), which
                 # scripts/aws-bootstrap.sh sets. Without that policy, any
                 # branch whose workflow names the environment would match.
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${RepositoryName}:environment:production
+                #
+                # SubjectPrefix is read from GitHub by aws-bootstrap.sh, never
+                # typed: this repo uses GitHub's IMMUTABLE subject format,
+                # `repo:<owner>@<owner-id>/<repo>@<repo-id>`, so a renamed,
+                # deleted-and-recreated or transferred repo can never match.
+                # The classic `repo:<owner>/<repo>` form silently fails here
+                # with "Not authorized to perform sts:AssumeRoleWithWebIdentity".
+                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:production
       Policies:
         - PolicyName: serverless-deploy
           PolicyDocument:
@@ -96,6 +110,30 @@ Resources:
                   - ecr:*
                   - budgets:*
                 Resource: "*"
+              # SST's Nextjs component creates a FIFO queue (plus its queue
+              # policy) for OpenNext's cache-revalidation events. Found at the
+              # first deploy: sqs:CreateQueue was refused. Scoped to this app's
+              # queues by name, like the IAM roles below.
+              # SST's KvKeys step writes the site's routing entries into a
+              # CloudFront KeyValueStore through the separate
+              # cloudfront-keyvaluestore API, which `cloudfront:*` does not
+              # cover. Found at the fifth deploy attempt. KVS ARNs carry a UUID,
+              # not a name, so this is scoped to the account's stores, and it is
+              # no wider than `cloudfront:*` above, which can already manage them.
+              - Sid: CloudFrontKeyValueStore
+                Effect: Allow
+                Action:
+                  - cloudfront-keyvaluestore:DescribeKeyValueStore
+                  - cloudfront-keyvaluestore:GetKey
+                  - cloudfront-keyvaluestore:ListKeys
+                  - cloudfront-keyvaluestore:PutKey
+                  - cloudfront-keyvaluestore:DeleteKey
+                  - cloudfront-keyvaluestore:UpdateKeys
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:key-value-store/*
+              - Sid: SqsScoped
+                Effect: Allow
+                Action: sqs:*
+                Resource: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${RepositoryName}-*
               - Sid: IamScoped
                 Effect: Allow
                 Action:
@@ -116,6 +154,55 @@ Resources:
                   - iam:UpdateAssumeRolePolicy
                   - iam:UntagRole
                 Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${RepositoryName}-*
+              # SST names roles `<app>-<stage>-<Component>…`, but when the
+              # component name is long it drops the app name to fit IAM's
+              # 64-character limit: `prod-WebRevalidationEventsSubscriber…`.
+              # The first deploy was refused iam:CreateRole on exactly that.
+              # Other projects share this account, so `prod-*` is only allowed
+              # for roles carrying SST's own tag sst:app=<this app>, which SST
+              # applies as a provider default tag, i.e. in the CreateRole call.
+              - Sid: IamTruncatedCreate
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:TagRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    aws:RequestTag/sst:app: !Ref RepositoryName
+              - Sid: IamTruncatedManage
+                Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRoleTags
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:UntagRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    iam:ResourceTag/sst:app: !Ref RepositoryName
+              # iam:PassRole does not evaluate the role's tags: the fourth deploy
+              # was refused PassRole at lambda:CreateFunction although the role
+              # carried sst:app=five-crowns and every other tag-gated action on
+              # it had succeeded. PassRole's own condition key is
+              # iam:PassedToService, so the shortened roles may be handed to
+              # Lambda and nothing else. PassRole grants no power over the
+              # role itself; changing its policies stays tag-gated above.
+              - Sid: IamTruncatedPass
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
               # The server function sits behind CloudFront OAC with a
               # Lambda@Edge request signer (sst.config.ts `protection`).
               # Attaching an edge function needs Lambda's replication
