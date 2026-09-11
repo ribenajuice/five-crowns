@@ -17,7 +17,16 @@
  * forgets to apply the attributes.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 
@@ -30,10 +39,15 @@ interface SetCookie {
 }
 
 const cookieJar: SetCookie[] = [];
+/** What the browser sent. The admin route needs a current group session. */
+const requestCookies = new Map<string, string>();
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: () => undefined,
+    get: (name: string) =>
+      requestCookies.has(name)
+        ? { name, value: requestCookies.get(name)! }
+        : undefined,
     set: (name: string, value: string, attributes: Record<string, unknown>) => {
       cookieJar.push({ name, value, attributes });
     },
@@ -42,6 +56,9 @@ vi.mock("next/headers", () => ({
 
 const GROUP_PASSWORD = "the-group-one";
 const ADMIN_PASSWORD = "the-admin-one";
+const GROUP_EPOCH_ENV = "FIVE_CROWNS_GROUP_SESSION_EPOCH";
+
+let groupSessionToken: string;
 
 beforeAll(async () => {
   process.env.CONFIG_SOURCE = "env";
@@ -50,7 +67,18 @@ beforeAll(async () => {
     await hashPassword(GROUP_PASSWORD);
   process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH =
     await hashPassword(ADMIN_PASSWORD);
+  delete process.env[GROUP_EPOCH_ENV];
+  const { signSession } = await import("@/lib/auth/token");
+  groupSessionToken = await signSession(
+    { s: "group", v: 0 },
+    process.env.SESSION_SECRET,
+  );
   await setupTestDb();
+});
+
+beforeEach(() => {
+  requestCookies.clear();
+  requestCookies.set("fc_session", groupSessionToken);
 });
 
 afterEach(() => {
@@ -68,12 +96,18 @@ function nextAddress(): string {
   return `203.0.113.${addressCounter}`;
 }
 
-function post(body: unknown, address: string): Request {
-  return new Request("https://fivecrowns.example.test/api/login", {
+function post(
+  body: unknown,
+  address: string,
+  extraHeaders: Record<string, string> = {},
+  url = "https://fivecrowns.example.test/api/login",
+): Request {
+  return new Request(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "x-forwarded-for": address,
+      ...extraHeaders,
     },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
@@ -300,6 +334,222 @@ describe("POST /api/admin/login — criteria 4 and 74", () => {
     const response = await POST(post({ password: ADMIN_PASSWORD }, nextAddress()));
 
     expect(response.status).toBe(401);
+    expect(cookieJar).toHaveLength(0);
+  });
+});
+
+describe("POST /api/admin/login — the full group check comes first", () => {
+  it("⚠️ refuses a device whose group cookie was revoked by a rotation, even with the right admin password", async () => {
+    const { invalidateAllParameters } = await import("@/lib/config");
+    process.env[GROUP_EPOCH_ENV] = "1"; // the rotation bumped the epoch
+    invalidateAllParameters();
+
+    try {
+      const POST = await adminRoute();
+      const response = await POST(post({ password: ADMIN_PASSWORD }, nextAddress()));
+
+      expect(response.status).toBe(401);
+      expect((await response.json()).error.code).toBe("unauthorised");
+      expect(cookieJar).toHaveLength(0);
+    } finally {
+      delete process.env[GROUP_EPOCH_ENV];
+      invalidateAllParameters();
+    }
+  });
+
+  it("refuses a caller with no group cookie at all", async () => {
+    requestCookies.clear();
+    const POST = await adminRoute();
+    const response = await POST(post({ password: ADMIN_PASSWORD }, nextAddress()));
+
+    expect(response.status).toBe(401);
+    expect(cookieJar).toHaveLength(0);
+  });
+
+  it("a revoked device's guesses are not even counted — it cannot burn the admin limit", async () => {
+    const { checkRateLimit } = await import("@/lib/auth/rate-limit");
+    requestCookies.clear();
+    const POST = await adminRoute();
+    const address = nextAddress();
+
+    for (let i = 0; i < 12; i += 1) {
+      await POST(post({ password: `wrong-${i}` }, address));
+    }
+    expect((await checkRateLimit(address, "admin")).failures).toBe(0);
+  });
+});
+
+describe("both login routes — no cross-site posts", () => {
+  const routes = [
+    ["POST /api/login", groupRoute, GROUP_PASSWORD],
+    ["POST /api/admin/login", adminRoute, ADMIN_PASSWORD],
+  ] as const;
+
+  for (const [name, route, password] of routes) {
+    it.each([
+      ["text/plain", "text/plain"],
+      ["a urlencoded form", "application/x-www-form-urlencoded"],
+      ["multipart", "multipart/form-data; boundary=x"],
+      ["no content type", ""],
+    ])(`${name} refuses %s with 415`, async (_label, contentType) => {
+      const POST = await route();
+      const request = new Request("https://fivecrowns.example.test/api/login", {
+        method: "POST",
+        headers: contentType ? { "content-type": contentType } : {},
+        body: JSON.stringify({ password }),
+      });
+      if (!contentType) request.headers.delete("content-type");
+
+      const response = await POST(request);
+      expect(response.status).toBe(415);
+      expect(cookieJar).toHaveLength(0);
+    });
+
+    it(`⚠️ ${name}: fifteen hostile text/plain posts do not use up the household's attempts`, async () => {
+      const POST = await route();
+      const address = nextAddress();
+
+      for (let i = 0; i < 15; i += 1) {
+        const response = await POST(
+          post(`{"password":"wrong-${i}"}`, address, { "content-type": "text/plain" }),
+        );
+        expect(response.status).toBe(415);
+      }
+      expect((await POST(post({ password }, address))).status).toBe(200);
+    });
+
+    it(`${name} accepts application/json with a charset`, async () => {
+      const POST = await route();
+      const response = await POST(
+        post({ password }, nextAddress(), {
+          "content-type": "application/json; charset=utf-8",
+        }),
+      );
+      expect(response.status).toBe(200);
+    });
+
+    it.each([
+      ["another site", "https://evil.example"],
+      ["a look-alike subdomain", "https://fivecrowns.example.test.evil.example"],
+      ["the opaque null origin", "null"],
+    ])(`${name} refuses an Origin from %s with 403`, async (_label, origin) => {
+      const POST = await route();
+      const response = await POST(
+        post({ password }, nextAddress(), { origin }),
+      );
+      expect(response.status).toBe(403);
+      expect(cookieJar).toHaveLength(0);
+    });
+
+    it(`${name} accepts its own origin, as the real login page sends it`, async () => {
+      const POST = await route();
+      const response = await POST(
+        post({ password }, nextAddress(), {
+          origin: "https://fivecrowns.example.test",
+          host: "fivecrowns.example.test",
+        }),
+      );
+      expect(response.status).toBe(200);
+    });
+
+    it(`${name} accepts its own origin behind CloudFront, where Host is the Lambda's`, async () => {
+      const POST = await route();
+      const response = await POST(
+        post(
+          { password },
+          nextAddress(),
+          {
+            origin: "https://fivecrowns.example.test",
+            host: "abc123.lambda-url.ap-southeast-2.on.aws",
+            "x-forwarded-host": "fivecrowns.example.test",
+          },
+          "https://abc123.lambda-url.ap-southeast-2.on.aws/api/login",
+        ),
+      );
+      expect(response.status).toBe(200);
+    });
+
+    it(`${name} refuses a hostile Origin behind CloudFront too`, async () => {
+      const POST = await route();
+      const response = await POST(
+        post(
+          { password },
+          nextAddress(),
+          {
+            origin: "https://evil.example",
+            host: "abc123.lambda-url.ap-southeast-2.on.aws",
+            "x-forwarded-host": "fivecrowns.example.test",
+          },
+          "https://abc123.lambda-url.ap-southeast-2.on.aws/api/login",
+        ),
+      );
+      expect(response.status).toBe(403);
+    });
+  }
+});
+
+describe("POST /api/login — the limiter cannot be dodged", () => {
+  it("⚠️ rotating the left-most X-Forwarded-For entry still hits the same bucket", async () => {
+    const POST = await groupRoute();
+    const real = nextAddress();
+
+    for (let i = 1; i <= 15; i += 1) {
+      const response = await POST(
+        post({ password: `wrong-${i}` }, `10.0.0.${i}, ${real}`),
+      );
+      expect(response.status, `attempt ${i}`).toBe(i <= 10 ? 401 : 429);
+    }
+  });
+
+  it("⚠️ prepending a fake entry does not let the right password out of a block", async () => {
+    const POST = await groupRoute();
+    const real = nextAddress();
+
+    for (let i = 1; i <= 10; i += 1) {
+      await POST(post({ password: `wrong-${i}` }, real));
+    }
+    const escaped = await POST(post({ password: GROUP_PASSWORD }, `198.18.0.1, ${real}`));
+    expect(escaped.status).toBe(429);
+    expect(cookieJar).toHaveLength(0);
+  });
+
+  it("⚠️ rotating X-Forwarded-For entirely changes nothing when CloudFront names the viewer", async () => {
+    const POST = await groupRoute();
+    const viewer = "2001:db8::77:51234";
+
+    for (let i = 1; i <= 10; i += 1) {
+      await POST(
+        post({ password: `wrong-${i}` }, `10.1.0.${i}`, {
+          "cloudfront-viewer-address": viewer,
+        }),
+      );
+    }
+    const blocked = await POST(
+      post({ password: GROUP_PASSWORD }, "10.1.0.200", {
+        "cloudfront-viewer-address": viewer,
+      }),
+    );
+    expect(blocked.status).toBe(429);
+  });
+
+  it("⚠️ 30 concurrent wrong passwords: at most 10 are evaluated, the rest get 429, then the right one gets 429", async () => {
+    const POST = await groupRoute();
+    const address = nextAddress();
+
+    const responses = await Promise.all(
+      Array.from({ length: 30 }, (_, i) =>
+        POST(post({ password: `wrong-${i}` }, address)),
+      ),
+    );
+    const statuses = responses.map((r) => r.status);
+    const evaluated = statuses.filter((s) => s === 401).length;
+    const refused = statuses.filter((s) => s === 429).length;
+
+    expect(evaluated).toBeLessThanOrEqual(10);
+    expect(evaluated + refused).toBe(30);
+
+    const right = await POST(post({ password: GROUP_PASSWORD }, address));
+    expect(right.status).toBe(429);
     expect(cookieJar).toHaveLength(0);
   });
 });

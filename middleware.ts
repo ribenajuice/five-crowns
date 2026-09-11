@@ -69,6 +69,15 @@ export const config = {
    * Everything except Next's own static output and the favicon. Matching
    * broadly and allowlisting narrowly is the safe way round: a new route is
    * private the moment it exists, without anyone remembering to add it.
+   *
+   * ⚠️ **STAGE 2 HAZARD.** The matcher also skips *any* path ending in an image
+   * extension (`.png`, `.jpg`, `.jpeg`, `.svg`, `.ico`, `.webp`, `.woff2`) —
+   * session or not. A photo route, a `/review/...` route or anything else that
+   * could ever end in one of those extensions is **public unless it calls
+   * `requireGroupSession()` itself** (or, for an API route, checks
+   * `hasSession("group")` and returns 401). Do not rely on this middleware for
+   * it. Serving photos by presigned S3 URL, as the architecture says, sidesteps
+   * this entirely.
    */
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|woff2)$).*)"],
 };

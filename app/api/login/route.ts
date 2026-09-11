@@ -17,12 +17,18 @@ import {
   RATE_LIMITED_MESSAGE,
 } from "@/lib/auth/login";
 import { apiError, serverError } from "@/lib/http/errors";
+import { rejectCrossSitePost } from "@/lib/http/same-origin";
 
 export const runtime = "nodejs";
 /** scrypt and a database write. Nothing here may be cached. */
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  // ⚠️ Before anything is read or counted: a hostile page must not be able to
+  // spend this household's ten attempts with a cross-site form post.
+  const crossSite = rejectCrossSitePost(request, "login.group");
+  if (crossSite) return crossSite;
+
   let body: unknown;
   try {
     body = await request.json();

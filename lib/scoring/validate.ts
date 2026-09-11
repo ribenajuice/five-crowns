@@ -22,7 +22,11 @@ export type ColumnIssueCode =
   | "unread_cells"
   | "not_an_integer"
   | "out_of_range"
-  | "not_monotonic";
+  | "not_monotonic"
+  /** Grid-level: one player picked for more than one column. */
+  | "duplicate_player"
+  /** Grid-level: a column with numbers in it but nobody picked. */
+  | "unassigned_column";
 
 export interface ColumnIssue {
   code: ColumnIssueCode;
@@ -30,6 +34,8 @@ export interface ColumnIssue {
   message: string;
   /** Cell indices this issue points at. Empty when it is about the column. */
   indices: number[];
+  /** Grid-level issues only: the columns it is about, in paper order. */
+  columnIds?: string[];
 }
 
 export interface ColumnValidation {
@@ -151,8 +157,13 @@ export interface GridValidation {
 /**
  * Validate a whole draft grid.
  *
- * On top of the per-column checks: at least two columns must have a player
- * assigned. A one-player game is a transcription failure.
+ * On top of the per-column checks:
+ *  - at least two columns must have a player assigned (a one-player game is a
+ *    transcription failure);
+ *  - ⚠️ no player may be picked for more than one column — one person cannot
+ *    hold two running totals, and saving it would give them two final scores;
+ *  - ⚠️ no column with numbers in it may be left without a player — those scores
+ *    would be saved against nobody, or silently dropped.
  */
 export function validateGrid(
   columns: readonly GridColumn[],
@@ -175,6 +186,46 @@ export function validateGrid(
       code: "wrong_length",
       message: `A game needs at least ${MIN_PLAYERS} players. ${assigned.size} so far.`,
       indices: [],
+    });
+  }
+
+  // One issue per repeated player, naming how many columns they are in.
+  const columnsByPlayer = new Map<string, string[]>();
+  for (const column of columns) {
+    if (typeof column.playerId !== "string" || column.playerId.length === 0) {
+      continue;
+    }
+    const ids = columnsByPlayer.get(column.playerId) ?? [];
+    ids.push(column.id);
+    columnsByPlayer.set(column.playerId, ids);
+  }
+  for (const ids of columnsByPlayer.values()) {
+    if (ids.length > 1) {
+      issues.push({
+        code: "duplicate_player",
+        message: `The same player is picked for ${ids.length} columns. Pick a different player for each.`,
+        indices: [],
+        columnIds: ids,
+      });
+    }
+  }
+
+  const orphaned = columns
+    .filter(
+      (c) =>
+        !(typeof c.playerId === "string" && c.playerId.length > 0) &&
+        c.values.some((v) => v !== null && v !== undefined),
+    )
+    .map((c) => c.id);
+  if (orphaned.length > 0) {
+    issues.push({
+      code: "unassigned_column",
+      message:
+        orphaned.length === 1
+          ? "A column has scores but no player. Pick who it belongs to."
+          : `${orphaned.length} columns have scores but no player. Pick who they belong to.`,
+      indices: [],
+      columnIds: orphaned,
     });
   }
 

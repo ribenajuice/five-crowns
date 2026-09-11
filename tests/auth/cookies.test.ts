@@ -74,10 +74,15 @@ describe("clientIp", () => {
     ).toBe("2001:db8::1");
   });
 
-  it("takes the left-most x-forwarded-for entry", () => {
+  it("⚠️ takes the RIGHT-most x-forwarded-for entry — the left is client-typed", () => {
+    // Security review, HIGH: the left-most entry let a caller pick a fresh
+    // rate-limit bucket per guess. Full coverage in client-ip.test.ts.
     expect(
-      clientIp(new Headers({ "x-forwarded-for": "203.0.113.9, 70.41.3.18" })),
-    ).toBe("203.0.113.9");
+      clientIp(
+        new Headers({ "x-forwarded-for": "203.0.113.9, 70.41.3.18" }),
+        {} as NodeJS.ProcessEnv,
+      ),
+    ).toBe("70.41.3.18");
   });
 
   it("buckets callers with no address together rather than letting them all through", () => {

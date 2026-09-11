@@ -42,10 +42,19 @@ vi.mock("@aws-sdk/client-s3", () => ({
 }));
 
 const minted: string[] = [];
+/**
+ * The admin route now requires a current group session before it will even
+ * look at a password (security review: revoked devices must not reach the
+ * admin prompt), so the browser presents one, as a real device would.
+ */
+let groupSessionCookie: string | undefined;
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: () => undefined,
+    get: (name: string) =>
+      name === "fc_session" && groupSessionCookie
+        ? { name, value: groupSessionCookie }
+        : undefined,
     set: (_name: string, value: string) => {
       minted.push(value);
     },
@@ -89,6 +98,8 @@ beforeAll(async () => {
   adminHash = await hashPassword(ADMIN_PASSWORD);
   process.env.FIVE_CROWNS_GROUP_PASSWORD_HASH = groupHash;
   process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH = adminHash;
+  const { signSession } = await import("@/lib/auth/token");
+  groupSessionCookie = await signSession({ s: "group", v: 0 }, SESSION_SECRET);
 
   client = createClient({ url });
   for (const statement of readFileSync(MIGRATION, "utf8")

@@ -14,11 +14,7 @@ import { passwordHash, sessionEpoch, MissingParameterError } from "@/lib/config"
 import { log } from "@/lib/log";
 
 import { parseHash, verifyPassword } from "./password";
-import {
-  checkRateLimit,
-  pruneOldAttempts,
-  recordFailedAttempt,
-} from "./rate-limit";
+import { pruneOldAttempts, reserveAttempt } from "./rate-limit";
 import { sessionSecret } from "./secret";
 import { signSession, type SessionScope } from "./token";
 
@@ -39,61 +35,81 @@ export type LoginOutcome =
 /**
  * Verify a password and mint a session.
  *
- * Order matters: the rate limit is checked **before** the password is compared,
- * so a blocked address is refused even when it finally types the right one
- * (PRD criterion 5).
+ * Order matters: the attempt is **counted before** the password is compared, so
+ * a blocked address is refused even when it finally types the right one (PRD
+ * criterion 5), and so a burst of parallel guesses cannot all slip past a
+ * check that has not been written yet (see `reserveAttempt`).
+ *
+ * Only a wrong password keeps its count. A refusal, a success and a server
+ * fault all release theirs. A success does **not** clear earlier failures:
+ * the window simply runs out, ten minutes after the last of them.
  */
 export async function attemptLogin(
   scope: SessionScope,
   password: string,
   ip: string,
 ): Promise<LoginOutcome> {
-  const limit = await checkRateLimit(ip, scope);
-  if (limit.blocked) {
-    log.warn("login.rate_limited", { scope, failures: limit.failures });
-    return { status: "rate_limited" };
-  }
+  const attempt = await reserveAttempt(ip, scope);
+  let keepCount = false;
 
-  let stored: string;
   try {
-    stored = await passwordHash(scope);
-  } catch (error) {
-    if (error instanceof MissingParameterError) {
-      // No hash has ever been set. scripts/deploy.sh refuses to deploy in this
-      // state, so reaching it means something is wrong with the environment
-      // rather than with the person typing.
-      log.error("login.no_password_hash", { scope });
-      return { status: "not_configured" };
+    if (attempt.blocked) {
+      log.warn("login.rate_limited", { scope, failures: attempt.failures });
+      return { status: "rate_limited" };
     }
-    throw error;
+
+    let stored: string;
+    try {
+      stored = await passwordHash(scope);
+    } catch (error) {
+      if (error instanceof MissingParameterError) {
+        // No hash has ever been set. scripts/deploy.sh refuses to deploy in
+        // this state, so reaching it means something is wrong with the
+        // environment rather than with the person typing.
+        log.error("login.no_password_hash", { scope });
+        return { status: "not_configured" };
+      }
+      throw error;
+    }
+
+    if (parseHash(stored) === null) {
+      // ⚠️ The person typing is told only "that password is wrong" — it would
+      // be an oracle otherwise — so this line is the one place a corrupted or
+      // mistyped hash shows up at all. Without it, a mangled hash looks exactly
+      // like a forgotten password. The value itself is never logged.
+      log.error("login.malformed_password_hash", {
+        scope,
+        hint: "Regenerate it with node scripts/hash-password.js and store it again.",
+      });
+    }
+
+    const ok = await verifyPassword(password, stored);
+    if (!ok) {
+      keepCount = true;
+      log.info("login.failed", { scope, failures: attempt.failures + 1 });
+      return { status: "invalid" };
+    }
+
+    const epoch = await sessionEpoch(scope);
+    const token = await signSession({ s: scope, v: epoch }, sessionSecret());
+
+    // Cheap opportunistic cleanup; no scheduled job for a table this small.
+    void pruneOldAttempts().catch(() => undefined);
+
+    log.info("login.ok", { scope, epoch });
+    return { status: "ok", token };
+  } finally {
+    if (!keepCount) {
+      // A failed release leaves one extra attempt counted for ten minutes —
+      // the safe direction — so it is logged, never thrown.
+      await attempt.release().catch((error: unknown) => {
+        log.warn("login.release_failed", {
+          scope,
+          reason: error instanceof Error ? error.name : "unknown",
+        });
+      });
+    }
   }
-
-  if (parseHash(stored) === null) {
-    // ⚠️ The person typing is told only "that password is wrong" — it would be
-    // an oracle otherwise — so this line is the one place a corrupted or
-    // mistyped hash shows up at all. Without it, a mangled hash looks exactly
-    // like a forgotten password. The value itself is never logged.
-    log.error("login.malformed_password_hash", {
-      scope,
-      hint: "Regenerate it with node scripts/hash-password.js and store it again.",
-    });
-  }
-
-  const ok = await verifyPassword(password, stored);
-  if (!ok) {
-    await recordFailedAttempt(ip, scope);
-    log.info("login.failed", { scope, failures: limit.failures + 1 });
-    return { status: "invalid" };
-  }
-
-  const epoch = await sessionEpoch(scope);
-  const token = await signSession({ s: scope, v: epoch }, sessionSecret());
-
-  // Cheap opportunistic cleanup; no scheduled job for a table this small.
-  void pruneOldAttempts().catch(() => undefined);
-
-  log.info("login.ok", { scope, epoch });
-  return { status: "ok", token };
 }
 
 /**

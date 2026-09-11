@@ -5,6 +5,10 @@ import { defineConfig } from "vitest/config";
 const root = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  // tsconfig says `jsx: "preserve"` because Next compiles JSX itself. Tests that
+  // import a server component page (tests/auth/admin-page.test.ts) need it
+  // compiled here instead.
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: [
       // Regex, not a bare "@" string: a string alias is prefix-matched, so "@"

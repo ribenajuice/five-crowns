@@ -65,15 +65,7 @@ export async function checkRateLimit(
   return { blocked: failures >= MAX_ATTEMPTS, failures };
 }
 
-/** Record one failed attempt. Successes are deliberately not recorded. */
-export async function recordFailedAttempt(
-  ip: string,
-  scope: RateLimitScope,
-  now: number = Date.now(),
-): Promise<void> {
-  const bucket = currentBucket(now);
-  const ipHash = await hashIp(ip);
-
+async function increment(ipHash: string, scope: RateLimitScope, bucket: number) {
   await getDb()
     .insert(loginAttempt)
     .values({ ipHash, scope, minuteBucket: bucket, count: 1 })
@@ -85,6 +77,83 @@ export async function recordFailedAttempt(
       ],
       set: { count: sql`${loginAttempt.count} + 1` },
     });
+}
+
+/** Record one failed attempt. Successes are deliberately not recorded. */
+export async function recordFailedAttempt(
+  ip: string,
+  scope: RateLimitScope,
+  now: number = Date.now(),
+): Promise<void> {
+  await increment(await hashIp(ip), scope, currentBucket(now));
+}
+
+/** A counted attempt, held until the login knows whether it failed. */
+export interface AttemptReservation extends RateLimitState {
+  /** Un-count this attempt. Call it for anything that was not a failed guess. */
+  release(): Promise<void>;
+}
+
+/**
+ * Count this attempt **first**, then decide whether it may be evaluated.
+ *
+ * ⚠️ The earlier read-then-verify-then-write shape let N parallel requests all
+ * read "9 failures", all run scrypt, and all get a guess in. Counting before
+ * checking closes that: every request's increment is atomic, and the window sum
+ * it then reads includes its own increment and every increment that landed
+ * before it. So the k-th request in arrival order always sees at least k, and
+ * no more than {@link MAX_ATTEMPTS} failing guesses can ever be evaluated in a
+ * window, however many arrive at once. (A request may occasionally be refused
+ * one early because a concurrent refusal has not released yet — that errs the
+ * safe way.)
+ *
+ * The caller keeps the count only for a wrong password, and releases it for
+ * everything else — a refusal, a success, a server fault — so the limiter still
+ * counts *failed* logins, exactly as PRD criterion 5 describes.
+ */
+export async function reserveAttempt(
+  ip: string,
+  scope: RateLimitScope,
+  now: number = Date.now(),
+): Promise<AttemptReservation> {
+  const bucket = currentBucket(now);
+  const ipHash = await hashIp(ip);
+
+  await increment(ipHash, scope, bucket);
+
+  const rows = await getDb()
+    .select({ total: sql<number>`coalesce(sum(${loginAttempt.count}), 0)` })
+    .from(loginAttempt)
+    .where(
+      and(
+        eq(loginAttempt.ipHash, ipHash),
+        eq(loginAttempt.scope, scope),
+        gte(loginAttempt.minuteBucket, bucket - WINDOW_MINUTES + 1),
+      ),
+    );
+
+  // Includes this attempt, so the eleventh is the first one refused.
+  const total = Number(rows[0]?.total ?? 0);
+  let released = false;
+
+  return {
+    blocked: total > MAX_ATTEMPTS,
+    failures: total - 1,
+    async release() {
+      if (released) return;
+      released = true;
+      await getDb()
+        .update(loginAttempt)
+        .set({ count: sql`max(${loginAttempt.count} - 1, 0)` })
+        .where(
+          and(
+            eq(loginAttempt.ipHash, ipHash),
+            eq(loginAttempt.scope, scope),
+            eq(loginAttempt.minuteBucket, bucket),
+          ),
+        );
+    },
+  };
 }
 
 /**

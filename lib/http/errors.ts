@@ -21,7 +21,9 @@ export type ErrorCode =
   | "invalid_credentials"
   | "rate_limited"
   | "unauthorised"
+  | "forbidden"
   | "not_found"
+  | "unsupported_media_type"
   | "not_configured"
   | "server_error";
 
@@ -29,6 +31,8 @@ const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
   invalid_credentials: 401,
   unauthorised: 401,
+  forbidden: 403,
+  unsupported_media_type: 415,
   rate_limited: 429,
   not_found: 404,
   not_configured: 503,

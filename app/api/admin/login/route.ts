@@ -18,12 +18,30 @@ import {
   NOT_CONFIGURED_MESSAGE,
   RATE_LIMITED_MESSAGE,
 } from "@/lib/auth/login";
+import { hasSession } from "@/lib/auth/session";
 import { apiError, serverError } from "@/lib/http/errors";
+import { rejectCrossSitePost } from "@/lib/http/same-origin";
+import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const crossSite = rejectCrossSitePost(request, "login.admin");
+  if (crossSite) return crossSite;
+
+  try {
+    // ⚠️ Middleware checks only the group cookie's signature. This is the full
+    // check, epoch included, so a device logged out by a group-password
+    // rotation cannot keep guessing admin passwords with its old cookie.
+    if (!(await hasSession("group"))) {
+      log.info("login.admin.no_group_session");
+      return apiError("unauthorised", "You need the password for this.");
+    }
+  } catch (error) {
+    return serverError("login.admin.session_check_failed", error);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

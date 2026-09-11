@@ -155,6 +155,53 @@ describe("attemptLogin — the failure path", () => {
     expect(right).toEqual(wrong);
   });
 
+  it("⚠️ 30 concurrent wrong guesses: at most 10 are evaluated, then even the right password is refused", async () => {
+    // Security review, MEDIUM: the old check-then-verify-then-record shape let
+    // every parallel request pass the check before any failure was written.
+    const { attemptLogin } = await import("@/lib/auth/login");
+    const ip = "192.0.2.80";
+
+    const outcomes = await Promise.all(
+      Array.from({ length: 30 }, (_, i) => attemptLogin("group", `wrong-${i}`, ip)),
+    );
+    const evaluated = outcomes.filter((o) => o.status === "invalid").length;
+    const refused = outcomes.filter((o) => o.status === "rate_limited").length;
+
+    expect(evaluated).toBeLessThanOrEqual(10);
+    expect(evaluated).toBeGreaterThan(0);
+    expect(evaluated + refused).toBe(30);
+
+    expect(await attemptLogin("group", "the-right-one", ip)).toEqual({
+      status: "rate_limited",
+    });
+  });
+
+  it("counts only wrong passwords: a success in between neither counts nor clears", async () => {
+    const { attemptLogin } = await import("@/lib/auth/login");
+    const { checkRateLimit } = await import("@/lib/auth/rate-limit");
+    const ip = "192.0.2.81";
+
+    for (let i = 0; i < 9; i += 1) await attemptLogin("group", "wrong", ip);
+    expect((await attemptLogin("group", "the-right-one", ip)).status).toBe("ok");
+
+    // Not counted...
+    expect((await checkRateLimit(ip, "group")).failures).toBe(9);
+    // ...and not cleared: the tenth failure still blocks.
+    expect((await attemptLogin("group", "wrong", ip)).status).toBe("invalid");
+    expect((await attemptLogin("group", "the-right-one", ip)).status).toBe(
+      "rate_limited",
+    );
+  });
+
+  it("refused attempts do not pile up on top of the ten", async () => {
+    const { attemptLogin } = await import("@/lib/auth/login");
+    const { checkRateLimit } = await import("@/lib/auth/rate-limit");
+    const ip = "192.0.2.82";
+
+    for (let i = 0; i < 15; i += 1) await attemptLogin("group", "wrong", ip);
+    expect((await checkRateLimit(ip, "group")).failures).toBe(10);
+  });
+
   it("reports a missing password hash as not-configured, not as a wrong password", async () => {
     const { attemptLogin } = await import("@/lib/auth/login");
     const { invalidateAllParameters } = await import("@/lib/config");

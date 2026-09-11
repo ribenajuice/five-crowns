@@ -1,4 +1,4 @@
-import { hasSession } from "@/lib/auth/session";
+import { hasSession, requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { PasswordGate } from "@/components/PasswordGate";
 
@@ -9,12 +9,15 @@ import { PasswordGate } from "@/components/PasswordGate";
  * this prompt, not a panel (PRD criteria 4 and 74). The panel — set the
  * transcription API key — is stage 3.
  *
- * The group middleware has already run, so anyone reaching this page is in the
- * group. That grants nothing here.
+ * Middleware has checked the group cookie's signature, but not its epoch, so
+ * the full group check runs first: a device logged out by a group-password
+ * rotation goes back to `/login` and never sees the admin prompt. Being in the
+ * group still grants nothing here.
  */
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
+  await requireGroupSession();
   const isAdmin = await hasSession("admin");
 
   if (!isAdmin) {

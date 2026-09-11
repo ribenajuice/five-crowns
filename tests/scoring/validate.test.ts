@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { validateColumn, validateGrid } from "@/lib/scoring";
-import { FIXTURE_SHEETS, SHEET_01 } from "../fixtures/sheets";
+import { validateColumn, validateGrid, type GridColumn } from "@/lib/scoring";
+import { FIXTURE_SHEETS, SHEET_01, SHEET_02 } from "../fixtures/sheets";
 
-const gridFor = (sheet: (typeof FIXTURE_SHEETS)[number]) =>
+const gridFor = (sheet: (typeof FIXTURE_SHEETS)[number]): GridColumn[] =>
   sheet.columns.map((column, i) => ({
     id: `col_${i}`,
     playerId: column.player,
@@ -132,5 +132,88 @@ describe("validateGrid — the grid as a whole", () => {
 
   it("blocks an empty grid", () => {
     expect(validateGrid([]).ok).toBe(false);
+  });
+});
+
+describe("validateGrid — who each column belongs to", () => {
+  for (const sheet of FIXTURE_SHEETS) {
+    it(`${sheet.file}: blocks one player picked for two columns, and names both`, () => {
+      const grid = gridFor(sheet);
+      grid[1] = { ...grid[1]!, playerId: grid[0]!.playerId };
+
+      const result = validateGrid(grid);
+      expect(result.ok).toBe(false);
+      const issue = result.issues.find((i) => i.code === "duplicate_player")!;
+      expect(issue.message).toBe(
+        "The same player is picked for 2 columns. Pick a different player for each.",
+      );
+      expect(issue.columnIds).toEqual(["col_0", "col_1"]);
+      // Every column on its own is still fine — this is a grid-level block.
+      expect(Object.values(result.columns).every((c) => c.ok)).toBe(true);
+    });
+
+    it(`${sheet.file}: blocks a column with scores but no player`, () => {
+      const grid = gridFor(sheet);
+      grid[2] = { ...grid[2]!, playerId: null };
+
+      const result = validateGrid(grid);
+      expect(result.ok).toBe(false);
+      const issue = result.issues.find((i) => i.code === "unassigned_column")!;
+      expect(issue.message).toBe(
+        "A column has scores but no player. Pick who it belongs to.",
+      );
+      expect(issue.columnIds).toEqual(["col_2"]);
+    });
+  }
+
+  it("counts several unassigned columns in one sentence", () => {
+    const grid = gridFor(SHEET_02).map((c, i) => ({
+      ...c,
+      playerId: i < 3 ? c.playerId : null,
+    }));
+    const issue = validateGrid(grid).issues.find(
+      (i) => i.code === "unassigned_column",
+    )!;
+    expect(issue.message).toBe(
+      "2 columns have scores but no player. Pick who they belong to.",
+    );
+    expect(issue.columnIds).toEqual(["col_3", "col_4"]);
+  });
+
+  it("treats an empty-string player id as nobody", () => {
+    const grid = gridFor(SHEET_01);
+    grid[3] = { ...grid[3]!, playerId: "" };
+    expect(
+      validateGrid(grid).issues.some((i) => i.code === "unassigned_column"),
+    ).toBe(true);
+  });
+
+  it("⚠️ never claims the game is right — no save-gate message uses the banned words", () => {
+    // PRD criterion 24. Collect every grid-level message this file can provoke.
+    const duplicate = gridFor(SHEET_01);
+    duplicate[1] = { ...duplicate[1]!, playerId: duplicate[0]!.playerId };
+    const orphan = gridFor(SHEET_01).map((c, i) => ({
+      ...c,
+      playerId: i === 0 ? c.playerId : null,
+    }));
+
+    const messages = [validateGrid(duplicate), validateGrid(orphan)]
+      .flatMap((r) => r.issues)
+      .map((i) => i.message.toLowerCase());
+
+    expect(messages.length).toBeGreaterThanOrEqual(3);
+    for (const message of messages) {
+      for (const banned of [
+        "checked",
+        "validated",
+        "verified",
+        "confirmed",
+        "correct",
+        "looks right",
+        "all good",
+      ]) {
+        expect(message, message).not.toContain(banned);
+      }
+    }
   });
 });
