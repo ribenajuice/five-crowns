@@ -191,7 +191,7 @@ tweak, it is a shift in where the guarantee lives, and the review screen has to 
 | Language | TypeScript (Node 22, ARM64) | One language front to back; Claude Code is strongest here |
 | Framework | Next.js 15, App Router | One codebase for pages *and* API. Server Components render browse/stats pages straight from SQL |
 | Styling | Tailwind CSS | Mobile-first by default; see `docs/DESIGN-SYSTEM.md` |
-| Database | **Turso** (libSQL / SQLite), HTTP driver | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda |
+| Database | **Turso** (libSQL / SQLite), HTTP driver — database `five-crowns` in **Tokyo** (`aws-ap-northeast-1`) | SQL for the analytics, free at this volume, scale-to-zero, no connection pooling problem in Lambda. ⚠️ Turso has no Australian location, so each query crosses Sydney↔Tokyo (~110 ms) — see the ADR "The Turso database lives in Tokyo" |
 | ORM / migrations | Drizzle ORM + drizzle-kit | Typed queries, plain-SQL migration files we can read |
 | Photo storage | S3, private bucket, versioned, presigned URLs | Permanent, cheap, direct browser upload |
 | Vision | Anthropic Messages API, `claude-opus-5` | Founder decision |
@@ -979,7 +979,10 @@ the year 2100.
   the app are capped at **1 MB**, so photos must go to S3 by presigned URL, never through a route
   handler. See the post-deploy checks under Deployment.
 - The **OIDC deploy role** (`infra/github-oidc.yaml`) trusts exactly
-  `repo:ribenajuice/five-crowns:environment:production`. The `production` GitHub environment
+  `repo:ribenajuice@75055493/five-crowns@1362884474:environment:production`. ⚠️ This repo uses
+  GitHub's **immutable** OIDC subject format (owner and repo IDs, not just names), so the classic
+  `repo:ribenajuice/five-crowns:…` form is refused. `scripts/aws-bootstrap.sh` reads the exact
+  prefix from `gh api repos/ribenajuice/five-crowns/actions/oidc/customization/sub`; never type it. The `production` GitHub environment
   accepts deploys from `main` only; `scripts/aws-bootstrap.sh` sets that up. For a job that names
   an environment, GitHub puts the environment, not the branch, in the token. So the environment's
   branch rule is what stops a feature branch deploying. ⚠️ **Re-run `scripts/aws-bootstrap.sh`**

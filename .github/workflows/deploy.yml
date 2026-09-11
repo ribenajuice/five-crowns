@@ -22,7 +22,8 @@ jobs:
     # first-time setup and sets AWS_DEPLOY_ROLE_ARN).
     if: ${{ github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != '' }}
     # ⚠️ Load-bearing. The OIDC deploy role trusts exactly
-    # repo:ribenajuice/five-crowns:environment:production
+    # <this repo's subject prefix>:environment:production — the repo uses
+    # GitHub's immutable format, repo:ribenajuice@<id>/five-crowns@<id>
     # (infra/github-oidc.yaml), and GitHub only lets main deploy to this
     # environment (set by scripts/aws-bootstrap.sh). Rename it and the role
     # can no longer be assumed.

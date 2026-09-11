@@ -15,6 +15,13 @@ Parameters:
     Type: String
     Default: ""
     Description: Existing GitHub OIDC provider ARN. Leave empty to create one (only one per AWS account is allowed).
+  SubjectPrefix:
+    Type: String
+    AllowedPattern: "^repo:[^:]+$"
+    Description: >-
+      The OIDC subject prefix exactly as GitHub sends it for this repo, e.g.
+      repo:owner@123/repo@456 (immutable format) or repo:owner/repo (classic).
+      scripts/aws-bootstrap.sh reads it from GitHub's API; never type it by hand.
 
 Conditions:
   CreateOIDCProvider: !Equals [!Ref OIDCProviderArn, ""]
@@ -56,7 +63,14 @@ Resources:
                 # environment's deployment-branch policy (main only), which
                 # scripts/aws-bootstrap.sh sets. Without that policy, any
                 # branch whose workflow names the environment would match.
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${RepositoryName}:environment:production
+                #
+                # SubjectPrefix is read from GitHub by aws-bootstrap.sh, never
+                # typed: this repo uses GitHub's IMMUTABLE subject format,
+                # `repo:<owner>@<owner-id>/<repo>@<repo-id>`, so a renamed,
+                # deleted-and-recreated or transferred repo can never match.
+                # The classic `repo:<owner>/<repo>` form silently fails here
+                # with "Not authorized to perform sts:AssumeRoleWithWebIdentity".
+                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:production
       Policies:
         - PolicyName: serverless-deploy
           PolicyDocument:
