@@ -94,6 +94,31 @@ const editIndex = z
     message: "Edit index out of range.",
   });
 
+const unit = z.number().min(0).max(1);
+
+/**
+ * Where one column sits on the sheet photo, so the review screen can show a
+ * strip of that column alone, row for row beside the grid (PRD criterion 14).
+ *
+ * Normalised 0–1 in the **upright** (already rotated) photo, covering the
+ * column's eleven cells from the top of hand 1 to the bottom of hand 11. The
+ * strip scales it so `height / 11` equals the grid's row pitch. Stage 2 has no
+ * transcription to find columns, so the founder marks each one; `null` until
+ * they do, and the strip shows the whole photo meanwhile (criterion 15).
+ */
+export const cropSchema = z
+  .object({
+    x: unit,
+    y: unit,
+    width: unit.refine((w) => w > 0, { message: "A crop needs some width." }),
+    height: unit.refine((h) => h > 0, { message: "A crop needs some height." }),
+  })
+  .refine((c) => c.x + c.width <= 1 + 1e-9 && c.y + c.height <= 1 + 1e-9, {
+    message: "A crop must sit inside the photo.",
+  });
+
+export type Crop = z.infer<typeof cropSchema>;
+
 export const draftColumnSchema = z
   .object({
     /** Client-generated and stable: identity survives reordering. */
@@ -109,6 +134,8 @@ export const draftColumnSchema = z
     readings: z.array(readingSchema).max(20),
     /** Index → value the founder typed, layered over the reading. `null` = cleared. */
     manualEdits: z.record(editIndex, cellValue),
+    /** This column's place on the sheet photo. Null until the founder marks it. */
+    crop: cropSchema.nullable(),
   })
   .refine((column) => !(column.playerId && column.newPlayerName), {
     message: "A column is either an existing player or a new one, not both.",
@@ -187,6 +214,7 @@ export function emptyDraftState(args: {
       activeReadingId: null,
       readings: [],
       manualEdits: {},
+      crop: null,
     })),
   };
 }

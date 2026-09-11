@@ -69,6 +69,7 @@ describe("effectiveValues", () => {
         },
       ],
       manualEdits: { "10": 111, "0": null },
+      crop: null,
     };
     expect(effectiveValues(column)).toEqual([
       null, 29, 64, 64, 64, 64, 64, 64, 67, 67, 111,
@@ -151,6 +152,43 @@ describe("draftStateSchema", () => {
     const state = typedSheet01();
     state.columns[1]!.id = state.columns[0]!.id;
     expect(draftStateSchema.safeParse(state).success).toBe(false);
+  });
+});
+
+describe("crop (criterion 14)", () => {
+  it("starts unset on every column of a fresh draft", () => {
+    const state = emptyDraftState({
+      photoId: "p",
+      playedOn: "2026-09-11",
+      columnIds: ["a", "b"],
+    });
+    expect(state.columns.map((c) => c.crop)).toEqual([null, null]);
+  });
+
+  it("accepts a column marked inside the photo", () => {
+    const state = typedSheet01();
+    state.columns[0]!.crop = { x: 0.05, y: 0.12, width: 0.2, height: 0.7 };
+    expect(draftStateSchema.safeParse(state).success).toBe(true);
+  });
+
+  it("accepts a crop that reaches the photo's edge exactly", () => {
+    const state = typedSheet01();
+    state.columns[3]!.crop = { x: 0.75, y: 0, width: 0.25, height: 1 };
+    expect(draftStateSchema.safeParse(state).success).toBe(true);
+  });
+
+  it("rejects a crop that spills off the photo, or has no size", () => {
+    for (const crop of [
+      { x: 0.9, y: 0.1, width: 0.2, height: 0.5 },
+      { x: 0.1, y: 0.6, width: 0.2, height: 0.5 },
+      { x: -0.1, y: 0.1, width: 0.2, height: 0.5 },
+      { x: 0.1, y: 0.1, width: 0, height: 0.5 },
+      { x: 0.1, y: 0.1, width: 0.2, height: 0 },
+    ]) {
+      const state = typedSheet01();
+      state.columns[0]!.crop = crop;
+      expect(draftStateSchema.safeParse(state).success).toBe(false);
+    }
   });
 });
 
