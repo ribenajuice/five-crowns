@@ -138,6 +138,42 @@ Resources:
                   - iam:UpdateAssumeRolePolicy
                   - iam:UntagRole
                 Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${RepositoryName}-*
+              # SST names roles `<app>-<stage>-<Component>…`, but when the
+              # component name is long it drops the app name to fit IAM's
+              # 64-character limit: `prod-WebRevalidationEventsSubscriber…`.
+              # The first deploy was refused iam:CreateRole on exactly that.
+              # Other projects share this account, so `prod-*` is only allowed
+              # for roles carrying SST's own tag sst:app=<this app>, which SST
+              # applies as a provider default tag, i.e. in the CreateRole call.
+              - Sid: IamTruncatedCreate
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:TagRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    aws:RequestTag/sst:app: !Ref RepositoryName
+              - Sid: IamTruncatedManage
+                Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PassRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRoleTags
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:UntagRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    iam:ResourceTag/sst:app: !Ref RepositoryName
               # The server function sits behind CloudFront OAC with a
               # Lambda@Edge request signer (sst.config.ts `protection`).
               # Attaching an edge function needs Lambda's replication

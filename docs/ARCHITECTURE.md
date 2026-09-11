@@ -1437,6 +1437,16 @@ that would mean the header is not arriving and everyone shares one bucket.
    deploy was refused `sqs:CreateQueue` until this was added (statement `SqsScoped` in
    `infra/github-oidc.yaml`). Everything else the component creates (DynamoDB table, Lambda
    functions and URLs, CloudFront pieces, IAM roles, log groups) was already covered.
+5. **SST shortens long role names, and they lose the `five-crowns-` prefix.** SST names roles
+   `five-crowns-prod-<Component>…`, but when the component name is long it drops the app name to
+   fit IAM's 64-character limit. The queue subscriber's role became
+   `prod-WebRevalidationEventsSubscriberOabasvFunctionRole-…`, and the first deploy was refused
+   `iam:CreateRole`. Other projects share this AWS account, so the deploy role may create and
+   manage `prod-*` roles **only when they carry SST's tag `sst:app = five-crowns`**. SST applies
+   that tag in the create call itself. See statements `IamTruncatedCreate` and
+   `IamTruncatedManage` in `infra/github-oidc.yaml`. If a tag condition ever proves too
+   brittle, the fallback is a global `$transform(aws.iam.Role, …)` in `sst.config.ts` that puts
+   every role under an IAM path `/five-crowns/` and scopes the deploy role to that path.
 
 ---
 
