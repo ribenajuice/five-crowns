@@ -44,6 +44,14 @@
   --text-xs: 11px;
   --text-xs--line-height: 1.4;
 
+  /* Numeric type (DESIGN-SYSTEM.md § Type, `--num` / `--num-lg`). Utilities:
+     text-num, text-num-lg — pair with `.tabular` and `font-bold`/`font-black`
+     for the mono, tabular-figure weight the tokens specify. */
+  --text-num: 20px;
+  --text-num--line-height: 1.2;
+  --text-num-lg: 30px;
+  --text-num-lg--line-height: 1.15;
+
   /* Uppercase-xs labels above values. Utility: tracking-label. */
   --tracking-label: 0.07em;
 
