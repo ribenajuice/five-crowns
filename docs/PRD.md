@@ -1079,8 +1079,13 @@ in Player B's column, winner Player B on 71. Ground truth is
     `s3://five-crowns-photos/backups/`. The founder cut it: "this isnt sensitive data, its just a
     pet project. if something gets lost, its not the end of the world." Database backups are now
     manual and on demand. Photos are unaffected and are still kept forever.)*
-84. `https://fivecrowns.ribenajuice.xyz` answers with a valid certificate and no browser warning, and
-    the CloudFront URL keeps working alongside it.
+84. `https://fivecrowns.ribenajuice.xyz` answers with a valid certificate and no browser warning. The
+    CloudFront URL is **deliberately closed** once the domain is attached (it answers 403), so the site
+    has exactly one address, and the documented recovery can reopen it.
+    *(Reworded 2026-09-11, founder decision. The original also required the CloudFront URL to keep
+    working alongside the domain. SST blocks it by design whenever a custom domain is set, and has no
+    option to turn that off. If the domain ever breaks, deleting `/five-crowns/prod/app-domain` and
+    `/five-crowns/prod/app-cert-arn` and deploying once reopens the CloudFront URL.)*
 85. ⚠️ **Definition of done.** The founder, on their own phone, on the live domain, photographs a real
     sheet, reviews it, saves it, and the game appears in the record **correct and checkable against
     the photo, cell by cell**. Nothing else in this list substitutes for this one.

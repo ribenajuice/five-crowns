@@ -20,6 +20,27 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-11 — One address: the CloudFront URL closes once the custom domain is attached
+
+- **Context**: criterion 84 asked for `fivecrowns.ribenajuice.xyz` to work *and* for the CloudFront URL
+  (`darn4m0ss1uf4.cloudfront.net`) to keep working alongside it, as a spare way in. After the domain
+  was attached, the CloudFront URL answered **403** (`x-cache: FunctionGeneratedResponse`). SST
+  injects a block into the site's CloudFront function (`CF_BLOCK_CLOUDFRONT_URL_INJECTION`,
+  `ssr-site.ts`) whenever a custom domain is set, and it has no option to disable it. The docs call
+  it a feature: "Disable CloudFront default URL if custom domain is set".
+- **Decision** (founder, 2026-09-11): **keep SST's behaviour.** The site has one address. Criterion 84
+  is reworded to match.
+- **Alternatives**: *Force the CloudFront URL open* by transforming SST's generated CloudFront
+  function to strip the block on every deploy. It works, but it patches generated code that SST can
+  change in any release, and it would fail silently when it did. Rejected as fragile for a benefit
+  the recovery below already provides.
+- **Consequences**: one address for bookmarks, sessions and the login cookie (cookies are per
+  hostname, so two addresses would have meant two separate logins anyway). **Recovery if the domain
+  breaks:** delete `/five-crowns/prod/app-domain` and `/five-crowns/prod/app-cert-arn` from Parameter
+  Store (region `ap-southeast-2`) and deploy once. SST then stops injecting the block, and the
+  CloudFront URL answers again in about 15 minutes. *Revisit-if*: SST adds an option to keep the
+  default URL, or the domain proves unreliable.
+
 ## 2026-09-11 — The Turso database lives in Tokyo, because Turso has no Sydney location
 
 - **Context**: the region-correction ADR below put the Turso database in Sydney (`syd`) beside the
