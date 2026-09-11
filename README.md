@@ -3,8 +3,13 @@
 Five Crowns Ledger is a private, permanent record of our group's Five Crowns nights. You photograph
 the finished paper scoresheet, and the app turns it into a searchable history of every game.
 
-**Where it's at:** Milestone 1 is under way and nothing is deployed yet. Today the app has a
-password gate and an empty games list. You can't photograph a sheet yet. See `docs/STATUS.md`.
+**Where it's at:** Milestone 1 is under way and nothing is deployed yet. You can add a game by
+photographing the scoresheet (or choosing a photo), then typing in the scores on the review
+screen. See `docs/STATUS.md`.
+
+**Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
+photos), turn it upright, then type in the numbers on the review screen. Pick the date, venue and
+players from lists, or add new ones. Your work saves as you go, so it survives closing the page.
 
 ## Run it on your computer
 
@@ -17,7 +22,9 @@ You need Node 22 or newer. You don't need an AWS account.
    ```
 
 2. Create a `.env.local` file. [`lib/config/README.md`](lib/config/README.md) lists what goes in
-   it. For each of the two passwords (group and admin), run this and type the password:
+   it — including the local photo store, which stands in for S3 so you don't need an AWS account
+   ([`lib/config/README.md`](lib/config/README.md) § Photos, locally). For each of the two
+   passwords (group and admin), run this and type the password:
 
    ```bash
    node scripts/hash-password.js

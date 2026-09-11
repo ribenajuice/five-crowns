@@ -8,6 +8,22 @@ below is still **Unreleased**.
 
 ### Added
 
+- **You can add a game.** Photograph the paper scoresheet (the camera opens directly on a phone,
+  or choose a photo), turn it upright, then type in the numbers on the review screen. Every saved
+  game keeps its photo.
+- **The review screen** shows a strip of the photo for one player's column next to the numbers, so
+  you can check as you type. Mark where each column is as you pick its player, and tap any number
+  to fix it. Per-hand scores update as you type. Pairs of numbers that don't climb are flagged, and
+  a big hand gets a gentle warning that never blocks saving. The last row is shown on its own with
+  the winner.
+- **Your work saves as you go**, so if your phone closes the page mid-entry, your draft is still
+  there when you come back.
+- **Date, venue and players are picked from lists**, or you can add a new one — so one venue or
+  person never splits into two by being typed differently.
+- **The games list** is newest first, showing the date, venue ("No location" if none), who played,
+  and who won. **A game's page** shows the scores as written, the per-hand scores, and a zoomable
+  photo.
+- Photos must be **JPEGs under 8 MB**, and there's a limit of **40 uploads a day**.
 - **The app is private.** Every page asks for the group password first. There are no accounts:
   everyone shares one password.
 - **Guessing the password is blocked.** After 10 wrong tries in 10 minutes from the same place, the
