@@ -665,6 +665,67 @@ in-flight re-read returning while the founder is typing in a different column. T
 snapshot taken when the request began. No version vectors, no CRDTs, no optimistic-locking
 protocol — those would be real machinery bought for a problem that does not exist here.
 
+### The Stage 2 interface: draft, upload, save
+
+*Written before the Stage 2 build so the back end and front end could be built in parallel.
+`lib/draft/state.ts` is the executable half: the draft's type, its zod schema, and the helpers
+both sides share. If this section and that file ever disagree, the file wins; fix this section.*
+
+**Rules for every route below:**
+- A group session is required: `hasSession("group")` in route handlers, and `requireGroupSession()`
+  in pages. Middleware only checks the cookie's signature.
+- State-changing routes go through `rejectCrossSitePost()`, so they accept JSON from this site only.
+- Errors use `apiError()` from `lib/http/errors.ts`.
+- Ids are `crypto.randomUUID()`.
+
+**The draft** is stored whole in `draft.state_json`:
+- **Players and venues picked from the list carry an id.** Ones created during this draft carry only
+  a pending name (`newPlayerName`, `newLocationName`), and the save resolves them.
+- So **an abandoned draft leaves nothing in the pick-lists**.
+- A pending name that matches an existing entry by `nameKey` (trimmed, lower-cased, whitespace
+  collapsed) **becomes that entry, not a duplicate** (criteria 60, 62, 63).
+
+**Photo first** (criterion 10). A draft is created only after its sheet photo exists, so "type it in
+by hand" means photograph, then type. The server never trusts the draft's `photoId` alone. Saving
+requires a `photo` row with `kind = 'sheet'` and `draft_id` = this draft, with **both** S3 objects
+present (checked with `HeadObject`).
+
+| Route | Body | Response | Notes |
+|---|---|---|---|
+| `POST /api/uploads` | `{ kind: "sheet", rotation: 0 \| 90 \| 180 \| 270, width, height }` | `201 { photoId, original: { url }, model: { url } }` | Creates the `photo` row and two presigned PUTs (5 min, `Content-Type: image/jpeg` signed in) to `photos/{photoId}/original.jpg` and `photos/{photoId}/model.jpg`. The browser has already rotated and downscaled both |
+| `POST /api/drafts` | `{ photoId, state }` | `201 { draftId, updatedAt }` | Links the photo (`photo.draft_id`) and stores the initial state, which must have `state.photoId === photoId`. Rejects a photo already linked to another draft |
+| `GET /api/drafts/{id}` | — | `200 { draftId, state, updatedAt, savedGameId }` | A non-null `savedGameId` means it was saved, and the review screen redirects to `/games/{savedGameId}` |
+| `PUT /api/drafts/{id}` | `{ state }` | `200 { updatedAt }` | Whole-state replace, debounced ~1 s on the client (criterion 28). Schema-validated, **not** grid-validated, because a draft may be half-typed. `409` once saved |
+| `GET /api/photos/{id}/url?variant=original\|model` | — | `200 { url, expiresAt }` | Presigned GET, 5 min (criterion 12). The path has no image extension on purpose, so middleware sees it. It checks the session anyway |
+| `GET /api/players` | — | `200 { players: [{ id, displayName }] }` | Alphabetical |
+| `GET /api/locations` | — | `200 { locations: [{ id, name }], mostRecentLocationId }` | The location of the newest saved game, or null (criterion 59) |
+| `POST /api/games` | `{ draftId, state }` | `201 { gameId }`, or `200 { gameId }` if already saved | See **The save**, below. `422 invalid_grid` with the issues; `409 missing_photo` |
+
+**The save** (`POST /api/games`) persists `state` to the draft first. Then, in **one transaction**,
+it:
+1. re-validates (`validateGrid` over `toGridColumns(state)`) and re-derives every hand score
+   **server-side**, never accepting client-computed ones;
+2. resolves or creates the location and players;
+3. upserts the roster on its signature, with its `roster_member` rows;
+4. inserts `game`, then `game_player` (`column_order`, `sheet_name`, `final_score`), then 11 × N
+   `round_score` (`running_total` and `score`);
+5. sets `photo.game_id` and `draft.saved_game_id`.
+
+A pending player name that resolves to a player already used in another column is a
+`duplicate_player` failure, caught **after** resolution.
+
+**Pages:**
+- `/games/new`: add a game.
+- `/review/{draftId}`: the review screen.
+- `/games`: the games list. A server component that queries directly, newest first by `played_on`,
+  then `created_at`.
+- `/games/{id}`: the game view. A server component; the presigned photo URL is rendered into the
+  page.
+
+Winners are always derived (`determineWinners` over `game_player.final_score`), never stored. A
+roster's display name is `roster.name`, or `rosterDisplayName(memberNames)` in `lib/scoring/roster.ts`,
+in the format `docs/DESIGN-SYSTEM.md` specifies (criterion 68).
+
 ### Flow 2b — Targeted column re-read
 
 The single highest-leverage accuracy mechanism in the system. Two compounding reasons, both worth
