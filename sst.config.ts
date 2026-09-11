@@ -90,6 +90,17 @@ export default $config({
      */
     const photos = new sst.aws.Bucket("Photos", {
       versioning: true,
+      // Explicit, not SST's default (`*` origins, every method). Browsers upload
+      // with presigned POSTs and display with presigned GETs, from the one
+      // address the app has. The URL itself is the authorisation, so this grants
+      // nothing on its own; it just stops other sites' pages from using those
+      // URLs from a browser. No `localhost`: local development never touches
+      // this bucket (lib/photos local driver). Stage 2 security review, LOW 6.
+      cors: {
+        allowOrigins: ["https://fivecrowns.ribenajuice.xyz"],
+        allowMethods: ["POST", "GET", "HEAD"],
+        allowHeaders: ["*"],
+      },
       transform: {
         bucket: {
           bucket: PHOTOS_BUCKET,
