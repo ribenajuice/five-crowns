@@ -1444,7 +1444,11 @@ that would mean the header is not arriving and everyone shares one bucket.
    `iam:CreateRole`. Other projects share this AWS account, so the deploy role may create and
    manage `prod-*` roles **only when they carry SST's tag `sst:app = five-crowns`**. SST applies
    that tag in the create call itself. See statements `IamTruncatedCreate` and
-   `IamTruncatedManage` in `infra/github-oidc.yaml`. If a tag condition ever proves too
+   `IamTruncatedManage` in `infra/github-oidc.yaml`. ⚠️ **`iam:PassRole` is the exception.** It
+   ignores the role's tags: the fourth deploy was refused it even though the role was tagged. So
+   handing a shortened role to a service is gated on `iam:PassedToService = lambda.amazonaws.com`
+   instead (statement `IamTruncatedPass`). That lets it be handed to Lambda and nothing else, and
+   it gives no power to change the role. If a tag condition ever proves too
    brittle, the fallback is a global `$transform(aws.iam.Role, …)` in `sst.config.ts` that puts
    every role under an IAM path `/five-crowns/` and scopes the deploy role to that path.
 

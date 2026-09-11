@@ -164,7 +164,6 @@ Resources:
                   - iam:GetRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DetachRolePolicy
-                  - iam:PassRole
                   - iam:ListRolePolicies
                   - iam:ListAttachedRolePolicies
                   - iam:ListRoleTags
@@ -174,6 +173,20 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:ResourceTag/sst:app: !Ref RepositoryName
+              # iam:PassRole does not evaluate the role's tags: the fourth deploy
+              # was refused PassRole at lambda:CreateFunction although the role
+              # carried sst:app=five-crowns and every other tag-gated action on
+              # it had succeeded. PassRole's own condition key is
+              # iam:PassedToService, so the shortened roles may be handed to
+              # Lambda and nothing else. PassRole grants no power over the
+              # role itself; changing its policies stays tag-gated above.
+              - Sid: IamTruncatedPass
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/prod-*
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
               # The server function sits behind CloudFront OAC with a
               # Lambda@Edge request signer (sst.config.ts `protection`).
               # Attaching an edge function needs Lambda's replication
