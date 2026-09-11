@@ -49,6 +49,18 @@ npm run lint && npm run typecheck     # code style and type errors
 
 CI runs all three on every pull request.
 
+## Taking a backup
+
+There's no automatic backup. Run this whenever you want a copy of the scores:
+
+```bash
+npm run db:backup
+```
+
+It writes a dated `.sql` file into `backups/` (or `$BACKUP_DIR`, if you set one) and prints the
+path. It works against your local database or, via `npx sst shell --stage prod -- npm run
+db:backup`, production. Photos aren't included — they live in S3 and are kept forever separately.
+
 ## How it deploys
 
 Every merge to `main` deploys by itself. GitHub Actions runs `scripts/deploy.sh`, which signs in to

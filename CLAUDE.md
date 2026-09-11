@@ -49,7 +49,7 @@ Requests that arrive without a slash command still follow the same discipline: a
 ## Stack & commands
 
 - Stack: **Next.js 15 (App Router) + TypeScript on Node 22**, Tailwind CSS, Drizzle ORM over
-  **Turso (libSQL/SQLite)**, deployed to **AWS Lambda + CloudFront + S3 by SST v3**. Vitest for
+  **Turso (libSQL/SQLite)**, deployed to **AWS Lambda + CloudFront + S3 by SST v4** (4.17). Vitest for
   tests. Full reasoning in `docs/ARCHITECTURE.md`.
 - Install: `npm ci` (first time: `npm install`)
 - Dev server: `npm run dev` — needs a `.env.local`; see `lib/config/README.md`
