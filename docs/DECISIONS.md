@@ -42,7 +42,11 @@ Format:
   (about 110 ms). A page doing two or three queries is a few tenths of a second slower than a
   same-region database. That's acceptable for a private app used once or twice a week. Cost is
   unchanged: the free plan covers this, and data transfer at this volume is negligible. Measured
-  after the first deploy: *see below*.
+  after the first deploy (2026-09-11), from Adelaide through CloudFront: a warm login attempt,
+  which makes two or three database round trips plus a ~50 ms scrypt check, took **0.45–0.58 s**.
+  A page load that touches no database took **0.13–0.21 s**. So each Sydney↔Tokyo query adds roughly
+  **110–130 ms**, as estimated. The first request after a deploy (Lambda cold start) took 3.9 s,
+  which is unrelated to Tokyo. Verdict: acceptable, and the decision stands.
   *Revisit-if*: pages feel slow on a phone, Turso adds an Australian location (move it: `turso db
   create` there, restore from `npm run db:backup`, update the two SST secrets), or the review
   screen's save turns out to need many sequential queries.
