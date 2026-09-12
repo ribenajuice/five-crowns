@@ -23,6 +23,7 @@ import path from "node:path";
 
 import { signLocalPhotoUrl } from "./local-url";
 import {
+  PhotoObjectNotFoundError,
   PRESIGN_EXPIRY_SECONDS,
   type PhotoStorage,
   type PhotoVariant,
@@ -84,6 +85,12 @@ export function localPhotoStorage(): PhotoStorage {
         }
         throw error;
       }
+    },
+
+    async getObjectBytes(photoId, variant) {
+      const data = await readLocalPhoto(photoId, variant);
+      if (!data) throw new PhotoObjectNotFoundError(filePath(photoId, variant));
+      return data;
     },
   };
 }

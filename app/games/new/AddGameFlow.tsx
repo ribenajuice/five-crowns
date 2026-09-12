@@ -5,10 +5,17 @@
  *
  * `docs/DESIGN-SYSTEM.md` § Screen rules: photo first, always — nothing else
  * on this screen until a sheet photo exists. Two moments: get the photo, then
- * choose how the numbers go in. The lead's Stage 2 override: "Read the sheet"
- * is not rendered at all (a control that does nothing is worse than none);
- * "Type it in by hand" is the only live path, worded as an ordinary choice,
- * never a fallback (PRD criterion 47).
+ * choose how the numbers go in. From Stage 3, "Read the sheet" and "Type it
+ * in by hand" render together, equal weight, neither a fallback for the other
+ * (PRD criterion 47).
+ *
+ * "Read the sheet" posts straight to `POST /api/transcribe` — no
+ * `POST /api/drafts` first (`docs/DECISIONS.md`, "`POST /api/transcribe`
+ * creates its own draft") — so the draft id isn't known until the stream's
+ * `result` event arrives. Until then, progress renders right here rather than
+ * on `/review/{draftId}`, because there is no id to route to yet; the
+ * founder's perceived experience is the same either way, since it's the same
+ * `TranscribeProgress` component the review screen would otherwise show.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -18,14 +25,24 @@ import { Banner } from "@/components/Banner";
 import { buttonClasses } from "@/components/Button";
 import { PhotoCapture } from "@/components/PhotoCapture";
 import { RotateControl } from "@/components/RotateControl";
+import { TranscribeProgress } from "@/components/TranscribeProgress";
 import { UploadProgress } from "@/components/UploadProgress";
 import { emptyDraftState } from "@/lib/draft/state";
 import { newId } from "@/lib/ui/ids";
 import { exportPhoto, loadPhoto, rotateCanvas, type LoadedPhoto } from "@/lib/ui/image-pipeline";
 import { localCalendarDay } from "@/lib/ui/local-date";
+import { consumeNdjsonStream } from "@/lib/ui/ndjson";
+import { parseTranscribeEvent, type TranscribeColumnDiagnostic } from "@/lib/ui/transcribe-events";
 import {
+  DAILY_TRANSCRIBE_CAP_MESSAGE,
+  DAILY_TRANSCRIBE_CAP_TITLE,
   HAND_ENTRY_HELPER,
   HAND_ENTRY_LABEL,
+  READ_ERROR_MESSAGE,
+  READ_ERROR_TITLE,
+  READ_RETRY_LABEL,
+  READ_SHEET_HELPER,
+  READ_SHEET_LABEL,
   UPLOAD_CAP_MESSAGE,
   UPLOAD_CAP_TITLE,
   UPRIGHT_CONFIRM_LABEL,
@@ -49,7 +66,9 @@ type Phase =
   | "upload-capped"
   | "choose-path"
   | "creating-draft"
-  | "draft-error";
+  | "draft-error"
+  | "transcribing"
+  | "transcribe-error";
 
 export function AddGameFlow() {
   const router = useRouter();
@@ -59,6 +78,10 @@ export function AddGameFlow() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // A distinct cap from the upload cap above (`usage_day.sheet_transcriptions`,
+  // separate from `.sheet_uploads`) — sticks around under the two-card choice
+  // rather than replacing it, since manual entry stays fully available.
+  const [dailyCapHit, setDailyCapHit] = useState(false);
 
   // The blobs and presign from a completed upload, kept so "Try again" never
   // re-photographs, re-presigns (which would burn another of the day's upload
@@ -77,6 +100,17 @@ export function AddGameFlow() {
       model: { url: string; fields: Record<string, string> };
     };
   } | null>(null);
+
+  // ⚠️ Code review: `phase` only reflects "in flight" after React re-renders,
+  // which is one tick behind a rapid double-tap — a `disabled` prop alone
+  // can't stop a second `handleReadSheet()` firing before that render lands.
+  // Two overlapping POST /api/transcribe calls for the same photo would each
+  // spend a cap slot and merge a reading into the same draft with no
+  // conflict check (the draft is a single-editor design, per
+  // docs/ARCHITECTURE.md's "Concurrency, deliberately not solved"). This ref
+  // is checked and set synchronously, before any `await`, so it closes the
+  // gap the render can't.
+  const transcribeInFlight = useRef(false);
 
   useEffect(() => {
     if (!loaded) {
@@ -239,6 +273,82 @@ export function AddGameFlow() {
     }
   }
 
+  /**
+   * "Read the sheet": posts straight to `POST /api/transcribe` with the
+   * photo's id and the browser's local calendar day (⚠️ required here — this
+   * route creates its own draft when none exists yet, and without `playedOn`
+   * it would default to UTC-today, wrong for part of every Australian day).
+   * "Try again" calls this again with the same `photoId`, never re-uploading
+   * or reopening the camera (PRD criterion 53).
+   */
+  async function runTranscribe() {
+    if (!uploadResult.current) return;
+    if (transcribeInFlight.current) return;
+    transcribeInFlight.current = true;
+
+    try {
+      const photoId = uploadResult.current.presign.photoId;
+
+      setPhase("transcribing");
+      setErrorMessage(null);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ photoId, playedOn: localCalendarDay() }),
+      });
+
+      if (response.status === 429) {
+        setDailyCapHit(true);
+        setPhase("choose-path");
+        return;
+      }
+      if (!response.ok || !response.body) {
+        setPhase("transcribe-error");
+        return;
+      }
+
+      let draftId: string | null = null;
+      let columns: TranscribeColumnDiagnostic[] = [];
+      let sawError = false;
+
+      await consumeNdjsonStream(response.body, (raw) => {
+        const event = parseTranscribeEvent(raw);
+        if (!event) return;
+        if (event.type === "result") {
+          draftId = event.draftId;
+          columns = event.columns;
+        } else if (event.type === "error") {
+          sawError = true;
+        }
+        // "progress" events need no local state — TranscribeProgress cycles
+        // its own captions independently of the stream's heartbeat.
+      });
+
+      if (sawError || !draftId) {
+        setPhase("transcribe-error");
+        return;
+      }
+
+      // Handed to the review screen for this one visit only — the model's
+      // doubt is live diagnostics for this attempt, never persisted on the
+      // draft (docs/DESIGN-SYSTEM.md § ReadHint), so it travels no further
+      // than `sessionStorage` and is removed the moment the review screen
+      // reads it.
+      window.sessionStorage.setItem(`transcribe-hints:${draftId}`, JSON.stringify(columns));
+      router.push(`/review/${draftId}`);
+    } catch {
+      setPhase("transcribe-error");
+    } finally {
+      transcribeInFlight.current = false;
+    }
+  }
+
+  function handleReadSheet() {
+    setDailyCapHit(false);
+    void runTranscribe();
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {phase === "empty" ? <PhotoCapture onFile={handleFile} /> : null}
@@ -249,7 +359,9 @@ export function AddGameFlow() {
         phase === "upload-capped" ||
         phase === "choose-path" ||
         phase === "creating-draft" ||
-        phase === "draft-error") &&
+        phase === "draft-error" ||
+        phase === "transcribing" ||
+        phase === "transcribe-error") &&
       previewUrl ? (
         <div className="flex flex-col items-center gap-3">
           <div className="relative aspect-square w-full max-w-xs overflow-hidden rounded-[var(--radius)] border border-line bg-sunk">
@@ -302,24 +414,74 @@ export function AddGameFlow() {
       ) : null}
 
       {phase === "choose-path" || phase === "creating-draft" || phase === "draft-error" ? (
-        <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
-          <button
-            type="button"
-            disabled={phase === "creating-draft"}
-            aria-busy={phase === "creating-draft" || undefined}
-            onClick={handleTypeByHand}
-            className={buttonClasses("primary", { fullWidth: true })}
-          >
-            {phase === "creating-draft" ? "Starting…" : HAND_ENTRY_LABEL}
-          </button>
-          <p className="mt-2 text-center text-sm text-text-muted">{HAND_ENTRY_HELPER}</p>
+        <div className="flex flex-col gap-3">
+          {dailyCapHit ? (
+            <Banner tone="warn" title={DAILY_TRANSCRIBE_CAP_TITLE}>
+              {DAILY_TRANSCRIBE_CAP_MESSAGE}
+            </Banner>
+          ) : null}
+
+          {/* Equal weight, neither a fallback for the other: "Read the sheet"
+              is `primary`, "Type it in by hand" is `ghost`, same reach. */}
+          <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+            <button
+              type="button"
+              onClick={handleReadSheet}
+              className={buttonClasses("primary", { fullWidth: true })}
+            >
+              {READ_SHEET_LABEL}
+            </button>
+            <p className="mt-2 text-center text-sm text-text-muted">{READ_SHEET_HELPER}</p>
+          </div>
+
+          <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+            <button
+              type="button"
+              disabled={phase === "creating-draft"}
+              aria-busy={phase === "creating-draft" || undefined}
+              onClick={handleTypeByHand}
+              className={buttonClasses("ghost", { fullWidth: true })}
+            >
+              {phase === "creating-draft" ? "Starting…" : HAND_ENTRY_LABEL}
+            </button>
+            <p className="mt-2 text-center text-sm text-text-muted">{HAND_ENTRY_HELPER}</p>
+          </div>
+
+          {errorMessage && phase === "draft-error" ? (
+            <Banner tone="error" title={errorMessage}>
+              Check your connection and try again.
+            </Banner>
+          ) : null}
         </div>
       ) : null}
 
-      {errorMessage && phase === "draft-error" ? (
-        <Banner tone="error" title={errorMessage}>
-          Check your connection and try again.
-        </Banner>
+      {phase === "transcribing" ? <TranscribeProgress thumbnailUrl={previewUrl ?? ""} /> : null}
+
+      {phase === "transcribe-error" ? (
+        <div className="flex flex-col gap-3">
+          <Banner tone="error" title={READ_ERROR_TITLE}>
+            {READ_ERROR_MESSAGE}
+          </Banner>
+          <button
+            type="button"
+            onClick={() => void runTranscribe()}
+            className={buttonClasses("primary", { fullWidth: true })}
+          >
+            {READ_RETRY_LABEL}
+          </button>
+
+          {/* Equal reach directly below the retry — a bad read is never a dead end. */}
+          <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+            <button
+              type="button"
+              onClick={handleTypeByHand}
+              className={buttonClasses("ghost", { fullWidth: true })}
+            >
+              {HAND_ENTRY_LABEL}
+            </button>
+            <p className="mt-2 text-center text-sm text-text-muted">{HAND_ENTRY_HELPER}</p>
+          </div>
+        </div>
       ) : null}
     </div>
   );

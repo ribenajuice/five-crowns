@@ -2,13 +2,23 @@ import { describe, expect, it } from "vitest";
 
 import { validateGrid, type GridColumn } from "@/lib/scoring";
 import { SHEET_01 } from "../fixtures/sheets";
+import * as copy from "@/lib/ui/copy";
 import {
+  ADMIN_REJECTED_MESSAGE,
+  ADMIN_REJECTED_TITLE,
+  ADMIN_SAVED_MESSAGE,
+  ADMIN_SAVED_TITLE,
+  DAILY_TRANSCRIBE_CAP_MESSAGE,
+  DAILY_TRANSCRIBE_CAP_TITLE,
   PASSING_STATEMENT,
+  READ_ERROR_MESSAGE,
+  READ_ERROR_TITLE,
   TOO_FEW_PLAYERS_MESSAGE,
   blockedColumnDips,
   blockedColumnShort,
   columnStatusLabel,
   pairedFlagSentence,
+  readHintSentence,
   saveBlockedMessage,
   sharedWinGamesListLabel,
   sharedWinnerConfirmation,
@@ -37,6 +47,34 @@ function assertNoBannedWords(sentence: string) {
 const gridFor = (columns: { player: string; runningTotals: (number | null)[] }[]): GridColumn[] =>
   columns.map((c, i) => ({ id: `col_${i}`, playerId: c.player, values: c.runningTotals }));
 
+describe("Every fixed string export in lib/ui/copy.ts — exhaustive, not curated", () => {
+  // QA gap found in Stage 3 review: the hand-picked lists above miss several
+  // real constants (e.g. ADMIN_TESTING_HELPER, ADMIN_KEY_FIELD_LABEL,
+  // TRANSCRIBE_PROGRESS_HEADING/CAPTIONS, ADMIN_STATUS_*, READ_RETRY_LABEL).
+  // This walks every string (and string-array) export automatically, so a
+  // new fixed string can never silently skip the wording constraint again.
+  const allExports = Object.entries(copy) as [string, unknown][];
+  const stringExports = allExports.filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  const arrayExports = allExports.filter(
+    (entry): entry is [string, readonly string[]] =>
+      Array.isArray(entry[1]) && entry[1].every((v) => typeof v === "string"),
+  );
+
+  it("found a non-trivial number of string exports to check (sanity check on the scan itself)", () => {
+    expect(stringExports.length).toBeGreaterThan(30);
+  });
+
+  it.each(stringExports)("%s has no banned word", (_name, value) => {
+    assertNoBannedWords(value);
+  });
+
+  it.each(arrayExports)("%s (array) has no banned word in any entry", (_name, values) => {
+    values.forEach((value) => assertNoBannedWords(value));
+  });
+});
+
 describe("pairedFlagSentence (PRD criterion 21)", () => {
   it("names both numbers, lower first — '11 is lower than the 67 above it'", () => {
     expect(pairedFlagSentence(11, 67)).toBe("11 is lower than the 67 above it.");
@@ -57,6 +95,36 @@ describe("softWarningSentence (PRD criterion 27)", () => {
 describe("columnStatusLabel (PRD criterion 25)", () => {
   it("renders the literal '10 of 11' wording, never a shorter game", () => {
     expect(columnStatusLabel(10, 11)).toBe("10 of 11");
+  });
+});
+
+describe("readHintSentence (docs/DESIGN-SYSTEM.md § ReadHint fixed copy)", () => {
+  it("names the hand label, never the cell's value", () => {
+    expect(readHintSentence(4)).toBe("Least sure about the 6s in this column.");
+    assertNoBannedWords(readHintSentence(4));
+  });
+
+  it("falls back gracefully outside the 1–11 hand range, same as softWarningSentence", () => {
+    expect(readHintSentence(0)).toBe("Least sure about the hand 0 in this column.");
+  });
+});
+
+describe("Stage 3 fixed banner copy — none of it uses a banned word", () => {
+  it("the daily transcription cap banner", () => {
+    assertNoBannedWords(DAILY_TRANSCRIBE_CAP_TITLE);
+    assertNoBannedWords(DAILY_TRANSCRIBE_CAP_MESSAGE);
+  });
+
+  it("the read-error banner", () => {
+    assertNoBannedWords(READ_ERROR_TITLE);
+    assertNoBannedWords(READ_ERROR_MESSAGE);
+  });
+
+  it("the admin panel's saved/rejected banners", () => {
+    assertNoBannedWords(ADMIN_SAVED_TITLE);
+    assertNoBannedWords(ADMIN_SAVED_MESSAGE);
+    assertNoBannedWords(ADMIN_REJECTED_TITLE);
+    assertNoBannedWords(ADMIN_REJECTED_MESSAGE);
   });
 });
 

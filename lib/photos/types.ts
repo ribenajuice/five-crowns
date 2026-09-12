@@ -37,6 +37,20 @@ export interface PhotoStorage {
   presignGet(photoId: string, variant: PhotoVariant): Promise<PresignedUrl>;
   /** Whether the object actually exists — `HeadObject` in S3, `stat` locally. */
   objectExists(photoId: string, variant: PhotoVariant): Promise<boolean>;
+  /**
+   * The object's raw bytes, read server-side for the vision call
+   * (`docs/ARCHITECTURE.md` § Flow 2, step 5) — `GetObject` in S3, `readFile`
+   * locally. ⚠️ Never handed to the browser: the app either presigns a GET or
+   * embeds the bytes in an outbound Anthropic request, and nothing else.
+   *
+   * @throws {PhotoObjectNotFoundError} when the key doesn't exist.
+   */
+  getObjectBytes(photoId: string, variant: PhotoVariant): Promise<Buffer>;
+}
+
+/** Thrown by {@link PhotoStorage.getObjectBytes} for a missing key. */
+export class PhotoObjectNotFoundError extends Error {
+  override name = "PhotoObjectNotFoundError";
 }
 
 /** Five minutes — the expiry the PRD requires for every presigned photo URL. */

@@ -21,8 +21,41 @@ describe("cookieAttributes", () => {
     });
   });
 
-  it("scopes the admin cookie to /admin, so it is never sent with the record", () => {
-    expect(cookieAttributes("admin", { secure: true }).path).toBe("/admin");
+  it("uses Path=/ for both cookies — Path was never the security boundary", () => {
+    expect(cookieAttributes("group", { secure: true }).path).toBe("/");
+    expect(cookieAttributes("admin", { secure: true }).path).toBe("/");
+  });
+
+  /**
+   * ⚠️ Regression test for a real, live-reproduced Stage 3 bug: the admin
+   * cookie used to be scoped to `Path=/admin`, which — per RFC 6265's
+   * path-match algorithm — a request path matches a cookie's `Path` only if
+   * it equals it, or the cookie path is a "/"-terminated or "/"-followed
+   * prefix of it — meant `/api/admin/key` and `/api/admin/login` (both
+   * start with "/api", not "/admin") **never received the cookie in a real
+   * browser**. QA confirmed this against the running dev server: `/admin`
+   * (the page) saw the session and rendered the panel; the panel's own
+   * `fetch("/api/admin/key")` then 401'd because the browser withheld the
+   * cookie, making every save or status check unreachable. Fixed by giving
+   * both cookies `Path=/`, same as the group cookie always had — this test
+   * pins that every admin-gated request path stays reachable.
+   */
+  it("keeps every admin-gated request path reachable by the admin cookie", () => {
+    function rfc6265PathMatches(cookiePath: string, requestPath: string): boolean {
+      if (requestPath === cookiePath) return true;
+      if (!requestPath.startsWith(cookiePath)) return false;
+      if (cookiePath.endsWith("/")) return true;
+      return requestPath[cookiePath.length] === "/";
+    }
+
+    const adminPath = cookieAttributes("admin").path;
+    const adminGatedRequestPaths = ["/admin", "/api/admin/key", "/api/admin/login"];
+
+    const unreachable = adminGatedRequestPaths.filter(
+      (requestPath) => !rfc6265PathMatches(adminPath, requestPath),
+    );
+
+    expect(unreachable).toEqual([]);
   });
 
   it("uses two different cookie names — the gates are independent", () => {
@@ -55,7 +88,7 @@ describe("cookieAttributes", () => {
   it("clears a cookie by zeroing its lifetime, keeping the same path", () => {
     expect(clearedCookieAttributes("group").maxAge).toBe(0);
     expect(clearedCookieAttributes("group").path).toBe("/");
-    expect(clearedCookieAttributes("admin").path).toBe("/admin");
+    expect(clearedCookieAttributes("admin").path).toBe("/");
   });
 });
 

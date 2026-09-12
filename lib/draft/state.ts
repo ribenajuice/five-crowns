@@ -35,6 +35,9 @@ export const MAX_COLUMNS = 8;
 /** Room for Stage 4's "insert a value" repair, which briefly leaves 12. */
 export const MAX_VALUES_PER_COLUMN = HANDS_PER_GAME + 1;
 
+/** Every reading a column has ever had, kept forever (Stage 4's re-shoot ladder). */
+export const MAX_READINGS_PER_COLUMN = 20;
+
 export const MAX_NAME_LENGTH = 60;
 
 /**
@@ -133,7 +136,7 @@ export const draftColumnSchema = z
     /** The handwritten header, if known. Stage 2 leaves it null. */
     sheetName: z.string().max(MAX_NAME_LENGTH).nullable(),
     activeReadingId: z.string().min(1).max(64).nullable(),
-    readings: z.array(readingSchema).max(20),
+    readings: z.array(readingSchema).max(MAX_READINGS_PER_COLUMN),
     /** Index → value the founder typed, layered over the reading. `null` = cleared. */
     manualEdits: z.record(editIndex, cellValue),
     /** This column's place on the sheet photo. Null until the founder marks it. */
@@ -183,6 +186,22 @@ export const createDraftSchema = z
 
 export const updateDraftSchema = z.object({ state: draftStateSchema });
 
+/**
+ * `POST /api/transcribe` — the only thing the client supplies is which photo
+ * to read. `playedOn` is optional and exists only for the "no draft yet"
+ * branch: when the draft is created here rather than by a prior
+ * `POST /api/drafts`, there is no browser-local calendar day available
+ * unless the caller sends one (docs/ARCHITECTURE.md § Data model, `game`: "the
+ * default date is resolved from the browser's local calendar day … the server
+ * never invents one"). Omitting it falls back to UTC-today, which is
+ * occasionally the wrong local day — callers that already know the local date
+ * should send it.
+ */
+export const transcribeSheetRequestSchema = z.object({
+  photoId: z.string().min(1).max(64),
+  playedOn: isoDate.optional(),
+});
+
 export const saveGameSchema = z.object({
   draftId: z.string().min(1).max(64),
   state: draftStateSchema,
@@ -192,6 +211,7 @@ export type UploadRequest = z.infer<typeof uploadRequestSchema>;
 export type CreateDraftRequest = z.infer<typeof createDraftSchema>;
 export type UpdateDraftRequest = z.infer<typeof updateDraftSchema>;
 export type SaveGameRequest = z.infer<typeof saveGameSchema>;
+export type TranscribeSheetRequest = z.infer<typeof transcribeSheetRequestSchema>;
 
 /* --------------------------------------------------------------- helpers */
 

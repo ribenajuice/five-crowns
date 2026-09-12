@@ -18,6 +18,8 @@ export const UPRIGHT_CONFIRM_LABEL = "Use this photo";
 export const UPLOAD_IN_PROGRESS_LABEL = "Saving the photo…";
 export const UPLOAD_RETRY_LABEL = "Try again";
 export const READ_SHEET_LABEL = "Read the sheet";
+export const READ_SHEET_HELPER =
+  "We'll read the numbers off your photo — you still check every one next.";
 export const HAND_ENTRY_LABEL = "Type it in by hand";
 export const HAND_ENTRY_HELPER =
   "We'll skip the automatic read. Your photo's already saved.";
@@ -52,6 +54,51 @@ export const NO_LOCATION_GAMES_LIST = "No location";
  */
 export const UPLOAD_CAP_TITLE = "That's today's photos used up.";
 export const UPLOAD_CAP_MESSAGE = "Try again tomorrow.";
+
+/* ------------------------------------------------------- Stage 3: reading */
+
+export const TRANSCRIBE_PROGRESS_HEADING = "Reading the sheet…";
+/** Cycles while the model works; the third line only earns its place after ~20s. */
+export const TRANSCRIBE_PROGRESS_CAPTIONS = [
+  "Finding the columns.",
+  "Reading each player's numbers.",
+  "Still going — this one's taking a little longer.",
+] as const;
+
+export const READ_ERROR_TITLE = "That didn't finish.";
+export const READ_ERROR_MESSAGE = "Check your connection and try again.";
+export const READ_RETRY_LABEL = "Try again";
+
+export const DAILY_TRANSCRIBE_CAP_TITLE = "That's today's reads used up.";
+export const DAILY_TRANSCRIBE_CAP_MESSAGE =
+  "Try again tomorrow, or type this one in by hand — it's already saved.";
+
+export function readHintSentence(hand: number): string {
+  const label = handLabel(hand) ?? `hand ${hand}`;
+  return `Least sure about the ${label} in this column.`;
+}
+
+/* ---------------------------------------------------- Stage 3: admin panel */
+
+export const ADMIN_NO_KEY_TITLE = "No key set yet.";
+export const ADMIN_NO_KEY_MESSAGE =
+  "Nothing can be read from a photo until one is added.";
+export const ADMIN_KEY_FIELD_LABEL = "Anthropic API key";
+export const ADMIN_SAVE_BUTTON_LABEL = "Save key";
+export const ADMIN_SAVE_BUSY_LABEL = "Testing…";
+export const ADMIN_TESTING_HELPER =
+  "Testing the key with a real call — this can take a couple of seconds.";
+export const ADMIN_SAVED_TITLE = "Saved.";
+export const ADMIN_SAVED_MESSAGE = "In use everywhere within a minute.";
+export const ADMIN_REJECTED_TITLE = "That key didn't work.";
+export const ADMIN_REJECTED_MESSAGE =
+  "Check it and try again — the key you had before is untouched.";
+export const ADMIN_STATUS_WORKING = "Working";
+export const ADMIN_STATUS_NOT_WORKING = "Not working";
+export const ADMIN_STATUS_UNTRIED = "Not tried yet";
+export const ADMIN_REPLACE_BUTTON_LABEL = "Replace key";
+export const ADMIN_SHOW_KEY_LABEL = "Show key";
+export const ADMIN_HIDE_KEY_LABEL = "Hide key";
 
 export function columnStatusLabel(filled: number, expected: number): string {
   return `${filled} of ${expected}`;

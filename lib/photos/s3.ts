@@ -15,6 +15,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { photoKey } from "./keys";
 import {
   MAX_UPLOAD_BYTES,
+  PhotoObjectNotFoundError,
   PRESIGN_EXPIRY_SECONDS,
   type PhotoStorage,
   type PhotoVariant,
@@ -115,6 +116,20 @@ export function s3PhotoStorage(): PhotoStorage {
         return true;
       } catch (error) {
         if (isNotFound(error)) return false;
+        throw error;
+      }
+    },
+
+    async getObjectBytes(photoId: string, variant: PhotoVariant) {
+      const key = photoKey(photoId, variant);
+      try {
+        const result = await s3().send(
+          new GetObjectCommand({ Bucket: bucketName(), Key: key }),
+        );
+        if (!result.Body) throw new PhotoObjectNotFoundError(key);
+        return Buffer.from(await result.Body.transformToByteArray());
+      } catch (error) {
+        if (isNotFound(error)) throw new PhotoObjectNotFoundError(key);
         throw error;
       }
     },

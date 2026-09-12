@@ -37,10 +37,22 @@ const PHOTOS_BUCKET = "five-crowns-photos";
 
 /**
  * The parameters the **app** owns — `lib/config/parameters.ts` and the table
- * in `lib/config/README.md`. These five are the only parameters the web
- * Lambda may read or write. The session secret is not among them: it is read
+ * in `lib/config/README.md`. These seven are the only parameters the web
+ * Lambda may ever *read*. The session secret is not among them: it is read
  * at deploy time and injected as `SESSION_SECRET`, so the running app never
  * needs Parameter Store access to it.
+ *
+ * ⚠️ `anthropic-api-key-last4` and `anthropic-api-key-set-at` (Stage 3) are
+ * not secrets — the admin panel's only view of the key it can never read
+ * back — but they still live under the same prefix and need the same Get
+ * grant, so they are listed here too.
+ *
+ * ⚠️ **Write is narrower than read.** The app only ever *writes* the three
+ * `anthropic-api-key*` entries (`writableAppParameterArns`, below) — never a
+ * password hash or a session epoch, which are set by hand or by
+ * `scripts/deploy.sh`. Security review: granting `PutParameter` over all
+ * seven bought nothing and meant a future bug in the internet-facing Lambda
+ * could escalate to overwriting `admin-password-hash`.
  */
 const APP_PARAMETERS = [
   "group-password-hash",
@@ -48,6 +60,8 @@ const APP_PARAMETERS = [
   "group-session-epoch",
   "admin-session-epoch",
   "anthropic-api-key",
+  "anthropic-api-key-last4",
+  "anthropic-api-key-set-at",
 ];
 
 export default $config({
@@ -161,6 +175,26 @@ export default $config({
     );
 
     /**
+     * ⚠️ Security review: the app writes only these three, ever
+     * (`lib/vision/api-key.ts`) — never a password hash or a session epoch,
+     * both of which are set by hand or by `scripts/deploy.sh`. `PutParameter`
+     * was previously granted over all seven, which the app had no use for and
+     * which meant a future bug in the internet-facing Lambda (a
+     * deserialisation flaw, a compromised dependency) could escalate from
+     * "read the API key" to permanently overwriting `admin-password-hash`
+     * with a hash of the attacker's choosing — the one privilege here that
+     * turns a transient bug into a persistent takeover.
+     */
+    const writableAppParameterArns = [
+      "anthropic-api-key",
+      "anthropic-api-key-last4",
+      "anthropic-api-key-set-at",
+    ].map(
+      (name) =>
+        $interpolate`arn:aws:ssm:${REGION}:${accountId}:parameter${parameterPrefix}/${name}`,
+    );
+
+    /**
      * Everything the internet-facing Lambda may do, and nothing else.
      *
      * ⚠️ No KMS statement, on purpose. SecureStrings use the AWS-managed
@@ -176,9 +210,9 @@ export default $config({
         resources: appParameterArns,
       },
       {
-        // Rotating the API key and passwords, bumping session epochs.
+        // Rotating the API key only — see writableAppParameterArns above.
         actions: ["ssm:PutParameter"],
-        resources: appParameterArns,
+        resources: writableAppParameterArns,
       },
       {
         // Presigned upload and view URLs. ⚠️ Never s3:DeleteObject*, never

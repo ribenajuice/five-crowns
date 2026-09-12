@@ -124,6 +124,33 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
 
+  // The model's own doubt, handed off from `AddGameFlow` via `sessionStorage`
+  // for this one attempt only — never persisted on the draft (Stage 3), so a
+  // reload of this screen simply has none, same as the ADR that produced it
+  // intends. Read once and removed immediately so it can't outlive the tab.
+  const [readHints, setReadHints] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const key = `transcribe-hints:${draftId}`;
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return;
+    window.sessionStorage.removeItem(key);
+    try {
+      const columns = JSON.parse(raw) as {
+        columnId: string;
+        leastConfidentIndex: number | null;
+      }[];
+      const next: Record<string, number> = {};
+      for (const column of columns) {
+        if (column.leastConfidentIndex !== null) {
+          next[column.columnId] = column.leastConfidentIndex;
+        }
+      }
+      setReadHints(next);
+    } catch {
+      // Malformed hand-off — no hints this visit, nothing else is affected.
+    }
+  }, [draftId]);
+
   const debouncedSave = useRef<Debounced<[DraftState]> | null>(null);
 
   const putDraft = useCallback(
@@ -472,6 +499,7 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
                 validation={gridValidation.columns[activeColumn.id]!}
                 photo={photo}
                 canRemove={sortedColumns.length > 1}
+                readHintIndex={readHints[activeColumn.id] ?? null}
                 onPickPlayer={() => setColumnPicker({ columnId: activeColumn.id, step: "pick" })}
                 onAdjustCrop={() => setColumnPicker({ columnId: activeColumn.id, step: "crop" })}
                 onRemove={() => applyEdit((s) => removeColumn(s, activeColumn.id))}
@@ -614,9 +642,16 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
           photoWidth={photo.width}
           photoHeight={photo.height}
           crop={cellEditorColumn.crop}
-          onChangeValue={(index, value) =>
-            applyEdit((s) => setCellValue(s, cellEditorColumn.id, index, value))
-          }
+          onChangeValue={(index, value) => {
+            applyEdit((s) => setCellValue(s, cellEditorColumn.id, index, value));
+            // "Clears the instant the founder edits that cell" — their own
+            // typed value retires the model's doubt about its own reading.
+            setReadHints((current) => {
+              if (current[cellEditorColumn.id] !== index) return current;
+              const { [cellEditorColumn.id]: _dismissed, ...rest } = current;
+              return rest;
+            });
+          }}
           onNavigate={(index) => setCellEditor({ columnId: cellEditorColumn.id, index })}
           onSetCrop={
             !cellEditorColumn.crop
@@ -638,6 +673,7 @@ function ActiveColumnCard({
   validation,
   photo,
   canRemove,
+  readHintIndex,
   onPickPlayer,
   onAdjustCrop,
   onRemove,
@@ -648,6 +684,7 @@ function ActiveColumnCard({
   validation: ColumnValidation;
   photo: PhotoState | null;
   canRemove: boolean;
+  readHintIndex: number | null;
   onPickPlayer: () => void;
   onAdjustCrop: () => void;
   onRemove: () => void;
@@ -695,6 +732,7 @@ function ActiveColumnCard({
             handScores={handScores}
             columnValidation={validation}
             softWarnings={softWarnings}
+            readHintIndex={readHintIndex}
             onEditCell={onEditCell}
           />
         </div>

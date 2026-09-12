@@ -6,7 +6,7 @@
  * its surface without relying on colour alone).
  */
 
-import type { InputHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -14,7 +14,10 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   trailing?: ReactNode;
 }
 
-export function Field({ label, hint, trailing, id, className, ...rest }: FieldProps) {
+export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, hint, trailing, id, className, ...rest },
+  ref,
+) {
   const inputId = id ?? rest.name;
   return (
     <div>
@@ -26,6 +29,7 @@ export function Field({ label, hint, trailing, id, className, ...rest }: FieldPr
       </label>
       <div className="relative">
         <input
+          ref={ref}
           id={inputId}
           className={`h-13 w-full rounded-[var(--radius)] border border-text-muted bg-surface px-3 text-base text-text ${trailing ? "pr-11" : ""} ${className ?? ""}`}
           {...rest}
@@ -37,4 +41,4 @@ export function Field({ label, hint, trailing, id, className, ...rest }: FieldPr
       {hint ? <p className="mt-1 text-sm text-text-muted">{hint}</p> : null}
     </div>
   );
-}
+});

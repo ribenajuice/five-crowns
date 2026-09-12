@@ -20,6 +20,73 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-12 — The API key's status is derived, not stored
+
+- **Context**: Stage 3 needed somewhere for the admin panel's "last four characters, when it was
+  set, whether it currently works" (PRD criteria 75, 76; `docs/ARCHITECTURE.md` § The Claude API
+  key). Last-4 and set-at aren't secrets, but "whether it currently works" is a *fact about usage*,
+  not a value anyone writes — and the architecture doc is explicit that it must be a fact, not an
+  assumption.
+- **Decision**: **last-4 and set-at live in SSM as two small, non-secret `String` parameters**
+  (`anthropic-api-key-last4`, `anthropic-api-key-set-at`), written alongside the key itself by
+  `lib/vision/api-key.ts`. **"Whether it currently works" is not stored anywhere** — it is derived,
+  on every read, from the most recent `sheet`-kind row in the `transcription` table: `status =
+  'error'` (the upstream call itself failed — auth, network, timeout) reads as "no"; `'ok'` or
+  `'invalid'` (a schema-parse failure, which says nothing about the key) both read as "yes"; no
+  sheet transcription yet reads as "untried"; no key configured at all reads as "unknown".
+- **Alternatives**: (a) *A `last_successful_use_at` / `last_failed_use_at` pair*, written by the
+  transcribe route on every attempt — closer to the architecture doc's literal wording ("the last
+  successful and last failed use are recorded"), but it is a second place that same fact already
+  lives (the `transcription` table, kept forever, one row per attempt) and the two could drift if a
+  code path ever wrote one and not the other. (b) *A field on some new `admin_settings` row in the
+  database* — rejected outright: `docs/ARCHITECTURE.md`'s whole hazard analysis is that nothing
+  admin-configurable belongs in a table the panel can export, and this would be the first exception
+  for no real gain. (c) *Not exposing "works" at all, only last-4 and set-at* — cheaper, but leaves
+  the founder to find out the key is dead by trying to photograph a sheet at the table, exactly the
+  failure mode criterion 78 exists to prevent.
+- **Consequences**: no new secret-shaped storage anywhere, and the "works" answer is always
+  consistent with what `transcription` already says happened — there is no second bookkeeping path
+  that could disagree with it. The cost is a small `SELECT … ORDER BY created_at DESC LIMIT 1` on
+  every status read, which is free at this volume (a decade of games is ~15,000 rows). *Revisit-if*
+  the transcription table ever needs pruning or archiving — the derivation would need to keep
+  reading from wherever the *most recent* rows land, not necessarily this table forever.
+
+## 2026-09-12 — `POST /api/transcribe` creates its own draft, and merges by pushing a reading
+
+- **Context**: `docs/ARCHITECTURE.md`'s Flow 2 sequence diagram goes straight from
+  `POST /api/uploads` to `POST /api/transcribe {photoId}`, with no `POST /api/drafts` step shown in
+  between — unlike Stage 2, where the client always creates the draft first. The route needed a
+  concrete contract for what happens when no draft exists yet, and for what "merge into the draft"
+  means precisely.
+- **Decision**: the request body is `{ photoId, playedOn? }`. The route resolves the photo's draft
+  if one already exists (the retry path, and the path where a client *does* call
+  `POST /api/drafts` first); if none exists, it creates one — an empty draft, exactly
+  `emptyDraftState` with zero columns, defaulting `playedOn` to UTC-today when the caller doesn't
+  supply it — using the same claim-with-conditional-`UPDATE` race guard `POST /api/drafts` already
+  uses, so two concurrent first-transcribes of the same photo can't create two drafts. Merging a
+  vision column into the draft follows rung 3 of the override ladder (push a new reading onto the
+  matching column's stack, move `activeReadingId`, never touch `manualEdits`) rather than replacing
+  the column outright — the ordinary case (an empty draft) is indistinguishable from "replace", but
+  it also makes a same-photo retry after an `invalid` first attempt safe: nothing the founder
+  already typed is lost.
+- **Alternatives**: (a) *Require `POST /api/drafts` first, always* — simpler, and arguably more
+  consistent with Stage 2, but it would make the sequence diagram in the architecture doc wrong
+  without a note, and it pushes the "what if the client skips it" case onto every caller instead of
+  handling it once, here. (b) *Take the full initial `state` in the request body*, the way
+  `POST /api/drafts` does — rejected because the whole point of this route, for the common case, is
+  that the client doesn't know the columns yet; it only knows a photo. (c) *Overwrite
+  `state.columns` outright on every transcribe call* — simpler code, but loses manual edits made
+  during a prior `invalid` attempt on retry, which criterion 53 ("Try again" reuses the photo)
+  implies should not happen to typed corrections either.
+- **Consequences**: the frontend may call `POST /api/transcribe` directly after upload with no
+  intervening `POST /api/drafts`, or may still create the draft first (e.g. to capture the local
+  calendar day before anything else happens) — both work. ⚠️ **Follow-up for the frontend**: if it
+  never calls `POST /api/drafts` first, send `playedOn` (the browser's local calendar day) in the
+  transcribe request explicitly; otherwise the very first draft's date silently defaults to
+  UTC-today, which is wrong for roughly ten hours a day in Australia (the same hazard
+  `docs/ARCHITECTURE.md`'s `game.played_on` note already calls out) — the frontend has this local
+  date at capture time as of Stage 2 and just needs to forward it here too.
+
 ## 2026-09-11 — One address: the CloudFront URL closes once the custom domain is attached
 
 - **Context**: criterion 84 asked for `fivecrowns.ribenajuice.xyz` to work *and* for the CloudFront URL

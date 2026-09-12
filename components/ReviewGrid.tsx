@@ -14,9 +14,11 @@
 
 import { HAND_LABELS, type CellValue, type ColumnValidation } from "@/lib/scoring";
 import { REVIEW_ROW_PITCH_PX } from "@/lib/ui/constants";
-import { pairedFlagSentence, softWarningSentence } from "@/lib/ui/copy";
+import { pairedFlagSentence, readHintSentence, softWarningSentence } from "@/lib/ui/copy";
+import { visibleReadHintIndex } from "@/lib/ui/read-hints";
 import type { SoftWarningHit } from "@/lib/ui/soft-warnings";
 import { PairedFlag } from "./PairedFlag";
+import { ReadHint } from "./ReadHint";
 import { SoftWarning } from "./SoftWarning";
 
 interface ReviewGridProps {
@@ -24,6 +26,12 @@ interface ReviewGridProps {
   handScores: readonly CellValue[];
   columnValidation: ColumnValidation;
   softWarnings: SoftWarningHit[];
+  /**
+   * The model's own doubt about this column, from the transcribe response —
+   * live diagnostics for one attempt, never persisted (Stage 3). `null` or
+   * `undefined` when there's no reading, or nothing stood out.
+   */
+  readHintIndex?: number | null;
   onEditCell: (index: number) => void;
 }
 
@@ -32,6 +40,7 @@ export function ReviewGrid({
   handScores,
   columnValidation,
   softWarnings,
+  readHintIndex = null,
   onEditCell,
 }: ReviewGridProps) {
   const monotonicityIssues = columnValidation.issues.filter(
@@ -50,6 +59,15 @@ export function ReviewGrid({
   const unreadIndices = new Set(unreadIssue?.indices ?? []);
   const warnIndices = new Set(softWarnings.map((hit) => hit.index));
 
+  // Weakest of the three grid signals — suppressed the moment a real problem
+  // (or an unread cell) already claims this cell (docs/DESIGN-SYSTEM.md § ReadHint).
+  const visibleHintIndex = visibleReadHintIndex({
+    leastConfidentIndex: readHintIndex,
+    errIndices,
+    unreadIndices,
+    warnIndices,
+  });
+
   return (
     <div className="min-w-0 flex-1">
       <ol className="flex flex-col">
@@ -59,6 +77,7 @@ export function ReviewGrid({
           const isErr = errIndices.has(index);
           const isUnread = !isErr && unreadIndices.has(index) && value === null;
           const isWarn = !isErr && warnIndices.has(index);
+          const isHinted = visibleHintIndex === index;
 
           return (
             <li
@@ -69,25 +88,35 @@ export function ReviewGrid({
               <span className="w-11 shrink-0 text-xs font-bold uppercase tracking-label text-text-muted">
                 {label}
               </span>
-              <button
-                type="button"
-                onClick={() => onEditCell(index)}
-                aria-label={`${label}: ${value ?? "not typed yet"}. Edit this number.`}
-                className={[
-                  // The row is the 46px pitch (matches PhotoStrip); the button
-                  // fills it so its own hit area still clears the 44px minimum.
-                  "tabular flex h-full min-w-0 flex-1 items-center justify-end rounded-[var(--radius)] border px-2 text-right text-num font-bold",
-                  isErr
-                    ? "border-error bg-error-soft text-error"
-                    : isUnread
-                      ? "border-dashed border-text-muted bg-sunk text-text-muted"
-                      : isWarn
-                        ? "border-warn bg-warn-soft text-warn"
-                        : "border-line bg-surface text-text",
-                ].join(" ")}
-              >
-                {value ?? "–"}
-              </button>
+              <div className="relative h-full min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => onEditCell(index)}
+                  aria-label={`${label}: ${value ?? "not typed yet"}. Edit this number.${
+                    isHinted ? ` ${readHintSentence(index + 1)}` : ""
+                  }`}
+                  className={[
+                    // The row is the 46px pitch (matches PhotoStrip); the button
+                    // fills it so its own hit area still clears the 44px minimum.
+                    "tabular flex h-full w-full items-center justify-end rounded-[var(--radius)] border px-2 text-right text-num font-bold",
+                    isErr
+                      ? "border-error bg-error-soft text-error"
+                      : isUnread
+                        ? "border-dashed border-text-muted bg-sunk text-text-muted"
+                        : isWarn
+                          ? "border-warn bg-warn-soft text-warn"
+                          : "border-line bg-surface text-text",
+                  ].join(" ")}
+                >
+                  {value ?? "–"}
+                </button>
+                {isHinted ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-1 -top-1 size-2.5 rounded-full border border-dotted border-text-muted bg-surface"
+                  />
+                ) : null}
+              </div>
               <span className="tabular w-9 shrink-0 text-right text-sm text-text-muted">
                 {hand === null ? "–" : hand}
               </span>
@@ -118,6 +147,10 @@ export function ReviewGrid({
           {softWarningSentence(hit.points, hit.index + 1)}
         </SoftWarning>
       ))}
+
+      {visibleHintIndex !== null ? (
+        <ReadHint>{readHintSentence(visibleHintIndex + 1)}</ReadHint>
+      ) : null}
     </div>
   );
 }

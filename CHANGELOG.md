@@ -2,8 +2,28 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
-isn't one right now, because the latest build is already live.
+production. The **Unreleased** section at the top is not live yet — it lists what's built and
+reviewed, waiting to be merged and deployed.
+
+## [Unreleased]
+
+### Added
+
+- **You can now read the sheet automatically.** When adding a game, choose "Read the sheet" next
+  to "Type it in by hand". It reads the numbers off your photo while a progress screen shows it
+  working, then fills in the review screen's grid for you — you still check every number before
+  saving, the same as always.
+- **If a read fails, you don't have to re-photograph anything.** A "Try again" button retries the
+  same photo you already took.
+- **There's a daily limit on automatic reads**, as a safety net. Once it's used up for the day,
+  typing the numbers in by hand still always works — it's never blocked by this limit.
+- **The admin panel does something now.** Paste in your Anthropic API key and it's tested with a
+  real call before it's saved, so a typo or an expired key is caught immediately and the key you
+  had before stays untouched. Afterwards the panel shows only the key's last four characters, when
+  it was set, and whether it's currently working — never the key itself.
+- **A key that stops working shows up next time you check the panel**, even if nothing was just
+  saved — so a revoked key or one that's hit its spending limit turns up calmly in the admin panel,
+  not mid-game with a sheet to photograph.
 
 ## [Stage 2] - 2026-09-12
 

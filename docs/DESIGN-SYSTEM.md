@@ -129,6 +129,8 @@ the digit; this is a correctness feature, not typography.
 | `SaveBar` | review screen, sticky footer | `Button` (**"Put it in the book"**) plus one line of helper text beneath it — what's blocking save, or what passing it means. Disabled only by the hard checks (§ Review screen law #9), never by an empty optional field |
 | `Seg` | game view | Two-way segmented control, **"As written" / "Per hand"**, swaps `ScoreTable` between the transcribed running totals and the derived hand scores |
 | `CropFrame` | review screen, folded into assigning a column's player | A rectangle over the **whole photo**, four 44px corner handles to resize, drag-anywhere-inside to pan. Confirms a column's `crop` — normalised `{x,y,width,height}` covering that column's eleven cells top to bottom. Reopenable at any time from the `PhotoStrip`'s "Adjust crop" corner button |
+| `TranscribeProgress` | review screen (Stage 3) | Appears within 2s of submitting a photo for reading (criterion 52) and replaces the column area until a reading or an error arrives. Photo thumbnail, an indeterminate bar (never a determinate one — there is nothing real to measure against a tens-of-seconds model call), and a caption that cycles through 2–3 present-tense lines (*"Finding the columns."* → *"Reading each player's numbers."*), with a third, slower-only line (*"Still going — this one's taking a little longer."*) that earns its place after ~20s so a fast read never shows it |
+| `ReadHint` | review grid (Stage 3) | The model's own `least_confident_index`, one per column — deliberately the **weakest** of the three grid signals, weaker than `SoftWarning`. No border or tint on the cell: a small dotted-outline corner badge plus **one muted sentence beneath the grid** in `text-muted`, never a semantic colour (colour still isn't the only signal here — the badge and the sentence are the two). Never appears on a cell that already carries `err` or is unread — a real problem always outranks a mild doubt, so the two are mutually exclusive per cell. Clears the moment the founder edits that cell: their own typed value retires the model's doubt about its own reading |
 
 ## Screen rules
 
@@ -148,12 +150,16 @@ the digit; this is a correctness feature, not typography.
      the upload (`UploadProgress`). Nothing is sent to the server before this tap.
   2. **Choose how the numbers go in**, shown only once the photo has finished uploading. Two
      equal-weight options, never one above the other as if the second were a fallback:
-     - **"Read the sheet"** — the automatic path. Not wired up until Stage 3; the layout reserves
-       its place so Stage 3 is a behaviour change, not a redesign.
-     - **"Type it in by hand"** — with the helper line *"We'll skip the automatic read. Your
-       photo's already saved."* This is the phrasing the lead specified: it reads as skipping a
-       read that would otherwise happen, never as recovering from one that failed. In Stage 2, this
-       is the only live path and both cards can render on load without anything feeling broken.
+     - **"Read the sheet"** — the automatic path. `primary` weight, with the helper line *"We'll
+       read the numbers off your photo — you still check every one next."* Wired up from Stage 3:
+       tapping it creates the draft, kicks off the vision call, and hands straight to the review
+       screen already showing `TranscribeProgress` (below) — the founder never watches a spinner on
+       this screen itself.
+     - **"Type it in by hand"** — `ghost` weight, equal reach, with the helper line *"We'll skip the
+       automatic read. Your photo's already saved."* This is the phrasing the lead specified: it
+       reads as skipping a read that would otherwise happen, never as recovering from one that
+       failed. It was the only live path in Stage 2; from Stage 3 both cards render together, same
+       pattern as `PhotoCapture`'s camera-vs-gallery pairing.
      Either choice hands off to the review screen with the draft already created and the photo
      attached (criterion 46, first half).
 
@@ -221,6 +227,48 @@ the digit; this is a correctness feature, not typography.
   once a column is complete and clean, so a pill on screen always means there is something to look
   at.
 
+- **Review screen — the read in progress (Stage 3).** The moment "Read the sheet" is tapped, the
+  review screen shows `TranscribeProgress` in place of the `ColumnPager`/grid, within 2 seconds
+  (criterion 52) — the model call itself can take tens of seconds, so this has to feel alive, not
+  stuck. No claim of measured progress; the bar is indeterminate and the caption cycles through
+  honest, present-tense lines. The photo is still on screen throughout, per the "photo never absent"
+  rule — it's the same thumbnail the founder just confirmed upright.
+
+- **Review screen — the transcription arrives.** ⚠️ **A freshly-read cell is styled identically to
+  a hand-typed one.** There is no "just read" decoration anywhere on the grid — the only visual
+  distinction that exists at all is filled vs. not-yet-filled, which is the same distinction Stage 2
+  already used for manual entry. Decorating a model-read cell differently would teach the founder to
+  scrutinise it less, which is exactly backwards: monotonicity catches nothing (see
+  `docs/ARCHITECTURE.md`), so every cell earns the same scrutiny whatever put the number there.
+
+- **Review screen — a cell the model couldn't read.** Comes back `null`. ⚠️ **This reuses Stage 2's
+  existing unread-cell pattern exactly** — the dashed `text-muted`/`sunk` cell, the `{n} of 11` `Pill`
+  (criterion 25), the hollow `todo` pager dot — nothing new. A model's blank and a founder's blank
+  are the same kind of blank, and get the same treatment.
+
+- **Review screen — the model's own doubt (`ReadHint`).** `least_confident_index`, one per column,
+  is a **hint, not a hard flag** — weaker than `SoftWarning`, which is itself already non-blocking.
+  It never uses *checked, verified, confirmed* or implies the cell is wrong: the fixed sentence is
+  *"Least sure about the {hand} in this column."* No border or tint on the cell — just the small
+  dotted corner badge plus that one muted sentence beneath the grid. Suppressed entirely on any cell
+  that already carries `err` (paired flag) or is unread — a real problem always outranks a mild
+  doubt, so a cell shows at most one of the three signals. Clears the instant the founder edits that
+  cell.
+
+- **Review screen — an API error or timeout.** `Banner error` — **"That didn't finish."** / *"Check
+  your connection and try again."* — with a **"Try again"** button that re-runs the vision call
+  against the photo already in S3. ⚠️ **Never a re-photograph** (criterion 53) — same non-destructive
+  shape as the Stage 2 upload-retry. **"Type it in by hand" sits at equal reach directly below it**,
+  so a bad read is never a dead end.
+
+- **Review screen — the daily transcription cap.** `Banner warn` (not `error` — this is an expected
+  limit, not a failure) — **"That's today's reads used up."** / *"Try again tomorrow, or type this
+  one in by hand — it's already saved."* Manual entry remains fully available beneath it (criterion
+  56); nothing else about the screen changes. ⚠️ **A distinct cap from the upload cap and the column
+  re-read cap** (`usage_day.sheet_transcriptions`, separate from `.sheet_uploads` and column re-reads
+  per `docs/ARCHITECTURE.md`) — re-photographing a single column stays available even when this one
+  is hit.
+
 - **The paired flag.** Both cells of a pair that breaks monotonicity get the `err` border, the
   `err-soft` tint and a warning-triangle icon (`PairedFlag`), plus one sentence beneath the pair
   naming both numbers: *"{lower} is lower than the {higher} above it."* — e.g. *"11 is lower than
@@ -255,6 +303,37 @@ the digit; this is a correctness feature, not typography.
   "Player A, Player B, Player C & Player D"** ("Player A & Player B" for two). The row truncates it
   with an ellipsis if it doesn't fit, and the game view shows it in full (criterion 68), and the winner right-aligned — a single name,
   or **"{A} & {B} — shared"** when the game was tied (criterion 69).
+
+- **Admin panel — the API key screen.** ⚠️ **The panel is plain** — no jokes anywhere near the key.
+  One `Field` (masked, `type="password"`, with a show/hide toggle in its existing `trailing` slot —
+  no new control), one `Button`. States:
+  - **Empty** (no key ever set): a `Card` — *"No key set yet."* / *"Nothing can be read from a photo
+    until one is added."* — above the field and a **"Save key"** primary `Button`.
+  - **Saving**: field disabled, button busy per the standard rule (`disabled` + `aria-busy` +
+    present-tense-with-ellipsis: **"Testing…"**), plus a line beneath — *"Testing the key with a real
+    call — this can take a couple of seconds."*
+  - **Just saved**: `Banner ok` reading, **verbatim** (this exact sentence is a real constraint, not
+    copy that can be softened — see `docs/ARCHITECTURE.md` § Staleness after rotation) —
+    **"Saved."** / *"In use everywhere within a minute."* — sitting above the resting status card,
+    below.
+  - **Just rejected**: `Banner error` — **"That key didn't work."** / *"Check it and try again — the
+    key you had before is untouched."* ⚠️ The status card beneath it is **unchanged** — still names
+    the previous key's last four characters and its own last-checked time. A rejected paste touches
+    nothing (criterion 77).
+  - **Resting — working** (the ordinary state on every later visit, no banner because nothing just
+    happened): a `Card` naming the key by its **last four characters**, **when it was set**, and a
+    `Pill` — **"Working"** — sourced from the **last recorded successful use**, not a fresh test.
+    Visiting `/admin` never itself spends a call. A **"Replace key"** `ghost` button reopens the
+    form.
+  - **Resting — not working right now**: the same card, `Pill` — **"Not working"** — in `err`
+    tone, with both **last worked** and **last failed** timestamps. ⚠️ **This is the state Stage 2
+    had no way to represent at all**, and it matters most: a key can go bad on its own (revoked, hit
+    its console spend limit) with no save action to trigger anything, so "whether it currently
+    works" has to be a standing fact built from the last successful and last failed use — never only
+    spoken once at save time. Finding this out from the admin panel, calmly, beats finding it out
+    standing at the table with a sheet to photograph.
+  - The key is **never rendered back** in any state (criterion 76) — every card above shows only
+    last-four, a date, and a status `Pill`.
 
 ## Review screen law
 
@@ -303,7 +382,8 @@ verified, confirmed, correct, looks right* or *all good*.
 | Upright-confirm button | Use this photo |
 | Upload in progress | Saving the photo… |
 | Upload retry button | Try again |
-| Automatic-read option (Stage 3 layout, unwired in Stage 2) | Read the sheet |
+| Automatic-read option | Read the sheet |
+| Automatic-read helper line | We'll read the numbers off your photo — you still check every one next. |
 | Hand-entry option | Type it in by hand |
 | Hand-entry helper line | We'll skip the automatic read. Your photo's already saved. |
 | Date field label | Played on |
@@ -332,6 +412,21 @@ verified, confirmed, correct, looks right* or *all good*.
 | Confirmation, shared win | In the book. {A} and {B} shared it on {score}. |
 | Games list, no venue | No location |
 | Games list, shared win | {A} & {B} — shared |
+| Transcription progress heading | Reading the sheet… |
+| Transcription progress captions | Finding the columns. · Reading each player's numbers. · Still going — this one's taking a little longer. *(third line only after ~20s)* |
+| Read-error banner | That didn't finish. / Check your connection and try again. |
+| Read-error retry button | Try again |
+| Daily transcription cap banner | That's today's reads used up. / Try again tomorrow, or type this one in by hand — it's already saved. |
+| Read-hint sentence | Least sure about the {hand} in this column. |
+| Admin, no key set | No key set yet. / Nothing can be read from a photo until one is added. |
+| Admin, key field label | Anthropic API key |
+| Admin, save button | Save key |
+| Admin, save button, busy | Testing… |
+| Admin, testing helper line | Testing the key with a real call — this can take a couple of seconds. |
+| Admin, key saved | Saved. / In use everywhere within a minute. *(verbatim — see ARCHITECTURE.md)* |
+| Admin, key rejected | That key didn't work. / Check it and try again — the key you had before is untouched. |
+| Admin, status `Pill` | Working · Not working |
+| Admin, replace button | Replace key |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

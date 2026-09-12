@@ -23,6 +23,7 @@ import "server-only";
 import {
   GetParameterCommand,
   ParameterNotFound,
+  PutParameterCommand,
   SSMClient,
 } from "@aws-sdk/client-ssm";
 
@@ -67,6 +68,20 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
+/**
+ * Local development's stand-in for SSM's own storage.
+ *
+ * There is no Parameter Store to write to on a developer's machine, so a
+ * write in `env` mode (the admin panel setting the API key, for instance)
+ * lands here instead — in memory, for the life of the dev process, never on
+ * disk and never in `.env.local`. Restarting `npm run dev` forgets it, same
+ * as restarting a Lambda would forget an uncommitted write if SSM were down.
+ * A value that should survive a restart still belongs in `.env.local`, per
+ * `lib/config/README.md`; this exists only so the write *path itself* —
+ * verify-then-save, invalidate-on-write — is exercisable with no AWS account.
+ */
+const localOverrides = new Map<string, string>();
+
 let ssm: SSMClient | undefined;
 function client(): SSMClient {
   if (!ssm) ssm = new SSMClient({});
@@ -109,6 +124,9 @@ async function readParameter(
   path: string,
 ): Promise<string> {
   if (configSource() === "env") {
+    const override = localOverrides.get(path);
+    if (override !== undefined) return override;
+
     const envVar = parameterEnvVar(name);
     const value = process.env[envVar];
     if (!value) throw new MissingParameterError(envVar);
@@ -131,6 +149,44 @@ async function readParameter(
 }
 
 /**
+ * Write a parameter the app owns.
+ *
+ * ⚠️ **Explicit invalidation on write** — the other half of
+ * docs/ARCHITECTURE.md § "Staleness after rotation". Without it, the
+ * container that just wrote the value would keep serving its own stale cache
+ * entry for up to {@link CONFIG_TTL_MS}, and the founder who just set a key
+ * would have it fail against their own very next request.
+ *
+ * `secure: false` is for non-secret metadata (the key's last four
+ * characters, when it was set) that has no business costing a KMS decrypt or
+ * being encrypted at all — see `docs/DECISIONS.md`, "The API key's status is
+ * derived, not stored". Everything else defaults to `SecureString`.
+ */
+export async function putParameter(
+  name: ParameterName,
+  value: string,
+  options: { secure?: boolean } = {},
+): Promise<void> {
+  const path = parameterPath(name);
+
+  if (configSource() === "env") {
+    localOverrides.set(path, value);
+    invalidateParameter(name);
+    return;
+  }
+
+  await client().send(
+    new PutParameterCommand({
+      Name: path,
+      Value: value,
+      Type: options.secure === false ? "String" : "SecureString",
+      Overwrite: true,
+    }),
+  );
+  invalidateParameter(name);
+}
+
+/**
  * Drop a cached value in *this* container. Called immediately after the admin
  * panel writes a parameter, so the next request already sees the new value.
  * Other containers catch up within the TTL.
@@ -142,6 +198,11 @@ export function invalidateParameter(name: ParameterName): void {
 /** Drop everything. Used by tests and by a full rotation. */
 export function invalidateAllParameters(): void {
   cache.clear();
+}
+
+/** Tests only — forget every local-dev write, same as a fresh dev process. */
+export function resetLocalParameterOverrides(): void {
+  localOverrides.clear();
 }
 
 /**
