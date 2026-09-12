@@ -2,10 +2,10 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. The **Unreleased** section at the top is not live yet — it lists what's built and
-reviewed, waiting to be merged and deployed.
+production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
+isn't one right now, because the latest build is already live.
 
-## [Unreleased]
+## [Stage 3] - 2026-09-12
 
 ### Added
 
