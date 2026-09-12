@@ -52,6 +52,31 @@ describe("reserveSheetUpload", () => {
     expect(row.sheetUploads).toBe(DAILY_SHEET_UPLOAD_CAP);
   });
 
+  it("⚠️ a burst of concurrent uploads right at the cap never over- or under-counts the day", async () => {
+    const { reserveSheetUpload, DAILY_SHEET_UPLOAD_CAP } = await import(
+      "@/lib/photos/upload-cap"
+    );
+    const { getDb } = await import("@/lib/db");
+    const { usageDay } = await import("@/lib/db/schema");
+    const day = new Date("2026-04-01T12:00:00Z");
+
+    // Five more attempts than the cap allows, all fired at once — the
+    // increment, the read and the corrective decrement must serialize as one
+    // unit (`db.transaction()`) or concurrent requests can interleave and
+    // either let more than the cap through or leave the stored count wrong.
+    const results = await Promise.all(
+      Array.from({ length: DAILY_SHEET_UPLOAD_CAP + 5 }, () => reserveSheetUpload(day)),
+    );
+
+    const allowed = results.filter((r) => r.allowed);
+    expect(allowed).toHaveLength(DAILY_SHEET_UPLOAD_CAP);
+
+    const row = (
+      await getDb().select().from(usageDay).where(eq(usageDay.day, "2026-04-01"))
+    )[0]!;
+    expect(row.sheetUploads).toBe(DAILY_SHEET_UPLOAD_CAP);
+  });
+
   it("counts a different UTC day separately", async () => {
     const { reserveSheetUpload, DAILY_SHEET_UPLOAD_CAP } = await import(
       "@/lib/photos/upload-cap"

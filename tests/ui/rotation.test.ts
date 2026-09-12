@@ -27,7 +27,9 @@ describe("orientationToTransform", () => {
 
   it("mirrored orientations (2, 4, 5, 7) flip as well as rotate", () => {
     expect(orientationToTransform(2)).toEqual({ rotate: 0, flip: true });
-    expect(orientationToTransform(5)).toEqual({ rotate: 90, flip: true });
+    expect(orientationToTransform(4)).toEqual({ rotate: 180, flip: true });
+    expect(orientationToTransform(5)).toEqual({ rotate: 270, flip: true });
+    expect(orientationToTransform(7)).toEqual({ rotate: 90, flip: true });
   });
 
   it("falls back to upright for an out-of-range value", () => {

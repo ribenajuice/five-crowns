@@ -18,6 +18,8 @@
 
 import { z } from "zod";
 
+import { ORIGINAL_MAX_LONG_EDGE } from "@/lib/ui/constants";
+
 import {
   HANDS_PER_GAME,
   MAX_RUNNING_TOTAL,
@@ -169,8 +171,8 @@ export type DraftState = z.infer<typeof draftStateSchema>;
 export const uploadRequestSchema = z.object({
   kind: z.literal("sheet"),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
-  width: z.number().int().min(1).max(3000),
-  height: z.number().int().min(1).max(3000),
+  width: z.number().int().min(1).max(ORIGINAL_MAX_LONG_EDGE),
+  height: z.number().int().min(1).max(ORIGINAL_MAX_LONG_EDGE),
 });
 
 export const createDraftSchema = z

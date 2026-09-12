@@ -37,6 +37,19 @@ function todayUtc(now: Date): string {
  * Releases its own increment immediately when it turns out to be the one
  * that tipped the day over, so a refused request never counts against the
  * day it was refused from.
+ *
+ * ⚠️ The increment and the read of *its own* result must happen as one
+ * database operation, via `RETURNING` — not as an increment followed by a
+ * separate `SELECT`. Two statements leave a window where another concurrent
+ * request's increment can land in between, so a caller's "read" sees a count
+ * that isn't authoritatively its own, and the allow/refuse decision (and the
+ * corrective decrement below) gets attributed to the wrong request. `Promise
+ * .all` in `tests/photos/upload-cap.test.ts` exercises exactly this. The
+ * decrement that follows is still a separate statement, but that's safe: it's
+ * a relative `-1` off whatever the row currently holds, and it only ever
+ * happens once each caller already has its own authoritative post-increment
+ * count in hand — so it always cancels out that specific request's own
+ * increment, whatever else has happened to the row in between.
  */
 export async function reserveSheetUpload(
   now: Date = new Date(),
@@ -44,17 +57,16 @@ export async function reserveSheetUpload(
   const db = getDb();
   const day = todayUtc(now);
 
-  await db
+  const [row] = await db
     .insert(usageDay)
     .values({ day, sheetUploads: 1 })
     .onConflictDoUpdate({
       target: usageDay.day,
       set: { sheetUploads: sql`${usageDay.sheetUploads} + 1` },
-    });
+    })
+    .returning({ sheetUploads: usageDay.sheetUploads });
 
-  const row = (await db.select().from(usageDay).where(eq(usageDay.day, day)))[0]!;
-
-  if (row.sheetUploads > DAILY_SHEET_UPLOAD_CAP) {
+  if (row!.sheetUploads > DAILY_SHEET_UPLOAD_CAP) {
     await db
       .update(usageDay)
       .set({ sheetUploads: sql`max(${usageDay.sheetUploads} - 1, 0)` })
@@ -62,5 +74,5 @@ export async function reserveSheetUpload(
     return { allowed: false, count: DAILY_SHEET_UPLOAD_CAP };
   }
 
-  return { allowed: true, count: row.sheetUploads };
+  return { allowed: true, count: row!.sheetUploads };
 }

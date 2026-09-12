@@ -218,6 +218,34 @@ describe("the local driver, end to end through the dev-photos route", () => {
   });
 });
 
+describe("localPhotoStorage().objectExists — error handling parity with the S3 driver", () => {
+  it("⚠️ rethrows a real I/O fault instead of reading it as \"doesn't exist\"", async () => {
+    vi.doMock("node:fs/promises", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs/promises")>();
+      return {
+        ...actual,
+        stat: vi.fn().mockRejectedValue(
+          Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" }),
+        ),
+      };
+    });
+    vi.resetModules();
+
+    try {
+      const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");
+      resetPhotoStorage();
+      const storage = getPhotoStorage();
+
+      await expect(storage.objectExists(randomUUID(), "original")).rejects.toThrow(
+        "EACCES",
+      );
+    } finally {
+      vi.doUnmock("node:fs/promises");
+      vi.resetModules();
+    }
+  });
+});
+
 describe("⚠️ impossible in production — refused unless the local driver AND no Lambda", () => {
   it("refuses even a validly signed URL when running on a deployed Lambda", async () => {
     const { getPhotoStorage, resetPhotoStorage } = await import("@/lib/photos/storage");

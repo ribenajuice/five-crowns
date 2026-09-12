@@ -8,6 +8,8 @@
  * CSS.
  */
 
+import { HANDS_PER_GAME } from "@/lib/scoring";
+
 import type { Dimensions } from "./resize";
 
 export interface NormalisedCrop {
@@ -43,7 +45,7 @@ export function computeCropStripGeometry(
   photoWidth: number,
   photoHeight: number,
   pitch: number,
-  hands: number = 11,
+  hands: number = HANDS_PER_GAME,
 ): CropStripGeometry {
   const cropHeightPx = crop.height * photoHeight;
   const scale = cropHeightPx > 0 ? (pitch * hands) / cropHeightPx : 1;
@@ -98,11 +100,11 @@ export function wholePhotoFit(
 export function rowBandTop(
   index: number,
   displayHeight: number,
-  hands: number = 11,
+  hands: number = HANDS_PER_GAME,
 ): number {
   return (index / hands) * displayHeight;
 }
 
-export function rowBandHeight(displayHeight: number, hands: number = 11): number {
+export function rowBandHeight(displayHeight: number, hands: number = HANDS_PER_GAME): number {
   return displayHeight / hands;
 }

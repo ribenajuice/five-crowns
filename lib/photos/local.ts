@@ -75,8 +75,14 @@ export function localPhotoStorage(): PhotoStorage {
       try {
         const info = await stat(filePath(photoId, variant));
         return info.isFile();
-      } catch {
-        return false;
+      } catch (error) {
+        // Match s3.ts's objectExists: only a real "doesn't exist" is `false`.
+        // Anything else (permissions, a full disk, some other I/O fault)
+        // rethrows rather than being silently read as a missing photo.
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+          return false;
+        }
+        throw error;
       }
     },
   };

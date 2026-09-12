@@ -30,8 +30,12 @@ import {
   UPLOAD_CAP_TITLE,
   UPRIGHT_CONFIRM_LABEL,
 } from "@/lib/ui/copy";
+import { PRESIGN_EXPIRY_SECONDS } from "@/lib/photos/types";
 import { nextRotation, type Rotation } from "@/lib/ui/rotation";
 import { postFormUpload } from "@/lib/ui/upload";
+
+/** Re-presign only once a cached one is close enough to its 5-minute expiry to risk. */
+const PRESIGN_REUSE_WINDOW_MS = (PRESIGN_EXPIRY_SECONDS - 60) * 1000;
 
 const DEFAULT_STARTING_COLUMNS = 4;
 
@@ -56,14 +60,22 @@ export function AddGameFlow() {
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // The blobs and ids from a completed upload, kept so "Try again" never
-  // re-photographs — only the network step is retried.
+  // The blobs and presign from a completed upload, kept so "Try again" never
+  // re-photographs, re-presigns (which would burn another of the day's upload
+  // slots and orphan a photo row) or re-spends the upload cap — only the
+  // network step is retried, unless the cached presign is old enough that it
+  // might have actually expired.
   const uploadResult = useRef<{
-    photoId: string;
     originalBlob: Blob;
     modelBlob: Blob;
     width: number;
     height: number;
+    presignedAt: number;
+    presign: {
+      photoId: string;
+      original: { url: string; fields: Record<string, string> };
+      model: { url: string; fields: Record<string, string> };
+    };
   } | null>(null);
 
   useEffect(() => {
@@ -115,21 +127,40 @@ export function AddGameFlow() {
       let modelBlob: Blob;
       let width: number;
       let height: number;
+      let presign: {
+        photoId: string;
+        original: { url: string; fields: Record<string, string> };
+        model: { url: string; fields: Record<string, string> };
+      };
 
-      if (uploadResult.current) {
-        ({ originalBlob, modelBlob, width, height } = uploadResult.current);
+      const cached = uploadResult.current;
+      const cacheIsFresh = !!cached && Date.now() - cached.presignedAt < PRESIGN_REUSE_WINDOW_MS;
+
+      if (cached && cacheIsFresh) {
+        ({ originalBlob, modelBlob, width, height, presign } = cached);
       } else {
-        if (!loaded) throw new Error("No photo loaded.");
-        const upright = rotateCanvas(loaded.canvas, rotation);
-        const exported = await exportPhoto(upright);
-        originalBlob = exported.originalBlob;
-        modelBlob = exported.modelBlob;
-        width = exported.width;
-        height = exported.height;
+        if (cached) {
+          ({ originalBlob, modelBlob, width, height } = cached);
+        } else {
+          if (!loaded) throw new Error("No photo loaded.");
+          const upright = rotateCanvas(loaded.canvas, rotation);
+          const exported = await exportPhoto(upright);
+          originalBlob = exported.originalBlob;
+          modelBlob = exported.modelBlob;
+          width = exported.width;
+          height = exported.height;
+        }
+        presign = await requestUploadUrls(width, height);
       }
 
-      const presign = await requestUploadUrls(width, height);
-      uploadResult.current = { photoId: presign.photoId, originalBlob, modelBlob, width, height };
+      uploadResult.current = {
+        originalBlob,
+        modelBlob,
+        width,
+        height,
+        presign,
+        presignedAt: cached && cacheIsFresh ? cached.presignedAt : Date.now(),
+      };
 
       let originalProgress = 0;
       let modelProgress = 0;
@@ -189,7 +220,7 @@ export function AddGameFlow() {
     try {
       const columnIds = Array.from({ length: DEFAULT_STARTING_COLUMNS }, () => newId("col"));
       const state = emptyDraftState({
-        photoId: uploadResult.current.photoId,
+        photoId: uploadResult.current.presign.photoId,
         playedOn: localCalendarDay(),
         columnIds,
       });
@@ -197,7 +228,7 @@ export function AddGameFlow() {
       const response = await fetch("/api/drafts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ photoId: uploadResult.current.photoId, state }),
+        body: JSON.stringify({ photoId: uploadResult.current.presign.photoId, state }),
       });
       if (!response.ok) throw new Error("Could not start the review.");
       const body = (await response.json()) as { draftId: string };

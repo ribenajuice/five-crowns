@@ -22,6 +22,7 @@ import {
   CROP_NOT_SET_BUTTON,
   CROP_NOT_SET_STRIP,
 } from "@/lib/ui/copy";
+import { HANDS_PER_GAME } from "@/lib/scoring";
 import { buttonClasses } from "./Button";
 
 /**
@@ -52,7 +53,7 @@ export function PhotoStrip({
   photoHeight,
   crop,
   pitch = REVIEW_ROW_PITCH_PX,
-  hands = 11,
+  hands = HANDS_PER_GAME,
   fallbackWidth = 110,
   highlightIndex = null,
   onAdjustCrop,

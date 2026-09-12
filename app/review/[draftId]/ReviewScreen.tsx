@@ -53,6 +53,7 @@ import {
 } from "@/lib/ui/copy";
 import {
   addColumn,
+  canAddColumn,
   clearLocation,
   removeColumn,
   setCellValue,
@@ -461,7 +462,7 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
               columns={columnItems}
               activeId={activeColumn?.id ?? ""}
               onSelect={setSelectedColumnId}
-              onAddColumn={() => applyEdit(addColumn)}
+              onAddColumn={draft && canAddColumn(draft) ? () => applyEdit(addColumn) : undefined}
             />
 
             {activeColumn ? (

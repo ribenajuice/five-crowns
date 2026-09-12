@@ -13,7 +13,7 @@
  * configuration step, is here: add and remove a player column.
  */
 
-import { nameKey, type Crop, type DraftColumn, type DraftState } from "@/lib/draft/state";
+import { MAX_COLUMNS, nameKey, type Crop, type DraftColumn, type DraftState } from "@/lib/draft/state";
 import type { CellValue } from "@/lib/scoring";
 import { newId } from "./ids";
 
@@ -95,8 +95,18 @@ export function setCellValue(
   }));
 }
 
-/** Add a missed player column: "0 of 11" until it's filled in. */
+/** Whether another column can be added without exceeding the draft schema's cap. */
+export function canAddColumn(state: DraftState): boolean {
+  return state.columns.length < MAX_COLUMNS;
+}
+
+/**
+ * Add a missed player column: "0 of 11" until it's filled in. A no-op once
+ * `MAX_COLUMNS` is reached — callers should disable their control using
+ * `canAddColumn`, but this stays safe even if one doesn't.
+ */
 export function addColumn(state: DraftState): DraftState {
+  if (!canAddColumn(state)) return state;
   const column: DraftColumn = {
     id: newId("col"),
     order: state.columns.length,
@@ -124,12 +134,22 @@ export function removeColumn(state: DraftState, columnId: string): DraftState {
 
 /**
  * Whether a pending name (player or venue) matches something already picked
- * for this draft, so the UI can fold it into that entry rather than creating
- * a duplicate (criteria 60, 62, 63) ahead of the save-time resolution.
+ * for *another* column in this draft, so the UI can fold it into that entry
+ * rather than creating a duplicate (criteria 60, 62, 63) ahead of the
+ * save-time resolution. `excludeColumnId` is the column currently being
+ * edited — its own in-progress value must never count as a duplicate of
+ * itself.
  */
-export function isDuplicatePlayerName(state: DraftState, name: string): boolean {
+export function isDuplicatePlayerName(
+  state: DraftState,
+  name: string,
+  excludeColumnId?: string,
+): boolean {
   const key = nameKey(name);
   return state.columns.some(
-    (column) => column.newPlayerName && nameKey(column.newPlayerName) === key,
+    (column) =>
+      column.id !== excludeColumnId &&
+      column.newPlayerName &&
+      nameKey(column.newPlayerName) === key,
   );
 }

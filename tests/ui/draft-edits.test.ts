@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveValues, emptyDraftState } from "@/lib/draft/state";
+import { effectiveValues, emptyDraftState, MAX_COLUMNS } from "@/lib/draft/state";
 import {
   addColumn,
+  canAddColumn,
   clearLocation,
   isDuplicatePlayerName,
   removeColumn,
@@ -56,6 +57,21 @@ describe("addColumn / removeColumn", () => {
     expect(state.columns.map((c) => c.order)).toEqual([0, 1]);
     expect(effectiveValues(state.columns[0]!)[0]).toBe(99);
   });
+
+  it("⚠️ never grows past MAX_COLUMNS, matching the draft schema's own cap", () => {
+    let state = freshState(); // starts at 2 columns
+    for (let i = state.columns.length; i < MAX_COLUMNS; i += 1) {
+      expect(canAddColumn(state)).toBe(true);
+      state = addColumn(state);
+    }
+    expect(state.columns).toHaveLength(MAX_COLUMNS);
+    expect(canAddColumn(state)).toBe(false);
+
+    // A stray call past the cap (e.g. a race with a UI that should have
+    // disabled its own control) is a no-op, not an oversized draft.
+    state = addColumn(state);
+    expect(state.columns).toHaveLength(MAX_COLUMNS);
+  });
 });
 
 describe("setColumnPlayer / setColumnNewPlayerName", () => {
@@ -108,5 +124,13 @@ describe("isDuplicatePlayerName", () => {
     const state = setColumnNewPlayerName(freshState(), "a", "Player C's place");
     expect(isDuplicatePlayerName(state, "  player c's place ")).toBe(true);
     expect(isDuplicatePlayerName(state, "Someone else")).toBe(false);
+  });
+
+  it("⚠️ never reports a column's own in-progress name as a duplicate of itself", () => {
+    const state = setColumnNewPlayerName(freshState(), "a", "Alex");
+    expect(isDuplicatePlayerName(state, "Alex", "a")).toBe(false);
+    // Still catches a genuine clash against a *different* column.
+    expect(isDuplicatePlayerName(state, "Alex", "b")).toBe(true);
+    expect(isDuplicatePlayerName(state, "Alex")).toBe(true);
   });
 });
