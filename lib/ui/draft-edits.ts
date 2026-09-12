@@ -12,6 +12,10 @@
  * no arbitrary row count, no formulas, no multi-cell selection (criterion
  * 34); these are exactly the four structural repairs the PRD names and no
  * more.
+ *
+ * Stage 4 also adds `setActiveReading` — not a structural repair, but the
+ * same "pure edit, no network call of its own" shape, for `ReadingCompare`'s
+ * keep/reject buttons (criteria 39–41).
  */
 
 import {
@@ -274,6 +278,29 @@ export function deleteValueAt(
     const at = Math.max(0, Math.min(index, values.length - 1));
     const next = [...values.slice(0, at), ...values.slice(at + 1)];
     return spliceColumnValues(state, column, next, now);
+  });
+}
+
+/**
+ * Switch which of a column's stored readings is active — the client-side half
+ * of `ReadingCompare`'s "Keep what's saved" / "Make {reading} active" buttons
+ * (criteria 40, 41). No network call of its own: like every other function in
+ * this file, the result is just a new `DraftState` for the caller to hand to
+ * the review screen's existing autosave, so rejecting a close-up is one tap
+ * and no re-upload. `manualEdits` are left untouched — they sit on top of
+ * whichever reading is active in `effectiveValues`, so switching readings
+ * never discards a hand-typed correction. A `readingId` the column doesn't
+ * actually have is a no-op, defensive against a stale button racing a
+ * structural edit that dropped the column's history.
+ */
+export function setActiveReading(
+  state: DraftState,
+  columnId: string,
+  readingId: string,
+): DraftState {
+  return mapColumn(state, columnId, (column) => {
+    if (!column.readings.some((r) => r.id === readingId)) return column;
+    return { ...column, activeReadingId: readingId };
   });
 }
 

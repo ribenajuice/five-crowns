@@ -16,15 +16,33 @@ import {
   TOO_FEW_PLAYERS_MESSAGE,
   blockedColumnDips,
   blockedColumnShort,
+  cellRowLabel,
   columnStatusLabel,
+  compareDifferingLinesSummary,
+  compareDifferingLinesSummaryGeneral,
+  compareHistoryLink,
+  compareKeepActiveLabel,
+  compareMakeActiveLabel,
+  compareVsPastReadingHeading,
+  deleteConfirmDetail,
+  deleteConfirmQuestion,
+  incompleteCloseupNote,
+  insertConfirmDetail,
+  insertConfirmQuestion,
+  ordinal,
   pairedFlagSentence,
   readHintSentence,
+  readingHistoryHeading,
+  readingHistoryRowLabel,
+  readingLabel,
   saveBlockedMessage,
   sharedWinGamesListLabel,
   sharedWinnerConfirmation,
   softWarningSentence,
   soleWinnerConfirmation,
+  typedCellDisagreementSentence,
   winnerConfirmation,
+  wrongColumnWarningTitle,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -229,5 +247,123 @@ describe("The wording constraint (PRD criterion 24) — none of the fixed string
     assertNoBannedWords(blockedColumnShort("Player A", 1, 11));
     assertNoBannedWords(soleWinnerConfirmation("Player A", 1));
     assertNoBannedWords(sharedWinnerConfirmation(["Player A", "Player B"], 1));
+  });
+});
+
+describe("ordinal / cellRowLabel (Stage 4: 'fix the shape' row labels)", () => {
+  it("renders the usual English ordinals, including the 11-13 exception", () => {
+    expect(ordinal(1)).toBe("1st");
+    expect(ordinal(2)).toBe("2nd");
+    expect(ordinal(3)).toBe("3rd");
+    expect(ordinal(4)).toBe("4th");
+    expect(ordinal(11)).toBe("11th");
+    expect(ordinal(12)).toBe("12th");
+    expect(ordinal(13)).toBe("13th");
+    expect(ordinal(21)).toBe("21st");
+  });
+
+  it("uses the card rank while a column holds exactly eleven values", () => {
+    expect(cellRowLabel(0, 11)).toBe("3s");
+    expect(cellRowLabel(10, 11)).toBe("Kings");
+  });
+
+  it("⚠️ falls back to a plain position mid-repair, when the column isn't eleven", () => {
+    expect(cellRowLabel(0, 12)).toBe("1st");
+    expect(cellRowLabel(11, 12)).toBe("12th");
+    expect(cellRowLabel(9, 10)).toBe("10th");
+  });
+});
+
+describe("insert/delete confirm sentences (PRD criterion 33, verbatim '12 of 11' / '10 of 11')", () => {
+  it("insert confirm names the line and the resulting count", () => {
+    expect(insertConfirmQuestion(3)).toBe("Insert a blank line above the 3rd line down?");
+    expect(insertConfirmDetail(11)).toBe(
+      "Everything below shifts down one — this column will read 12 of 11 until it's filled in.",
+    );
+  });
+
+  it("delete confirm names the line, its value, and the resulting count", () => {
+    expect(deleteConfirmQuestion(3, 64)).toBe("Delete the 3rd line down — 64?");
+    expect(deleteConfirmDetail(11)).toBe(
+      "Everything below shifts up one — this column will read 10 of 11.",
+    );
+  });
+
+  it("an unread line's value renders as a dash, never a literal null", () => {
+    expect(deleteConfirmQuestion(1, null)).toBe("Delete the 1st line down — –?");
+  });
+
+  it("has no banned word", () => {
+    assertNoBannedWords(insertConfirmQuestion(1));
+    assertNoBannedWords(insertConfirmDetail(11));
+    assertNoBannedWords(deleteConfirmQuestion(1, 10));
+    assertNoBannedWords(deleteConfirmDetail(11));
+  });
+});
+
+describe("wrongColumnWarningTitle / typedCellDisagreementSentence (PRD criteria 42, 43)", () => {
+  it("names the sheet player and the assigned player", () => {
+    expect(wrongColumnWarningTitle("Player B", "Player D")).toBe(
+      "This looks like Player B's column, not Player D's.",
+    );
+  });
+
+  it("names both the typed value and the close-up's own read, verbatim to the PRD's example", () => {
+    expect(typedCellDisagreementSentence(64, 84)).toBe("You typed 64; the close-up reads 84.");
+  });
+});
+
+describe("incompleteCloseupNote (PRD criterion 44)", () => {
+  it("names the player and the resulting fill count, and reuses the save button's own label", () => {
+    expect(incompleteCloseupNote("Player D", 8)).toBe(
+      "Keeping this leaves Player D's column at 8 of 11 — Put it in the book stays blocked until it's filled in.",
+    );
+    assertNoBannedWords(incompleteCloseupNote("Player D", 8));
+  });
+});
+
+describe("compareDifferingLinesSummary(General) (PRD criteria 39-41)", () => {
+  it("names every differing hand label, verbatim to the design system's example", () => {
+    expect(compareDifferingLinesSummary(["8s", "9s", "10s", "Jacks"])).toBe(
+      "4 lines differ from what's saved: 8s, 9s, 10s, Jacks.",
+    );
+  });
+
+  it("uses singular grammar for exactly one differing line", () => {
+    expect(compareDifferingLinesSummary(["Kings"])).toBe("1 line differs from what's saved: Kings.");
+  });
+
+  it("says so plainly when nothing differs", () => {
+    expect(compareDifferingLinesSummary([])).toBe("Every line matches what's saved.");
+  });
+
+  it("the generalised (past-vs-past) form never mentions 'saved'", () => {
+    const summary = compareDifferingLinesSummaryGeneral(["8s"]);
+    expect(summary).toBe("1 line differs between the two readings: 8s.");
+    expect(summary.toLowerCase()).not.toContain("saved");
+  });
+});
+
+describe("reading history and past-reading compare copy (PRD criterion 41)", () => {
+  it("readingLabel and readingHistoryRowLabel", () => {
+    expect(readingLabel(2)).toBe("Reading 2");
+    expect(readingHistoryRowLabel(2, "close-up", "12 Sep, 2:14 pm")).toBe(
+      "Reading 2 · close-up · 12 Sep, 2:14 pm",
+    );
+    expect(readingHistoryRowLabel(1, "sheet", "10 Sep, 8:02 pm")).toContain("full sheet");
+  });
+
+  it("readingHistoryHeading names the player", () => {
+    expect(readingHistoryHeading("Player D")).toBe("Every reading of Player D's column");
+  });
+
+  it("compareVsPastReadingHeading and the relabelled buttons", () => {
+    expect(compareVsPastReadingHeading("Reading 2")).toBe("Reading 2 vs what's active now");
+    expect(compareMakeActiveLabel("Reading 2")).toBe("Make Reading 2 active");
+    expect(compareKeepActiveLabel("Reading 3")).toBe("Keep Reading 3 active");
+  });
+
+  it("compareHistoryLink names the count", () => {
+    expect(compareHistoryLink(3)).toBe("See every reading (3)");
   });
 });

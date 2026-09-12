@@ -18,6 +18,8 @@ import { Banner } from "@/components/Banner";
 import { BottomSheet } from "@/components/BottomSheet";
 import { CellEditor } from "@/components/CellEditor";
 import { ColumnPager, type ColumnPagerItem, type ColumnStatus } from "@/components/ColumnPager";
+import { ColumnReorderList } from "@/components/ColumnReorderList";
+import { ColumnRephotograph } from "@/components/ColumnRephotograph";
 import { CropFrame } from "@/components/CropFrame";
 import { Field } from "@/components/Field";
 import { FinalRow, type FinalRowItem } from "@/components/FinalRow";
@@ -26,6 +28,7 @@ import { Pill } from "@/components/Pill";
 import { PickList, type PickListItem } from "@/components/PickList";
 import { ReviewGrid } from "@/components/ReviewGrid";
 import { SaveBar } from "@/components/SaveBar";
+import { StructureMenu } from "@/components/StructureMenu";
 import { buttonClasses } from "@/components/Button";
 
 import {
@@ -40,10 +43,14 @@ import { createDebouncer, type Debounced } from "@/lib/ui/autosave";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/ui/constants";
 import {
   CROP_STEP_HEADING,
+  FIX_SOMETHING_LINK,
   NO_LOCATION_ROW,
   PASSING_STATEMENT,
   PLAYER_ADD_NEW_ROW,
   PLAYER_LIST_FIRST_GAME,
+  REORDER_DONE_BUTTON,
+  REORDER_SCREEN_CAPTION,
+  REORDER_SCREEN_HEADING,
   VENUE_ADD_NEW_ROW,
   VENUE_FIELD_LABEL,
   VENUE_LIST_EMPTY,
@@ -54,8 +61,14 @@ import {
 import {
   addColumn,
   canAddColumn,
+  canDeleteValue,
+  canInsertValue,
   clearLocation,
+  deleteValueAt,
+  insertValueAt,
   removeColumn,
+  reorderColumns,
+  setActiveReading,
   setCellValue,
   setColumnCrop,
   setColumnNewPlayerName,
@@ -120,6 +133,13 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
   const [cellEditor, setCellEditor] = useState<{ columnId: string; index: number } | null>(null);
   const [columnPicker, setColumnPicker] = useState<{ columnId: string; step: "pick" | "crop" } | null>(null);
   const [venueSheetOpen, setVenueSheetOpen] = useState(false);
+  // Stage 4: the "Fix something" menu and its in-place "Reorder columns" step
+  // (docs/DESIGN-SYSTEM.md § `StructureMenu`). `null` when closed.
+  const [structureStep, setStructureStep] = useState<"menu" | "reorder" | null>(null);
+  // Which columns currently have a close-up read in flight — drives the
+  // pager dot's hollow accent ring (docs/DESIGN-SYSTEM.md § Column-scoped
+  // `TranscribeProgress`).
+  const [readingColumnIds, setReadingColumnIds] = useState<Set<string>>(new Set());
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
@@ -377,9 +397,22 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
     return {
       id: column.id,
       label: labelForColumn(column, players),
-      status: statusForColumn(validation.ok, hasErr, softWarnings.length > 0),
+      status: readingColumnIds.has(column.id)
+        ? "reading"
+        : statusForColumn(validation.ok, hasErr, softWarnings.length > 0),
     };
   });
+
+  /** Swap a column with its neighbour one place up/down (Stage 4 reorder). */
+  function swapAdjacentColumn(columnId: string, direction: -1 | 1) {
+    const ids = sortedColumns.map((c) => c.id);
+    const i = ids.indexOf(columnId);
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    const next = [...ids];
+    [next[i], next[j]] = [next[j]!, next[i]!];
+    applyEdit((s) => reorderColumns(s, next));
+  }
 
   const scores: PlayerScore[] = sortedColumns.map((column) => ({
     playerId: column.id,
@@ -493,18 +526,48 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
             />
 
             {activeColumn ? (
-              <ActiveColumnCard
-                column={activeColumn}
-                label={labelForColumn(activeColumn, players)}
-                validation={gridValidation.columns[activeColumn.id]!}
-                photo={photo}
-                canRemove={sortedColumns.length > 1}
-                readHintIndex={readHints[activeColumn.id] ?? null}
-                onPickPlayer={() => setColumnPicker({ columnId: activeColumn.id, step: "pick" })}
-                onAdjustCrop={() => setColumnPicker({ columnId: activeColumn.id, step: "crop" })}
-                onRemove={() => applyEdit((s) => removeColumn(s, activeColumn.id))}
-                onEditCell={(index) => setCellEditor({ columnId: activeColumn.id, index })}
-              />
+              <>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setStructureStep("menu")}
+                    className="text-sm font-bold text-brand underline underline-offset-2"
+                  >
+                    {FIX_SOMETHING_LINK}
+                  </button>
+                </div>
+                <ActiveColumnCard
+                  key={activeColumn.id}
+                  draftId={draftId}
+                  column={activeColumn}
+                  label={labelForColumn(activeColumn, players)}
+                  validation={gridValidation.columns[activeColumn.id]!}
+                  photo={photo}
+                  canRemove={sortedColumns.length > 1}
+                  readHintIndex={readHints[activeColumn.id] ?? null}
+                  onPickPlayer={() => setColumnPicker({ columnId: activeColumn.id, step: "pick" })}
+                  onAdjustCrop={() => setColumnPicker({ columnId: activeColumn.id, step: "crop" })}
+                  onRemove={() => applyEdit((s) => removeColumn(s, activeColumn.id))}
+                  onEditCell={(index) => setCellEditor({ columnId: activeColumn.id, index })}
+                  onColumnMerged={(updated) =>
+                    applyEdit((s) => ({
+                      ...s,
+                      columns: s.columns.map((c) => (c.id === updated.id ? updated : c)),
+                    }))
+                  }
+                  onRevertReading={(readingId) =>
+                    applyEdit((s) => setActiveReading(s, activeColumn.id, readingId))
+                  }
+                  onReadingChange={(reading) =>
+                    setReadingColumnIds((current) => {
+                      const next = new Set(current);
+                      if (reading) next.add(activeColumn.id);
+                      else next.delete(activeColumn.id);
+                      return next;
+                    })
+                  }
+                />
+              </>
             ) : null}
 
             <div className="mt-4">
@@ -661,13 +724,72 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
                 }
               : undefined
           }
+          fixTheShape={{
+            canInsert: canInsertValue(cellEditorColumn),
+            canDelete: canDeleteValue(cellEditorColumn),
+            onInsertBefore: () =>
+              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, cellEditor.index)),
+            onInsertAfter: () =>
+              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, cellEditor.index + 1)),
+            onDelete: () => applyEdit((s) => deleteValueAt(s, cellEditorColumn.id, cellEditor.index)),
+          }}
         />
+      ) : null}
+
+      {structureStep && activeColumn ? (
+        <BottomSheet
+          open
+          onClose={() => setStructureStep(null)}
+          title={structureStep === "menu" ? FIX_SOMETHING_LINK : REORDER_SCREEN_HEADING}
+        >
+          {structureStep === "menu" ? (
+            <StructureMenu
+              canAddColumn={canAddColumn(draft)}
+              canRemoveColumn={sortedColumns.length > 1}
+              onAddColumn={() => {
+                applyEdit(addColumn);
+                setStructureStep(null);
+              }}
+              onRemoveColumn={() => {
+                applyEdit((s) => removeColumn(s, activeColumn.id));
+                setStructureStep(null);
+              }}
+              onReassignPlayer={() => {
+                setStructureStep(null);
+                setColumnPicker({ columnId: activeColumn.id, step: "pick" });
+              }}
+              onReorder={() => setStructureStep("reorder")}
+              onInsertOrDelete={() => {
+                setStructureStep(null);
+                setCellEditor({ columnId: activeColumn.id, index: 0 });
+              }}
+              onHandEntry={() => setStructureStep(null)}
+            />
+          ) : (
+            <div>
+              <p className="mb-3 text-sm text-text-muted">{REORDER_SCREEN_CAPTION}</p>
+              <ColumnReorderList
+                items={columnItems}
+                onMoveUp={(id) => swapAdjacentColumn(id, -1)}
+                onMoveDown={(id) => swapAdjacentColumn(id, 1)}
+              />
+              <button
+                type="button"
+                onClick={() => setStructureStep(null)}
+                className={`${buttonClasses("primary", { fullWidth: true })} mt-4`}
+              >
+                {REORDER_DONE_BUTTON}
+              </button>
+            </div>
+          )}
+        </BottomSheet>
       ) : null}
     </>
   );
 }
 
 function ActiveColumnCard({
+  draftId,
   column,
   label,
   validation,
@@ -678,7 +800,11 @@ function ActiveColumnCard({
   onAdjustCrop,
   onRemove,
   onEditCell,
+  onColumnMerged,
+  onRevertReading,
+  onReadingChange,
 }: {
+  draftId: string;
   column: DraftColumn;
   label: string;
   validation: ColumnValidation;
@@ -689,6 +815,9 @@ function ActiveColumnCard({
   onAdjustCrop: () => void;
   onRemove: () => void;
   onEditCell: (index: number) => void;
+  onColumnMerged: (column: DraftColumn) => void;
+  onRevertReading: (readingId: string) => void;
+  onReadingChange: (reading: boolean) => void;
 }) {
   const values = effectiveValues(column);
   const handScores = deriveHandScores(values);
@@ -718,24 +847,33 @@ function ActiveColumnCard({
       </div>
 
       {photo ? (
-        <div className="flex gap-3">
-          <PhotoStrip
-            photoUrl={photo.url}
-            photoWidth={photo.width}
-            photoHeight={photo.height}
-            crop={column.crop}
-            onAdjustCrop={column.crop ? onAdjustCrop : undefined}
-            onSetCrop={!column.crop ? onAdjustCrop : undefined}
-          />
-          <ReviewGrid
-            values={values}
-            handScores={handScores}
-            columnValidation={validation}
-            softWarnings={softWarnings}
-            readHintIndex={readHintIndex}
-            onEditCell={onEditCell}
-          />
-        </div>
+        <ColumnRephotograph
+          draftId={draftId}
+          column={column}
+          playerLabel={label}
+          onColumnMerged={onColumnMerged}
+          onRevertReading={onRevertReading}
+          onReadingChange={onReadingChange}
+        >
+          <div className="flex gap-3">
+            <PhotoStrip
+              photoUrl={photo.url}
+              photoWidth={photo.width}
+              photoHeight={photo.height}
+              crop={column.crop}
+              onAdjustCrop={column.crop ? onAdjustCrop : undefined}
+              onSetCrop={!column.crop ? onAdjustCrop : undefined}
+            />
+            <ReviewGrid
+              values={values}
+              handScores={handScores}
+              columnValidation={validation}
+              softWarnings={softWarnings}
+              readHintIndex={readHintIndex}
+              onEditCell={onEditCell}
+            />
+          </div>
+        </ColumnRephotograph>
       ) : (
         <p className="text-text-muted">Loading the photo…</p>
       )}

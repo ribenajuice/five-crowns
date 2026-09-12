@@ -11,11 +11,28 @@
  * that new state on the same render.
  */
 
-import { HANDS_PER_GAME, MAX_RUNNING_TOTAL, handLabel, type CellValue } from "@/lib/scoring";
+import { useEffect, useState } from "react";
+
+import { MAX_RUNNING_TOTAL, type CellValue } from "@/lib/scoring";
 import type { NormalisedCrop } from "@/lib/ui/crop-strip";
+import {
+  cellRowLabel,
+  DELETE_LINE_ACTION,
+  deleteConfirmDetail,
+  deleteConfirmQuestion,
+  FIX_THE_SHAPE_HELPER,
+  FIX_THE_SHAPE_LINK,
+  INSERT_ABOVE_ACTION,
+  INSERT_BELOW_ACTION,
+  insertConfirmDetail,
+  insertConfirmQuestion,
+  ordinal,
+  STRUCTURE_CANCEL_BUTTON,
+} from "@/lib/ui/copy";
 import { BottomSheet } from "./BottomSheet";
 import { PhotoStrip } from "./PhotoStrip";
 import { buttonClasses } from "./Button";
+import { WarningTriangleIcon } from "./icons";
 
 interface CellEditorProps {
   open: boolean;
@@ -31,13 +48,18 @@ interface CellEditorProps {
   onChangeValue: (index: number, value: number | null) => void;
   onNavigate: (index: number) => void;
   onSetCrop?: () => void;
+  /** Stage 4's "fix the shape": undefined hides the link entirely (no column
+   *  context to repair against, e.g. no draft loaded yet). */
+  fixTheShape?: {
+    canInsert: boolean;
+    canDelete: boolean;
+    onInsertBefore: () => void;
+    onInsertAfter: () => void;
+    onDelete: () => void;
+  };
 }
 
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
-}
+type PendingShapeAction = "insert-above" | "insert-below" | "delete";
 
 function digitsOnly(input: string): number | null {
   const digits = input.replace(/[^0-9]/g, "");
@@ -60,11 +82,37 @@ export function CellEditor({
   onChangeValue,
   onNavigate,
   onSetCrop,
+  fixTheShape,
 }: CellEditorProps) {
+  const [shapeOpen, setShapeOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingShapeAction | null>(null);
+
   const value = values[index] ?? null;
   const thisHand = handScores[index] ?? null;
   const nextHand = handScores[index + 1] ?? null;
-  const label = handLabel(index + 1) ?? `hand ${index + 1}`;
+  const label = cellRowLabel(index, values.length);
+  const lastIndex = Math.max(values.length - 1, 0);
+
+  // A line change (prev/next, or the sheet reopening on a different cell)
+  // always drops back to the plain editor — "fix the shape" is relative to
+  // whichever line is open, and stays honest about which line that is.
+  useEffect(() => {
+    setShapeOpen(false);
+    setPendingAction(null);
+  }, [index, open]);
+
+  function closeShapeUi() {
+    setShapeOpen(false);
+    setPendingAction(null);
+  }
+
+  function commitPendingAction() {
+    if (!fixTheShape || !pendingAction) return;
+    if (pendingAction === "insert-above") fixTheShape.onInsertBefore();
+    if (pendingAction === "insert-below") fixTheShape.onInsertAfter();
+    if (pendingAction === "delete") fixTheShape.onDelete();
+    closeShapeUi();
+  }
 
   function pressDigit(digit: string) {
     const current = value === null ? "" : String(value);
@@ -162,13 +210,91 @@ export function CellEditor({
         </button>
         <button
           type="button"
-          disabled={index === HANDS_PER_GAME - 1}
+          disabled={index === lastIndex}
           onClick={() => onNavigate(index + 1)}
           className={`${buttonClasses("ghost")} flex-1`}
         >
           Next line ↓
         </button>
       </div>
+
+      {fixTheShape ? (
+        <div className="mt-4 border-t border-line pt-3">
+          {!shapeOpen ? (
+            <button
+              type="button"
+              onClick={() => setShapeOpen(true)}
+              className="text-sm font-bold text-brand underline underline-offset-2"
+            >
+              {FIX_THE_SHAPE_LINK}
+            </button>
+          ) : pendingAction ? (
+            <div>
+              <p className="font-bold">
+                {pendingAction === "delete"
+                  ? deleteConfirmQuestion(index + 1, value)
+                  : insertConfirmQuestion(pendingAction === "insert-above" ? index + 1 : index + 2)}
+              </p>
+              <p className="mt-1 text-sm text-text-muted">
+                {pendingAction === "delete"
+                  ? deleteConfirmDetail(values.length)
+                  : insertConfirmDetail(values.length)}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeShapeUi}
+                  className={`${buttonClasses("ghost")} flex-1`}
+                >
+                  {STRUCTURE_CANCEL_BUTTON}
+                </button>
+                <button
+                  type="button"
+                  onClick={commitPendingAction}
+                  className={`${buttonClasses(pendingAction === "delete" ? "accent" : "primary")} flex-1`}
+                >
+                  {pendingAction === "delete"
+                    ? DELETE_LINE_ACTION
+                    : pendingAction === "insert-above"
+                      ? INSERT_ABOVE_ACTION
+                      : INSERT_BELOW_ACTION}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="mb-2 text-sm text-text-muted">{FIX_THE_SHAPE_HELPER}</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={!fixTheShape.canInsert}
+                  onClick={() => setPendingAction("insert-above")}
+                  className={buttonClasses("ghost")}
+                >
+                  {INSERT_ABOVE_ACTION}
+                </button>
+                <button
+                  type="button"
+                  disabled={!fixTheShape.canInsert}
+                  onClick={() => setPendingAction("insert-below")}
+                  className={buttonClasses("ghost")}
+                >
+                  {INSERT_BELOW_ACTION}
+                </button>
+                <button
+                  type="button"
+                  disabled={!fixTheShape.canDelete}
+                  onClick={() => setPendingAction("delete")}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-error px-4 text-base font-bold text-error disabled:opacity-60"
+                >
+                  <WarningTriangleIcon />
+                  {DELETE_LINE_ACTION}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
     </BottomSheet>
   );
 }

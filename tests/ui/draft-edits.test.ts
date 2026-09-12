@@ -12,6 +12,7 @@ import {
   isDuplicatePlayerName,
   removeColumn,
   reorderColumns,
+  setActiveReading,
   setCellValue,
   setColumnCrop,
   setColumnNewPlayerName,
@@ -196,6 +197,59 @@ describe("insertValueAt / deleteValueAt", () => {
     )!;
     expect(active.source).toBe("sheet");
     expect(active.photoId).toBe("photo-1");
+  });
+});
+
+describe("setActiveReading (Stage 4: ReadingCompare's keep/reject buttons)", () => {
+  function stateWithTwoReadings() {
+    const state = emptyDraftState({ photoId: "photo-1", playedOn: "2026-09-11", columnIds: ["a"] });
+    state.columns[0]!.readings = [
+      {
+        id: "r1",
+        source: "sheet",
+        photoId: "photo-1",
+        transcriptionId: null,
+        values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        at: "2026-09-11T00:00:00Z",
+      },
+      {
+        id: "r2",
+        source: "close-up",
+        photoId: "photo-closeup",
+        transcriptionId: "t1",
+        values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 99],
+        at: "2026-09-12T00:00:00Z",
+      },
+    ];
+    state.columns[0]!.activeReadingId = "r2";
+    return state;
+  }
+
+  it("⚠️ criteria 40, 41: switches which reading is active — one call, no network of its own", () => {
+    const state = setActiveReading(stateWithTwoReadings(), "a", "r1");
+    expect(state.columns[0]!.activeReadingId).toBe("r1");
+    expect(effectiveValues(state.columns[0]!).at(-1)).toBe(11);
+  });
+
+  it("carries manualEdits forward untouched across the switch", () => {
+    let state = stateWithTwoReadings();
+    state = setCellValue(state, "a", 0, 42);
+    state = setActiveReading(state, "a", "r1");
+    expect(effectiveValues(state.columns[0]!)[0]).toBe(42);
+  });
+
+  it("a reading id the column doesn't have is a no-op", () => {
+    const before = stateWithTwoReadings();
+    const after = setActiveReading(before, "a", "not-a-real-reading");
+    expect(after.columns[0]!.activeReadingId).toBe("r2");
+  });
+
+  it("touches only the named column", () => {
+    let state = stateWithTwoReadings();
+    state = addColumn(state);
+    state = setCellValue(state, state.columns[1]!.id, 0, 7);
+    state = setActiveReading(state, "a", "r1");
+    expect(effectiveValues(state.columns[1]!)[0]).toBe(7);
   });
 });
 
