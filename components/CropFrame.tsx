@@ -163,7 +163,16 @@ export function CropFrame({
       <p className="mb-3 text-sm text-text-muted">{CROP_GUESS_CAPTION}</p>
       <div
         ref={containerRef}
-        className="relative w-full touch-none select-none overflow-hidden rounded-[var(--radius)] bg-sunk"
+        // ⚠️ Not `touch-none` here — a column's crop always spans the full
+        // photo height by design (top of hand 1 to bottom of hand 11), so the
+        // pan handle below already covers the container's entire vertical
+        // extent. Blocking touch-action on this outer container too left no
+        // way to swipe-scroll the bottom sheet at all while a crop was open
+        // (reported by the founder on a real phone). The handle and corner
+        // buttons keep their own `touch-none` — dragging still works — but a
+        // touch on the surrounding, non-interactive part of the photo now
+        // falls through to the sheet's normal scroll.
+        className="relative w-full select-none overflow-hidden rounded-[var(--radius)] bg-sunk"
         style={{ aspectRatio: `${photoWidth} / ${photoHeight}` }}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
