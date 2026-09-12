@@ -54,4 +54,16 @@ export interface GameDetail {
     width: number | null;
     height: number | null;
   } | null;
+  /**
+   * Every close-up taken during review, attached to the player whose column
+   * it shows — including one whose reading was later rejected, since it's
+   * still evidence of what the paper said (criterion 71). Newest first.
+   */
+  closeUps: {
+    playerId: string;
+    url: string;
+    expiresAt: string;
+    width: number | null;
+    height: number | null;
+  }[];
 }

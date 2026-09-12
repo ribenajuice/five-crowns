@@ -41,6 +41,7 @@ export default async function GamePage({
     finalScore: column.finalScore,
   }));
   const winnerIds = game.columns.filter((c) => c.isWinner).map((c) => c.playerId);
+  const displayNameByPlayerId = new Map(game.columns.map((c) => [c.playerId, c.displayName]));
 
   return (
     <>
@@ -75,6 +76,30 @@ export default async function GamePage({
             </p>
           )}
         </section>
+
+        {game.closeUps.length > 0 ? (
+          <section aria-labelledby="close-ups-heading">
+            <h2 id="close-ups-heading" className="mb-2 font-display text-lg font-bold">
+              Close-ups
+            </h2>
+            <div className="flex flex-col gap-4">
+              {game.closeUps.map((closeUp, index) => {
+                const name = displayNameByPlayerId.get(closeUp.playerId) ?? "a player";
+                return (
+                  <div key={`${closeUp.playerId}-${index}`}>
+                    <p className="mb-2 text-sm text-text-muted">{name}&apos;s column</p>
+                    <SheetPhoto
+                      url={closeUp.url}
+                      width={closeUp.width}
+                      height={closeUp.height}
+                      alt={`A close-up of ${name}'s column for ${game.rosterName} on ${game.playedOn}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </main>
     </>
   );

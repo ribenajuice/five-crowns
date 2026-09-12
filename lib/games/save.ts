@@ -223,6 +223,19 @@ export async function saveGame(
             score: handScores[index] as number,
           })),
         );
+
+        // PRD criterion 71: every close-up taken during review attaches to
+        // this game and the player its column resolved to — including one
+        // whose reading was later rejected (it's still evidence of what the
+        // paper said, same reasoning as the sheet photo). `draft_column_id`
+        // was set at upload time (`POST /api/uploads`, kind:'column'); a
+        // draft can be edited after a close-up is taken (reassign the
+        // player, reorder), so this resolves it fresh here rather than
+        // trusting anything decided when the photo was shot.
+        await tx
+          .update(photo)
+          .set({ gameId: newGameId, playerId })
+          .where(and(eq(photo.draftColumnId, column.id), eq(photo.kind, "column")));
       }
 
       // Conditional: the backstop for a concurrent save of the same draft.

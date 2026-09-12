@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
-import { setUpDraft } from "../helpers/draft";
+import { createColumnPhoto, setUpDraft } from "../helpers/draft";
 import { SHEET_01, SHEET_02 } from "../fixtures/sheets";
 
 // See tests/games/save.test.ts for why `.data/photos` is never cleaned up here.
@@ -92,5 +92,39 @@ describe("getGame — criterion 70", () => {
   it("returns null for an unknown id", async () => {
     const { getGame } = await import("@/lib/games/queries");
     expect(await getGame("no-such-game")).toBeNull();
+  });
+
+  it("⚠️ criterion 71: a close-up attaches to the game and the player its column belongs to", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { getGame } = await import("@/lib/games/queries");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const playerDColumn = state.columns.find((c) => c.sheetName === "Player D")!;
+    await createColumnPhoto("closeup-query-1", draftId, playerDColumn.id);
+
+    const { gameId } = await saveGame(draftId, state);
+    const detail = await getGame(gameId);
+
+    expect(detail!.closeUps).toHaveLength(1);
+    const playerD = detail!.columns.find((c) => c.sheetName === "Player D")!;
+    expect(detail!.closeUps[0]!.playerId).toBe(playerD.playerId);
+    expect(detail!.closeUps[0]!.url).toContain("original.jpg");
+  });
+
+  it("a game with no close-ups returns an empty array, not null or an error", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { getGame } = await import("@/lib/games/queries");
+
+    const { draftId, state } = await setUpDraft(SHEET_02);
+    const { gameId } = await saveGame(draftId, state);
+
+    const detail = await getGame(gameId);
+    expect(detail!.closeUps).toEqual([]);
   });
 });

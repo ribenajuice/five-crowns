@@ -205,6 +205,28 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     }
   }
 
+  const closeUpRows = await db
+    .select()
+    .from(photo)
+    .where(and(eq(photo.gameId, id), eq(photo.kind, "column")))
+    .orderBy(desc(photo.createdAt));
+
+  const closeUps: GameDetail["closeUps"] = [];
+  for (const row of closeUpRows) {
+    if (!row.playerId) continue; // Cannot happen post-save; defensive only.
+    const storage = getPhotoStorage();
+    const exists = await storage.objectExists(row.id, "original");
+    if (!exists) continue;
+    const presigned = await storage.presignGet(row.id, "original");
+    closeUps.push({
+      playerId: row.playerId,
+      url: presigned.url,
+      expiresAt: presigned.expiresAt,
+      width: row.width,
+      height: row.height,
+    });
+  }
+
   return {
     id: gameRow.id,
     playedOn: gameRow.playedOn,
@@ -214,5 +236,6 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     winners,
     winningScore: winningScore(scores) ?? 0,
     sheetPhoto,
+    closeUps,
   };
 }
