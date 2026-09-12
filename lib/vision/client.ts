@@ -17,10 +17,21 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { JSONOutputFormat } from "@anthropic-ai/sdk/resources/messages";
 
+import { columnTranscriptionSchema } from "./column-schema";
 import { sheetTranscriptionSchema } from "./sheet-schema";
 
 /** Exact string, no date suffix — docs/ARCHITECTURE.md § Flow 2, step 5. */
 export const SHEET_MODEL = "claude-opus-5" as const;
+
+/**
+ * Same exact model as the sheet path — `docs/ARCHITECTURE.md` § "Targeted
+ * column re-read" is explicit that there is **no cheaper model on this
+ * path**. Kept as its own constant (identical value) rather than reusing
+ * `SHEET_MODEL` so the two call sites can diverge independently if a future
+ * model split is ever decided, without a rename ambiguating which path
+ * changed.
+ */
+export const COLUMN_MODEL = "claude-opus-5" as const;
 
 export function anthropicClient(apiKey: string): Anthropic {
   return new Anthropic({ apiKey });
@@ -41,5 +52,16 @@ export function anthropicClient(apiKey: string): Anthropic {
  */
 export function sheetOutputFormat(): JSONOutputFormat {
   const { type, schema } = zodOutputFormat(sheetTranscriptionSchema);
+  return { type, schema };
+}
+
+/**
+ * Same reasoning as {@link sheetOutputFormat}, for the single-column schema —
+ * `.parse()` stripped so a malformed response never throws inside the SDK's
+ * own message parsing. `lib/vision/transcribe-column.ts` reads the raw text
+ * itself and salvages field by field.
+ */
+export function columnOutputFormat(): JSONOutputFormat {
+  const { type, schema } = zodOutputFormat(columnTranscriptionSchema);
   return { type, schema };
 }

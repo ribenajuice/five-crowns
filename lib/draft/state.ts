@@ -171,12 +171,41 @@ export type DraftState = z.infer<typeof draftStateSchema>;
 
 /* ---------------------------------------------------- request bodies (API) */
 
-export const uploadRequestSchema = z.object({
+const uploadRotation = z.union([
+  z.literal(0),
+  z.literal(90),
+  z.literal(180),
+  z.literal(270),
+]);
+const uploadDimension = z.number().int().min(1).max(ORIGINAL_MAX_LONG_EDGE);
+
+const sheetUploadRequestSchema = z.object({
   kind: z.literal("sheet"),
-  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
-  width: z.number().int().min(1).max(ORIGINAL_MAX_LONG_EDGE),
-  height: z.number().int().min(1).max(ORIGINAL_MAX_LONG_EDGE),
+  rotation: uploadRotation,
+  width: uploadDimension,
+  height: uploadDimension,
 });
+
+/**
+ * A targeted column re-shoot (`docs/ARCHITECTURE.md` § "Targeted column
+ * re-read", sequence diagram step 2). Unlike a sheet upload, the draft and
+ * the column both already exist by this point — `draftId` and `columnId` are
+ * what lets the route stamp the resulting `photo` row with `draft_id` and
+ * `draft_column_id` at creation, before anything is transcribed.
+ */
+const columnUploadRequestSchema = z.object({
+  kind: z.literal("column"),
+  draftId: z.string().min(1).max(64),
+  columnId: z.string().min(1).max(64),
+  rotation: uploadRotation,
+  width: uploadDimension,
+  height: uploadDimension,
+});
+
+export const uploadRequestSchema = z.discriminatedUnion("kind", [
+  sheetUploadRequestSchema,
+  columnUploadRequestSchema,
+]);
 
 export const createDraftSchema = z
   .object({ photoId: z.string().min(1).max(64), state: draftStateSchema })
@@ -202,6 +231,18 @@ export const transcribeSheetRequestSchema = z.object({
   playedOn: isoDate.optional(),
 });
 
+/**
+ * `POST /api/transcribe/column` — the photo already exists by this point (the
+ * upload step created it, per the sequence diagram), so unlike
+ * `transcribeSheetRequestSchema` this needs no `playedOn` fallback and no
+ * "create a draft if none exists" branch: a column re-read only ever happens
+ * against a draft that already has that column.
+ */
+export const transcribeColumnRequestSchema = z.object({
+  photoId: z.string().min(1).max(64),
+  columnId: z.string().min(1).max(64),
+});
+
 export const saveGameSchema = z.object({
   draftId: z.string().min(1).max(64),
   state: draftStateSchema,
@@ -212,6 +253,7 @@ export type CreateDraftRequest = z.infer<typeof createDraftSchema>;
 export type UpdateDraftRequest = z.infer<typeof updateDraftSchema>;
 export type SaveGameRequest = z.infer<typeof saveGameSchema>;
 export type TranscribeSheetRequest = z.infer<typeof transcribeSheetRequestSchema>;
+export type TranscribeColumnRequest = z.infer<typeof transcribeColumnRequestSchema>;
 
 /* --------------------------------------------------------------- helpers */
 

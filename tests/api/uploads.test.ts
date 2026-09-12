@@ -132,4 +132,120 @@ describe("POST /api/uploads", () => {
     const after = (await getDb().select().from(photo)).length;
     expect(after).toBe(before);
   });
+
+  describe("kind: 'column'", () => {
+    async function createDraftWithColumn(): Promise<{ draftId: string; columnId: string }> {
+      const { getDb } = await import("@/lib/db");
+      const { draft: draftTable } = await import("@/lib/db/schema");
+      const { emptyDraftState } = await import("@/lib/draft/state");
+      const { randomUUID } = await import("node:crypto");
+
+      const draftId = randomUUID();
+      const columnId = `col_${randomUUID()}`;
+      const state = emptyDraftState({
+        photoId: randomUUID(),
+        playedOn: "2026-09-11",
+        columnIds: [columnId],
+      });
+      const now = new Date().toISOString();
+      await getDb()
+        .insert(draftTable)
+        .values({ id: draftId, stateJson: JSON.stringify(state), createdAt: now, updatedAt: now });
+      return { draftId, columnId };
+    }
+
+    it("400s a bad body (missing columnId)", async () => {
+      const { draftId } = await createDraftWithColumn();
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({ kind: "column", draftId, rotation: 0, width: 100, height: 100 }),
+      );
+      expect(response.status).toBe(400);
+    });
+
+    it("404s an unknown draft", async () => {
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({
+          kind: "column",
+          draftId: "no-such-draft",
+          columnId: "col_x",
+          rotation: 0,
+          width: 100,
+          height: 100,
+        }),
+      );
+      expect(response.status).toBe(404);
+    });
+
+    it("400s a column that doesn't exist on that draft", async () => {
+      const { draftId } = await createDraftWithColumn();
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({
+          kind: "column",
+          draftId,
+          columnId: "col_not_on_draft",
+          rotation: 0,
+          width: 100,
+          height: 100,
+        }),
+      );
+      expect(response.status).toBe(400);
+    });
+
+    it("409s a draft that's already been saved", async () => {
+      const { draftId, columnId } = await createDraftWithColumn();
+      const { getDb } = await import("@/lib/db");
+      const { draft: draftTable, game, roster } = await import("@/lib/db/schema");
+      await getDb().insert(roster).values({ id: "roster_x", signature: "p_x", size: 1 });
+      await getDb()
+        .insert(game)
+        .values({ id: "game_x", playedOn: "2026-01-01", rosterId: "roster_x" });
+      await getDb()
+        .update(draftTable)
+        .set({ savedGameId: "game_x" })
+        .where(eq(draftTable.id, draftId));
+
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({ kind: "column", draftId, columnId, rotation: 0, width: 100, height: 100 }),
+      );
+      expect(response.status).toBe(409);
+    });
+
+    it("happy path: 201, a photo row (kind='column') stamped with draftId and draftColumnId", async () => {
+      const { draftId, columnId } = await createDraftWithColumn();
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({ kind: "column", draftId, columnId, rotation: 0, width: 800, height: 1600 }),
+      );
+      expect(response.status).toBe(201);
+
+      const body = await response.json();
+      const { getDb } = await import("@/lib/db");
+      const { photo } = await import("@/lib/db/schema");
+      const row = (await getDb().select().from(photo).where(eq(photo.id, body.photoId)))[0]!;
+      expect(row.kind).toBe("column");
+      expect(row.draftId).toBe(draftId);
+      expect(row.draftColumnId).toBe(columnId);
+    });
+
+    it("is never subject to the sheet upload cap", async () => {
+      const { getDb } = await import("@/lib/db");
+      const { usageDay } = await import("@/lib/db/schema");
+      const today = new Date().toISOString().slice(0, 10);
+      await getDb()
+        .insert(usageDay)
+        .values({ day: today, sheetUploads: 40 })
+        .onConflictDoUpdate({ target: usageDay.day, set: { sheetUploads: 40 } });
+
+      const { draftId, columnId } = await createDraftWithColumn();
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({ kind: "column", draftId, columnId, rotation: 0, width: 800, height: 1600 }),
+      );
+      expect(response.status).toBe(201);
+    });
+  });
 });

@@ -60,3 +60,31 @@ export async function reserveSheetTranscription(
 
   return { allowed: true, count: row!.sheetTranscriptions };
 }
+
+/**
+ * Counts a column re-read attempt in `usage_day.column_transcriptions`.
+ *
+ * ⚠️ **Not a cap.** `docs/ARCHITECTURE.md` § "Targeted column re-read" is
+ * explicit: "no re-read cap, no cheaper model on this path" — the PRD treats
+ * unlimited re-shots as a product requirement (rung 3's "repeatable", cost is
+ * not a consideration), not an oversight to close later. This function exists
+ * purely so the admin panel's future usage-and-spend view (M2) has a number
+ * to show; nothing ever reads its return value to refuse a request.
+ */
+export async function recordColumnTranscription(
+  now: Date = new Date(),
+): Promise<{ count: number }> {
+  const db = getDb();
+  const day = todayUtc(now);
+
+  const [row] = await db
+    .insert(usageDay)
+    .values({ day, columnTranscriptions: 1 })
+    .onConflictDoUpdate({
+      target: usageDay.day,
+      set: { columnTranscriptions: sql`${usageDay.columnTranscriptions} + 1` },
+    })
+    .returning({ columnTranscriptions: usageDay.columnTranscriptions });
+
+  return { count: row!.columnTranscriptions };
+}
