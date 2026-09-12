@@ -174,6 +174,32 @@ describe("criterion 71 — close-ups attach to the game and the right player at 
     expect(closeUpRow.gameId).toBe(result.gameId);
     expect(closeUpRow.playerId).not.toBeNull();
   });
+
+  it("⚠️ security review: never sweeps another draft's close-up onto this game, even if the saved state names its column id", async () => {
+    // draftA genuinely owns this column id and its close-up.
+    const draftA = await setUpDraft(SHEET_01);
+    const sharedColumnId = draftA.state.columns.find((c) => c.sheetName === "Player B")!.id;
+    await createColumnPhoto("closeup-cross-draft", draftA.draftId, sharedColumnId);
+
+    // draftB's *submitted* state is crafted to reuse that same column id —
+    // draftStateSchema only enforces uniqueness within one submitted state,
+    // not across drafts, so the save transaction's own WHERE clause is what
+    // has to hold the line.
+    const draftB = await setUpDraft(SHEET_02);
+    draftB.state.columns[0]!.id = sharedColumnId;
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo } = await import("@/lib/db/schema");
+
+    const resultB = await saveGame(draftB.draftId, draftB.state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-cross-draft"))
+    )[0]!;
+    expect(closeUpRow.gameId).not.toBe(resultB.gameId);
+    expect(closeUpRow.gameId).toBeNull();
+  });
 });
 
 describe("criterion 58 — the date is stored as chosen", () => {

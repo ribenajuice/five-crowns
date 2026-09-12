@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveValues, emptyDraftState, MAX_COLUMNS, MAX_VALUES_PER_COLUMN } from "@/lib/draft/state";
+import {
+  effectiveValues,
+  emptyDraftState,
+  MAX_COLUMNS,
+  MAX_VALUES_PER_COLUMN,
+  toGridColumns,
+} from "@/lib/draft/state";
+import { validateGrid } from "@/lib/scoring";
 import {
   addColumn,
   canAddColumn,
@@ -198,6 +205,42 @@ describe("insertValueAt / deleteValueAt", () => {
     expect(active.source).toBe("sheet");
     expect(active.photoId).toBe("photo-1");
   });
+
+  it("⚠️ criterion 33/26: an insert actually blocks save via validateGrid, not just effectiveValues' own length", () => {
+    let state = emptyDraftState({ photoId: "p1", playedOn: "2026-09-11", columnIds: ["a", "b"] });
+    for (let i = 0; i < 11; i += 1) {
+      state = setCellValue(state, "a", i, i + 1);
+      state = setCellValue(state, "b", i, i + 1);
+    }
+    state = setColumnPlayer(state, "a", "player_a");
+    state = setColumnPlayer(state, "b", "player_b");
+    state = insertValueAt(state, "a", 3);
+
+    const validation = validateGrid(toGridColumns(state));
+    expect(validation.ok).toBe(false);
+    const colA = validation.columns[state.columns.find((c) => c.id === "a")!.id]!;
+    expect(colA.issues.some((i) => i.code === "wrong_length" && i.message === "12 of 11 rows.")).toBe(
+      true,
+    );
+  });
+
+  it("⚠️ criterion 33/26: a delete actually blocks save via validateGrid, reporting '10 of 11 rows.'", () => {
+    let state = emptyDraftState({ photoId: "p1", playedOn: "2026-09-11", columnIds: ["a", "b"] });
+    for (let i = 0; i < 11; i += 1) {
+      state = setCellValue(state, "a", i, i + 1);
+      state = setCellValue(state, "b", i, i + 1);
+    }
+    state = setColumnPlayer(state, "a", "player_a");
+    state = setColumnPlayer(state, "b", "player_b");
+    state = deleteValueAt(state, "a", 3);
+
+    const validation = validateGrid(toGridColumns(state));
+    expect(validation.ok).toBe(false);
+    const colA = validation.columns[state.columns.find((c) => c.id === "a")!.id]!;
+    expect(colA.issues.some((i) => i.code === "wrong_length" && i.message === "10 of 11 rows.")).toBe(
+      true,
+    );
+  });
 });
 
 describe("setActiveReading (Stage 4: ReadingCompare's keep/reject buttons)", () => {
@@ -261,6 +304,16 @@ describe("setColumnPlayer / setColumnNewPlayerName", () => {
     state = setColumnPlayer(state, "a", "player_1");
     expect(state.columns[0]!.playerId).toBe("player_1");
     expect(state.columns[0]!.newPlayerName).toBeNull();
+  });
+
+  it("⚠️ criterion 31: reassigning a column's player never touches its handwritten sheetName", () => {
+    let state = freshState();
+    state.columns[0]!.sheetName = "Playr D"; // the original, possibly-misspelled handwritten read
+    state = setColumnPlayer(state, "a", "player_real_d");
+    expect(state.columns[0]!.sheetName).toBe("Playr D");
+
+    state = setColumnNewPlayerName(state, "a", "Someone Else");
+    expect(state.columns[0]!.sheetName).toBe("Playr D");
   });
 });
 

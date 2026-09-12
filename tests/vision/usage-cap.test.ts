@@ -95,3 +95,60 @@ describe("reserveSheetTranscription", () => {
     expect(row.sheetTranscriptions).toBe(1);
   });
 });
+
+describe("⚠️ security review, Stage 4: reserveColumnTranscription (previously uncapped)", () => {
+  it("allows the first 60 column re-reads of a UTC day and refuses the 61st", async () => {
+    const { reserveColumnTranscription, DAILY_COLUMN_TRANSCRIPTION_CAP } = await import(
+      "@/lib/vision/usage-cap"
+    );
+    const day = new Date("2026-06-01T12:00:00Z");
+
+    for (let i = 1; i <= DAILY_COLUMN_TRANSCRIPTION_CAP; i += 1) {
+      const reservation = await reserveColumnTranscription(day);
+      expect(reservation.allowed, `attempt ${i}`).toBe(true);
+      expect(reservation.count).toBe(i);
+    }
+
+    const refused = await reserveColumnTranscription(day);
+    expect(refused.allowed).toBe(false);
+  });
+
+  it("a refused reservation releases its own increment — the day's count stays at the cap", async () => {
+    const { reserveColumnTranscription, DAILY_COLUMN_TRANSCRIPTION_CAP } = await import(
+      "@/lib/vision/usage-cap"
+    );
+    const { getDb } = await import("@/lib/db");
+    const { usageDay } = await import("@/lib/db/schema");
+    const day = new Date("2026-07-01T00:00:00Z");
+
+    for (let i = 0; i < DAILY_COLUMN_TRANSCRIPTION_CAP; i += 1) {
+      await reserveColumnTranscription(day);
+    }
+    await reserveColumnTranscription(day); // refused
+    await reserveColumnTranscription(day); // refused again
+
+    const row = (
+      await getDb().select().from(usageDay).where(eq(usageDay.day, "2026-07-01"))
+    )[0]!;
+    expect(row.columnTranscriptions).toBe(DAILY_COLUMN_TRANSCRIPTION_CAP);
+  });
+
+  it("counts column re-reads separately from sheet transcriptions", async () => {
+    const { reserveColumnTranscription, reserveSheetTranscription } = await import(
+      "@/lib/vision/usage-cap"
+    );
+    const { getDb } = await import("@/lib/db");
+    const { usageDay } = await import("@/lib/db/schema");
+    const day = new Date("2026-08-01T12:00:00Z");
+
+    await reserveSheetTranscription(day);
+    await reserveColumnTranscription(day);
+    await reserveColumnTranscription(day);
+
+    const row = (
+      await getDb().select().from(usageDay).where(eq(usageDay.day, "2026-08-01"))
+    )[0]!;
+    expect(row.sheetTranscriptions).toBe(1);
+    expect(row.columnTranscriptions).toBe(2);
+  });
+});

@@ -382,7 +382,7 @@ describe("POST /api/transcribe/column", () => {
     expect(state.columns.find((c: { id: string }) => c.id === columnId).readings).toEqual([]);
   });
 
-  it("counts the attempt in usage_day.column_transcriptions, uncapped", async () => {
+  it("counts the attempt in usage_day.column_transcriptions", async () => {
     const { draftId, columnId } = await createDraftWithColumn();
     const photoId = randomUUID();
     await createColumnPhoto(photoId, draftId, columnId);
@@ -401,5 +401,36 @@ describe("POST /api/transcribe/column", () => {
       await getDb().select().from(usageDay).where(eq(usageDay.day, today))
     )[0]!.columnTranscriptions;
     expect(after).toBe(before + 1);
+  });
+
+  // ⚠️ Mutates the shared "today" usage_day row, and is cleaned up at the end
+  // — every other test in this file posts against the same real UTC day, and
+  // would otherwise be rate-limited by whichever test happened to run first.
+  it("⚠️ security review: 429s once the daily column-transcription cap is exhausted, and never calls the vision function", async () => {
+    const { draftId, columnId } = await createDraftWithColumn();
+    const photoId = randomUUID();
+    await createColumnPhoto(photoId, draftId, columnId);
+
+    const { getDb } = await import("@/lib/db");
+    const { usageDay } = await import("@/lib/db/schema");
+    const today = new Date().toISOString().slice(0, 10);
+    await getDb()
+      .insert(usageDay)
+      .values({ day: today, columnTranscriptions: 60 })
+      .onConflictDoUpdate({ target: usageDay.day, set: { columnTranscriptions: 60 } });
+
+    const callsBefore = transcribeCalls.length;
+    try {
+      const { POST } = await import("@/app/api/transcribe/column/route");
+      const response = await POST(post({ photoId, columnId }));
+      expect(response.status).toBe(429);
+      expect((await response.json()).error.code).toBe("rate_limited");
+      expect(transcribeCalls.length).toBe(callsBefore);
+    } finally {
+      await getDb()
+        .update(usageDay)
+        .set({ columnTranscriptions: 0 })
+        .where(eq(usageDay.day, today));
+    }
   });
 });

@@ -5,7 +5,13 @@
 import { describe, expect, it } from "vitest";
 
 import { ColumnNotFoundError, mergeColumnTranscriptionIntoDraft } from "@/lib/draft/merge-column";
-import { draftStateSchema, emptyDraftState, MAX_READINGS_PER_COLUMN } from "@/lib/draft/state";
+import {
+  draftStateSchema,
+  emptyDraftState,
+  MAX_READINGS_PER_COLUMN,
+  toGridColumns,
+} from "@/lib/draft/state";
+import { validateGrid } from "@/lib/scoring";
 import type { ColumnTranscriptionOutput } from "@/lib/vision/column-schema";
 
 function reading(overrides: Partial<ColumnTranscriptionOutput> = {}): ColumnTranscriptionOutput {
@@ -272,6 +278,30 @@ describe("mergeColumnTranscriptionIntoDraft", () => {
     expect(column.readings.length).toBeLessThanOrEqual(MAX_READINGS_PER_COLUMN);
     expect(column.readings.at(-1)!.transcriptionId).toBe(`tr_${MAX_READINGS_PER_COLUMN + 4}`);
     expect(draftStateSchema.safeParse(state).success).toBe(true);
+  });
+
+  it("⚠️ criterion 44, end to end: a close-up returning fewer than eleven values leaves the merged draft failing validateGrid, blocking save", () => {
+    const state = stateWithOneColumn({ columnIds: ["col_1", "col_2"] });
+    state.columns[0]!.playerId = "player_d";
+    state.columns[1]!.playerId = "player_e";
+    for (let i = 0; i < 11; i += 1) state.columns[1]!.manualEdits[String(i)] = i + 1;
+
+    const { state: merged } = mergeColumnTranscriptionIntoDraft({
+      state,
+      columnId: "col_1",
+      reading: reading({ running_totals: [1, 2, 3, 4, 5, 6, 7, 8] }),
+      photoId: "ph_closeup",
+      transcriptionId: "tr_1",
+      expectedPlayerName: "Player D",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    const validation = validateGrid(toGridColumns(merged));
+    expect(validation.ok).toBe(false);
+    const col1 = validation.columns["col_1"]!;
+    expect(
+      col1.issues.some((i) => i.code === "wrong_length" && i.message === "8 of 11 rows."),
+    ).toBe(true);
   });
 
   it("throws ColumnNotFoundError for a column that isn't on the draft", () => {

@@ -232,10 +232,24 @@ export async function saveGame(
         // draft can be edited after a close-up is taken (reassign the
         // player, reorder), so this resolves it fresh here rather than
         // trusting anything decided when the photo was shot.
+        //
+        // ⚠️ Security review: `column.id` comes from the request body
+        // (`state`), so the WHERE is scoped to `draftId` too — otherwise a
+        // crafted save naming another draft's column id could re-parent that
+        // draft's close-ups onto this game. `isNull(gameId)` also stops this
+        // from ever re-parenting a photo already attached to a previously
+        // saved game.
         await tx
           .update(photo)
           .set({ gameId: newGameId, playerId })
-          .where(and(eq(photo.draftColumnId, column.id), eq(photo.kind, "column")));
+          .where(
+            and(
+              eq(photo.draftColumnId, column.id),
+              eq(photo.kind, "column"),
+              eq(photo.draftId, draftId),
+              isNull(photo.gameId),
+            ),
+          );
       }
 
       // Conditional: the backstop for a concurrent save of the same draft.

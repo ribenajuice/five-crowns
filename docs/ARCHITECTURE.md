@@ -801,11 +801,20 @@ re-shot, and the same column re-shot as many times as the founder likes.
 **Re-validated like everything else** — 11 values, monotonic, per-hand scores re-derived and
 displayed. A close-up does not earn a column any exemption.
 
-**Cost is not a constraint on this path, and no cheap-out is designed in.** Same `claude-opus-5`,
-same adaptive thinking, same structured outputs. A tall narrow column crop is roughly 1,100 image
-tokens rather than 2,500, so a re-read actually costs **less than half a full-sheet read — about
-1.5¢**. ⚠️ There is deliberately **no re-read cap, no cheaper model on this path, and no discarding
-of close-up photos to save space.**
+**Quality is not a constraint on this path, and no cheap-out is designed in.** Same `claude-opus-5`,
+same adaptive thinking, same structured outputs — no cheaper model, no discarding of close-up
+photos to save space. A tall narrow column crop is roughly 1,100 image tokens rather than 2,500, so
+a re-read actually costs **less than half a full-sheet read — about 1.5¢**.
+
+⚠️ **Corrected 2026-09-12, Stage 4 security review.** This section used to also claim "no re-read
+cap", read at the time as "no daily limit either." That was a mistake: this is the one endpoint in
+the app that spends real money with a founder-supplied credential, and it shipped for a while with
+no ceiling at all — contradicting § Threat model below, which already assumed a 60/day limit
+existed. **There is a cap: 60 column re-reads per UTC day**, the same number the threat model always
+quoted, enforced by `lib/vision/usage-cap.ts`'s `reserveColumnTranscription`. What is genuinely
+uncapped, and was the actual intent of this section, is *quality*: the model, the thinking budget,
+and the number of times one column can be re-shot *within* that daily allowance are never
+downgraded to save money.
 
 ### What is stored, when
 

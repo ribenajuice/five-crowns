@@ -53,6 +53,16 @@ const BANNED_WORDS = [
   "correct",
   "looks right",
   "all good",
+  // Criterion 45 ("the wording criterion, again"): the re-photograph flow
+  // specifically may not describe itself as checking, verifying, confirming
+  // or double-checking the earlier read. These overlap the criterion-24 list
+  // above but add forms (bare "verify", "double-check") that list doesn't
+  // already catch, so the exhaustive scan below also enforces 45.
+  "verify",
+  "verifying",
+  "double-check",
+  "double check",
+  "confirm the read",
 ];
 
 function assertNoBannedWords(sentence: string) {

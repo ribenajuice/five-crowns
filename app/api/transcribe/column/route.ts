@@ -35,12 +35,17 @@
  *
  * Everything decidable up front — auth, cross-site, body shape, the photo and
  * draft existing, the column still being on the draft, a key being
- * configured — is decided first and answered as a plain, non-streamed JSON
- * error, exactly like `POST /api/transcribe`.
+ * configured, the daily cap — is decided first and answered as a plain,
+ * non-streamed JSON error, exactly like `POST /api/transcribe`.
  *
- * ⚠️ **No daily cap on this path.** `lib/vision/usage-cap.ts`'s
- * `recordColumnTranscription` counts the attempt for the admin panel's future
- * spend view; it never refuses one.
+ * ⚠️ **Capped at 60/UTC day** (`lib/vision/usage-cap.ts`'s
+ * `reserveColumnTranscription`), separately from the sheet path's 20/day.
+ * `docs/ARCHITECTURE.md` § "Targeted column re-read" says "no re-read cap, no
+ * cheaper model on this path" — true of the quality tradeoffs (same model,
+ * unlimited re-shots of a column you're actually working on), but this
+ * endpoint spends real money and shipped for a while with no ceiling at all.
+ * Security review caught it; the founder chose to enforce the cap the
+ * architecture doc's own threat-model section already assumed existed.
  */
 
 import "server-only";
@@ -66,7 +71,7 @@ import { describeError, log } from "@/lib/log";
 import { getPhotoStorage, PhotoObjectNotFoundError } from "@/lib/photos";
 import { COLUMN_MODEL } from "@/lib/vision/client";
 import { transcribeColumn } from "@/lib/vision/transcribe-column";
-import { recordColumnTranscription } from "@/lib/vision/usage-cap";
+import { reserveColumnTranscription } from "@/lib/vision/usage-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -175,6 +180,19 @@ export async function POST(request: Request) {
     return apiError("server_error", "Something went wrong at our end. Try again in a moment.");
   }
 
+  // ⚠️ Security review, Stage 4: this was uncapped — see usage-cap.ts's
+  // DAILY_COLUMN_TRANSCRIPTION_CAP doc comment. Checked here, before the
+  // stream opens (a plain, non-streamed 429, same as every other decidable
+  // check on this route), and after the photo bytes are confirmed readable
+  // (so a missing photo never spends a cap unit for nothing).
+  const reservation = await reserveColumnTranscription();
+  if (!reservation.allowed) {
+    return apiError(
+      "rate_limited",
+      "That's the day's column re-read limit reached. Manual entry and cell editing still work.",
+    );
+  }
+
   const expectedPlayerName = await resolveExpectedPlayerName(column);
   const draftId = draftRow.id;
 
@@ -218,10 +236,6 @@ export async function POST(request: Request) {
       }, 15_000);
 
       try {
-        // Counted whatever the outcome — a fact for the admin panel's future
-        // spend view, never a gate (see this file's top-of-file note).
-        await recordColumnTranscription();
-
         const attempt = await transcribeColumn({
           apiKey,
           imageBase64,

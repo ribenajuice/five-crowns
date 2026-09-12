@@ -62,18 +62,24 @@ export async function reserveSheetTranscription(
 }
 
 /**
- * Counts a column re-read attempt in `usage_day.column_transcriptions`.
+ * Far beyond a legitimate re-shoot session; see docs/ARCHITECTURE.md § Flow 1
+ * ("20 sheet reads and 60 column reads per day").
  *
- * ⚠️ **Not a cap.** `docs/ARCHITECTURE.md` § "Targeted column re-read" is
- * explicit: "no re-read cap, no cheaper model on this path" — the PRD treats
- * unlimited re-shots as a product requirement (rung 3's "repeatable", cost is
- * not a consideration), not an oversight to close later. This function exists
- * purely so the admin panel's future usage-and-spend view (M2) has a number
- * to show; nothing ever reads its return value to refuse a request.
+ * ⚠️ **Security review, Stage 4**: this used to be uncounted-but-uncapped —
+ * `docs/ARCHITECTURE.md` § "Targeted column re-read" says "no re-read cap, no
+ * cheaper model on this path", which is true of the *quality* tradeoffs (same
+ * model, same thinking budget, unlimited re-shots of a column you're actually
+ * working on) but was never meant to leave the endpoint that spends real
+ * money with no ceiling at all. A leaked shared password could otherwise loop
+ * this endpoint with no limit. 60/day is ~8× a heavy legitimate night (the
+ * threat model's own number) and the founder chose to enforce it once this
+ * gap was found.
  */
-export async function recordColumnTranscription(
+export const DAILY_COLUMN_TRANSCRIPTION_CAP = 60;
+
+export async function reserveColumnTranscription(
   now: Date = new Date(),
-): Promise<{ count: number }> {
+): Promise<TranscriptionReservation> {
   const db = getDb();
   const day = todayUtc(now);
 
@@ -86,5 +92,13 @@ export async function recordColumnTranscription(
     })
     .returning({ columnTranscriptions: usageDay.columnTranscriptions });
 
-  return { count: row!.columnTranscriptions };
+  if (row!.columnTranscriptions > DAILY_COLUMN_TRANSCRIPTION_CAP) {
+    await db
+      .update(usageDay)
+      .set({ columnTranscriptions: sql`max(${usageDay.columnTranscriptions} - 1, 0)` })
+      .where(eq(usageDay.day, day));
+    return { allowed: false, count: DAILY_COLUMN_TRANSCRIPTION_CAP };
+  }
+
+  return { allowed: true, count: row!.columnTranscriptions };
 }
