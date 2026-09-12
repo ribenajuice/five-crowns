@@ -192,21 +192,16 @@ export async function POST(request: Request) {
     );
   }
 
-  let resolved: ResolvedDraft;
-  try {
-    resolved = await resolveDraftForPhoto(photoRow, playedOn);
-  } catch (error) {
-    log.error("transcribe.draft_resolve_failed", describeError(error));
-    return apiError("server_error", "Something went wrong at our end. Try again in a moment.");
-  }
-  if (resolved.alreadySaved) {
-    return apiError("conflict", "This game has already been saved.");
-  }
-
-  // ⚠️ Security review: read the photo bytes *before* spending a unit of the
-  // daily cap. A photo missing from storage or a storage read failure costs
-  // nothing against the 20/day budget this way — the cap should only ever be
-  // spent on a request that actually reaches the model.
+  // ⚠️ Code review: read the photo bytes and check the daily cap *before*
+  // claiming or creating a draft for this photo. `resolveDraftForPhoto`
+  // attaches the photo to a draft (`photo.draft_id`) — if that happened
+  // first and this request then failed for any reason (capped, missing
+  // photo), the photo would be left pointing at an empty, useless draft.
+  // `POST /api/drafts` (manual entry's own draft-creation call) refuses a
+  // photo already attached to a draft, so criterion 56's "manual entry still
+  // works" would become false for that one photo the moment a transcribe
+  // attempt failed. Ordering it last means a failure here leaves the photo
+  // exactly as unclaimed as it was before, and manual entry is unaffected.
   let imageBase64: string;
   try {
     const bytes = await getPhotoStorage().getObjectBytes(photoRow.id, "model");
@@ -228,6 +223,17 @@ export async function POST(request: Request) {
       "rate_limited",
       "That's the day's transcription limit reached. Manual entry still works.",
     );
+  }
+
+  let resolved: ResolvedDraft;
+  try {
+    resolved = await resolveDraftForPhoto(photoRow, playedOn);
+  } catch (error) {
+    log.error("transcribe.draft_resolve_failed", describeError(error));
+    return apiError("server_error", "Something went wrong at our end. Try again in a moment.");
+  }
+  if (resolved.alreadySaved) {
+    return apiError("conflict", "This game has already been saved.");
   }
 
   const { draftId, state } = resolved;

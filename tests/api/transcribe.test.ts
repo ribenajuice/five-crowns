@@ -218,6 +218,36 @@ describe("POST /api/transcribe", () => {
     }
   });
 
+  it("⚠️ code review: a capped attempt leaves the photo unclaimed, so manual entry still works on it", async () => {
+    // Criterion 56's "manual entry still works" would be false for this one
+    // photo if a capped transcribe attempt had already attached a draft to
+    // it — POST /api/drafts refuses a photo already claimed by another draft.
+    await createSheetPhoto("ph_capped_unclaimed");
+    const { getDb } = await import("@/lib/db");
+    const { usageDay, photo } = await import("@/lib/db/schema");
+    const today = new Date().toISOString().slice(0, 10);
+    await getDb()
+      .insert(usageDay)
+      .values({ day: today, sheetTranscriptions: 20 })
+      .onConflictDoUpdate({ target: usageDay.day, set: { sheetTranscriptions: 20 } });
+
+    try {
+      const { POST } = await import("@/app/api/transcribe/route");
+      const response = await POST(post({ photoId: "ph_capped_unclaimed" }));
+      expect(response.status).toBe(429);
+
+      const photoRow = (
+        await getDb().select().from(photo).where(eq(photo.id, "ph_capped_unclaimed"))
+      )[0]!;
+      expect(photoRow.draftId).toBeNull();
+    } finally {
+      await getDb()
+        .update(usageDay)
+        .set({ sheetTranscriptions: 0 })
+        .where(eq(usageDay.day, today));
+    }
+  });
+
   it("happy path: creates a draft, merges the reading, and streams a result event", async () => {
     await createSheetPhoto("ph_fresh");
     const { POST } = await import("@/app/api/transcribe/route");

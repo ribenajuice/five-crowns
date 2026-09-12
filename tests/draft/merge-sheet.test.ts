@@ -226,4 +226,37 @@ describe("mergeSheetTranscriptionIntoDraft", () => {
     expect(column.activeReadingId).toBe(column.readings.at(-1)!.id);
     expect(draftStateSchema.safeParse(state).success).toBe(true);
   });
+
+  it("⚠️ code review: nulls out a least_confident_index outside this reading's own values", () => {
+    const state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: [] });
+
+    const { diagnostics } = mergeSheetTranscriptionIntoDraft({
+      state,
+      columns: [
+        reading({ running_totals: [23, 23, 27, 34, 37, 44, 57, 71, 75, 78, 78] }),
+        reading({ least_confident_index: 15 }), // out of range: only 11 values
+        reading({ least_confident_index: -1 }), // negative
+      ],
+      photoId: "ph_1",
+      transcriptionId: "tr_1",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    expect(diagnostics[1]!.leastConfidentIndex).toBeNull();
+    expect(diagnostics[2]!.leastConfidentIndex).toBeNull();
+  });
+
+  it("keeps an in-range least_confident_index", () => {
+    const state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: [] });
+
+    const { diagnostics } = mergeSheetTranscriptionIntoDraft({
+      state,
+      columns: [reading({ least_confident_index: 3 })],
+      photoId: "ph_1",
+      transcriptionId: "tr_1",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    expect(diagnostics[0]!.leastConfidentIndex).toBe(3);
+  });
 });

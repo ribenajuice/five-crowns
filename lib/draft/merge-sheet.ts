@@ -90,6 +90,26 @@ function sanitiseName(name: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * ⚠️ Code review: `sheetColumnReadingSchema` deliberately has no numeric
+ * bounds on `least_confident_index` (see `lib/vision/sheet-schema.ts`'s own
+ * docstring) — it's the same zod schema `zodOutputFormat()` turns into the
+ * request sent to Anthropic, and the API's structured-output dialect can't
+ * express numeric bounds at all, so adding one there would risk the request
+ * itself. Clamping here instead: an index outside this reading's own values
+ * is meaningless (there's no cell it could refer to), and `readHintSentence`
+ * would otherwise render a sentence naming a hand that doesn't exist on the
+ * column, with no visible cell for the accompanying badge.
+ */
+function sanitiseLeastConfidentIndex(
+  index: number | null,
+  valueCount: number,
+): number | null {
+  if (index === null) return null;
+  if (!Number.isInteger(index) || index < 0 || index >= valueCount) return null;
+  return index;
+}
+
 export function mergeSheetTranscriptionIntoDraft(
   args: MergeSheetTranscriptionArgs,
 ): SheetMergeResult {
@@ -153,7 +173,10 @@ export function mergeSheetTranscriptionIntoDraft(
     diagnostics.push({
       columnId: merged.id,
       nameConfidence: reading.name_confidence,
-      leastConfidentIndex: reading.least_confident_index,
+      leastConfidentIndex: sanitiseLeastConfidentIndex(
+        reading.least_confident_index,
+        newReading.values.length,
+      ),
     });
   }
 

@@ -70,13 +70,16 @@ describe("anthropicApiKeyStatus", () => {
       s3KeyOriginal: "x",
       s3KeyModel: "y",
     });
+    // ⚠️ Must postdate this test's setAt (captured at call time, "now") — see
+    // "only counts a transcription from since the current key was saved" below
+    // for the case where it doesn't.
     await getDb().insert(transcription).values({
       id: "tr_apikey_1",
       photoId: "ph_apikey_1",
       kind: "sheet",
       model: "claude-opus-5",
       status: "ok",
-      createdAt: "2026-09-11T00:00:00.000Z",
+      createdAt: new Date(Date.now() + 1000).toISOString(),
     });
 
     expect((await anthropicApiKeyStatus()).works).toBe("yes");
@@ -101,7 +104,7 @@ describe("anthropicApiKeyStatus", () => {
       model: "claude-opus-5",
       status: "error",
       error: "timeout",
-      createdAt: "2026-09-11T00:01:00.000Z",
+      createdAt: new Date(Date.now() + 1000).toISOString(),
     });
 
     expect((await anthropicApiKeyStatus()).works).toBe("no");
@@ -125,10 +128,52 @@ describe("anthropicApiKeyStatus", () => {
       kind: "sheet",
       model: "claude-opus-5",
       status: "invalid",
-      createdAt: "2026-09-11T00:02:00.000Z",
+      createdAt: new Date(Date.now() + 1000).toISOString(),
     });
 
     expect((await anthropicApiKeyStatus()).works).toBe("yes");
+  });
+
+  it("⚠️ code review: only counts a transcription from since the current key was saved", async () => {
+    // Fake time, far beyond any other test in this file's real-time-based
+    // fixtures, and fully under this test's control — so "the old
+    // transcription predates the new key's setAt" is exact, not a race
+    // against wall-clock timing or other tests' rows sharing this DB.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2030-01-01T00:00:00.000Z"));
+      const { setAnthropicApiKey, anthropicApiKeyStatus } = await import("@/lib/vision/api-key");
+      const { getDb } = await import("@/lib/db");
+      const { transcription, photo } = await import("@/lib/db/schema");
+
+      // An old key's last attempt failed...
+      await setAnthropicApiKey("sk-ant-old-failing-key-0000");
+      await getDb().insert(photo).values({
+        id: "ph_apikey_4",
+        kind: "sheet",
+        s3KeyOriginal: "x",
+        s3KeyModel: "y",
+      });
+      await getDb().insert(transcription).values({
+        id: "tr_apikey_4",
+        photoId: "ph_apikey_4",
+        kind: "sheet",
+        model: "claude-opus-5",
+        status: "error",
+        error: "auth failed",
+        createdAt: new Date().toISOString(),
+      });
+      expect((await anthropicApiKeyStatus()).works).toBe("no");
+
+      // ...but a full minute later, a brand-new key is saved. It must not
+      // inherit the old key's failure just because that's the most recent
+      // row in the table — it's never been tried.
+      vi.setSystemTime(new Date("2030-01-01T00:01:00.000Z"));
+      await setAnthropicApiKey("sk-ant-brand-new-key-1111");
+      expect((await anthropicApiKeyStatus()).works).toBe("untried");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -101,6 +101,17 @@ export function AddGameFlow() {
     };
   } | null>(null);
 
+  // ⚠️ Code review: `phase` only reflects "in flight" after React re-renders,
+  // which is one tick behind a rapid double-tap — a `disabled` prop alone
+  // can't stop a second `handleReadSheet()` firing before that render lands.
+  // Two overlapping POST /api/transcribe calls for the same photo would each
+  // spend a cap slot and merge a reading into the same draft with no
+  // conflict check (the draft is a single-editor design, per
+  // docs/ARCHITECTURE.md's "Concurrency, deliberately not solved"). This ref
+  // is checked and set synchronously, before any `await`, so it closes the
+  // gap the render can't.
+  const transcribeInFlight = useRef(false);
+
   useEffect(() => {
     if (!loaded) {
       setPreviewUrl(null);
@@ -272,6 +283,8 @@ export function AddGameFlow() {
    */
   async function runTranscribe() {
     if (!uploadResult.current) return;
+    if (transcribeInFlight.current) return;
+    transcribeInFlight.current = true;
     const photoId = uploadResult.current.presign.photoId;
 
     setPhase("transcribing");
@@ -325,6 +338,8 @@ export function AddGameFlow() {
       router.push(`/review/${draftId}`);
     } catch {
       setPhase("transcribe-error");
+    } finally {
+      transcribeInFlight.current = false;
     }
   }
 

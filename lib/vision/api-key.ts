@@ -12,7 +12,7 @@
 
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 
 import { getOptionalParameter, PARAM, putParameter } from "@/lib/config";
 import { getDb } from "@/lib/db";
@@ -39,12 +39,30 @@ export async function setAnthropicApiKey(candidate: string): Promise<SetApiKeyOu
     return { status: "invalid_key" };
   }
 
-  const setAt = new Date().toISOString();
+  // The key itself is the one write that matters functionally — it's already
+  // verified, and every transcription call reads it directly from Parameter
+  // Store. The two metadata writes below are display-only (last4, setAt).
   await putParameter(PARAM.anthropicApiKey, candidate);
-  await putParameter(PARAM.anthropicApiKeyLast4, candidate.slice(-4), {
-    secure: false,
-  });
-  await putParameter(PARAM.anthropicApiKeySetAt, setAt, { secure: false });
+
+  // ⚠️ Code review: if a metadata write below fails, the key is already
+  // saved and working — throwing from here would have the route 500 and
+  // tell the admin nothing was saved, when the one write that actually
+  // matters already succeeded. Caught and logged instead, so the response
+  // still reports success; the display briefly shows the previous last4/setAt
+  // until the next successful save, which is the display inconsistency the
+  // architecture doc already accepts, not a functional failure.
+  try {
+    const setAt = new Date().toISOString();
+    await putParameter(PARAM.anthropicApiKeyLast4, candidate.slice(-4), {
+      secure: false,
+    });
+    await putParameter(PARAM.anthropicApiKeySetAt, setAt, { secure: false });
+  } catch (error) {
+    log.warn("admin.api_key.metadata_write_failed", {
+      errorName: error instanceof Error ? error.name : "Unknown",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   log.info("admin.api_key.set");
   return { status: "ok" };
@@ -71,10 +89,19 @@ export async function anthropicApiKeyStatus(): Promise<ApiKeyStatus> {
   ]);
   const configured = last4 !== null;
 
+  // ⚠️ Code review: scoped to transcriptions since this key was saved. Without
+  // this, saving a brand-new key right after an old one's last attempt failed
+  // would still read that old failure as the new key's status — directly
+  // contradicting the "Saved." banner with a "Not working" the founder never
+  // actually tried.
   const [mostRecent] = await getDb()
     .select({ status: transcription.status })
     .from(transcription)
-    .where(eq(transcription.kind, "sheet"))
+    .where(
+      setAt
+        ? and(eq(transcription.kind, "sheet"), gte(transcription.createdAt, setAt))
+        : eq(transcription.kind, "sheet"),
+    )
     .orderBy(desc(transcription.createdAt))
     .limit(1);
 
