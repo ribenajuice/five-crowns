@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { validateGrid, type GridColumn } from "@/lib/scoring";
 import { SHEET_01 } from "../fixtures/sheets";
+import * as copy from "@/lib/ui/copy";
 import {
   ADMIN_REJECTED_MESSAGE,
   ADMIN_REJECTED_TITLE,
@@ -45,6 +46,34 @@ function assertNoBannedWords(sentence: string) {
 
 const gridFor = (columns: { player: string; runningTotals: (number | null)[] }[]): GridColumn[] =>
   columns.map((c, i) => ({ id: `col_${i}`, playerId: c.player, values: c.runningTotals }));
+
+describe("Every fixed string export in lib/ui/copy.ts — exhaustive, not curated", () => {
+  // QA gap found in Stage 3 review: the hand-picked lists above miss several
+  // real constants (e.g. ADMIN_TESTING_HELPER, ADMIN_KEY_FIELD_LABEL,
+  // TRANSCRIBE_PROGRESS_HEADING/CAPTIONS, ADMIN_STATUS_*, READ_RETRY_LABEL).
+  // This walks every string (and string-array) export automatically, so a
+  // new fixed string can never silently skip the wording constraint again.
+  const allExports = Object.entries(copy) as [string, unknown][];
+  const stringExports = allExports.filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  const arrayExports = allExports.filter(
+    (entry): entry is [string, readonly string[]] =>
+      Array.isArray(entry[1]) && entry[1].every((v) => typeof v === "string"),
+  );
+
+  it("found a non-trivial number of string exports to check (sanity check on the scan itself)", () => {
+    expect(stringExports.length).toBeGreaterThan(30);
+  });
+
+  it.each(stringExports)("%s has no banned word", (_name, value) => {
+    assertNoBannedWords(value);
+  });
+
+  it.each(arrayExports)("%s (array) has no banned word in any entry", (_name, values) => {
+    values.forEach((value) => assertNoBannedWords(value));
+  });
+});
 
 describe("pairedFlagSentence (PRD criterion 21)", () => {
   it("names both numbers, lower first — '11 is lower than the 67 above it'", () => {

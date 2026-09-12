@@ -32,6 +32,14 @@ export interface CookieAttributes {
  * `Secure` is dropped on plain-HTTP localhost only, because a browser will
  * silently refuse to store a Secure cookie there and the gate would look broken
  * in development for no reason.
+ *
+ * ⚠️ Both cookies use `Path=/`, the admin one included. A `Path=/admin` cookie
+ * is, by RFC 6265 path-matching, never sent on a request to `/api/admin/key`
+ * or `/api/admin/login` — different top-level paths — which made the admin
+ * API unreachable from a real browser the moment Stage 3 gave it something to
+ * call (`tests/auth/cookies.test.ts` pins this). `Path` was never the
+ * security boundary here anyway — the signed, scoped session token is — so
+ * narrowing it bought nothing and broke the one thing it needed to reach.
  */
 export function cookieAttributes(
   scope: SessionScope,
@@ -41,7 +49,7 @@ export function cookieAttributes(
     httpOnly: true,
     secure: options.secure ?? process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: scope === "admin" ? "/admin" : "/",
+    path: "/",
     maxAge: options.maxAge ?? SESSION_MAX_AGE_SECONDS,
   };
 }

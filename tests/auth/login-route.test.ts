@@ -302,7 +302,7 @@ describe("POST /api/admin/login — criteria 4 and 74", () => {
     expect(cookieJar).toHaveLength(0);
   });
 
-  it("mints a separate admin cookie, scoped to /admin", async () => {
+  it("mints a separate admin cookie, reachable by every admin-gated route", async () => {
     const POST = await adminRoute();
     const response = await POST(post({ password: ADMIN_PASSWORD }, nextAddress()));
 
@@ -313,7 +313,9 @@ describe("POST /api/admin/login — criteria 4 and 74", () => {
     expect(cookieJar[0]!.attributes).toMatchObject({
       httpOnly: true,
       sameSite: "lax",
-      path: "/admin",
+      // Path=/, not /admin — a narrower path would never reach /api/admin/*
+      // (see tests/auth/cookies.test.ts for the RFC 6265 reasoning).
+      path: "/",
     });
   });
 
