@@ -52,6 +52,13 @@ export interface TranscribeSheetArgs {
   apiKey: string;
   /** The `model.jpg` bytes, base64-encoded. */
   imageBase64: string;
+  /**
+   * Aborts the in-flight Anthropic call when the caller no longer wants the
+   * result — the route passes one tied to the client disconnecting, so an
+   * abandoned request stops spending rather than running to completion for
+   * nobody.
+   */
+  signal?: AbortSignal;
 }
 
 export async function transcribeSheet(
@@ -65,28 +72,31 @@ export async function transcribeSheet(
   let outputTokens: number | null = null;
 
   try {
-    const stream = client.messages.stream({
-      model: SHEET_MODEL,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      thinking: { type: "adaptive" },
-      output_config: { format: sheetOutputFormat() },
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/jpeg",
-                data: args.imageBase64,
+    const stream = client.messages.stream(
+      {
+        model: SHEET_MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        thinking: { type: "adaptive" },
+        output_config: { format: sheetOutputFormat() },
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/jpeg",
+                  data: args.imageBase64,
+                },
               },
-            },
-            { type: "text", text: SHEET_TRANSCRIPTION_PROMPT },
-          ],
-        },
-      ],
-    });
+              { type: "text", text: SHEET_TRANSCRIPTION_PROMPT },
+            ],
+          },
+        ],
+      },
+      { signal: args.signal },
+    );
 
     rawJson = await stream.finalText();
     const message = await stream.finalMessage();

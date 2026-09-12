@@ -23,7 +23,15 @@ import { randomUUID } from "node:crypto";
 import { MAX_RUNNING_TOTAL } from "@/lib/scoring";
 import type { SheetColumnReading } from "@/lib/vision/sheet-schema";
 
-import { MAX_VALUES_PER_COLUMN, type DraftColumn, type DraftState, type Reading } from "./state";
+import {
+  MAX_COLUMNS,
+  MAX_NAME_LENGTH,
+  MAX_READINGS_PER_COLUMN,
+  MAX_VALUES_PER_COLUMN,
+  type DraftColumn,
+  type DraftState,
+  type Reading,
+} from "./state";
 
 export interface SheetMergeDiagnostic {
   columnId: string;
@@ -67,11 +75,32 @@ function sanitiseValues(values: readonly (number | null)[]): (number | null)[] {
   return values.slice(0, MAX_VALUES_PER_COLUMN).map(sanitiseValue);
 }
 
+/**
+ * ⚠️ Security review: a handwritten column header is text on a photo the
+ * model transcribes — the one place vision output reaches persisted state
+ * with no further validation downstream (unlike cell values, nothing else
+ * clamps `sheetName` before it's written to `draft.state_json`). An
+ * over-length name would otherwise fail `draftStateSchema` wherever it's next
+ * checked (autosave, save), silently blocking the draft with no UI that edits
+ * `sheetName` to recover — so it's truncated here instead of trusted verbatim.
+ */
+function sanitiseName(name: string | null): string | null {
+  if (name === null) return null;
+  const trimmed = name.trim().slice(0, MAX_NAME_LENGTH);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export function mergeSheetTranscriptionIntoDraft(
   args: MergeSheetTranscriptionArgs,
 ): SheetMergeResult {
-  const { state, columns, photoId, transcriptionId, now } = args;
+  const { state, photoId, transcriptionId, now } = args;
   const existing = [...state.columns].sort((a, b) => a.order - b.order);
+  // ⚠️ Security review: `columns.length` is the model's to say, not ours — cap
+  // it to `MAX_COLUMNS` (`draftStateSchema`'s own limit) so a run-away or
+  // adversarial response can't produce a draft the schema itself will
+  // immediately reject on the next autosave, with no UI able to remove a
+  // column past the founder's own eight.
+  const columns = args.columns.slice(0, MAX_COLUMNS);
   const count = Math.max(existing.length, columns.length);
 
   const nextColumns: DraftColumn[] = [];
@@ -101,8 +130,11 @@ export function mergeSheetTranscriptionIntoDraft(
           ...current,
           // Never clobber a name the founder (or an earlier read) already
           // settled on; only fill it in when it was still unknown.
-          sheetName: current.sheetName ?? reading.name,
-          readings: [...current.readings, newReading],
+          sheetName: current.sheetName ?? sanitiseName(reading.name),
+          // Oldest readings drop off first — the active one (always the most
+          // recent) and recent history matter far more than a first attempt
+          // from several retries ago.
+          readings: [...current.readings, newReading].slice(-MAX_READINGS_PER_COLUMN),
           activeReadingId: newReading.id,
         }
       : {
@@ -110,7 +142,7 @@ export function mergeSheetTranscriptionIntoDraft(
           order: i,
           playerId: null,
           newPlayerName: null,
-          sheetName: reading.name,
+          sheetName: sanitiseName(reading.name),
           activeReadingId: newReading.id,
           readings: [newReading],
           manualEdits: {},

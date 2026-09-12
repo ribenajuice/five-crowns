@@ -5,7 +5,13 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeSheetTranscriptionIntoDraft } from "@/lib/draft/merge-sheet";
-import { emptyDraftState } from "@/lib/draft/state";
+import {
+  draftStateSchema,
+  emptyDraftState,
+  MAX_COLUMNS,
+  MAX_NAME_LENGTH,
+  MAX_READINGS_PER_COLUMN,
+} from "@/lib/draft/state";
 import type { SheetColumnReading } from "@/lib/vision/sheet-schema";
 
 function reading(overrides: Partial<SheetColumnReading> = {}): SheetColumnReading {
@@ -147,5 +153,77 @@ describe("mergeSheetTranscriptionIntoDraft", () => {
     });
 
     expect(merged.columns[0]!.readings[0]!.values.length).toBeLessThanOrEqual(12);
+  });
+
+  it("⚠️ security review: caps the column count at MAX_COLUMNS, whatever the model returns", () => {
+    const state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: [] });
+    const tooManyColumns = Array.from({ length: MAX_COLUMNS + 4 }, (_, i) =>
+      reading({ name: `Player ${i}` }),
+    );
+
+    const { state: merged } = mergeSheetTranscriptionIntoDraft({
+      state,
+      columns: tooManyColumns,
+      photoId: "ph_1",
+      transcriptionId: "tr_1",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    expect(merged.columns).toHaveLength(MAX_COLUMNS);
+    expect(draftStateSchema.safeParse(merged).success).toBe(true);
+  });
+
+  it("⚠️ security review: truncates an over-length handwritten name rather than storing it verbatim", () => {
+    const state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: [] });
+    const longName = "P".repeat(MAX_NAME_LENGTH * 3);
+
+    const { state: merged } = mergeSheetTranscriptionIntoDraft({
+      state,
+      columns: [reading({ name: longName })],
+      photoId: "ph_1",
+      transcriptionId: "tr_1",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    expect(merged.columns[0]!.sheetName!.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
+    expect(draftStateSchema.safeParse(merged).success).toBe(true);
+  });
+
+  it("⚠️ security review: a blank or whitespace-only name reads as unknown, not an empty string", () => {
+    const state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: [] });
+
+    const { state: merged } = mergeSheetTranscriptionIntoDraft({
+      state,
+      columns: [reading({ name: "   " })],
+      photoId: "ph_1",
+      transcriptionId: "tr_1",
+      now: "2026-09-11T00:00:00.000Z",
+    });
+
+    expect(merged.columns[0]!.sheetName).toBeNull();
+  });
+
+  it("⚠️ security review: caps a column's reading stack at MAX_READINGS_PER_COLUMN, keeping the most recent", () => {
+    let state = emptyDraftState({ photoId: "ph_1", playedOn: "2026-09-11", columnIds: ["col_1"] });
+
+    for (let i = 0; i < MAX_READINGS_PER_COLUMN + 5; i++) {
+      const result = mergeSheetTranscriptionIntoDraft({
+        state,
+        columns: [reading({ running_totals: Array(11).fill(i) })],
+        photoId: "ph_1",
+        transcriptionId: `tr_${i}`,
+        now: "2026-09-11T00:00:00.000Z",
+      });
+      state = result.state;
+    }
+
+    const column = state.columns[0]!;
+    expect(column.readings.length).toBeLessThanOrEqual(MAX_READINGS_PER_COLUMN);
+    // The most recent reading survives and stays active.
+    expect(column.readings.at(-1)!.transcriptionId).toBe(
+      `tr_${MAX_READINGS_PER_COLUMN + 4}`,
+    );
+    expect(column.activeReadingId).toBe(column.readings.at(-1)!.id);
+    expect(draftStateSchema.safeParse(state).success).toBe(true);
   });
 });

@@ -35,6 +35,9 @@ export const MAX_COLUMNS = 8;
 /** Room for Stage 4's "insert a value" repair, which briefly leaves 12. */
 export const MAX_VALUES_PER_COLUMN = HANDS_PER_GAME + 1;
 
+/** Every reading a column has ever had, kept forever (Stage 4's re-shoot ladder). */
+export const MAX_READINGS_PER_COLUMN = 20;
+
 export const MAX_NAME_LENGTH = 60;
 
 /**
@@ -133,7 +136,7 @@ export const draftColumnSchema = z
     /** The handwritten header, if known. Stage 2 leaves it null. */
     sheetName: z.string().max(MAX_NAME_LENGTH).nullable(),
     activeReadingId: z.string().min(1).max(64).nullable(),
-    readings: z.array(readingSchema).max(20),
+    readings: z.array(readingSchema).max(MAX_READINGS_PER_COLUMN),
     /** Index → value the founder typed, layered over the reading. `null` = cleared. */
     manualEdits: z.record(editIndex, cellValue),
     /** This column's place on the sheet photo. Null until the founder marks it. */
