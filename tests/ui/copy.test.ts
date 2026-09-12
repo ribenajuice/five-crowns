@@ -3,12 +3,21 @@ import { describe, expect, it } from "vitest";
 import { validateGrid, type GridColumn } from "@/lib/scoring";
 import { SHEET_01 } from "../fixtures/sheets";
 import {
+  ADMIN_REJECTED_MESSAGE,
+  ADMIN_REJECTED_TITLE,
+  ADMIN_SAVED_MESSAGE,
+  ADMIN_SAVED_TITLE,
+  DAILY_TRANSCRIBE_CAP_MESSAGE,
+  DAILY_TRANSCRIBE_CAP_TITLE,
   PASSING_STATEMENT,
+  READ_ERROR_MESSAGE,
+  READ_ERROR_TITLE,
   TOO_FEW_PLAYERS_MESSAGE,
   blockedColumnDips,
   blockedColumnShort,
   columnStatusLabel,
   pairedFlagSentence,
+  readHintSentence,
   saveBlockedMessage,
   sharedWinGamesListLabel,
   sharedWinnerConfirmation,
@@ -57,6 +66,36 @@ describe("softWarningSentence (PRD criterion 27)", () => {
 describe("columnStatusLabel (PRD criterion 25)", () => {
   it("renders the literal '10 of 11' wording, never a shorter game", () => {
     expect(columnStatusLabel(10, 11)).toBe("10 of 11");
+  });
+});
+
+describe("readHintSentence (docs/DESIGN-SYSTEM.md § ReadHint fixed copy)", () => {
+  it("names the hand label, never the cell's value", () => {
+    expect(readHintSentence(4)).toBe("Least sure about the 6s in this column.");
+    assertNoBannedWords(readHintSentence(4));
+  });
+
+  it("falls back gracefully outside the 1–11 hand range, same as softWarningSentence", () => {
+    expect(readHintSentence(0)).toBe("Least sure about the hand 0 in this column.");
+  });
+});
+
+describe("Stage 3 fixed banner copy — none of it uses a banned word", () => {
+  it("the daily transcription cap banner", () => {
+    assertNoBannedWords(DAILY_TRANSCRIBE_CAP_TITLE);
+    assertNoBannedWords(DAILY_TRANSCRIBE_CAP_MESSAGE);
+  });
+
+  it("the read-error banner", () => {
+    assertNoBannedWords(READ_ERROR_TITLE);
+    assertNoBannedWords(READ_ERROR_MESSAGE);
+  });
+
+  it("the admin panel's saved/rejected banners", () => {
+    assertNoBannedWords(ADMIN_SAVED_TITLE);
+    assertNoBannedWords(ADMIN_SAVED_MESSAGE);
+    assertNoBannedWords(ADMIN_REJECTED_TITLE);
+    assertNoBannedWords(ADMIN_REJECTED_MESSAGE);
   });
 });
 
