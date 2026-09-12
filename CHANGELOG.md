@@ -1,10 +1,11 @@
 # Changelog
 
 Every change you would notice, in plain language, newest first. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nothing is deployed yet, so everything
-below is still **Unreleased**.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
+production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
+isn't one right now, because the latest build is already live.
 
-## [Unreleased]
+## [Stage 2] - 2026-09-12
 
 ### Added
 
@@ -24,15 +25,17 @@ below is still **Unreleased**.
   and who won. **A game's page** shows the scores as written, the per-hand scores, and a zoomable
   photo.
 - Photos must be **JPEGs under 8 MB**, and there's a limit of **40 uploads a day**.
+
+## [Stage 1] - 2026-09-11
+
+### Added
+
 - **The app is private.** Every page asks for the group password first. There are no accounts:
   everyone shares one password.
 - **Guessing the password is blocked.** After 10 wrong tries in 10 minutes from the same place, the
   app says "Too many tries. Try again later." and stops checking for a while. This holds even if
   someone tries to dodge it by pretending to guess from lots of different addresses, or by sending
   a burst of guesses at once. Another website also can't quietly use up your household's tries.
-- **You land on the games list after you sign in.** It is empty for now and says "Nothing in the
-  book yet." The **Add a game** button leads to a "Capture arrives soon" page. You can't
-  photograph a sheet yet.
 - **The admin area has its own password.** Going to `/admin` asks for the admin password, even when
   you're already signed in with the group password. Wrong admin guesses are limited the same way,
   but counted separately. The screen behind it is empty for now. Setting the transcription key
