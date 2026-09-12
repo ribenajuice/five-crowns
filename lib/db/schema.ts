@@ -44,11 +44,21 @@ export const player = sqliteTable(
     id: text("id").primaryKey(),
     displayName: text("display_name").notNull(),
     slug: text("slug").notNull(),
+    /**
+     * Lowercased, trimmed, whitespace collapsed — the same typo backstop
+     * `location.name_key` already is. A pending "someone new" name typed at
+     * save time resolves against this rather than minting a second row for
+     * a player already in the book (`lib/games/save.ts`, `resolvePlayers`).
+     */
+    nameKey: text("name_key").notNull(),
     /** Milestone 2 player merge. Null for everyone until then. */
     mergedIntoId: text("merged_into_id"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("player_slug_unique").on(t.slug)],
+  (t) => [
+    uniqueIndex("player_slug_unique").on(t.slug),
+    uniqueIndex("player_name_key_unique").on(t.nameKey),
+  ],
 );
 
 /**
@@ -315,6 +325,13 @@ export const usageDay = sqliteTable("usage_day", {
   day: text("day").primaryKey(),
   sheetTranscriptions: integer("sheet_transcriptions").notNull().default(0),
   columnTranscriptions: integer("column_transcriptions").notNull().default(0),
+  /**
+   * Sheet **uploads** (`POST /api/uploads`), not transcriptions — a separate
+   * abuse surface: unlike a vision call, an upload costs nothing to the
+   * Anthropic budget, so it needs its own cap rather than sharing
+   * `sheet_transcriptions`. 40/day, far beyond 1–2 sheets a week.
+   */
+  sheetUploads: integer("sheet_uploads").notNull().default(0),
 });
 
 /**

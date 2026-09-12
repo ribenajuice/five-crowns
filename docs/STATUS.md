@@ -2,17 +2,22 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-11
-- **Phase**: Milestone 1, **Stage 1 (Foundations) is live and verified** at **https://fivecrowns.ribenajuice.xyz**.
-  Next is Stage 2.
+- **Last updated**: 2026-09-12
+- **Phase**: Milestone 1, Stage 1 is live and verified at **https://fivecrowns.ribenajuice.xyz**. **Stage 2 is
+  built, QA'd and reviewed**: [PR #10](https://github.com/ribenajuice/five-crowns/pull/10), open, awaiting
+  founder review and merge.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Valid Amazon certificate, runs to 27 Mar 2027 and renews
   itself through the kept `_628746…fivecrowns` validation CNAME.
   The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
   (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
   delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
   answers again.
-- **Currently in flight**: this docs-only PR (branch `docs/first-deploy-results`): the measured Tokyo latency, the
-  one-address ADR, criterion 84 reworded, the runbook corrected, and this status.
+- **Currently in flight**: [PR #10](https://github.com/ribenajuice/five-crowns/pull/10) — Stage 2. QA passed all
+  its acceptance criteria (6–28 except 11, 46–49, 58–70, 73) against both fixture sheets. QA and `/code-review
+  high` together found and fixed three real bugs before opening the PR: a corrupted migration journal entry that
+  made `npm run db:migrate` (and every deploy) fail silently, a race in the daily upload cap that could let more
+  than 40/day through under concurrent requests, and EXIF orientations 5/7 swapped in the rotation table. 552
+  tests passing, lint and typecheck clean.
 - **Stage 1 acceptance criteria**: **all pass.**
   - 1–5, 72, 79 and 81: QA against production builds. **Criterion 5 is also proven live:** 10 wrong passwords gave
     401, the 11th gave 429 "Too many tries. Try again later.", and a forged `CloudFront-Viewer-Address` (with or
@@ -25,9 +30,9 @@
   the forged-header lockout check holds.
 - **Measured**: a warm login takes 0.45–0.58 s; a page with no database work takes 0.13–0.21 s. Each Sydney↔Tokyo
   query costs about 110–130 ms, as the Tokyo ADR estimated. The first request after a deploy (cold start) took 3.9 s.
-- **Blocked on founder**: review and merge this docs PR. Then log in on your own phone and share the group password.
-- **Next up**: **Stage 2**, the Column Sweep review screen with typed entry, on the founder's phone
-  (criteria 6–28, 46–49, 58–70, 73). Run `/feature Milestone 1 Stage 2`.
+- **Blocked on founder**: review and merge [PR #10](https://github.com/ribenajuice/five-crowns/pull/10).
+- **Next up**: once PR #10 is merged, `/ship` it, then Stage 3 — transcription and the admin panel's API key
+  (criteria 11, 50–57, 74–80). Run `/feature Milestone 1 Stage 3`.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.

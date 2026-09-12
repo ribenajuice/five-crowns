@@ -86,3 +86,23 @@ export function isSameRoster(
 export function isPlayableRoster(playerIds: readonly string[]): boolean {
   return new Set(playerIds).size >= MIN_PLAYERS;
 }
+
+/**
+ * A roster's default display name, built from its members — used whenever
+ * `roster.name` is null (PRD criterion 68). Format per `docs/DESIGN-SYSTEM.md`:
+ * **alphabetical order, joined "A, B, C & D"**.
+ *
+ * ⚠️ The sort is case-insensitive (`sensitivity: "base"`): a raw code-point
+ * sort puts every capital letter before every lower-case one, so "Player D"
+ * would sort before "player c" — wrong alphabetically, and a roster whose
+ * order looks like a bug the moment two names differ only in case.
+ */
+export function rosterDisplayName(memberDisplayNames: readonly string[]): string {
+  const names = [...memberDisplayNames].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}

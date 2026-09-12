@@ -68,3 +68,31 @@ was mistyped or is from the retired `scrypt$…` format: regenerate it.
 
 ⚠️ `.env.local` holds a signing secret and two password hashes. It is covered by
 the `.env.*` rule in `.gitignore` and must stay that way.
+
+### Photos, locally
+
+⚠️ **Local development and QA must never touch the real S3 bucket.** `lib/photos/`
+picks a driver at runtime (`lib/photos/storage.ts`):
+
+- **`local`** — whenever `PHOTOS_STORAGE=local` is set, or (the normal case)
+  `PHOTOS_BUCKET` is simply absent, which it is on every developer's machine.
+  Files live under the gitignored `.data/photos/{photoId}/{original,model}.jpg`
+  and are served through dev-only routes at
+  `/api/dev-photos/{photoId}/{original,model}.jpg`. Those URLs carry an
+  HMAC-signed expiry (5 minutes, keyed by `SESSION_SECRET` — the same secret
+  that signs the session cookie), so the review screen's photo strip and the
+  save flow's `HeadObject`-style existence check both work exactly as they do
+  against S3, with no AWS account.
+- **`s3`** — whenever `PHOTOS_BUCKET` is set (production, via `sst.config.ts`)
+  and `PHOTOS_STORAGE` isn't forced to `local`.
+
+⚠️ **The dev-photos routes are impossible in production**, by construction, not
+by convention: they refuse every request unless the local driver is selected
+*and* `AWS_LAMBDA_FUNCTION_NAME` is unset (`localDevPhotosAllowed` in
+`lib/photos/storage.ts`; refusal is tested in
+`tests/photos/local-storage.test.ts`).
+
+Nothing extra needs setting for `npm run dev` to work with photos — the local
+driver is the default. Set `PHOTOS_STORAGE=local` explicitly only if
+`PHOTOS_BUCKET` happens to be set in your shell for some other reason and you
+still want the local driver.

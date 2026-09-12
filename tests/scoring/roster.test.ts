@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isPlayableRoster,
   isSameRoster,
+  rosterDisplayName,
   rosterMembers,
   rosterSignature,
   RosterSignatureError,
@@ -128,5 +129,37 @@ describe("isPlayableRoster", () => {
   it("rejects a one-player game — that is a transcription failure", () => {
     expect(isPlayableRoster(["p_a"])).toBe(false);
     expect(isPlayableRoster(["p_a", "p_a"])).toBe(false);
+  });
+});
+
+describe("rosterDisplayName — the auto-name (criterion 68)", () => {
+  it("is a single name for one member", () => {
+    expect(rosterDisplayName(["Player C"])).toBe("Player C");
+  });
+
+  it("joins two members with '&', not a comma", () => {
+    expect(rosterDisplayName(["Player B", "Player A"])).toBe("Player A & Player B");
+  });
+
+  it("sorts alphabetically and joins three or more with a comma list and a final '&'", () => {
+    expect(rosterDisplayName(["Player D", "Player B", "Player A", "Player C"])).toBe(
+      "Player A, Player B, Player C & Player D",
+    );
+  });
+
+  it("is empty for no members", () => {
+    expect(rosterDisplayName([])).toBe("");
+  });
+
+  it("is stable regardless of input order — the same roster always reads the same", () => {
+    const a = rosterDisplayName(["Player E", "Player A", "Player D", "Player B", "Player C"]);
+    const b = rosterDisplayName(["Player C", "Player D", "Player A", "Player E", "Player B"]);
+    expect(a).toBe(b);
+  });
+
+  it("⚠️ sorts case-insensitively — a raw code-point sort puts every capital before every lower-case letter", () => {
+    expect(rosterDisplayName(["player c", "Player D", "Player A"])).toBe(
+      "Player A, player c & Player D",
+    );
   });
 });
