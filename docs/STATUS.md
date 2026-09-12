@@ -3,21 +3,29 @@
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
 - **Last updated**: 2026-09-12
-- **Phase**: Milestone 1, Stage 1 is live and verified at **https://fivecrowns.ribenajuice.xyz**. **Stage 2 is
-  built, QA'd and reviewed**: [PR #10](https://github.com/ribenajuice/five-crowns/pull/10), open, awaiting
-  founder review and merge.
+- **Phase**: Milestone 1, **Stage 2 is live** at **https://fivecrowns.ribenajuice.xyz** — the whole loop works:
+  photograph or choose a sheet, type the numbers in, save, browse the games list and a game's page. Shipped via
+  [PR #10](https://github.com/ribenajuice/five-crowns/pull/10) (merged and deployed 2026-09-12; CI and Deploy
+  both green on `main`). Next is Stage 3.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Valid Amazon certificate, runs to 27 Mar 2027 and renews
   itself through the kept `_628746…fivecrowns` validation CNAME.
   The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
   (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
   delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
   answers again.
-- **Currently in flight**: [PR #10](https://github.com/ribenajuice/five-crowns/pull/10) — Stage 2. QA passed all
-  its acceptance criteria (6–28 except 11, 46–49, 58–70, 73) against both fixture sheets. QA and `/code-review
-  high` together found and fixed three real bugs before opening the PR: a corrupted migration journal entry that
-  made `npm run db:migrate` (and every deploy) fail silently, a race in the daily upload cap that could let more
-  than 40/day through under concurrent requests, and EXIF orientations 5/7 swapped in the rotation table. 552
-  tests passing, lint and typecheck clean.
+- **Currently in flight**: [PR #11](https://github.com/ribenajuice/five-crowns/pull/11), docs-only (CHANGELOG and
+  README updated to say Stage 2 is live, replacing the stale "nothing is deployed yet" / "Capture arrives soon"
+  copy). CI green; safe to merge whenever, no deploy trigger needed since nothing in `main`'s app code changes.
+- **Stage 2 shipped 2026-09-12** ([PR #10](https://github.com/ribenajuice/five-crowns/pull/10)). QA passed all its
+  acceptance criteria (6–28 except 11, 46–49, 58–70, 73) against both fixture sheets, driving the real HTTP API
+  end-to-end. QA and `/code-review high` together found and fixed three real bugs before the PR opened: a
+  corrupted migration journal entry that made `npm run db:migrate` (and every deploy) fail silently, a race in the
+  daily upload cap that could let more than 40/day through under concurrent requests, and EXIF orientations 5/7
+  swapped in the rotation table (a mirrored, sideways photo would land 180° off). 552 tests passing, lint and
+  typecheck clean. Confirmed live post-deploy: login gate redirects `/games`, `/games/new` and `/admin` correctly
+  with no session, no server errors, page loads fast (no cold-start issue). ⚠️ **Not yet verified live**: an actual
+  capture → review → save run on the founder's own phone with the group password — the PRD reserves this as the
+  founder's own acceptance step, and it needs credentials this session doesn't hold.
 - **Stage 1 acceptance criteria**: **all pass.**
   - 1–5, 72, 79 and 81: QA against production builds. **Criterion 5 is also proven live:** 10 wrong passwords gave
     401, the 11th gave 429 "Too many tries. Try again later.", and a forged `CloudFront-Viewer-Address` (with or
@@ -30,9 +38,11 @@
   the forged-header lockout check holds.
 - **Measured**: a warm login takes 0.45–0.58 s; a page with no database work takes 0.13–0.21 s. Each Sydney↔Tokyo
   query costs about 110–130 ms, as the Tokyo ADR estimated. The first request after a deploy (cold start) took 3.9 s.
-- **Blocked on founder**: review and merge [PR #10](https://github.com/ribenajuice/five-crowns/pull/10).
-- **Next up**: once PR #10 is merged, `/ship` it, then Stage 3 — transcription and the admin panel's API key
-  (criteria 11, 50–57, 74–80). Run `/feature Milestone 1 Stage 3`.
+- **Blocked on founder**: merge the docs PR ([#11](https://github.com/ribenajuice/five-crowns/pull/11)) whenever
+  convenient, and — more importantly — do the real on-phone check: log in, photograph or pick a sheet, type the
+  numbers in, save it, and confirm it shows up correctly in the games list and its own page.
+- **Next up**: Stage 3 — transcription and the admin panel's API key (criteria 11, 50–57, 74–80). Run
+  `/feature Milestone 1 Stage 3`.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -61,6 +71,12 @@
   - **Stage 2 hazard**: middleware skips image-extension paths, so photo and `/review` routes must call
     `requireGroupSession()` themselves.
   - Server timeout 120 s vs CloudFront's 60 s default origin timeout. Revisit at Stage 3.
+  - No component-rendering test harness (jsdom/Playwright) exists yet. Criterion 73 (375px/1280px, 44px touch
+    targets, focus visibility) and other pixel-level review-screen behaviour are verified by reading the code,
+    not by rendering it. Worth a Playwright smoke test in a later stage.
+  - Two small duplications code review flagged as cleanup, not bugs: an HMAC-hex helper duplicated between
+    `lib/photos/local-url.ts` and `lib/auth/ip-hash.ts`, and `resolvePlayers` in `lib/games/save.ts` doing
+    sequential per-column DB lookups instead of one batched query.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** and **100% of
   final scores and winners** right. ⚠️ Monotonicity caught 0 of 9 misreads, so the human review screen is the entire
   quality control. Errors repeat deterministically, so don't build "transcribe twice and compare".
