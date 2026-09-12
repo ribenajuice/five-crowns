@@ -33,6 +33,15 @@ export const PARAM = {
   adminSessionEpoch: "admin-session-epoch",
   /** The vision call's credential. Write-only from the panel. Never rendered back. */
   anthropicApiKey: "anthropic-api-key",
+  /**
+   * The key's last four characters — not a secret, so a plain `String`
+   * parameter, never a SecureString. Written alongside the key itself so the
+   * panel has something to show without ever reading the key back
+   * (docs/DECISIONS.md, "The API key's status is derived, not stored").
+   */
+  anthropicApiKeyLast4: "anthropic-api-key-last4",
+  /** ISO timestamp of the last successful *set*, not the last successful *use*. */
+  anthropicApiKeySetAt: "anthropic-api-key-set-at",
 } as const;
 
 export type ParameterName = (typeof PARAM)[keyof typeof PARAM];

@@ -17,6 +17,8 @@ and the nightly dump secret-free by construction rather than by filtering
 | `/five-crowns/{stage}/group-session-epoch` | App | Bumped to log every device out |
 | `/five-crowns/{stage}/admin-session-epoch` | App | Bumped to log every admin session out |
 | `/five-crowns/{stage}/anthropic-api-key` | App | The vision call. Write-only from the panel |
+| `/five-crowns/{stage}/anthropic-api-key-last4` | App | Not a secret — a plain `String`. The panel's only view of the key |
+| `/five-crowns/{stage}/anthropic-api-key-set-at` | App | Not a secret — a plain `String`. ISO timestamp of the last successful *set* |
 | `/five-crowns/{stage}/session-secret` | Deploy | HMAC key for both cookies |
 | `/five-crowns/{stage}/app-domain`, `app-cert-arn` | App | Optional; the custom domain |
 | `/five-crowns/{stage}/budget-alert-email` | App | Optional; where the zero-spend alarm goes |
@@ -68,6 +70,28 @@ was mistyped or is from the retired `scrypt$…` format: regenerate it.
 
 ⚠️ `.env.local` holds a signing secret and two password hashes. It is covered by
 the `.env.*` rule in `.gitignore` and must stay that way.
+
+### Setting the API key, locally
+
+The admin panel's "set the Claude API key" write path (`putParameter`) needs
+somewhere to write to. In `env` mode there is no SSM, so a write lands in an
+**in-memory map for the life of the dev process** — never on disk, never in
+`.env.local` — and is forgotten on restart, the same way an uncommitted write
+would be if SSM itself were unreachable. This is enough to exercise the whole
+verify-then-save flow (`lib/vision/api-key.ts`) with no AWS account.
+
+For a key that should survive `npm run dev` restarts, set it the same way as
+the password hashes instead:
+
+```dotenv
+FIVE_CROWNS_ANTHROPIC_API_KEY=sk-ant-...
+```
+
+`FIVE_CROWNS_ANTHROPIC_API_KEY_LAST4` and `FIVE_CROWNS_ANTHROPIC_API_KEY_SET_AT`
+are optional and cosmetic — the admin panel's status read falls back to
+"not set" for either one it can't find, and "whether it works" is never read
+from here at all; see `docs/DECISIONS.md`, "The API key's status is derived,
+not stored".
 
 ### Photos, locally
 

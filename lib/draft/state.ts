@@ -183,6 +183,22 @@ export const createDraftSchema = z
 
 export const updateDraftSchema = z.object({ state: draftStateSchema });
 
+/**
+ * `POST /api/transcribe` — the only thing the client supplies is which photo
+ * to read. `playedOn` is optional and exists only for the "no draft yet"
+ * branch: when the draft is created here rather than by a prior
+ * `POST /api/drafts`, there is no browser-local calendar day available
+ * unless the caller sends one (docs/ARCHITECTURE.md § Data model, `game`: "the
+ * default date is resolved from the browser's local calendar day … the server
+ * never invents one"). Omitting it falls back to UTC-today, which is
+ * occasionally the wrong local day — callers that already know the local date
+ * should send it.
+ */
+export const transcribeSheetRequestSchema = z.object({
+  photoId: z.string().min(1).max(64),
+  playedOn: isoDate.optional(),
+});
+
 export const saveGameSchema = z.object({
   draftId: z.string().min(1).max(64),
   state: draftStateSchema,
@@ -192,6 +208,7 @@ export type UploadRequest = z.infer<typeof uploadRequestSchema>;
 export type CreateDraftRequest = z.infer<typeof createDraftSchema>;
 export type UpdateDraftRequest = z.infer<typeof updateDraftSchema>;
 export type SaveGameRequest = z.infer<typeof saveGameSchema>;
+export type TranscribeSheetRequest = z.infer<typeof transcribeSheetRequestSchema>;
 
 /* --------------------------------------------------------------- helpers */
 

@@ -37,10 +37,15 @@ const PHOTOS_BUCKET = "five-crowns-photos";
 
 /**
  * The parameters the **app** owns — `lib/config/parameters.ts` and the table
- * in `lib/config/README.md`. These five are the only parameters the web
+ * in `lib/config/README.md`. These seven are the only parameters the web
  * Lambda may read or write. The session secret is not among them: it is read
  * at deploy time and injected as `SESSION_SECRET`, so the running app never
  * needs Parameter Store access to it.
+ *
+ * ⚠️ `anthropic-api-key-last4` and `anthropic-api-key-set-at` (Stage 3) are
+ * not secrets — the admin panel's only view of the key it can never read
+ * back — but they still live under the same prefix and need the same
+ * Get/Put grant, so they are listed here too.
  */
 const APP_PARAMETERS = [
   "group-password-hash",
@@ -48,6 +53,8 @@ const APP_PARAMETERS = [
   "group-session-epoch",
   "admin-session-epoch",
   "anthropic-api-key",
+  "anthropic-api-key-last4",
+  "anthropic-api-key-set-at",
 ];
 
 export default $config({
