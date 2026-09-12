@@ -3,9 +3,9 @@
 Five Crowns Ledger is a private, permanent record of our group's Five Crowns nights. You photograph
 the finished paper scoresheet, and the app turns it into a searchable history of every game.
 
-**Where it's at:** Milestone 1 is under way and nothing is deployed yet. You can add a game by
-photographing the scoresheet (or choosing a photo), then typing in the scores on the review
-screen. See `docs/STATUS.md`.
+**Where it's at:** live at https://fivecrowns.ribenajuice.xyz. You can add a game by photographing
+the scoresheet (or choosing a photo), then typing in the scores on the review screen. See
+`docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then type in the numbers on the review screen. Pick the date, venue and
