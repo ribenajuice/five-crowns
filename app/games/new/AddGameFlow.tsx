@@ -285,12 +285,13 @@ export function AddGameFlow() {
     if (!uploadResult.current) return;
     if (transcribeInFlight.current) return;
     transcribeInFlight.current = true;
-    const photoId = uploadResult.current.presign.photoId;
-
-    setPhase("transcribing");
-    setErrorMessage(null);
 
     try {
+      const photoId = uploadResult.current.presign.photoId;
+
+      setPhase("transcribing");
+      setErrorMessage(null);
+
       const response = await fetch("/api/transcribe", {
         method: "POST",
         headers: { "content-type": "application/json" },
