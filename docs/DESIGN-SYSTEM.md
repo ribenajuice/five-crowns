@@ -131,6 +131,14 @@ the digit; this is a correctness feature, not typography.
 | `CropFrame` | review screen, folded into assigning a column's player | A rectangle over the **whole photo**, four 44px corner handles to resize, drag-anywhere-inside to pan. Confirms a column's `crop` — normalised `{x,y,width,height}` covering that column's eleven cells top to bottom. Reopenable at any time from the `PhotoStrip`'s "Adjust crop" corner button |
 | `TranscribeProgress` | review screen (Stage 3) | Appears within 2s of submitting a photo for reading (criterion 52) and replaces the column area until a reading or an error arrives. Photo thumbnail, an indeterminate bar (never a determinate one — there is nothing real to measure against a tens-of-seconds model call), and a caption that cycles through 2–3 present-tense lines (*"Finding the columns."* → *"Reading each player's numbers."*), with a third, slower-only line (*"Still going — this one's taking a little longer."*) that earns its place after ~20s so a fast read never shows it |
 | `ReadHint` | review grid (Stage 3) | The model's own `least_confident_index`, one per column — deliberately the **weakest** of the three grid signals, weaker than `SoftWarning`. No border or tint on the cell: a small dotted-outline corner badge plus **one muted sentence beneath the grid** in `text-muted`, never a semantic colour (colour still isn't the only signal here — the badge and the sentence are the two). Never appears on a cell that already carries `err` or is unread — a real problem always outranks a mild doubt, so the two are mutually exclusive per cell. Clears the moment the founder edits that cell: their own typed value retires the model's doubt about its own reading |
+| `StructureMenu` (Stage 4) | review, opened from a **"Fix something" ghost link** right-aligned above `ActiveColumnCard` | Bottom sheet, six equal-weight 52px rows in the `PickList` row shape: **add a missing column · remove this column · reassign this column's player · reorder columns · insert or delete a value · type it in by hand**, the last set off by a dashed divider but never styled as a last resort (criterion 47). Each row carries a one-line sub-caption. Picking "Reorder columns" or "Insert or delete a value" swaps the sheet's content in place — the same `step`-swapping convention `ReviewScreen` already uses for the player-picker → `CropFrame` handoff — rather than opening a second, nested sheet |
+| `ColumnReorderList` (Stage 4) | inside `StructureMenu`, "Reorder columns" step | A **vertical list**, one 44px+ row per column in current left-to-right order, each row a status dot + player name plus **two 44×44 `IconButton`s (up/down)** that swap it with its neighbour. The top row's "up" and the bottom row's "down" are `disabled` rather than silently doing nothing. A **"Done"** primary button commits. See *Reordering columns* below for why up/down beat drag-and-drop |
+| `CellEditor` — **"Fix the shape"** (Stage 4) | inside `CellEditor`, below the previous/next-line row | A `ghost` link that expands **in place inside the same sheet** (no nested sheet) into three actions relative to the line already open: **"Insert a blank line above"**, **"Insert a blank line below"**, **"Delete this line"** (the last in `ghost` shape with `--error` ink and a trash icon — a documented one-off variant, not a new `Button` kind). Each opens a one-sentence confirm naming what shifts and what the column will read afterwards (`columnStatusLabel`, verbatim: *"12 of 11"* / *"10 of 11"*), then a **Cancel**/commit pair. See *Insert or delete a value* below |
+| `ReadingCompare` (Stage 4) | review, **replaces the active column's card content** — the same in-place convention `TranscribeProgress` established in Stage 3, not a dialog | Two columns of eleven rows sharing the grid's row pitch: **"Saved now"** against **"New close-up"** (or, when browsing history, any two named readings). A differing row gets the neutral `--sunk` tint already used for wells — deliberately **not** a semantic colour, because a difference is neither right nor wrong — plus a small swap icon and, beneath the grid, one plain sentence naming every differing line (*"4 lines differ from what's saved: 8s, 9s, 10s, Jacks."*). Footer: **"Keep the new reading"** (`primary`) and **"Keep what's saved"** (`ghost`) stacked full-width, a **"Photograph again"** `accent` link (the column is re-shootable without limit, criterion 41), and a **"See every reading (n)"** `ghost` link into the version list below. When comparing two past readings rather than newest-vs-saved, the two footer buttons relabel to **"Make {reading} active"** / **"Keep {reading} active"** — same component, generalised copy, no new screen |
+| `ReadingHistoryList` (Stage 4) | review, opened from `ReadingCompare`'s "See every reading" link | Bottom sheet, `PickList`-shaped rows: source (*full sheet* / *close-up*), a timestamp, and an **"Active"** `ok` `Pill` on the one currently in use. Every reading a column has ever had is listed, not only the one directly before the newest (criterion 41) — tapping any other row opens `ReadingCompare` against it |
+| `WrongColumnWarning` (Stage 4) | `ReadingCompare`, above the grid | A `Banner warn` — **non-blocking**, same shape as everywhere else `Banner` is used: *"This looks like {sheet player}'s column, not {assigned player}'s."* / *"The close-up's own reading of the name doesn't match — you can use the new numbers anyway."* Neither footer button is disabled underneath it |
+| `TypedCellDisagreement` (Stage 4) | `ReadingCompare`, beneath one specific row | The row keeps its ordinary "changed" tint, and additionally gets the `SoftWarning` treatment (`warn` border, tint, icon) **layered on, not swapped in** — because only this row carries an extra fact its neighbours don't: the founder typed that value by hand. Fixed sentence, named per-cell: *"You typed {typed}; the close-up reads {read}."* Never a generic banner — criterion 43 requires the specific cell |
+| Column-scoped `TranscribeProgress` (Stage 4) | review, in place of `ActiveColumnCard`, while a close-up is being read | Same component as Stage 3's full-sheet read, narrower copy: heading *"Reading {Player}'s column…"*, captions *"One column, eleven numbers."* → the existing slow-only line after ~20s. The pager dot for that column shows a hollow **accent** ring (not `todo`'s hollow neutral ring) while the read is in flight, so it reads as "busy, camera path" rather than "incomplete" |
 
 ## Screen rules
 
@@ -335,6 +343,64 @@ the digit; this is a correctness feature, not typography.
   - The key is **never rendered back** in any state (criterion 76) — every card above shows only
     last-four, a date, and a status `Pill`.
 
+- **Reordering columns** (Stage 4, criterion 32). Opened from `StructureMenu`. ⚠️ **Decision: 44px
+  up/down move buttons on a vertical list, not drag-and-drop, and not left/right chips.** Drag is
+  fiddly with fat thumbs and buys nothing here; the sheet these repairs live in is already vertical
+  (same shape as `PickList`), so a vertical list with per-row up/down `IconButton`s reuses that shape
+  exactly, gives every row a real 44×44 target, and works with a keyboard or screen reader for free —
+  a boundary row's inapplicable direction is simply `disabled`, never a dead tap. Reordering carries a
+  column's crop, its hand edits and its close-up photos with it; none of that state is
+  position-dependent, so moving a column changes nothing about it except where it sits.
+
+- **Insert or delete a value within a column** (Stage 4, criterion 33). Lives inside `CellEditor`,
+  not a separate screen — the line already open when the founder notices an off-by-one **is** the row
+  picker, reached via the existing previous/next-line controls before "Fix the shape" is opened.
+  Inserting always leaves **twelve** values (a blank row shifts everything below it down one) and
+  reports **"12 of 11"**; deleting leaves **ten** and reports **"10 of 11"** — both the literal,
+  existing `columnStatusLabel` string, never new copy for "too many" versus "too few". Each action
+  asks exactly once, naming what will shift and what the column will read afterwards, before
+  committing. ⚠️ **While a column holds other than eleven rows** (mid-repair), rows are labelled by
+  plain position — *"1st", "2nd"* … — instead of card ranks, and revert to *3s … Kings* the instant
+  the column is back to eleven. Nothing else about `CellEditor` changes shape for this.
+
+- **Photograph this column** (Stage 4, criteria 36, 37). Offered from `ActiveColumnCard` as a
+  full-width `accent` button — camera icon, **"Photograph this column"** — on **every** column,
+  always, not only ones the app is unsure about. Tapping it opens a small capture sheet headed
+  **"Photograph {Player}'s column."** with the same camera-direct / "Choose a photo" pairing as
+  `PhotoCapture`, in `accent` rather than `primary` weight (this is the camera/re-read family, same
+  token as everywhere else it appears). ⚠️ **Never worded as double-checking, confirming, or a second
+  opinion on the earlier read** (criterion 45) — the fixed helper line is *"A close-up gives the
+  reader far more pixels per digit than the whole page did — new pixels, not a second opinion."` Once
+  a photo is chosen, the sheet closes and the column area itself carries the rest — upload, then the
+  column-scoped `TranscribeProgress`, then `ReadingCompare` — the same in-place convention Stage 3
+  established, never a new modal for the reading itself.
+
+- **The old-vs-new comparison** (Stage 4, criteria 38–41). `ReadingCompare` replaces the active
+  column's card content the moment a close-up reading returns. Differing lines are highlighted with
+  the neutral `--sunk` tint (not a semantic colour — a difference is neither right nor wrong) plus a
+  swap icon and a summary sentence naming every differing line. **"Keep the new reading"** and **"Keep
+  what's saved"** are both always enabled; keeping the old is one tap, no re-upload. **"Photograph
+  again"** stays reachable from the same screen — the same column can be re-shot as many times as it
+  takes. ⚠️ **Every reading a column has ever had is retained and reachable, not only the one directly
+  before the newest** (criterion 41): "See every reading (n)" opens `ReadingHistoryList`, and tapping
+  any past reading opens the same `ReadingCompare` generalised to that pair, with its two buttons
+  relabelled **"Make {reading} active"** / **"Keep {reading} active"**.
+
+- **Two non-blocking callouts on `ReadingCompare`** (Stage 4, criteria 42, 43). The **wrong-column
+  warning** is a `Banner warn` above the grid when the close-up's own read of the handwritten name
+  disagrees with the column it was shot for — *"This looks like {sheet player}'s column, not
+  {assigned player}'s."* — with both footer buttons left fully enabled underneath it. The
+  **typed-cell disagreement** is layered onto one specific row, not a generic banner: that row keeps
+  its ordinary "changed" tint and additionally gets the `SoftWarning` treatment naming both values —
+  *"You typed {typed}; the close-up reads {read}."* — because only a hand-typed cell carries the
+  extra fact that a person, not a model, put that number there.
+
+- **An incomplete close-up** (Stage 4, criterion 44). Reuses the existing shapes exactly: missing
+  rows render with the review grid's dashed "unread" cell style, the header carries the same
+  `{n} of 11` `Pill`, and accepting it anyway is allowed — it then behaves like any other short column
+  everywhere else on the screen, blocking `SaveBar` with the same `blockedColumnShort` copy. "Keep
+  what's saved" remains the one-tap way out.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -427,6 +493,37 @@ verified, confirmed, correct, looks right* or *all good*.
 | Admin, key rejected | That key didn't work. / Check it and try again — the key you had before is untouched. |
 | Admin, status `Pill` | Working · Not working |
 | Admin, replace button | Replace key |
+| Fix-something link (`StructureMenu`) | Fix something |
+| Structure menu, reorder row | Reorder columns · Match the order they're written in on the photo. |
+| Structure menu, insert/delete row | Insert or delete a value · Fixes a row that's shifted by one. |
+| Reorder screen heading | Reorder columns |
+| Reorder screen caption | Match the order the columns are written in on the photo — top is the left-most column. |
+| Reorder, done button | Done |
+| Fix-the-shape link (`CellEditor`) | Fix the shape |
+| Fix-the-shape helper | If a row got missed or doubled near here, fix the shape instead of retyping the column. |
+| Insert row action | Insert a blank line above · Insert a blank line below |
+| Delete row action | Delete this line |
+| Insert confirm | Insert a blank line above the {n}th line down? / Everything below shifts down one — this column will read {n+1} of 11 until it's filled in. |
+| Delete confirm | Delete the {n}th line down — {value}? / Everything below shifts up one — this column will read {n-1} of 11. |
+| Photograph-column button | Photograph this column |
+| Photograph-column heading | Photograph {Player}'s column. |
+| Photograph-column helper | A close-up gives the reader far more pixels per digit than the whole page did — new pixels, not a second opinion. |
+| Column-scoped read heading | Reading {Player}'s column… |
+| Column-scoped read captions | One column, eleven numbers. · Still going — this one's taking a little longer. *(slow line only, shared with the full-sheet read)* |
+| Compare, subheading | Compared with what's saved now. |
+| Compare, differing-lines summary | {n} lines differ from what's saved: {list of hand labels}. |
+| Compare, keep new | Keep the new reading |
+| Compare, keep old | Keep what's saved |
+| Compare, re-shoot link | Photograph again |
+| Compare, history link | See every reading ({n}) |
+| Compare vs a past reading | {Reading} vs what's active now |
+| Compare vs a past reading, buttons | Make {reading} active · Keep {reading} active |
+| Reading history heading | Every reading of {Player}'s column |
+| Reading history row | Reading {n} · {full sheet / close-up} · {when} |
+| Reading history, active pill | `Pill`: Active |
+| Wrong-column warning | This looks like {sheet player}'s column, not {assigned player}'s. / The close-up's own reading of the name doesn't match — you can use the new numbers anyway. |
+| Typed-cell disagreement | You typed {typed}; the close-up reads {read}. |
+| Incomplete close-up, keeping-it note | Keeping this leaves {Player}'s column at {n} of 11 — Put it in the book stays blocked until it's filled in. |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.
