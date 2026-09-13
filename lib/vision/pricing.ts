@@ -1,9 +1,10 @@
+import { SHEET_MODEL } from "./client";
+
 /**
  * Dated pricing constants for the admin panel's spend estimate (PRD criteria
  * 111, 112). Both vision paths (`transcribe-sheet.ts`, `transcribe-column.ts`)
  * call the same model, `SHEET_MODEL`/`COLUMN_MODEL` in `lib/vision/client.ts`
- * — `"claude-opus-5"` — so one pair of per-token prices covers every
- * transcription row.
+ * — so one pair of per-token prices covers every transcription row.
  *
  * ⚠️ **A dated constant, not a live lookup** (decision, this file, 2026-09-14):
  * the founder's own criterion 112 asks for a checked date and a pointer to
@@ -16,7 +17,16 @@
  * 2026-09-14: $5 / MTok input, $25 / MTok output.
  */
 
-export const PRICED_MODEL = "claude-opus-5" as const;
+/**
+ * Reuses `client.ts`'s own constant rather than re-typing the model name as a
+ * third independent literal — if `SHEET_MODEL` is ever bumped, this is forced
+ * to follow rather than silently going stale. Picks `SHEET_MODEL` specifically
+ * because both paths price identically today; if `SHEET_MODEL` and
+ * `COLUMN_MODEL` are ever allowed to diverge, this constant (and the
+ * assumption that one price pair covers both) needs revisiting alongside
+ * whatever caused the split.
+ */
+export const PRICED_MODEL = SHEET_MODEL;
 
 /** ISO date this file's prices were last checked against the Anthropic console. */
 export const PRICES_CHECKED_ON = "2026-09-14";

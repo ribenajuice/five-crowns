@@ -22,6 +22,19 @@
  * way, on full success every group cookie is revoked — including this one
  * (criterion 89). The admin epoch is untouched: this session stays logged in
  * as admin.
+ *
+ * ⚠️ **Rate limited**, unlike a route whose only guard is the session check
+ * above might suggest. There is no "wrong attempt" to count here — no current
+ * password is taken — but an unthrottled admin-gated write is still a real
+ * gap: a hijacked/XSS'd admin session, or a buggy client stuck retrying,
+ * could otherwise hammer this endpoint with no cooldown at all. Every call
+ * counts here, not just failures (there being no notion of a "failed" call
+ * to distinguish), reusing `lib/auth/rate-limit`'s `"admin"` scope directly —
+ * the same bucket `/api/admin/login` and `/api/admin/password/admin` count
+ * against. Sharing it is deliberate, not an oversight: this route already
+ * requires a live admin session, so anyone who could hammer it already holds
+ * the admin cookie, and throttling it alongside admin logins is the simplest
+ * consistent choice rather than inventing a new scope for one route.
  */
 
 import "server-only";
@@ -29,8 +42,11 @@ import "server-only";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
+import { clientIp } from "@/lib/auth/client-ip";
+import { RATE_LIMITED_MESSAGE } from "@/lib/auth/login";
 import { NEW_PASSWORD_MIN_LENGTH, hashPassword } from "@/lib/auth/password";
-import { hasSession } from "@/lib/auth/session";
+import { reserveAttempt } from "@/lib/auth/rate-limit";
+import { requireAdminSession } from "@/lib/auth/require-admin-session";
 import { bumpSessionEpoch, PARAM, putParameter } from "@/lib/config";
 import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
@@ -43,23 +59,21 @@ const changeGroupPasswordSchema = z.object({
   password: z.string().min(NEW_PASSWORD_MIN_LENGTH).max(512),
 });
 
-/** Both checks, in order — mirrors `app/admin/page.tsx` and `/api/admin/key`. */
-async function requireAdminSession() {
-  if (!(await hasSession("group"))) {
-    return apiError("unauthorised", "You need the password for this.");
-  }
-  if (!(await hasSession("admin"))) {
-    return apiError("unauthorised", "You need the admin password for this.");
-  }
-  return null;
-}
-
 export async function POST(request: Request) {
   const crossSite = rejectCrossSitePost(request, "admin.password.group");
   if (crossSite) return crossSite;
 
   const denied = await requireAdminSession();
   if (denied) return denied;
+
+  // ⚠️ Counted before anything else — every call, not just a failure, since
+  // this route has no "wrong guess" to distinguish. Never released: that is
+  // what makes it a call counter rather than a failed-attempt counter.
+  const attempt = await reserveAttempt(clientIp(request.headers), "admin");
+  if (attempt.blocked) {
+    log.warn("admin.password.group.rate_limited", { failures: attempt.failures });
+    return apiError("rate_limited", RATE_LIMITED_MESSAGE);
+  }
 
   let body: unknown;
   try {
@@ -77,14 +91,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const hash = await hashPassword(parsed.data.password);
-    // ⚠️ Epoch bumped *before* the hash is written — the safe order. If the
-    // bump succeeds but the write then fails, every session is revoked and
-    // the *old* password still works: loud (everyone is logged out
-    // immediately) and recoverable (just retry the change). The other order
-    // risks the opposite: hash written, bump fails, and the password has
-    // changed while every existing session silently survives it.
-    await bumpSessionEpoch("group");
+    // ⚠️ The hash (CPU-bound scrypt) and the epoch bump (an SSM round trip)
+    // depend on neither's result, so they run concurrently. Only the order of
+    // the two *writes* below is load-bearing — see the header comment — and
+    // that order is untouched: the bump is still awaited, and still lands,
+    // before `putParameter` writes the new hash.
+    const [hash] = await Promise.all([
+      hashPassword(parsed.data.password),
+      bumpSessionEpoch("group"),
+    ]);
     await putParameter(PARAM.groupPasswordHash, hash);
 
     // ⚠️ Never log the password itself — only that a rotation happened.

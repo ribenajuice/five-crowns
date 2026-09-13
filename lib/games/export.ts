@@ -113,31 +113,34 @@ export async function listExportRows(): Promise<ExportRow[]> {
 
   const gameIds = games.map((g) => g.id);
 
-  const players = await db
-    .select({
-      gameId: gamePlayer.gameId,
-      playerId: gamePlayer.playerId,
-      displayName: player.displayName,
-      sheetName: gamePlayer.sheetName,
-      columnOrder: gamePlayer.columnOrder,
-      finalScore: gamePlayer.finalScore,
-    })
-    .from(gamePlayer)
-    .innerJoin(player, eq(gamePlayer.playerId, player.id))
-    .where(inArray(gamePlayer.gameId, gameIds))
-    .orderBy(asc(gamePlayer.columnOrder));
-
-  const rounds = await db
-    .select({
-      gameId: roundScore.gameId,
-      playerId: roundScore.playerId,
-      hand: roundScore.hand,
-      runningTotal: roundScore.runningTotal,
-      score: roundScore.score,
-    })
-    .from(roundScore)
-    .where(inArray(roundScore.gameId, gameIds))
-    .orderBy(asc(roundScore.hand));
+  // Neither depends on the other's result — both only need `gameIds`, already
+  // computed above — so they run concurrently rather than one after the other.
+  const [players, rounds] = await Promise.all([
+    db
+      .select({
+        gameId: gamePlayer.gameId,
+        playerId: gamePlayer.playerId,
+        displayName: player.displayName,
+        sheetName: gamePlayer.sheetName,
+        columnOrder: gamePlayer.columnOrder,
+        finalScore: gamePlayer.finalScore,
+      })
+      .from(gamePlayer)
+      .innerJoin(player, eq(gamePlayer.playerId, player.id))
+      .where(inArray(gamePlayer.gameId, gameIds))
+      .orderBy(asc(gamePlayer.columnOrder)),
+    db
+      .select({
+        gameId: roundScore.gameId,
+        playerId: roundScore.playerId,
+        hand: roundScore.hand,
+        runningTotal: roundScore.runningTotal,
+        score: roundScore.score,
+      })
+      .from(roundScore)
+      .where(inArray(roundScore.gameId, gameIds))
+      .orderBy(asc(roundScore.hand)),
+  ]);
 
   const roundsByGamePlayer = new Map<string, { runningTotal: number; score: number }[]>();
   for (const r of rounds) {

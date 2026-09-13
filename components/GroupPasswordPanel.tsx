@@ -32,6 +32,7 @@ import { Banner } from "./Banner";
 import { buttonClasses } from "./Button";
 import { Field } from "./Field";
 import { EyeIcon } from "./icons";
+import { NEW_PASSWORD_MIN_LENGTH } from "@/lib/auth/password-policy";
 import { errorCodeOf } from "@/lib/ui/api-error";
 import {
   GENERIC_ERROR_MESSAGE,
@@ -53,12 +54,6 @@ import {
   showPasswordAriaLabel,
 } from "@/lib/ui/copy";
 
-/** Mirrors `NEW_PASSWORD_MIN_LENGTH` in `lib/auth/password.ts` — kept as a
- *  plain literal here, not an import, because that module pulls in
- *  `node:crypto` and cannot be bundled for the client. The server enforces
- *  the real floor regardless; this only makes the same rule visible sooner. */
-const MIN_LENGTH = 12;
-
 type SaveState = "idle" | "saving" | "success" | "error";
 
 export function GroupPasswordPanel() {
@@ -78,7 +73,7 @@ export function GroupPasswordPanel() {
       inputRef.current?.focus();
       return;
     }
-    if (value.length < MIN_LENGTH) {
+    if (value.length < NEW_PASSWORD_MIN_LENGTH) {
       setFieldError(PASSWORD_LENGTH_HELPER);
       inputRef.current?.focus();
       return;

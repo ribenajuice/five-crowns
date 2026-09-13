@@ -26,6 +26,7 @@ import { Banner } from "./Banner";
 import { buttonClasses } from "./Button";
 import { Field } from "./Field";
 import { EyeIcon } from "./icons";
+import { NEW_PASSWORD_MIN_LENGTH } from "@/lib/auth/password-policy";
 import { errorCodeOf } from "@/lib/ui/api-error";
 import {
   ADMIN_PASSWORD_ASYMMETRY_LINE,
@@ -51,10 +52,6 @@ import {
   hidePasswordAriaLabel,
   showPasswordAriaLabel,
 } from "@/lib/ui/copy";
-
-/** Mirrors `NEW_PASSWORD_MIN_LENGTH` in `lib/auth/password.ts` — see
- *  `GroupPasswordPanel`'s identical comment for why this isn't an import. */
-const MIN_LENGTH = 12;
 
 type FieldName = "current" | "new" | "confirm";
 
@@ -125,7 +122,7 @@ export function AdminPasswordPanel() {
       newRef.current?.focus();
       return;
     }
-    if (newPassword.length < MIN_LENGTH) {
+    if (newPassword.length < NEW_PASSWORD_MIN_LENGTH) {
       setFieldErrors({ new: PASSWORD_LENGTH_HELPER });
       newRef.current?.focus();
       return;

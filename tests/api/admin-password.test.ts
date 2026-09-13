@@ -177,6 +177,34 @@ describe("POST /api/admin/password/group", () => {
     expect(await verifyPassword(GROUP_PASSWORD, await passwordHash("group"))).toBe(true);
     expect(await verifyPassword(newPassword, await passwordHash("group"))).toBe(false);
   });
+
+  it("⚠️ is rate limited — every call counts, not just a failed one, since there is no current password to get wrong", async () => {
+    const { POST } = await import("@/app/api/admin/password/group/route");
+    const address = nextAddress();
+
+    // Too short to ever succeed, so the group password (and its epoch) never
+    // actually changes across this loop — only the rate-limit bucket moves.
+    for (let attempt = 1; attempt <= 10; attempt += 1) {
+      const response = await POST(post("/api/admin/password/group", { password: "short" }, address));
+      expect(response.status, `attempt ${attempt}`).toBe(400);
+    }
+
+    const blocked = await POST(
+      post("/api/admin/password/group", { password: "a-brand-new-password-1" }, address),
+    );
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json()).error.code).toBe("rate_limited");
+
+    // ⚠️ The SAME bucket as admin login and the admin password change route —
+    // a deliberate, documented sharing, not an accident.
+    const { POST: adminLogin } = await import("@/app/api/admin/login/route");
+    const blockedLogin = await adminLogin(post("/api/admin/login", { password: ADMIN_PASSWORD }, address));
+    expect(blockedLogin.status).toBe(429);
+
+    // Never actually rotated — every call in the loop was a 400.
+    const { sessionEpoch } = await import("@/lib/config");
+    expect(await sessionEpoch("group")).toBe(0);
+  });
 });
 
 describe("POST /api/admin/password/admin", () => {
@@ -214,6 +242,36 @@ describe("POST /api/admin/password/admin", () => {
       ),
     );
     expect(response.status).toBe(400);
+  });
+
+  it("⚠️ logs a malformed stored admin-password hash instead of passing it off as a wrong password", async () => {
+    // Mirrors `attemptLogin`'s own diagnostic (tests/auth/rate-limit.test.ts) —
+    // a mangled `admin-password-hash` parameter must not look identical to a
+    // forgotten password from the outside.
+    const saved = process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH;
+    process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH = "scrypt==";
+    const { invalidateAllParameters } = await import("@/lib/config");
+    invalidateAllParameters();
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const { POST } = await import("@/app/api/admin/password/admin/route");
+      const response = await POST(
+        post("/api/admin/password/admin", body({ currentPassword: ADMIN_PASSWORD })),
+      );
+
+      // Still refused — a broken hash must never let anybody in.
+      expect(response.status).toBe(401);
+
+      const lines = errors.mock.calls.map((call) => String(call[0]));
+      const line = lines.find((l) => l.includes("admin.password.admin.malformed_password_hash"));
+      expect(line).toBeDefined();
+      expect(line).not.toContain("scrypt==");
+    } finally {
+      errors.mockRestore();
+      process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH = saved;
+      invalidateAllParameters();
+    }
   });
 
   it("⚠️ a wrong current password is refused, changes nothing, and the old password still works", async () => {

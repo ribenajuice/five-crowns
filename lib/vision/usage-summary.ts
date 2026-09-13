@@ -76,24 +76,35 @@ function utcDay(now: Date): string {
 export async function getUsageSummary(now: Date = new Date()): Promise<UsageSummary> {
   const db = getDb();
 
-  // Counted as an attempt whatever its status — 'ok', 'invalid' and 'error'
-  // all contribute their stored tokens (or zero, where none were recorded)
-  // to the estimate (criterion 111, 114). No status filter here on purpose.
-  const monthRows = await db
-    .select({
-      kind: transcription.kind,
-      count: sql<number>`count(*)`,
-      inputTokens: sql<number>`coalesce(sum(coalesce(${transcription.inputTokens}, 0)), 0)`,
-      outputTokens: sql<number>`coalesce(sum(coalesce(${transcription.outputTokens}, 0)), 0)`,
-    })
-    .from(transcription)
-    .where(
-      and(
-        gte(transcription.createdAt, utcMonthStart(now)),
-        lt(transcription.createdAt, utcMonthEnd(now)),
-      ),
-    )
-    .groupBy(transcription.kind);
+  // Independent tables, neither read depending on the other's result, so they
+  // run concurrently rather than one after the other.
+  const [monthRows, [todayRow]] = await Promise.all([
+    // Counted as an attempt whatever its status — 'ok', 'invalid' and 'error'
+    // all contribute their stored tokens (or zero, where none were recorded)
+    // to the estimate (criterion 111, 114). No status filter here on purpose.
+    db
+      .select({
+        kind: transcription.kind,
+        count: sql<number>`count(*)`,
+        inputTokens: sql<number>`coalesce(sum(coalesce(${transcription.inputTokens}, 0)), 0)`,
+        outputTokens: sql<number>`coalesce(sum(coalesce(${transcription.outputTokens}, 0)), 0)`,
+      })
+      .from(transcription)
+      .where(
+        and(
+          gte(transcription.createdAt, utcMonthStart(now)),
+          lt(transcription.createdAt, utcMonthEnd(now)),
+        ),
+      )
+      .groupBy(transcription.kind),
+    db
+      .select({
+        sheetTranscriptions: usageDay.sheetTranscriptions,
+        columnTranscriptions: usageDay.columnTranscriptions,
+      })
+      .from(usageDay)
+      .where(eq(usageDay.day, utcDay(now))),
+  ]);
 
   let sheetReads = 0;
   let columnRereads = 0;
@@ -107,14 +118,6 @@ export async function getUsageSummary(now: Date = new Date()): Promise<UsageSumm
     if (row.kind === "sheet") sheetReads = count;
     else if (row.kind === "column") columnRereads = count;
   }
-
-  const [todayRow] = await db
-    .select({
-      sheetTranscriptions: usageDay.sheetTranscriptions,
-      columnTranscriptions: usageDay.columnTranscriptions,
-    })
-    .from(usageDay)
-    .where(eq(usageDay.day, utcDay(now)));
 
   return {
     month: {

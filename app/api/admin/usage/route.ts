@@ -15,23 +15,12 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
-import { hasSession } from "@/lib/auth/session";
-import { apiError, serverError } from "@/lib/http/errors";
+import { requireAdminSession } from "@/lib/auth/require-admin-session";
+import { serverError } from "@/lib/http/errors";
 import { getUsageSummary } from "@/lib/vision/usage-summary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** Both checks, in order — mirrors `app/api/admin/key/route.ts`. */
-async function requireAdminSession() {
-  if (!(await hasSession("group"))) {
-    return apiError("unauthorised", "You need the password for this.");
-  }
-  if (!(await hasSession("admin"))) {
-    return apiError("unauthorised", "You need the admin password for this.");
-  }
-  return null;
-}
 
 export async function GET() {
   const denied = await requireAdminSession();

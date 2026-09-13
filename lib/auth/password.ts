@@ -17,6 +17,8 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 
+export { NEW_PASSWORD_MIN_LENGTH } from "./password-policy";
+
 /**
  * `promisify` picks the three-argument overload, which loses the cost
  * parameters. Narrowed here rather than at each call site.
@@ -39,14 +41,6 @@ export const SCRYPT_R = 8;
 export const SCRYPT_P = 1;
 export const SCRYPT_KEYLEN = 32;
 const SALT_BYTES = 16;
-
-/**
- * The floor for either password's *new* value, enforced server-side by both
- * `POST /api/admin/password/group` and `POST /api/admin/password/admin` (PRD
- * criteria 88, 92) — never only in the panel's `Field`, which a direct POST
- * bypasses entirely.
- */
-export const NEW_PASSWORD_MIN_LENGTH = 12;
 
 /**
  * The stored format: `scrypt:N:r:p:salt:hash`, salt and hash in unpadded

@@ -41,9 +41,14 @@ import {
   NOT_CONFIGURED_MESSAGE,
   RATE_LIMITED_MESSAGE,
 } from "@/lib/auth/login";
-import { NEW_PASSWORD_MIN_LENGTH, hashPassword, verifyPassword } from "@/lib/auth/password";
+import {
+  NEW_PASSWORD_MIN_LENGTH,
+  hashPassword,
+  parseHash,
+  verifyPassword,
+} from "@/lib/auth/password";
 import { reserveAttempt } from "@/lib/auth/rate-limit";
-import { hasSession } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/require-admin-session";
 import {
   bumpSessionEpoch,
   MissingParameterError,
@@ -63,17 +68,6 @@ const changeAdminPasswordSchema = z.object({
   newPassword: z.string().min(NEW_PASSWORD_MIN_LENGTH).max(512),
   confirmPassword: z.string().min(NEW_PASSWORD_MIN_LENGTH).max(512),
 });
-
-/** Both checks, in order — mirrors `app/admin/page.tsx` and `/api/admin/key`. */
-async function requireAdminSession() {
-  if (!(await hasSession("group"))) {
-    return apiError("unauthorised", "You need the password for this.");
-  }
-  if (!(await hasSession("admin"))) {
-    return apiError("unauthorised", "You need the admin password for this.");
-  }
-  return null;
-}
 
 export async function POST(request: Request) {
   const crossSite = rejectCrossSitePost(request, "admin.password.admin");
@@ -129,6 +123,16 @@ export async function POST(request: Request) {
       throw error;
     }
 
+    if (parseHash(stored) === null) {
+      // ⚠️ Same diagnostic `attemptLogin` logs (`lib/auth/login.ts`) — the one
+      // place a corrupted or mistyped `admin-password-hash` parameter shows
+      // up at all. Without it, this looks identical to a forgotten password
+      // from the outside. The value itself is never logged.
+      log.error("admin.password.admin.malformed_password_hash", {
+        hint: "Regenerate it with node scripts/hash-password.js and store it again.",
+      });
+    }
+
     const ok = await verifyPassword(parsed.data.currentPassword, stored);
     if (!ok) {
       keepCount = true;
@@ -138,14 +142,15 @@ export async function POST(request: Request) {
       return apiError("invalid_credentials", INVALID_MESSAGE);
     }
 
-    const hash = await hashPassword(parsed.data.newPassword);
-    // ⚠️ Epoch bumped *before* the hash is written — the safe order. If the
-    // bump succeeds but the write then fails, every admin session is
-    // revoked and the *old* password still works: loud (everyone is logged
-    // out immediately) and recoverable (just retry the change). The other
-    // order risks the opposite: hash written, bump fails, and the password
-    // has changed while every existing session silently survives it.
-    await bumpSessionEpoch("admin");
+    // ⚠️ The hash (CPU-bound scrypt) and the epoch bump (an SSM round trip)
+    // depend on neither's result, so they run concurrently. Only the order of
+    // the two *writes* below is load-bearing — see the header comment — and
+    // that order is untouched: the bump is still awaited, and still lands,
+    // before `putParameter` writes the new hash.
+    const [hash] = await Promise.all([
+      hashPassword(parsed.data.newPassword),
+      bumpSessionEpoch("admin"),
+    ]);
     await putParameter(PARAM.adminPasswordHash, hash);
 
     // ⚠️ Never log either password — only that a rotation happened.

@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 
 import { Banner, type BannerTone } from "@/components/Banner";
 import { buttonClasses, ButtonLink } from "@/components/Button";
+import { errorCodeOf } from "@/lib/ui/api-error";
 
 interface PasswordGateProps {
   title: string;
@@ -95,14 +96,6 @@ const OFFLINE: GateError = {
   invalid: false,
 };
 
-function codeOf(body: unknown): string | null {
-  if (typeof body !== "object" || body === null || !("error" in body)) {
-    return null;
-  }
-  const code = (body as { error: { code?: unknown } }).error?.code;
-  return typeof code === "string" ? code : null;
-}
-
 export function PasswordGate({
   title,
   hint,
@@ -149,7 +142,7 @@ export function PasswordGate({
       }
 
       const body: unknown = await response.json().catch(() => null);
-      const code = codeOf(body);
+      const code = errorCodeOf(body);
 
       if (code === "bad_request") {
         setEmpty(true);

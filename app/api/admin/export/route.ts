@@ -15,9 +15,9 @@
 
 import "server-only";
 
-import { hasSession } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/require-admin-session";
 import { buildCsv } from "@/lib/export/csv";
-import { apiError, serverError } from "@/lib/http/errors";
+import { serverError } from "@/lib/http/errors";
 import {
   EXPORT_COLUMNS,
   exportRowToCsvValues,
@@ -27,17 +27,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** Both checks, in order — mirrors `app/api/admin/key/route.ts`. */
-async function requireAdminSession() {
-  if (!(await hasSession("group"))) {
-    return apiError("unauthorised", "You need the password for this.");
-  }
-  if (!(await hasSession("admin"))) {
-    return apiError("unauthorised", "You need the admin password for this.");
-  }
-  return null;
-}
 
 /** UTC, so the filename never depends on the server's local timezone. */
 function todayUtcDate(): string {
