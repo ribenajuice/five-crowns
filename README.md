@@ -5,10 +5,9 @@ the finished paper scoresheet, and the app turns it into a searchable history of
 
 **Where it's at:** **Milestone 1 is complete and live** at https://fivecrowns.ribenajuice.xyz — every
 acceptance criterion re-verified, including a real, paid reading key proven on real scoresheets in
-production. **Milestone 2, Stage 2 is built and tested, on a branch, not yet merged or deployed** —
-you'll be able to edit or delete a saved game, and a broken or made-up link will show this app's
-own "not found" or error screen instead of a generic one. Next up after this stage is player and
-roster pages. See `docs/STATUS.md`.
+production. **Milestone 2, Stage 2 is merged and live** — you can edit or delete a saved game, and
+a broken or made-up link shows this app's own "not found" or error screen instead of a generic one.
+Next up after this stage is player and roster pages. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app

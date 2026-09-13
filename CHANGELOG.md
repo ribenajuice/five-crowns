@@ -6,8 +6,9 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
-The second stage of Milestone 2: correcting the record. Built and tested, but not merged or
-deployed yet.
+## [Stage 6] - 2026-09-14
+
+The second stage of Milestone 2: correcting the record. Live in production.
 
 ### Added
 
