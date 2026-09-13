@@ -3,27 +3,34 @@
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
 - **Last updated**: 2026-09-13
-- **Phase**: Milestone 1, **Stage 3 is live** at **https://fivecrowns.ribenajuice.xyz**. **Stage 4 (the rest of the
-  override ladder — structural repairs and targeted per-column re-photograph) has passed QA and code review** and
-  is open as [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), awaiting founder review and CI on the
-  PR before it can be merged and shipped.
-- **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live today (200, valid cert). Valid Amazon
-  certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation CNAME.
-  The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
-  (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
-  delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
-  answers again.
-- **Currently in flight**: [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (`feat/m1-stage4`). QA drove
-  the real HTTP API end-to-end against both fixture sheets and passed all in-scope acceptance criteria (29–45, 71).
-  A `/code-review high` pass then found and fixed five real bugs before the PR opened: a close-up photo could be
-  silently lost if its column was removed by a structural repair before save (now kept with the game, unattributed
-  rather than dropped); a column re-read finishing after a 30–60s vision call could overwrite an edit made while it
-  was in flight (now uses optimistic concurrency on the draft's `updated_at`, retrying rather than clobbering); the
-  close-up upload "try again" button could get permanently stuck after a failed presign; inserting/deleting a row
-  could leave the model's uncertainty flag on the wrong row; and reading-history timestamps didn't match the app's
-  `en-AU` format used elsewhere. 834 tests passing, lint and typecheck clean. Awaiting founder PR review.
-  [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) and
-  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (Stage 2/3) remain merged and deployed.
+- **Phase**: Milestone 1, **Stage 4 is live** at **https://fivecrowns.ribenajuice.xyz** — the rest of the
+  manual-override ladder: structural column repairs (add/remove/reassign/reorder a column, insert/delete a value)
+  and targeted per-column re-photograph. Shipped via
+  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (merged by the founder 2026-09-13T13:12Z; CI and
+  Deploy both green on `main`, deploy completed in 2m28s). Next is Stage 5 — go live and prove it (the last stage
+  of Milestone 1).
+- **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
+  unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
+  Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
+  CNAME. The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is
+  attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
+  breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
+  CloudFront URL answers again.
+- **Currently in flight**: nothing. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11),
+  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) and
+  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (Stage 2/3/4) are all merged and deployed.
+- **Stage 4 shipped 2026-09-13** ([PR #15](https://github.com/ribenajuice/five-crowns/pull/15)). QA drove the real
+  HTTP API end-to-end against both fixture sheets on a disposable scratch environment and passed all in-scope
+  acceptance criteria (29–45, 71). A `/code-review high` pass then found and fixed five real bugs before the PR
+  opened: a close-up photo could be silently lost if its column was removed by a structural repair before save
+  (now kept with the game, unattributed rather than dropped); a column re-read finishing after a 30–60s vision call
+  could overwrite an edit made while it was in flight (now uses optimistic concurrency on the draft's `updated_at`,
+  retrying rather than clobbering); the close-up upload "try again" button could get permanently stuck after a
+  failed presign; inserting/deleting a row could leave the model's uncertainty flag on the wrong row; and
+  reading-history timestamps didn't match the app's `en-AU` format used elsewhere. 834 tests passing, lint and
+  typecheck clean. ⚠️ **Not yet verified live**: the actual review-screen features (structural repairs, targeted
+  re-photograph) require the group password, which only the founder holds — same limitation as Stage 2/3's on-phone
+  acceptance step, still open below.
 - **Stage 3 shipped 2026-09-12** ([PR #12](https://github.com/ribenajuice/five-crowns/pull/12)). QA, a
   security-reviewer pass, and two independent `/code-review` runs together found and fixed real bugs before and
   after the PR opened, most notably: the admin session cookie was scoped to `Path=/admin`, making `/api/admin/*`
@@ -60,8 +67,10 @@
   (`https://fivecrowns.ribenajuice.xyz/admin`) and try "Read the sheet" on a real photo — the one thing nobody but
   the founder can verify. Also still open: the Stage 2 on-phone acceptance check (capture → review → save,
   criterion 11's live side-by-side of a manual vs. imported game would come for free once a real key exists).
-- **Next up**: founder reviews and approves [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), then
-  `/ship` it. After that, Stage 5 (go live and prove it) is the last Milestone 1 stage.
+- **Next up**: Stage 5 — go live and prove it: the wording audit across every screen, an accessibility and
+  375px/1280px pass, and the founder's own acceptance run (including finally pasting the real Anthropic API key
+  into production and trying "Read the sheet" on a real photo — still the one blocking item below). Run
+  `/feature Milestone 1 Stage 5`.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
