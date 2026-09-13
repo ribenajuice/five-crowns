@@ -69,6 +69,25 @@ npm run lint && npm run typecheck     # code style and type errors
 
 CI runs all three on every pull request.
 
+## Deleting a game
+
+A game's page has a **Delete game** button. It leads to a confirmation naming the game's date and
+roster before anything happens — deleting is permanent, there's no undo, and it takes the game's
+photos out of the record with it.
+
+**The photo files themselves are not destroyed.** The app is deliberately never given permission to
+delete from S3, so a deleted game's photo objects stay in the bucket — just no longer linked to
+anything in the record, and the app won't hand out a link to them again. If you ever want to remove
+one by hand, that's a founder action, not something the app does for you:
+
+```bash
+aws s3 rm s3://five-crowns-photos/photos/<photoId>/original.jpg
+aws s3 rm s3://five-crowns-photos/photos/<photoId>/model.jpg
+```
+
+You can find a deleted game's photo id in a database backup (`npm run db:backup`) taken before the
+deletion, or in the S3 console under `photos/`.
+
 ## Taking a backup
 
 There's no automatic backup. Run this whenever you want a copy of the scores:

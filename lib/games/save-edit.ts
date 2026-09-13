@@ -7,13 +7,19 @@
  * (`lib/games/save.ts`) whenever the draft being saved carries a non-null
  * `editingGameId` — the same route, `POST /api/games`, the same body.
  *
- * Order of operations, mirroring `saveGame` step for step so the two can be
- * read side by side:
- *   0. Persist `state` to the draft first.
+ * Order of operations. Mostly mirrors `saveGame` step for step so the two can
+ * be read side by side, but ⚠️ **steps 0 and 1 are swapped relative to
+ * `saveGame`, deliberately**: `saveGame` resolves its sheet photo by
+ * `draft_id`, so a bogus `state.photoId` there is inert and persisting first
+ * is harmless; this path checks `state.photoId` itself, so it must be
+ * validated *before* anything is written — see step 1's comment at its call
+ * site for why persisting a mismatched `photoId` first would be a permanent,
+ * self-inflicted dead end for this draft.
  *   1. Find the sheet photo **by `game_id = editingGameId` and `kind='sheet'`**
  *      — not by `draft_id`, which this draft never owns — check both S3
  *      objects, and refuse if `state.photoId` names anything else (criterion
  *      120: the sheet photo can never be replaced).
+ *   0. Persist `state` to the draft, now that its `photoId` is confirmed.
  *   2. Re-validate and re-derive server-side, exactly like a new save.
  *   3. One transaction: resolve-or-create the location and players, upsert the
  *      roster on the new exact set, update the game's three mutable columns
@@ -88,12 +94,6 @@ export async function saveEditedGame(
     throw new Error("saveEditedGame called on a draft with no editingGameId.");
   }
 
-  // Step 0 — persist the state, whatever happens next.
-  await db
-    .update(draftTable)
-    .set({ stateJson: JSON.stringify(state), updatedAt: nowIso() })
-    .where(eq(draftTable.id, draftId));
-
   // ⚠️ A fast, friendly check for the common case: the game was deleted
   // outright some time ago, so it (and its photo row — a delete removes both,
   // criterion 126) is simply gone. This is *not* the race guard — that is the
@@ -106,8 +106,18 @@ export async function saveEditedGame(
   )[0];
   if (!stillExists) throw new GameDeletedError(gameId);
 
-  // Step 1 — the sheet photo, before the transaction. ⚠️ By `game_id`, not
-  // `draft_id`: an edit draft never owns the sheet photo row (criterion 120).
+  // Step 1 — the sheet photo, before the transaction **and before anything is
+  // persisted**. ⚠️ Security review: this used to run after "step 0" wrote
+  // the incoming `state` to `draft.state_json` unconditionally — a single
+  // crafted request with a wrong `photoId` would persist that mismatch, and
+  // since `PUT /api/drafts/{id}`'s immutability guard compares any future
+  // update against whatever's already stored, the draft could never be fixed
+  // again (every retry hits the same `MissingPhotoError`, and "resume the
+  // open edit" would just keep finding the same broken draft). Checking
+  // `state.photoId` — the incoming value, never anything already written —
+  // before the first write closes that off: a refused save now leaves
+  // `draft.state_json` exactly as it was. By `game_id`, not `draft_id`: an
+  // edit draft never owns the sheet photo row (criterion 120).
   const sheetPhoto = (
     await db
       .select()
@@ -132,6 +142,15 @@ export async function saveEditedGame(
   if (!hasOriginal || !hasModel) {
     throw new MissingPhotoError("The sheet photo is missing an object in storage.");
   }
+
+  // Step 0 — now that the incoming state's photoId is confirmed to match the
+  // game's real sheet photo, persist it. Still "whatever happens next" from
+  // here on: a grid that fails re-validation below still keeps the typed
+  // correction rather than losing it.
+  await db
+    .update(draftTable)
+    .set({ stateJson: JSON.stringify(state), updatedAt: nowIso() })
+    .where(eq(draftTable.id, draftId));
 
   // Step 2 — re-validate and re-derive server-side. Never trust the client.
   const gridColumns = toGridColumns(state);

@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { Banner } from "@/components/Banner";
 import { ButtonLink, destructiveButtonClasses } from "@/components/Button";
 import { TrashIcon } from "@/components/icons";
+import { requestGameDelete } from "@/lib/ui/game-actions";
 import {
   DELETE_CONFIRM_BODY,
   DELETE_CONFIRM_CANCEL_BUTTON,
@@ -39,7 +40,7 @@ export function DeleteGameCard({ gameId, playedOn, rosterName }: DeleteGameCardP
     setDeleting(true);
     setError(false);
     try {
-      const response = await fetch(`/api/games/${gameId}`, { method: "DELETE" });
+      const response = await requestGameDelete(gameId);
       // A 404 here means the game is already gone by the time the tap
       // landed — the desired end state (no such game) already holds, so
       // this is treated the same as success rather than shown as a failure

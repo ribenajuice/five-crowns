@@ -412,3 +412,119 @@ test("audit: full loop, then every M1 screen", async ({ page, baseURL, request }
   await loginAsAdmin(page);
   await auditScreen(page, "/admin (unlocked panel)");
 });
+
+/**
+ * Milestone 2 Stage 2 — edit and delete a game, plus the 404 screen (PRD
+ * criteria 115–131). Same harness, same scope (overflow, touch targets, focus
+ * visibility) extended to the new screens: the game view's "Edit this game"
+ * and "Delete game" buttons, the dedicated delete confirmation screen, and
+ * the app's own 404. The error screen (`app/error.tsx`) is deliberately not
+ * audited here — forcing an unhandled error is done by QA with a temporary,
+ * reverted code change (docs note this explicitly), not as a standing test.
+ */
+test("audit: game view actions, delete confirmation, 404", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+
+  // Build one throwaway saved game via the API, the same way the M1 test
+  // above builds its throwaway draft — real fixture bytes, both photo
+  // variants, a valid monotonic grid, then an actual save so a real game view
+  // and a real delete confirmation (which needs the game's date and roster)
+  // both have something to render.
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+  });
+  if (!uploadRes.ok()) {
+    throw new Error(`POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()}`);
+  }
+  const { photoId, original, model } = await uploadRes.json();
+
+  const fixtureBytes = await readFile(path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"));
+  for (const variant of [original, model]) {
+    const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+    await request.post(uploadUrl, {
+      multipart: {
+        ...variant.fields,
+        file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: fixtureBytes },
+      },
+    });
+  }
+
+  const draftState = {
+    version: 1,
+    photoId,
+    playedOn: "2026-01-02",
+    locationId: null,
+    newLocationName: "Audit House",
+    columns: ["s1", "s2"].map((id, order) => ({
+      id,
+      order,
+      playerId: null,
+      newPlayerName: `Stage2 Audit ${id}`,
+      sheetName: null,
+      activeReadingId: null,
+      readings: [],
+      manualEdits: Object.fromEntries(
+        [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33].map((v, i) => [String(i), v]),
+      ),
+      crop: null,
+    })),
+  };
+  const draftRes = await request.post(`${baseURL}/api/drafts`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { photoId, state: draftState },
+  });
+  if (!draftRes.ok()) {
+    throw new Error(`POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`);
+  }
+  const { draftId } = await draftRes.json();
+
+  const saveRes = await request.post(`${baseURL}/api/games`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { draftId, state: draftState },
+  });
+  if (!saveRes.ok()) {
+    throw new Error(`POST /api/games failed: ${saveRes.status()} ${await saveRes.text()}`);
+  }
+  const { gameId } = await saveRes.json();
+
+  // ---- The game view's new "Manage this game" section ----
+  await page.goto(`/games/${gameId}`);
+  await auditScreen(page, "/games/{id} (with Edit/Delete actions)");
+  await expect(page.getByRole("button", { name: "Edit this game" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Delete game/ })).toBeVisible();
+
+  // ---- The delete confirmation screen ----
+  await page.getByRole("link", { name: /Delete game/ }).click();
+  await page.waitForURL(`**/games/${gameId}/delete`);
+  await auditScreen(page, "/games/{id}/delete (confirmation)");
+  await expect(page.getByRole("heading", { name: /Delete the .* game with/ })).toBeVisible();
+  await expect(
+    page.getByText(
+      "This can't be undone. The game and its scores are gone for good, and its photos come out of the record with it.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete permanently" })).toBeVisible();
+  // Cancel first, since Cancel is the safe option placed first (design system).
+  await expect(page.getByRole("link", { name: "Cancel" })).toBeVisible();
+
+  // Commit the delete for real, then audit the resulting 404.
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await page.waitForURL("**/games");
+
+  // ---- The 404 screen, reached via the just-deleted game's own URL ----
+  await page.goto(`/games/${gameId}`);
+  await auditScreen(page, "/games/{id} (404, deleted game)");
+  await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
+  await expect(page.getByText("Nothing here.")).toBeVisible();
+  await expect(
+    page.getByText("The link's wrong, or it's been deleted — either way, it's not in the record."),
+  ).toBeVisible();
+  // Two ways back by design (the AppBar's small back arrow, aria-labelled
+  // "Back to games", and the full-width primary button with the same text) —
+  // `.first()` here just confirms at least one is visible, not which.
+  await expect(page.getByRole("link", { name: "Back to games" }).first()).toBeVisible();
+});

@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { Banner } from "@/components/Banner";
 import { buttonClasses, destructiveButtonClasses } from "@/components/Button";
 import { TrashIcon } from "@/components/icons";
+import { requestGameEdit } from "@/lib/ui/game-actions";
 import {
   DELETE_GAME_BUTTON_LABEL,
   EDIT_GAME_BUTTON_LABEL,
@@ -37,7 +38,7 @@ export function GameActions({ gameId }: { gameId: string }) {
     setStarting(true);
     setError(false);
     try {
-      const response = await fetch(`/api/games/${gameId}/edit`, { method: "POST" });
+      const response = await requestGameEdit(gameId);
       if (!response.ok) throw new Error("edit_start_failed");
       const body = (await response.json()) as { draftId: string };
       router.push(`/review/${body.draftId}`);

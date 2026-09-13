@@ -236,6 +236,50 @@ describe("criterion 120 — the sheet photo can never be replaced, even bypassin
     const { MissingPhotoError } = await import("@/lib/games/save");
     await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(MissingPhotoError);
   });
+
+  // ⚠️ Regression test: `saveEditedGame` used to persist `state` to
+  // `draft.state_json` *before* checking `photoId`, so a single refused save
+  // like the one above still corrupted the draft's stored photoId — every
+  // later save (even with the correct `photoId` restored) hit the same
+  // `MissingPhotoError` forever, because step 0 ran unconditionally and step
+  // 1's check compared the (now corrupted) submission to itself. This checks
+  // the draft actually stays recoverable: the bad attempt changes nothing on
+  // disk, and a follow-up save with the real photoId still succeeds.
+  it("a refused save with the wrong photoId leaves the draft's stored state untouched and still recoverable", async () => {
+    const gameId = await saveOriginalGame();
+    const { draftId, state } = await startEdit(gameId);
+    const realPhotoId = state.photoId;
+
+    const { getDb } = await import("@/lib/db");
+    const { draft: draftTable } = await import("@/lib/db/schema");
+    const beforeRow = (
+      await getDb().select().from(draftTable).where(eq(draftTable.id, draftId))
+    )[0]!;
+
+    const badState = { ...state, photoId: "a-completely-different-photo-id", playedOn: "1999-09-09" };
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { MissingPhotoError } = await import("@/lib/games/save");
+    await expect(saveGame(draftId, badState)).rejects.toBeInstanceOf(MissingPhotoError);
+
+    const afterRow = (
+      await getDb().select().from(draftTable).where(eq(draftTable.id, draftId))
+    )[0]!;
+    expect(afterRow.stateJson).toBe(beforeRow.stateJson);
+    expect(JSON.parse(afterRow.stateJson).photoId).toBe(realPhotoId);
+    expect(afterRow.savedGameId).toBeNull();
+
+    // The draft is still perfectly usable: a legitimate save with the real
+    // photoId (and an unrelated correction) still goes through.
+    state.playedOn = "2021-05-05";
+    const result = await saveGame(draftId, state);
+    expect(result.gameId).toBe(gameId);
+    expect(result.alreadySaved).toBe(false);
+
+    const { game } = await import("@/lib/db/schema");
+    const savedGame = (await getDb().select().from(game).where(eq(game.id, gameId)))[0]!;
+    expect(savedGame.playedOn).toBe("2021-05-05");
+  });
 });
 
 describe("⚠️ the ADR's documented limitation — a close-up whose player left the game", () => {
