@@ -26,6 +26,14 @@ interface PasswordGateProps {
   label: string;
   /** An optional ghost button under the submit button. */
   back?: { href: string; label: string };
+  /**
+   * A second, additional ghost link beneath `back` — currently only the admin
+   * prompt's "Forgotten the admin password?" (docs/DESIGN-SYSTEM.md § Screen
+   * rules, "Password gates"; PRD criterion 97). Deliberately its own prop
+   * rather than an array: the group `/login` gate never gets one, so a single
+   * optional slot says that at the call site instead of an empty array.
+   */
+  secondaryLink?: { href: string; label: string };
 }
 
 interface GateError {
@@ -102,6 +110,7 @@ export function PasswordGate({
   next,
   label,
   back,
+  secondaryLink,
 }: PasswordGateProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -241,6 +250,17 @@ export function PasswordGate({
             <ButtonLink href={back.href} variant="ghost" fullWidth>
               {back.label}
             </ButtonLink>
+          </div>
+        ) : null}
+
+        {secondaryLink ? (
+          <div className="mt-3">
+            <a
+              href={secondaryLink.href}
+              className={buttonClasses("ghost", { fullWidth: true })}
+            >
+              {secondaryLink.label}
+            </a>
           </div>
         ) : null}
       </form>

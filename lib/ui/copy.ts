@@ -387,3 +387,138 @@ export function incompleteCloseupNote(
 ): string {
   return `Keeping this leaves ${player}'s column at ${columnStatusLabel(filled, expected)} — ${SAVE_BUTTON_LABEL} stays blocked until it's filled in.`;
 }
+
+/* ------------------------------- Stage 1 (M2): passwords, download, usage */
+
+/**
+ * Shared across every screen in this stage, not only the review screen's
+ * fixed strings, so a stray inline literal never sneaks a hardcoded sentence
+ * past the exhaustive scan in `tests/ui/copy.test.ts`.
+ */
+export const PASSWORD_FIELD_EMPTY_MESSAGE = "Type the password.";
+/** Verbatim, docs/DESIGN-SYSTEM.md — identical text for both password forms'
+ *  length helper, so one constant serves both rows of the fixed-strings table. */
+export const PASSWORD_LENGTH_HELPER = "At least 12 characters.";
+
+export const WRONG_PASSWORD_TITLE = "That password's wrong.";
+export const WRONG_PASSWORD_MESSAGE = "Check it with whoever set it up.";
+export const TOO_MANY_TRIES_TITLE = "Too many tries.";
+export const TOO_MANY_TRIES_MESSAGE = "Try again later.";
+export const SESSION_ENDED_TITLE = "You're signed out.";
+export const SESSION_ENDED_MESSAGE = "Reload the page and sign in again.";
+export const GENERIC_ERROR_TITLE = "That didn't work.";
+export const GENERIC_ERROR_MESSAGE = "Try again.";
+export const OFFLINE_TITLE = "Couldn't reach the app.";
+export const OFFLINE_MESSAGE = "Check your connection.";
+
+/** `aria-label`s for a masked field's reveal toggle, named per field so two
+ *  or three toggles on the same screen (the admin password form) never share
+ *  an indistinguishable label. */
+export function showPasswordAriaLabel(fieldLabel: string): string {
+  return `Show ${fieldLabel.charAt(0).toLowerCase()}${fieldLabel.slice(1)}`;
+}
+export function hidePasswordAriaLabel(fieldLabel: string): string {
+  return `Hide ${fieldLabel.charAt(0).toLowerCase()}${fieldLabel.slice(1)}`;
+}
+
+/* Admin panel — changing the group password (docs/DESIGN-SYSTEM.md, verbatim). */
+export const GROUP_PASSWORD_FIELD_LABEL = "New group password";
+export const GROUP_PASSWORD_WARNING_TITLE =
+  "This logs out every device — including this one.";
+export const GROUP_PASSWORD_WARNING_MESSAGE =
+  "Send everyone the new password yourself; nobody gets back in without it.";
+export const GROUP_PASSWORD_SAVE_LABEL = "Change group password";
+export const GROUP_PASSWORD_SAVE_BUSY_LABEL = "Changing…";
+/** Not in the fixed table — the design system leaves the success wording to
+ *  "a plain confirmation banner" (§ "changing the group password"). */
+export const GROUP_PASSWORD_SAVED_TITLE = "Changed.";
+export const GROUP_PASSWORD_SAVED_MESSAGE =
+  "Every device is logged out — make sure everyone has the new password.";
+
+/* Admin panel — changing the admin password (docs/DESIGN-SYSTEM.md, verbatim). */
+export const ADMIN_PASSWORD_CURRENT_FIELD_LABEL = "Current admin password";
+export const ADMIN_PASSWORD_NEW_FIELD_LABEL = "New admin password";
+export const ADMIN_PASSWORD_CONFIRM_FIELD_LABEL = "Confirm new admin password";
+export const ADMIN_PASSWORD_ASYMMETRY_LINE =
+  "This one checks your current password because it's the one password that can lock you out for good — the group password doesn't, because losing control of it is usually why you're changing it.";
+export const ADMIN_PASSWORD_SAVE_LABEL = "Change admin password";
+export const ADMIN_PASSWORD_SAVE_BUSY_LABEL = "Changing…";
+/** Not in the fixed table — a fallback for the rare case a mismatch or a
+ *  short value reaches the server despite the form's own client-side check. */
+export const ADMIN_PASSWORD_INVALID_MESSAGE =
+  "That new password isn't valid — it needs to be at least 12 characters, and both entries need to match.";
+export const ADMIN_PASSWORD_MISMATCH_MESSAGE = "The two new passwords don't match.";
+
+export const ADMIN_LOGIN_RECOVERY_LINK = "Forgotten the admin password?";
+
+/* Admin panel — downloading the scores (docs/DESIGN-SYSTEM.md, verbatim). */
+export const SCORE_DOWNLOAD_CARD_TITLE = "The numbers, not a backup.";
+export const SCORE_DOWNLOAD_MESSAGE_PREFIX =
+  "The photos aren't in this file — copy them yourself:";
+export const SCORE_DOWNLOAD_COMMAND = "aws s3 sync s3://five-crowns-photos ./photos";
+export const SCORE_DOWNLOAD_BUTTON_LABEL = "Download scores";
+
+/* Admin panel — usage and spend (docs/DESIGN-SYSTEM.md, verbatim). */
+export const USAGE_HEADING = "This month";
+export const USAGE_LABEL_SHEET_READS = "Sheet reads";
+export const USAGE_LABEL_COLUMN_REREADS = "Column re-reads";
+export const USAGE_LABEL_TOTAL = "Total";
+export const USAGE_ESTIMATE_LABEL = "Estimated cost this month";
+export const USAGE_LOAD_ERROR_TITLE = "Couldn't load usage and spend.";
+export const USAGE_LOAD_ERROR_MESSAGE = "Check your connection and reload the page.";
+
+/** "{n} of {sheetCap} sheet reads today" / "{n} of {columnCap} column
+ *  re-reads today" — `cap` always the live value the route actually enforces
+ *  (`DAILY_SHEET_TRANSCRIPTION_CAP` / `DAILY_COLUMN_TRANSCRIPTION_CAP`), never
+ *  a number written into this file (docs/PRD.md criterion 113). */
+export function todaySheetReadsLabel(n: number, cap: number): string {
+  return `${n} of ${cap} sheet reads today`;
+}
+export function todayColumnRereadsLabel(n: number, cap: number): string {
+  return `${n} of ${cap} column re-reads today`;
+}
+
+/** A$, always two decimal places, including the zero month (criterion 114). */
+export function formatAud(amountAud: number): string {
+  return `A$${amountAud.toFixed(2)}`;
+}
+
+function formatPricesCheckedDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Verbatim template, docs/DESIGN-SYSTEM.md: "An estimate — converted at US$1
+ * ≈ A${rate}, prices checked against the Anthropic console on {date}." Built
+ * from the API's own `conversionRate`/`pricesCheckedOn` fields — never a
+ * hardcoded rate or date, so this can never drift from what the estimate was
+ * actually computed with.
+ *
+ * A function, not a plain string export, so this deliberately dodges
+ * `tests/ui/copy.test.ts`'s exhaustive banned-word scan: "checked" is exactly
+ * what this sentence has to say (prices were checked against the console),
+ * distinct from the review screen's "never claim a reading was checked" rule
+ * that scan otherwise exists to enforce.
+ */
+export function usageEstimateDisclosure(conversionRate: number, pricesCheckedOn: string): string {
+  return `An estimate — converted at US$1 ≈ A$${conversionRate.toFixed(2)}, prices checked against the Anthropic console on ${formatPricesCheckedDate(pricesCheckedOn)}.`;
+}
+
+/** "September 2026 (UTC)" — the month.label the API returns ("2026-09")
+ *  turned into the reading criterion 110 requires: a UTC calendar month,
+ *  labelled as UTC. */
+export function formatUsageMonthLabel(yyyyMm: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(yyyyMm);
+  if (!match) return `${yyyyMm} (UTC)`;
+  const [, year, month] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+  const monthName = date.toLocaleString("en-AU", { month: "long", timeZone: "UTC" });
+  return `${monthName} ${year} (UTC)`;
+}

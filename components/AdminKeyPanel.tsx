@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { Banner } from "./Banner";
 import { buttonClasses } from "./Button";
 import { Field } from "./Field";
+import { EyeIcon } from "./icons";
 import { Pill, type PillTone } from "./Pill";
 import {
   ADMIN_HIDE_KEY_LABEL,
@@ -54,27 +55,6 @@ type LoadState = "loading" | "loaded" | "load-error";
 type SaveState = "idle" | "saving" | "success" | "error";
 
 const EMPTY_KEY_MESSAGE = "Paste the key first.";
-
-function EyeIcon({ crossed }: { crossed: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-      {crossed ? <path d="M4 4l16 16" /> : null}
-    </svg>
-  );
-}
 
 function formatSetAt(iso: string): string {
   const date = new Date(iso);

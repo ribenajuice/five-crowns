@@ -43,6 +43,13 @@ import {
   typedCellDisagreementSentence,
   winnerConfirmation,
   wrongColumnWarningTitle,
+  formatAud,
+  formatUsageMonthLabel,
+  hidePasswordAriaLabel,
+  showPasswordAriaLabel,
+  todayColumnRereadsLabel,
+  todaySheetReadsLabel,
+  usageEstimateDisclosure,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -351,6 +358,42 @@ describe("compareDifferingLinesSummary(General) (PRD criteria 39-41)", () => {
     const summary = compareDifferingLinesSummaryGeneral(["8s"]);
     expect(summary).toBe("1 line differs between the two readings: 8s.");
     expect(summary.toLowerCase()).not.toContain("saved");
+  });
+});
+
+describe("Stage 1 (M2): usage and spend copy (PRD criteria 110-114)", () => {
+  it("formatAud always renders two decimal places, including the zero month (criterion 114)", () => {
+    expect(formatAud(0)).toBe("A$0.00");
+    expect(formatAud(12.3)).toBe("A$12.30");
+    expect(formatAud(4.567)).toBe("A$4.57");
+  });
+
+  it("today's cap lines interpolate whatever cap the API actually sent, never a literal (criterion 113)", () => {
+    expect(todaySheetReadsLabel(3, 20)).toBe("3 of 20 sheet reads today");
+    expect(todayColumnRereadsLabel(0, 60)).toBe("0 of 60 column re-reads today");
+    // A different cap must render differently — this would fail if either
+    // number were ever hardcoded instead of interpolated.
+    expect(todaySheetReadsLabel(3, 40)).toBe("3 of 40 sheet reads today");
+  });
+
+  it("usageEstimateDisclosure is built from the rate and date it's given, not a fixed constant", () => {
+    expect(usageEstimateDisclosure(1.55, "2026-01-15")).toBe(
+      "An estimate — converted at US$1 ≈ A$1.55, prices checked against the Anthropic console on 15 Jan 2026.",
+    );
+    expect(usageEstimateDisclosure(1.6, "2026-03-01")).toContain("A$1.60");
+    expect(usageEstimateDisclosure(1.6, "2026-03-01")).toContain("1 Mar 2026");
+  });
+
+  it("formatUsageMonthLabel names the UTC month and year, and says so (criterion 110)", () => {
+    expect(formatUsageMonthLabel("2026-09")).toBe("September 2026 (UTC)");
+    expect(formatUsageMonthLabel("2026-01")).toBe("January 2026 (UTC)");
+  });
+});
+
+describe("password-form reveal-toggle aria labels (Stage 1, M2)", () => {
+  it("names the field the toggle belongs to, lower-casing its first letter", () => {
+    expect(showPasswordAriaLabel("New group password")).toBe("Show new group password");
+    expect(hidePasswordAriaLabel("Current admin password")).toBe("Hide current admin password");
   });
 });
 
