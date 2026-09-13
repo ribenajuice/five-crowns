@@ -18,6 +18,32 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+/**
+ * Lets a test simulate the *second* write in the epoch-then-hash sequence
+ * failing (a transient SSM error, throttling) without touching the first.
+ * `bumpSessionEpoch`'s own internal call to `putParameter` is untouched —
+ * ESM module scoping means it always resolves to the real implementation
+ * defined alongside it, never this mocked export — so only the route's own
+ * explicit `putParameter(...hash...)` call is affected.
+ */
+let failParameterWrite: string | null = null;
+vi.mock("@/lib/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/config")>();
+  return {
+    ...actual,
+    putParameter: async (
+      name: Parameters<typeof actual.putParameter>[0],
+      value: string,
+      options?: { secure?: boolean },
+    ) => {
+      if (failParameterWrite && name === failParameterWrite) {
+        throw new Error("simulated SSM failure");
+      }
+      return actual.putParameter(name, value, options);
+    },
+  };
+});
+
 const ORIGIN = "https://five-crowns.test";
 const ADMIN_PASSWORD = "the-current-admin-password";
 const GROUP_PASSWORD = "the-current-group-password";
@@ -56,6 +82,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   requestCookies.clear();
+  failParameterWrite = null;
   const { invalidateAllParameters, resetLocalParameterOverrides } = await import(
     "@/lib/config"
   );
@@ -130,6 +157,25 @@ describe("POST /api/admin/password/group", () => {
 
     expect(await verifyPassword(newPassword, await passwordHash("group"))).toBe(true);
     expect(await verifyPassword(GROUP_PASSWORD, await passwordHash("group"))).toBe(false);
+  });
+
+  it("⚠️ the epoch is bumped before the hash is written — if the hash write then fails, every session is already revoked and the old password still works", async () => {
+    const { PARAM } = await import("@/lib/config/parameters");
+    failParameterWrite = PARAM.groupPasswordHash;
+
+    const { POST } = await import("@/app/api/admin/password/group/route");
+    const newPassword = "a-brand-new-group-password";
+    const response = await POST(post("/api/admin/password/group", { password: newPassword }));
+
+    expect(response.status).toBe(500);
+
+    const { sessionEpoch, passwordHash } = await import("@/lib/config");
+    // The epoch bump — the first write in the new order — went through.
+    expect(await sessionEpoch("group")).toBe(1);
+    // But the hash write failed, so the *old* password still works, and the
+    // attempted new one does not — recoverable by simply retrying.
+    expect(await verifyPassword(GROUP_PASSWORD, await passwordHash("group"))).toBe(true);
+    expect(await verifyPassword(newPassword, await passwordHash("group"))).toBe(false);
   });
 });
 
@@ -231,6 +277,30 @@ describe("POST /api/admin/password/admin", () => {
 
     const { passwordHash } = await import("@/lib/config");
     expect(await verifyPassword(ADMIN_PASSWORD, await passwordHash("admin"))).toBe(true);
+  });
+
+  it("⚠️ the epoch is bumped before the hash is written — if the hash write then fails, every admin session is already revoked and the old password still works", async () => {
+    const { PARAM } = await import("@/lib/config/parameters");
+    failParameterWrite = PARAM.adminPasswordHash;
+
+    const { POST } = await import("@/app/api/admin/password/admin/route");
+    const newPassword = "a-brand-new-admin-password";
+    const response = await POST(
+      post(
+        "/api/admin/password/admin",
+        body({ newPassword, confirmPassword: newPassword }),
+      ),
+    );
+
+    expect(response.status).toBe(500);
+
+    const { sessionEpoch, passwordHash } = await import("@/lib/config");
+    // The epoch bump — the first write in the new order — went through.
+    expect(await sessionEpoch("admin")).toBe(1);
+    // But the hash write failed, so the *old* password still works, and the
+    // attempted new one does not — recoverable by simply retrying.
+    expect(await verifyPassword(ADMIN_PASSWORD, await passwordHash("admin"))).toBe(true);
+    expect(await verifyPassword(newPassword, await passwordHash("admin"))).toBe(false);
   });
 
   it("doesn't spend a rate-limit attempt on a malformed body — only wrong current-password guesses count", async () => {

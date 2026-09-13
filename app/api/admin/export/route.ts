@@ -18,7 +18,12 @@ import "server-only";
 import { hasSession } from "@/lib/auth/session";
 import { buildCsv } from "@/lib/export/csv";
 import { apiError, serverError } from "@/lib/http/errors";
-import { EXPORT_COLUMNS, exportRowToCsvValues, listExportRows } from "@/lib/games/export";
+import {
+  EXPORT_COLUMNS,
+  exportRowToCsvValues,
+  listExportRows,
+  UNSAFE_TEXT_COLUMN_INDICES,
+} from "@/lib/games/export";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +50,11 @@ export async function GET() {
 
   try {
     const rows = await listExportRows();
-    const csv = buildCsv(EXPORT_COLUMNS, rows.map(exportRowToCsvValues));
+    const csv = buildCsv(
+      EXPORT_COLUMNS,
+      rows.map(exportRowToCsvValues),
+      UNSAFE_TEXT_COLUMN_INDICES,
+    );
     const filename = `five-crowns-scores-${todayUtcDate()}.csv`;
 
     return new Response(csv, {

@@ -50,6 +50,22 @@ export const EXPORT_COLUMNS = [
   ...Array.from({ length: HANDS_PER_GAME }, (_, i) => `hand_${i + 1}`),
 ] as const;
 
+/**
+ * The only four columns that carry free text typed by a human — a location,
+ * a roster name, a player's display name, the handwritten sheet name — as
+ * opposed to an id, a date, a count or a derived score the app computes
+ * itself. Every other column is charset-restricted or numeric by construction
+ * and cannot open with a spreadsheet formula-injection character. Derived
+ * from {@link EXPORT_COLUMNS} rather than hardcoded so a future reordering of
+ * the columns can't silently stop defusing the right ones (`csv.ts`'s
+ * `csvSafeTextField`, called via `buildCsv`'s `unsafeTextIndices`).
+ */
+export const UNSAFE_TEXT_COLUMN_INDICES = new Set(
+  (["location", "roster_name", "player_name", "sheet_name"] as const).map((name) =>
+    EXPORT_COLUMNS.indexOf(name),
+  ),
+);
+
 export interface ExportRow {
   gameId: string;
   playedOn: string;

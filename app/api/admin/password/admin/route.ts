@@ -15,9 +15,15 @@
  * the panel already checks them client-side (criterion 92) — the server
  * never trusts the client.
  *
- * On success: `admin-password-hash` is replaced and `admin-session-epoch` is
- * bumped, which signs out every admin session — including the one that just
- * made the change (criterion 93). The group epoch is untouched.
+ * On success: `admin-session-epoch` is bumped and then `admin-password-hash`
+ * is replaced, in that order — the safe direction if the second write fails
+ * (a transient SSM error): every admin session is already signed out,
+ * including this one, and the *old* password still works, so the founder
+ * just retries. The other order would risk the opposite: the password
+ * changes but a failed epoch bump leaves every existing admin session
+ * silently intact. Either way, on full success every admin session is
+ * revoked — including the one that just made the change (criterion 93). The
+ * group epoch is untouched.
  *
  * Requires a full admin session — group **and** admin, in that order, exactly
  * like every other route behind `/admin` (criterion 87; mirrors
@@ -133,8 +139,14 @@ export async function POST(request: Request) {
     }
 
     const hash = await hashPassword(parsed.data.newPassword);
-    await putParameter(PARAM.adminPasswordHash, hash);
+    // ⚠️ Epoch bumped *before* the hash is written — the safe order. If the
+    // bump succeeds but the write then fails, every admin session is
+    // revoked and the *old* password still works: loud (everyone is logged
+    // out immediately) and recoverable (just retry the change). The other
+    // order risks the opposite: hash written, bump fails, and the password
+    // has changed while every existing session silently survives it.
     await bumpSessionEpoch("admin");
+    await putParameter(PARAM.adminPasswordHash, hash);
 
     // ⚠️ Never log either password — only that a rotation happened.
     log.info("admin.password.admin.changed");

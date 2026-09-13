@@ -12,10 +12,16 @@
  * `app/api/admin/key/route.ts`). Holding only a group session gets refused
  * here, not just redirected.
  *
- * On success: `group-password-hash` is replaced and `group-session-epoch` is
- * bumped, which signs out every device holding a group cookie — including
- * this one (criterion 89). The admin epoch is untouched: this session stays
- * logged in as admin.
+ * On success: `group-session-epoch` is bumped and then `group-password-hash`
+ * is replaced, in that order — the safe direction if the second write fails
+ * (a transient SSM error): every device holding a group cookie is already
+ * signed out, including this one, and the *old* password still works, so the
+ * founder just retries. The other order would risk the opposite: the
+ * password changes but a failed epoch bump leaves every existing session,
+ * including whoever's session was just compromised, silently intact. Either
+ * way, on full success every group cookie is revoked — including this one
+ * (criterion 89). The admin epoch is untouched: this session stays logged in
+ * as admin.
  */
 
 import "server-only";
@@ -72,8 +78,14 @@ export async function POST(request: Request) {
 
   try {
     const hash = await hashPassword(parsed.data.password);
-    await putParameter(PARAM.groupPasswordHash, hash);
+    // ⚠️ Epoch bumped *before* the hash is written — the safe order. If the
+    // bump succeeds but the write then fails, every session is revoked and
+    // the *old* password still works: loud (everyone is logged out
+    // immediately) and recoverable (just retry the change). The other order
+    // risks the opposite: hash written, bump fails, and the password has
+    // changed while every existing session silently survives it.
     await bumpSessionEpoch("group");
+    await putParameter(PARAM.groupPasswordHash, hash);
 
     // ⚠️ Never log the password itself — only that a rotation happened.
     log.info("admin.password.group.changed");

@@ -14,8 +14,16 @@
  * describes what submitting will do, not a result of having submitted
  * (criterion 90) — and stays up through every state except success, where a
  * plain confirmation banner replaces it. This route only bumps the group
- * epoch (criterion 88): the admin session that made the change survives, so
- * there is nothing to redirect away from.
+ * epoch (criterion 88), not the admin one, so the *admin* cookie on this
+ * device survives. But `/admin` requires a valid *group* session first
+ * (`requireGroupSession()` in `app/admin/page.tsx`), and the group cookie on
+ * this very device is one of the ones this change just revoked — so this
+ * device is not exempt. It just isn't bounced *immediately*: the success
+ * banner above renders client-side, on the page already in the browser, with
+ * no server round trip that would notice the stale cookie. The next time
+ * this device asks the server for anything gated on a group session — a
+ * navigation, a refresh — it lands back on `/login`, same as any other
+ * device that held the old group cookie.
  */
 
 import { useRef, useState } from "react";
