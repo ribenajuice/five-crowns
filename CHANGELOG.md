@@ -2,8 +2,44 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
-isn't one right now, because the latest build is already live.
+production. The **Unreleased** section at the top is not live yet — it lists what's built and
+reviewed, waiting to be merged and deployed.
+
+## [Unreleased]
+
+### Added
+
+- **You can fix the shape of a column, not just its numbers.** From "Fix something" on the review
+  screen, you can now add a column the first read missed, remove one that shouldn't be there,
+  reassign a column to a different player (or a new one), reorder columns to match the photo, and
+  insert or delete a single value inside a column — so an off-by-one doesn't mean retyping the
+  whole thing.
+- **You can re-photograph just one column.** If a column's read looks wrong, take a close-up of it
+  on its own instead of redoing the whole sheet — it's faster and far more reliable than a full
+  re-read. The new reading is shown against the old one so you can see exactly what changed, and
+  rejecting it takes one tap with no re-upload needed.
+- **If you photograph the wrong column**, the app notices the name on the close-up doesn't match
+  the player you picked, and tells you — without stopping you from saving.
+- **If a close-up disagrees with something you typed yourself**, that exact cell is called out,
+  rather than the close-up silently overwriting your correction.
+- **There's a daily limit on column re-reads too**, as the same kind of safety net as the sheet
+  read limit — separate from it, generous enough for a genuinely bad night, and manual entry and
+  editing are never affected by it.
+- **A saved game's page now shows any close-up photos taken while reviewing it**, labelled with the
+  player they belong to — not just the original full sheet photo.
+
+### Fixed
+
+- A close-up photo could vanish if its column was removed (as one of the structural repairs above)
+  before the game was saved. It's now kept with the game either way, just without a player label if
+  its column no longer exists.
+- A rare timing issue meant a column re-read finishing late could overwrite an edit you made while
+  it was still working. Your edit now always wins.
+- The "try again" button after a failed close-up upload could get stuck and stop working. It now
+  always retries properly.
+- Inserting or deleting a value inside a column could leave the "worth checking" flag pointing at
+  the wrong row afterwards. It now moves with the row it was actually flagging.
+- Close-up timestamps now show in the same date format used everywhere else in the app.
 
 ## [Stage 3] - 2026-09-12
 

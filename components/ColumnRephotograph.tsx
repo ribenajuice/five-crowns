@@ -240,6 +240,13 @@ export function ColumnRephotograph({
   }
 
   async function retryUpload() {
+    if (!uploadRef.current) {
+      // The presign request itself failed (or never completed), so there's
+      // nothing staged to re-upload — re-run the whole capture's upload flow
+      // from scratch rather than the inner upload-only step.
+      await startUpload();
+      return;
+    }
     setPhase("uploading");
     setProgress(0);
     try {

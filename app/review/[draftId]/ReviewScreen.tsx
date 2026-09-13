@@ -77,6 +77,7 @@ import {
   setNewLocationName,
   setPlayedOn,
 } from "@/lib/ui/draft-edits";
+import { shiftReadHintForDelete, shiftReadHintForInsert } from "@/lib/ui/read-hints";
 import { detectLargeHandWarnings } from "@/lib/ui/soft-warnings";
 import { effectiveValues } from "@/lib/draft/state";
 
@@ -170,6 +171,26 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       // Malformed hand-off — no hints this visit, nothing else is affected.
     }
   }, [draftId]);
+
+  // "Fix the shape" (insert/delete a row) shifts every value below the edit
+  // point (criterion 33) — a stored hint index has to shift the same way, or
+  // the badge slides onto whichever row happened to land there instead.
+  const remapReadHint = useCallback(
+    (columnId: string, shift: (hintIndex: number) => number | null) => {
+      setReadHints((current) => {
+        const hint = current[columnId];
+        if (hint === undefined) return current;
+        const next = shift(hint);
+        if (next === hint) return current;
+        if (next === null) {
+          const { [columnId]: _dropped, ...rest } = current;
+          return rest;
+        }
+        return { ...current, [columnId]: next };
+      });
+    },
+    [],
+  );
 
   const debouncedSave = useRef<Debounced<[DraftState]> | null>(null);
 
@@ -727,11 +748,21 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
           fixTheShape={{
             canInsert: canInsertValue(cellEditorColumn),
             canDelete: canDeleteValue(cellEditorColumn),
-            onInsertBefore: () =>
-              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, cellEditor.index)),
-            onInsertAfter: () =>
-              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, cellEditor.index + 1)),
-            onDelete: () => applyEdit((s) => deleteValueAt(s, cellEditorColumn.id, cellEditor.index)),
+            onInsertBefore: () => {
+              const at = cellEditor.index;
+              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, at));
+              remapReadHint(cellEditorColumn.id, (hint) => shiftReadHintForInsert(hint, at));
+            },
+            onInsertAfter: () => {
+              const at = cellEditor.index + 1;
+              applyEdit((s) => insertValueAt(s, cellEditorColumn.id, at));
+              remapReadHint(cellEditorColumn.id, (hint) => shiftReadHintForInsert(hint, at));
+            },
+            onDelete: () => {
+              const at = cellEditor.index;
+              applyEdit((s) => deleteValueAt(s, cellEditorColumn.id, at));
+              remapReadHint(cellEditorColumn.id, (hint) => shiftReadHintForDelete(hint, at));
+            },
           }}
         />
       ) : null}

@@ -52,7 +52,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { hasSession } from "@/lib/auth/session";
 import { getOptionalParameter, PARAM } from "@/lib/config";
@@ -151,6 +151,11 @@ export async function POST(request: Request) {
     return apiError("conflict", "This game has already been saved.");
   }
 
+  // ⚠️ Read once, up front, only for the checks and lookups below that don't
+  // need to survive the 30-60s vision call that's about to happen —
+  // `expectedPlayerName` in particular. The actual merge, after that call
+  // returns, re-reads the draft fresh rather than reusing this snapshot: see
+  // the comment at the merge/write loop for why.
   const state = JSON.parse(draftRow.stateJson) as DraftState;
   const column = state.columns.find((c) => c.id === columnId);
   if (!column) {
@@ -274,61 +279,134 @@ export async function POST(request: Request) {
           return;
         }
 
-        const now = new Date().toISOString();
-        let mergedState: DraftState;
-        let diagnostics: ReturnType<
-          typeof mergeColumnTranscriptionIntoDraft
-        >["diagnostics"];
-        try {
-          ({ state: mergedState, diagnostics } = mergeColumnTranscriptionIntoDraft({
-            state,
-            columnId,
-            reading: attempt.reading,
-            photoId,
-            transcriptionId,
-            expectedPlayerName,
-            now,
-          }));
-        } catch (error) {
-          if (error instanceof ColumnNotFoundError) {
+        // ⚠️ **Optimistic concurrency, closing the stale-overwrite race.**
+        // `transcribeColumn` just spent 30-60s on the upstream call; the
+        // founder's debounced autosave (`PUT /api/drafts/[id]`) can easily
+        // land in that window (a reassignment, a structural repair, another
+        // column's own re-read finishing first). Merging into `state` — read
+        // at the very top of this request — and writing it back
+        // unconditionally would silently clobber whatever that autosave just
+        // wrote. Instead: re-read the draft's *current* row, merge against
+        // *that*, and write back conditional on `updated_at` still matching
+        // what was just read (`draft.updated_at` doubles as the version
+        // counter — no schema change needed). If another write lands in the
+        // handful of milliseconds between this re-read and this write, the
+        // conditional update affects zero rows and the loop retries against
+        // whatever is current now, bounded so a genuinely stuck draft still
+        // fails loudly rather than spinning forever.
+        const MAX_MERGE_ATTEMPTS = 5;
+        let mergedState: DraftState | undefined;
+        let diagnostics:
+          | ReturnType<typeof mergeColumnTranscriptionIntoDraft>["diagnostics"]
+          | undefined;
+        let now = "";
+        let written = false;
+
+        for (let mergeAttempt = 0; mergeAttempt < MAX_MERGE_ATTEMPTS; mergeAttempt++) {
+          const currentRow = (
+            await db.select().from(draftTable).where(eq(draftTable.id, draftId))
+          )[0];
+          if (!currentRow) {
+            log.error("transcribe.column.draft_missing_mid_flight", { photoId, draftId });
             send({
               type: "error",
-              code: "not_found",
-              message: "That column doesn't exist on this draft anymore.",
+              code: "server_error",
+              message: "Something went wrong at our end. Try again in a moment.",
             });
             finish();
             return;
           }
-          throw error;
+          if (currentRow.savedGameId) {
+            // The draft was saved while the vision call was in flight — the
+            // read is already the source of truth; there's nothing left to
+            // merge into.
+            send({
+              type: "error",
+              code: "conflict",
+              message: "This game has already been saved.",
+            });
+            finish();
+            return;
+          }
+
+          const currentState = JSON.parse(currentRow.stateJson) as DraftState;
+          now = new Date().toISOString();
+
+          try {
+            ({ state: mergedState, diagnostics } = mergeColumnTranscriptionIntoDraft({
+              state: currentState,
+              columnId,
+              reading: attempt.reading,
+              photoId,
+              transcriptionId,
+              expectedPlayerName,
+              now,
+            }));
+          } catch (error) {
+            if (error instanceof ColumnNotFoundError) {
+              send({
+                type: "error",
+                code: "not_found",
+                message: "That column doesn't exist on this draft anymore.",
+              });
+              finish();
+              return;
+            }
+            throw error;
+          }
+
+          // ⚠️ Security review, belt and braces: same reasoning as
+          // `POST /api/transcribe` — refuse to persist a merged state that
+          // would fail its own schema, so a corrupt result never locks the
+          // draft. The founder keeps whatever the draft held before this
+          // attempt and can retry or fall back to typing the column by hand.
+          const validated = draftStateSchema.safeParse(mergedState);
+          if (!validated.success) {
+            log.error("transcribe.column.merge_produced_invalid_state", {
+              photoId,
+              draftId,
+              columnId,
+              transcriptionId,
+              issues: JSON.stringify(validated.error.issues),
+            });
+            send({
+              type: "error",
+              code: "server_error",
+              message: "Something went wrong at our end. Try again in a moment.",
+            });
+            finish();
+            return;
+          }
+
+          const write = await db
+            .update(draftTable)
+            .set({ stateJson: JSON.stringify(mergedState), updatedAt: now })
+            .where(
+              and(eq(draftTable.id, draftId), eq(draftTable.updatedAt, currentRow.updatedAt)),
+            );
+          if ((write.rowsAffected ?? 0) > 0) {
+            written = true;
+            break;
+          }
+          // Someone else's write landed between the read above and this one
+          // — retry against whatever is current now.
         }
 
-        // ⚠️ Security review, belt and braces: same reasoning as
-        // `POST /api/transcribe` — refuse to persist a merged state that
-        // would fail its own schema, so a corrupt result never locks the
-        // draft. The founder keeps whatever the draft held before this
-        // attempt and can retry or fall back to typing the column by hand.
-        const validated = draftStateSchema.safeParse(mergedState);
-        if (!validated.success) {
-          log.error("transcribe.column.merge_produced_invalid_state", {
+        if (!written || !mergedState || !diagnostics) {
+          log.error("transcribe.column.merge_write_exhausted", {
             photoId,
             draftId,
             columnId,
             transcriptionId,
-            issues: JSON.stringify(validated.error.issues),
           });
           send({
             type: "error",
-            code: "server_error",
-            message: "Something went wrong at our end. Try again in a moment.",
+            code: "conflict",
+            message: "This draft is being edited elsewhere right now. Try the re-read again.",
           });
           finish();
           return;
         }
-
-        await db
-          .update(draftTable)
-          .set({ stateJson: JSON.stringify(mergedState), updatedAt: now })
-          .where(eq(draftTable.id, draftId));
 
         log.info("transcribe.column.done", {
           photoId,

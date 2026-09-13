@@ -33,7 +33,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
@@ -251,6 +251,33 @@ export async function saveGame(
             ),
           );
       }
+
+      // PRD criterion 71, continued: a close-up whose *column* was removed
+      // by a structural repair (`removeColumn` in `lib/ui/draft-edits.ts`)
+      // before save. `removeColumn` is pure client-side draft-state editing
+      // — it has no way to touch the `photo` table, and shouldn't, since the
+      // photo is still real evidence of what the paper said even though the
+      // column it was shot for no longer exists in this save. Rather than
+      // leaving it orphaned forever (draftColumnId pointing at nothing,
+      // gameId/playerId null forever), attach it to this game with a null
+      // playerId — the game view already renders a close-up under a
+      // fallback label when it can't resolve a player for it. Scoped to
+      // `draftId` and `isNull(gameId)` for the same reasons as the loop
+      // above.
+      const survivingColumnIds = orderedColumns.map((c) => c.id);
+      await tx
+        .update(photo)
+        .set({ gameId: newGameId })
+        .where(
+          survivingColumnIds.length > 0
+            ? and(
+                eq(photo.kind, "column"),
+                eq(photo.draftId, draftId),
+                isNull(photo.gameId),
+                notInArray(photo.draftColumnId, survivingColumnIds),
+              )
+            : and(eq(photo.kind, "column"), eq(photo.draftId, draftId), isNull(photo.gameId)),
+        );
 
       // Conditional: the backstop for a concurrent save of the same draft.
       const photoLink = await tx

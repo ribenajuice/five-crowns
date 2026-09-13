@@ -3,8 +3,10 @@
 Five Crowns Ledger is a private, permanent record of our group's Five Crowns nights. You photograph
 the finished paper scoresheet, and the app turns it into a searchable history of every game.
 
-**Where it's at:** live at https://fivecrowns.ribenajuice.xyz. Reading a sheet automatically works,
-and the admin panel is where you paste in the API key that powers it. See `docs/STATUS.md`.
+**Where it's at:** live at https://fivecrowns.ribenajuice.xyz, with Stages 1–3 deployed. Fixing a
+column's shape (adding, removing, reassigning or reordering a column, and inserting or deleting a
+single value) and re-photographing just one column are built and reviewed, waiting to be merged
+and deployed. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
@@ -14,6 +16,13 @@ while it works; if it fails, **Try again** retries the same photo without asking
 re-photograph it. There's a daily limit on automatic reads as a safety net, but typing the numbers
 in by hand always works, however many reads have been used that day. Pick the date, venue and
 players from lists, or add new ones. Your work saves as you go, so it survives closing the page.
+
+**Fixing a read that's gone wrong:** from "Fix something" on the review screen you can add a
+missing column, remove a spurious one, reassign a column to a different player, reorder columns to
+match the photo, or insert/delete a single value inside a column. If just one column's read looks
+doubtful, you can re-photograph that column on its own — much faster than redoing the whole sheet
+— and the new reading is shown against the old one so you can see what changed and reject it in one
+tap if needed. A saved game's page also shows any close-up photos taken while reviewing it.
 
 ## Run it on your computer
 

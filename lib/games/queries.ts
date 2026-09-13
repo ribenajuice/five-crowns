@@ -211,21 +211,27 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     .where(and(eq(photo.gameId, id), eq(photo.kind, "column")))
     .orderBy(desc(photo.createdAt));
 
-  const closeUps: GameDetail["closeUps"] = [];
-  for (const row of closeUpRows) {
-    if (!row.playerId) continue; // Cannot happen post-save; defensive only.
-    const storage = getPhotoStorage();
-    const exists = await storage.objectExists(row.id, "original");
-    if (!exists) continue;
-    const presigned = await storage.presignGet(row.id, "original");
-    closeUps.push({
-      playerId: row.playerId,
-      url: presigned.url,
-      expiresAt: presigned.expiresAt,
-      width: row.width,
-      height: row.height,
-    });
-  }
+  const storage = getPhotoStorage();
+  const closeUpEntries = await Promise.all(
+    closeUpRows.map(async (row) => {
+      // `playerId` is null when the close-up's column was removed by a
+      // structural repair before save (`lib/games/save.ts`'s orphaned-photo
+      // sweep) — still rendered, just with nobody to attribute it to.
+      const exists = await storage.objectExists(row.id, "original");
+      if (!exists) return null;
+      const presigned = await storage.presignGet(row.id, "original");
+      return {
+        playerId: row.playerId,
+        url: presigned.url,
+        expiresAt: presigned.expiresAt,
+        width: row.width,
+        height: row.height,
+      };
+    }),
+  );
+  const closeUps: GameDetail["closeUps"] = closeUpEntries.filter(
+    (entry): entry is NonNullable<typeof entry> => entry !== null,
+  );
 
   return {
     id: gameRow.id,

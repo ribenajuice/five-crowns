@@ -114,6 +114,26 @@ describe("getGame — criterion 70", () => {
     expect(detail!.closeUps[0]!.url).toContain("original.jpg");
   });
 
+  it("⚠️ regression: a close-up whose column was removed before save still appears, with a null playerId", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { getGame } = await import("@/lib/games/queries");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const removedColumn = state.columns.find((c) => c.sheetName === "Player B")!;
+    await createColumnPhoto("closeup-query-orphaned", draftId, removedColumn.id);
+    state.columns = state.columns.filter((c) => c.id !== removedColumn.id);
+
+    const { gameId } = await saveGame(draftId, state);
+    const detail = await getGame(gameId);
+
+    expect(detail!.closeUps).toHaveLength(1);
+    expect(detail!.closeUps[0]!.playerId).toBeNull();
+    expect(detail!.closeUps[0]!.url).toContain("original.jpg");
+  });
+
   it("a game with no close-ups returns an empty array, not null or an error", async () => {
     await teardownTestDb();
     await setupTestDb();

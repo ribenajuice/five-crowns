@@ -24,7 +24,7 @@ export interface ReadingHistoryItem {
 function formatWhen(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString("en-AU", {
     day: "numeric",
     month: "short",
     hour: "numeric",

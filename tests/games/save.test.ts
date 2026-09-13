@@ -175,6 +175,33 @@ describe("criterion 71 — close-ups attach to the game and the right player at 
     expect(closeUpRow.playerId).not.toBeNull();
   });
 
+  it("⚠️ regression: a close-up whose column was removed before save still attaches to the game, with a null playerId", async () => {
+    // Mirrors `removeColumn` in `lib/ui/draft-edits.ts`: it only filters
+    // `state.columns`, with no way to touch the `photo` table, so a close-up
+    // shot for a column that's since been removed is still sitting in
+    // `photo` pointing at a `draftColumnId` that no longer matches any
+    // column in the submitted state.
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo } = await import("@/lib/db/schema");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const removedColumn = state.columns.find((c) => c.sheetName === "Player B")!;
+    await createColumnPhoto("closeup-orphaned", draftId, removedColumn.id);
+
+    // The structural repair: remove the column from the state that actually
+    // gets saved. The photo row still names its (now nonexistent) column.
+    state.columns = state.columns.filter((c) => c.id !== removedColumn.id);
+
+    const result = await saveGame(draftId, state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-orphaned"))
+    )[0]!;
+    expect(closeUpRow.gameId).toBe(result.gameId);
+    expect(closeUpRow.playerId).toBeNull();
+  });
+
   it("⚠️ security review: never sweeps another draft's close-up onto this game, even if the saved state names its column id", async () => {
     // draftA genuinely owns this column id and its close-up.
     const draftA = await setUpDraft(SHEET_01);

@@ -84,15 +84,25 @@ export default async function GamePage({
             </h2>
             <div className="flex flex-col gap-4">
               {game.closeUps.map((closeUp, index) => {
-                const name = displayNameByPlayerId.get(closeUp.playerId) ?? "a player";
+                // `playerId` is null for a close-up whose column was removed
+                // by a structural repair before save (criterion 71: kept as
+                // evidence regardless) — there's no player to name it after.
+                const name = closeUp.playerId
+                  ? displayNameByPlayerId.get(closeUp.playerId) ?? "a player"
+                  : null;
+                const caption = name ? `${name}'s column` : "A removed column";
                 return (
-                  <div key={`${closeUp.playerId}-${index}`}>
-                    <p className="mb-2 text-sm text-text-muted">{name}&apos;s column</p>
+                  <div key={`${closeUp.playerId ?? "unassigned"}-${index}`}>
+                    <p className="mb-2 text-sm text-text-muted">{caption}</p>
                     <SheetPhoto
                       url={closeUp.url}
                       width={closeUp.width}
                       height={closeUp.height}
-                      alt={`A close-up of ${name}'s column for ${game.rosterName} on ${game.playedOn}`}
+                      alt={
+                        name
+                          ? `A close-up of ${name}'s column for ${game.rosterName} on ${game.playedOn}`
+                          : `A close-up of a column removed before saving ${game.rosterName}'s game on ${game.playedOn}`
+                      }
                     />
                   </div>
                 );

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { visibleReadHintIndex } from "@/lib/ui/read-hints";
+import {
+  shiftReadHintForDelete,
+  shiftReadHintForInsert,
+  visibleReadHintIndex,
+} from "@/lib/ui/read-hints";
 
 const NONE = new Set<number>();
 
@@ -69,5 +73,33 @@ describe("visibleReadHintIndex (docs/DESIGN-SYSTEM.md § ReadHint)", () => {
         warnIndices: new Set([0]),
       }),
     ).toBe(4);
+  });
+});
+
+describe("shiftReadHintForInsert (docs/DESIGN-SYSTEM.md § Fix the shape)", () => {
+  it("moves a hint at the insertion point down with the row it pointed at", () => {
+    expect(shiftReadHintForInsert(4, 4)).toBe(5);
+  });
+
+  it("moves a hint below the insertion point down too", () => {
+    expect(shiftReadHintForInsert(4, 2)).toBe(5);
+  });
+
+  it("leaves a hint above the insertion point alone", () => {
+    expect(shiftReadHintForInsert(4, 6)).toBe(4);
+  });
+});
+
+describe("shiftReadHintForDelete (docs/DESIGN-SYSTEM.md § Fix the shape)", () => {
+  it("drops the hint entirely when its own row was deleted", () => {
+    expect(shiftReadHintForDelete(4, 4)).toBeNull();
+  });
+
+  it("moves a hint below the deletion point up one", () => {
+    expect(shiftReadHintForDelete(4, 2)).toBe(3);
+  });
+
+  it("leaves a hint above the deletion point alone", () => {
+    expect(shiftReadHintForDelete(4, 6)).toBe(4);
   });
 });

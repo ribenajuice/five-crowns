@@ -2,20 +2,22 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-12
-- **Phase**: Milestone 1, **Stage 3 is live** at **https://fivecrowns.ribenajuice.xyz** — reading a sheet
-  automatically now works (streamed progress, pre-fills the Stage 2 review screen), and the admin panel's API key
-  form is real (tested live before saving, write-only after). Shipped via
-  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (merged and deployed 2026-09-12; CI and Deploy both
-  green on `main`). Next is Stage 4.
-- **Production URL**: https://fivecrowns.ribenajuice.xyz. Valid Amazon certificate, runs to 27 Mar 2027 and renews
-  itself through the kept `_628746…fivecrowns` validation CNAME.
+- **Last updated**: 2026-09-13
+- **Phase**: Milestone 1, **Stage 3 is live** at **https://fivecrowns.ribenajuice.xyz**. **Stage 4 (the rest of the
+  override ladder — structural repairs and targeted per-column re-photograph) is built** on branch
+  `feat/m1-stage4`, pushed to origin, but **no PR has been opened yet** — that's the next step before it can be
+  QA'd and shipped.
+- **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live today (200, valid cert). Valid Amazon
+  certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation CNAME.
   The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
   (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
   delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
   answers again.
-- **Currently in flight**: nothing. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) (Stage 2 docs) and
-  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (Stage 3) are both merged and deployed.
+- **Currently in flight**: `feat/m1-stage4` — five commits (design system, back end, front end, a fix for
+  criterion 71's close-ups on the game view, and a security-review pass capping column re-reads and scoping the
+  close-up sweep to drafts). Pushed to origin but **not yet opened as a PR**, so it hasn't been through QA or CI on
+  its own branch. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) and
+  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (Stage 2/3) remain merged and deployed.
 - **Stage 3 shipped 2026-09-12** ([PR #12](https://github.com/ribenajuice/five-crowns/pull/12)). QA, a
   security-reviewer pass, and two independent `/code-review` runs together found and fixed real bugs before and
   after the PR opened, most notably: the admin session cookie was scoped to `Path=/admin`, making `/api/admin/*`
@@ -52,9 +54,8 @@
   (`https://fivecrowns.ribenajuice.xyz/admin`) and try "Read the sheet" on a real photo — the one thing nobody but
   the founder can verify. Also still open: the Stage 2 on-phone acceptance check (capture → review → save,
   criterion 11's live side-by-side of a manual vs. imported game would come for free once a real key exists).
-- **Next up**: Stage 4 — the rest of the manual-override ladder: structural repairs (add/remove/reorder a column,
-  insert/delete a value) and the targeted per-column re-photograph (criteria 29–45, 71). Run
-  `/feature Milestone 1 Stage 4`.
+- **Next up**: open the PR for `feat/m1-stage4`, run QA against acceptance criteria 29–45 and 71 on both fixture
+  sheets, then `/ship` it. After that, Stage 5 (go live and prove it) is the last Milestone 1 stage.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.

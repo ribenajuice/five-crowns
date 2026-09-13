@@ -35,9 +35,18 @@ interface FakeAttempt {
 let nextAttempt: FakeAttempt;
 const transcribeCalls: unknown[] = [];
 
+/**
+ * Set by a test to run something *during* the mocked `transcribeColumn`
+ * call — standing in for the founder's debounced autosave
+ * (`PUT /api/drafts/[id]`) landing while the real 30-60s vision call is in
+ * flight. `null` the rest of the time, so ordinary tests are unaffected.
+ */
+let duringTranscribe: (() => Promise<void>) | null = null;
+
 vi.mock("@/lib/vision/transcribe-column", () => ({
   transcribeColumn: async (args: unknown) => {
     transcribeCalls.push(args);
+    if (duringTranscribe) await duringTranscribe();
     return nextAttempt;
   },
 }));
@@ -148,6 +157,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   transcribeCalls.length = 0;
+  duringTranscribe = null;
   nextAttempt = {
     status: "ok",
     reading: okReading(),
@@ -329,6 +339,57 @@ describe("POST /api/transcribe/column", () => {
     )[0]!;
     expect(transcriptionRow.status).toBe("ok");
     expect(transcriptionRow.kind).toBe("column");
+  });
+
+  it("⚠️ regression: a concurrent autosave landing mid-flight survives the write, and the re-read still merges", async () => {
+    const { draftId, columnId } = await createDraftWithColumn({ newPlayerName: "Player D" });
+    const photoId = randomUUID();
+    await createColumnPhoto(photoId, draftId, columnId);
+
+    const { getDb } = await import("@/lib/db");
+    const { draft: draftTable } = await import("@/lib/db/schema");
+
+    // While the vision call is "in flight", the debounced autosave writes a
+    // change the merge itself never touches — `playedOn` — so its survival
+    // in both the streamed result and the persisted row is an unambiguous
+    // signal that the merge/write at the end of the request didn't clobber
+    // it with the stale snapshot read at the top of the handler.
+    duringTranscribe = async () => {
+      const row = (
+        await getDb().select().from(draftTable).where(eq(draftTable.id, draftId))
+      )[0]!;
+      const concurrentState = JSON.parse(row.stateJson);
+      concurrentState.playedOn = "2020-01-01";
+      await getDb()
+        .update(draftTable)
+        .set({ stateJson: JSON.stringify(concurrentState), updatedAt: new Date().toISOString() })
+        .where(eq(draftTable.id, draftId));
+    };
+
+    const { POST } = await import("@/app/api/transcribe/column/route");
+    const response = await POST(post({ photoId, columnId }));
+    expect(response.status).toBe(200);
+
+    const events = await readNdjson(response);
+    const result = events.find((e) => e.type === "result")!;
+    expect(result.status).toBe("ok");
+
+    const state = result.state as {
+      playedOn: string;
+      columns: { id: string; readings: { source: string }[] }[];
+    };
+    expect(state.playedOn).toBe("2020-01-01"); // the concurrent autosave survived
+    const column = state.columns.find((c) => c.id === columnId)!;
+    expect(column.readings.at(-1)!.source).toBe("close-up"); // the re-read still merged
+
+    const persistedRow = (
+      await getDb().select().from(draftTable).where(eq(draftTable.id, draftId))
+    )[0]!;
+    const persisted = JSON.parse(persistedRow.stateJson) as typeof state;
+    expect(persisted.playedOn).toBe("2020-01-01");
+    expect(persisted.columns.find((c) => c.id === columnId)!.readings.at(-1)!.source).toBe(
+      "close-up",
+    );
   });
 
   it("⚠️ criterion 42: flags a wrong-column warning when the read name disagrees with the expected player", async () => {
