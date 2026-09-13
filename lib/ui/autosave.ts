@@ -56,3 +56,36 @@ export function createDebouncer<Args extends unknown[]>(
 
   return debounced;
 }
+
+export interface AutosaveOutcome {
+  /** Non-null when the response means "this draft is already saved" — where to send the tab. */
+  redirectGameId: string | null;
+  /** True when the autosave genuinely failed and the "hasn't saved yet" banner should show. */
+  autosaveError: boolean;
+}
+
+/**
+ * Interprets `PUT /api/drafts/{id}`'s response for the review screen's
+ * autosave.
+ *
+ * ⚠️ Security review: a `409` is not always "already saved" — `PUT
+ * /api/drafts/{id}`'s immutability guard also answers 409 for a `photoId`
+ * mismatch (`docs/DECISIONS.md`, 2026-09-14, "Editing a saved game", decision
+ * 6). This used to be conflated: any 409 whose re-fetched draft didn't (yet,
+ * or ever) carry a `savedGameId` was treated as nothing having gone wrong at
+ * all — the correction silently failed with no error shown. `freshSavedGameId`
+ * is the re-fetched draft's own `savedGameId`, read *after* the 409, so this
+ * only ever calls it "already saved" when that's actually true.
+ */
+export function resolveAutosaveOutcome(
+  status: number,
+  freshSavedGameId: string | null | undefined,
+): AutosaveOutcome {
+  if (status === 409) {
+    return freshSavedGameId
+      ? { redirectGameId: freshSavedGameId, autosaveError: false }
+      : { redirectGameId: null, autosaveError: true };
+  }
+  const ok = status >= 200 && status < 300;
+  return { redirectGameId: null, autosaveError: !ok };
+}

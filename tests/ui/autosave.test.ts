@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDebouncer } from "@/lib/ui/autosave";
+import { createDebouncer, resolveAutosaveOutcome } from "@/lib/ui/autosave";
 
 describe("createDebouncer", () => {
   beforeEach(() => {
@@ -71,5 +71,39 @@ describe("createDebouncer", () => {
     vi.advanceTimersByTime(1000);
     expect(fn).toHaveBeenCalledTimes(1);
     expect(fn).toHaveBeenCalledWith(4);
+  });
+});
+
+describe("resolveAutosaveOutcome", () => {
+  it("a plain success clears any error and never redirects", () => {
+    expect(resolveAutosaveOutcome(200, undefined)).toEqual({
+      redirectGameId: null,
+      autosaveError: false,
+    });
+  });
+
+  it("a plain failure (e.g. offline, 500) surfaces the autosave error", () => {
+    expect(resolveAutosaveOutcome(500, undefined)).toEqual({
+      redirectGameId: null,
+      autosaveError: true,
+    });
+  });
+
+  it("409 with a real savedGameId on the re-fetched draft redirects, no error shown", () => {
+    expect(resolveAutosaveOutcome(409, "game-123")).toEqual({
+      redirectGameId: "game-123",
+      autosaveError: false,
+    });
+  });
+
+  it("⚠️ regression: a 409 that ISN'T an already-saved draft (e.g. the photoId immutability guard) surfaces an error rather than being silently swallowed", () => {
+    expect(resolveAutosaveOutcome(409, null)).toEqual({
+      redirectGameId: null,
+      autosaveError: true,
+    });
+    expect(resolveAutosaveOutcome(409, undefined)).toEqual({
+      redirectGameId: null,
+      autosaveError: true,
+    });
   });
 });

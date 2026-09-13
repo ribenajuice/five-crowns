@@ -104,7 +104,28 @@ describe("POST /api/games", () => {
     const { POST } = await import("@/app/api/games/route");
     const response = await POST(post({ draftId, state }));
     expect(response.status).toBe(409);
-    expect((await response.json()).error.code).toBe("missing_photo");
+    const body = await response.json();
+    expect(body.error.code).toBe("missing_photo");
+    // ⚠️ Regression: the route used to hardcode one message for every
+    // `MissingPhotoError` reason. This is the "no sheet photo row at all"
+    // case specifically — assert its own accurate wording, not a generic one.
+    expect(body.error.message).toBe("No sheet photo for this draft.");
+  });
+
+  it("⚠️ regression: a missing-storage-object refusal names the real reason, distinctly from 'no photo at all'", async () => {
+    const { createDraft, createSheetPhoto, draftStateFromSheet } = await import(
+      "../helpers/draft"
+    );
+    const state = draftStateFromSheet(SHEET_01);
+    await createSheetPhoto(state.photoId, { missingModel: true });
+    const draftId = await createDraft(state);
+
+    const { POST } = await import("@/app/api/games/route");
+    const response = await POST(post({ draftId, state }));
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("missing_photo");
+    expect(body.error.message).toBe("The sheet photo is missing an object in storage.");
   });
 
   it("⚠️ 422 invalid_grid when a column decreases, with issues in the body (criterion 26)", async () => {
@@ -189,6 +210,29 @@ describe("POST /api/games", () => {
       const response = await POST(post({ draftId: edit.draftId, state: editState }));
       expect(response.status).toBe(409);
       expect((await response.json()).error.code).toBe("game_deleted");
+    });
+
+    it("⚠️ regression: the photoId-can't-change refusal names that reason, not the generic 'no photo' one", async () => {
+      const { draftId, state } = await setUpDraft(SHEET_01);
+      const { POST } = await import("@/app/api/games/route");
+      const created = await (await POST(post({ draftId, state }))).json();
+
+      const { startEditDraft } = await import("@/lib/games/start-edit");
+      const { getDb } = await import("@/lib/db");
+      const { draft: draftTable } = await import("@/lib/db/schema");
+
+      const edit = await startEditDraft(created.gameId);
+      const editRow = (
+        await getDb().select().from(draftTable).where(eq(draftTable.id, edit.draftId))
+      )[0]!;
+      const editState = JSON.parse(editRow.stateJson);
+      editState.photoId = "a-completely-different-photo-id";
+
+      const response = await POST(post({ draftId: edit.draftId, state: editState }));
+      expect(response.status).toBe(409);
+      const body = await response.json();
+      expect(body.error.code).toBe("missing_photo");
+      expect(body.error.message).toBe("The sheet photo can't be changed.");
     });
   });
 });

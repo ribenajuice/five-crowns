@@ -3,9 +3,12 @@
  *
  * GET returns the stored state; a non-null `savedGameId` means the review
  * screen should redirect to `/games/{savedGameId}`. A non-null
- * `editingGameId` means this draft is an edit of that game (M2 Stage 2) — the
- * screen uses it for wording and for where to go after saving; nothing here
- * branches on it.
+ * `editingGameId` means this draft is an edit of that game (M2 Stage 2) —
+ * returned for completeness, but nothing client-side reads it today. PRD
+ * criteria 115 ("every M1 review behaviour applies") and 123 ("nothing marks
+ * a game as edited") together mean the review screen is deliberately
+ * identical whether editing or importing, so there is no edit-specific
+ * wording or navigation for it to drive.
  *
  * PUT is the whole-state replace the client debounces ~1s (criterion 28).
  * Schema-validated only, **not** grid-validated — a draft may be half-typed.

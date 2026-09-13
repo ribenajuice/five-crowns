@@ -17,15 +17,23 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
 
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
 import { schema } from "@/lib/db";
-import { location, player, roster, rosterMember } from "@/lib/db/schema";
+import {
+  gamePlayer,
+  location,
+  photo,
+  player,
+  roster,
+  rosterMember,
+  roundScore,
+} from "@/lib/db/schema";
 import { nameKey, type DraftColumn, type DraftState } from "@/lib/draft/state";
-import { rosterSignature } from "@/lib/scoring";
-import type { GridValidation } from "@/lib/scoring";
+import { deriveHandScores, finalScore, rosterSignature } from "@/lib/scoring";
+import type { CellValue, GridValidation } from "@/lib/scoring";
 
 import { uniqueSlug } from "./slug";
 
@@ -255,4 +263,101 @@ export async function upsertRoster(tx: Tx, memberIds: string[]): Promise<string>
     .onConflictDoNothing();
 
   return rosterId;
+}
+
+export interface WriteGameRowsInput {
+  /** The game these rows belong to — a fresh id for `saveGame`, the existing one for `saveEditedGame`. */
+  gameId: string;
+  /** Whose close-up uploads to re-parent — always this draft's own. */
+  draftId: string;
+  resolved: ResolvedColumn[];
+  valuesByColumnId: Map<string, readonly CellValue[]>;
+  orderedColumns: DraftColumn[];
+  /** Only used to re-throw with full context in the "cannot happen" branch below. */
+  validation: GridValidation;
+}
+
+/**
+ * The per-column `game_player`/`round_score` insert loop and the close-up
+ * re-parenting sweep, shared by `saveGame` (a new game) and `saveEditedGame`
+ * (an edit of an existing one) — previously duplicated near-verbatim between
+ * `lib/games/save.ts` and `lib/games/save-edit.ts`. Extracted here for the
+ * same reason `resolveLocation`/`resolvePlayers`/`upsertRoster` already are:
+ * one implementation the two save paths can never drift apart on.
+ *
+ * ⚠️ Deliberately does **not** include the two paths' genuine differences:
+ * `saveEditedGame` deletes existing `round_score`/`game_player` rows before
+ * calling this (a fresh insert has nothing to delete); `saveGame` inserts the
+ * `game` row itself and links the sheet photo with its own concurrent-save
+ * guard. Those stay in each caller.
+ */
+export async function writeGameRows(tx: Tx, input: WriteGameRowsInput): Promise<void> {
+  const { gameId, draftId, resolved, valuesByColumnId, orderedColumns, validation } = input;
+
+  for (const { column, playerId } of resolved) {
+    const values = valuesByColumnId.get(column.id) ?? [];
+    const handScores = deriveHandScores(values);
+    const final = finalScore(values);
+    if (final === null) {
+      // Cannot happen: validateGrid already rejected any column with an
+      // unread or missing final cell. Defensive, not reachable in tests.
+      throw new InvalidGridError(validation);
+    }
+
+    await tx.insert(gamePlayer).values({
+      gameId,
+      playerId,
+      columnOrder: column.order,
+      sheetName: column.sheetName,
+      finalScore: final,
+    });
+
+    await tx.insert(roundScore).values(
+      values.map((value, index) => ({
+        gameId,
+        playerId,
+        hand: index + 1,
+        runningTotal: value as number,
+        score: handScores[index] as number,
+      })),
+    );
+
+    // PRD criterion 71: every close-up taken during review (import or edit)
+    // attaches to this game and the player its column resolved to.
+    //
+    // ⚠️ Security review: `column.id` comes from the request body (`state`),
+    // so the WHERE is scoped to `draftId` too — otherwise a crafted save
+    // naming another draft's column id could re-parent that draft's
+    // close-ups onto this game. `isNull(gameId)` also stops this from ever
+    // re-parenting a photo already attached to a previously saved game.
+    await tx
+      .update(photo)
+      .set({ gameId, playerId })
+      .where(
+        and(
+          eq(photo.draftColumnId, column.id),
+          eq(photo.kind, "column"),
+          eq(photo.draftId, draftId),
+          isNull(photo.gameId),
+        ),
+      );
+  }
+
+  // PRD criterion 71, continued: a close-up whose *column* was removed by a
+  // structural repair before save still attaches to this game, with a null
+  // playerId — the game view already renders a fallback label for it.
+  const survivingColumnIds = orderedColumns.map((c) => c.id);
+  await tx
+    .update(photo)
+    .set({ gameId })
+    .where(
+      survivingColumnIds.length > 0
+        ? and(
+            eq(photo.kind, "column"),
+            eq(photo.draftId, draftId),
+            isNull(photo.gameId),
+            notInArray(photo.draftColumnId, survivingColumnIds),
+          )
+        : and(eq(photo.kind, "column"), eq(photo.draftId, draftId), isNull(photo.gameId)),
+    );
 }

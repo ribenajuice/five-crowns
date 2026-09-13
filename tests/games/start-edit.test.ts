@@ -5,6 +5,9 @@
  * before the first is saved resumes the same draft rather than forking one.
  */
 
+import { unlink } from "node:fs/promises";
+import path from "node:path";
+
 import { and, eq, isNull } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -105,6 +108,16 @@ describe("building a fresh edit draft", () => {
     await import("@/lib/games/resolve"); // ensure MissingPhotoError is the same class re-exported
     await expect(startEditDraft(gameId)).rejects.toBeInstanceOf(MissingPhotoError);
   });
+
+  it("⚠️ regression: refuses (MissingPhotoError) a fresh edit draft when the sheet photo row survives but its S3 objects are gone", async () => {
+    const { gameId, photoId } = await saveOriginalGame();
+    // Simulate the object having vanished from storage (manual cleanup, a
+    // lifecycle rule) while the `photo` row itself is untouched.
+    await unlink(path.join(process.cwd(), ".data", "photos", photoId, "model.jpg"));
+
+    const { startEditDraft, MissingPhotoError } = await import("@/lib/games/start-edit");
+    await expect(startEditDraft(gameId)).rejects.toBeInstanceOf(MissingPhotoError);
+  });
 });
 
 describe("⚠️ criterion 121 — resuming an open edit draft", () => {
@@ -169,5 +182,32 @@ describe("⚠️ criterion 121 — resuming an open edit draft", () => {
       .from(draftTable)
       .where(eq(draftTable.editingGameId, gameId));
     expect(drafts).toHaveLength(1);
+  });
+
+  it("⚠️ regression: a stale open edit draft for a game deleted meanwhile is never silently resumed", async () => {
+    const { gameId } = await saveOriginalGame();
+    const { startEditDraft, GameNotFoundError } = await import("@/lib/games/start-edit");
+
+    // Opens (and leaves open) the edit draft `deleteGame` is documented to
+    // leave untouched.
+    const first = await startEditDraft(gameId);
+    expect(first.created).toBe(true);
+
+    const { deleteGame } = await import("@/lib/games/delete");
+    expect(await deleteGame(gameId)).toBe(true);
+
+    // A stale tab or a retried POST for this now-deleted game must 404, not
+    // silently hand back the orphaned open draft.
+    await expect(startEditDraft(gameId)).rejects.toBeInstanceOf(GameNotFoundError);
+
+    // The orphaned draft itself is untouched (as `deleteGame` documents) —
+    // this is about refusing to *resume* it, not deleting it out from under
+    // anyone.
+    const { getDb } = await import("@/lib/db");
+    const { draft: draftTable } = await import("@/lib/db/schema");
+    const orphan = (
+      await getDb().select().from(draftTable).where(eq(draftTable.id, first.draftId))
+    )[0];
+    expect(orphan).toBeDefined();
   });
 });

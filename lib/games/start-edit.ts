@@ -10,6 +10,12 @@
  * rows — the running totals a human already verified against the paper, not
  * a re-read of anything.
  *
+ * ⚠️ The game's existence — and, for a fresh draft, its sheet photo's S3
+ * objects — are checked *before* either branch hands back a draft, not only
+ * on the fresh-draft path. Resuming a stale open edit draft for a game
+ * deleted meanwhile would otherwise silently succeed, only to fail
+ * confusingly at save time.
+ *
  * ⚠️ `photo.draft_id` is **not** touched. The review screen has never loaded
  * its photo any other way than `state.photoId` (`GET /api/photos/{id}/url`),
  * so naming the game's existing sheet photo in the new draft's state is the
@@ -31,6 +37,7 @@ import {
   roundScore,
 } from "@/lib/db/schema";
 import { DRAFT_STATE_VERSION, type DraftState } from "@/lib/draft/state";
+import { getPhotoStorage } from "@/lib/photos";
 import { HANDS_PER_GAME } from "@/lib/scoring";
 
 import { nowIso, MissingPhotoError } from "./resolve";
@@ -54,12 +61,22 @@ export interface StartEditResult {
 export async function startEditDraft(gameId: string): Promise<StartEditResult> {
   const db = getDb();
 
+  // ⚠️ The game must still exist before *either* branch below hands back a
+  // draft — checked once, up front, rather than only on the fresh-draft path.
+  // `deleteGame` deliberately leaves an open edit draft untouched when its
+  // game is deleted (`docs/ARCHITECTURE.md` § "The edit"), so without this a
+  // stale tab or a retried `POST /api/games/{id}/edit` for a now-deleted game
+  // would resume that orphaned draft and hand back a working `draftId` — the
+  // human only finds out later, confusingly, when they try to save and hit
+  // `GameDeletedError`. A plain existence check is enough here; it doesn't
+  // need to be inside a transaction, because the authoritative check remains
+  // the one inside `saveEditedGame`.
+  const gameRow = (await db.select().from(game).where(eq(game.id, gameId)))[0];
+  if (!gameRow) throw new GameNotFoundError(gameId);
+
   // Resume: the fast, common path once a first edit is underway.
   const openDraft = await findOpenEditDraft(gameId);
   if (openDraft) return { draftId: openDraft, created: false };
-
-  const gameRow = (await db.select().from(game).where(eq(game.id, gameId)))[0];
-  if (!gameRow) throw new GameNotFoundError(gameId);
 
   const sheetPhotoRow = (
     await db
@@ -71,6 +88,21 @@ export async function startEditDraft(gameId: string): Promise<StartEditResult> {
     // The review screen without its photo is not the screen criterion 115
     // asks for — refused rather than built half-working.
     throw new MissingPhotoError("This game has no sheet photo to edit against.");
+  }
+
+  // ⚠️ Same check `saveEditedGame` makes before allowing a save. Without it,
+  // a game whose photo row survives but whose S3 objects are gone (manual
+  // cleanup, a lifecycle rule — rare but possible) would let "Edit this game"
+  // succeed and the human redo the entire grid, only to lose all of it to
+  // `MissingPhotoError` at save time. Failing here, before any edit work
+  // begins, is the whole point.
+  const storage = getPhotoStorage();
+  const [hasOriginal, hasModel] = await Promise.all([
+    storage.objectExists(sheetPhotoRow.id, "original"),
+    storage.objectExists(sheetPhotoRow.id, "model"),
+  ]);
+  if (!hasOriginal || !hasModel) {
+    throw new MissingPhotoError("The sheet photo is missing an object in storage.");
   }
 
   const gamePlayerRows = await db

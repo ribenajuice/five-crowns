@@ -121,4 +121,42 @@ describe("POST /api/games/{id}/edit", () => {
     const secondBody = await second.json();
     expect(secondBody.draftId).toBe(firstBody.draftId);
   });
+
+  it("⚠️ regression: 404s rather than resuming a stale open edit draft once its game is deleted", async () => {
+    const gameId = await saveOriginalGame();
+    const { POST } = await import("@/app/api/games/[id]/edit/route");
+
+    const first = await POST(post(`/api/games/${gameId}/edit`), {
+      params: Promise.resolve({ id: gameId }),
+    });
+    expect(first.status).toBe(201); // leaves an open edit draft behind
+
+    const { deleteGame } = await import("@/lib/games/delete");
+    await deleteGame(gameId);
+
+    const retry = await POST(post(`/api/games/${gameId}/edit`), {
+      params: Promise.resolve({ id: gameId }),
+    });
+    expect(retry.status).toBe(404);
+  });
+
+  it("⚠️ regression: a missing-storage-object refusal names the real reason, not the no-photo-row wording", async () => {
+    const { unlink } = await import("node:fs/promises");
+    const path = await import("node:path");
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const result = await saveGame(draftId, state);
+
+    await unlink(path.join(process.cwd(), ".data", "photos", state.photoId, "model.jpg"));
+
+    const { POST } = await import("@/app/api/games/[id]/edit/route");
+    const response = await POST(post(`/api/games/${result.gameId}/edit`), {
+      params: Promise.resolve({ id: result.gameId }),
+    });
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("missing_photo");
+    expect(body.error.message).toBe("The sheet photo is missing an object in storage.");
+  });
 });

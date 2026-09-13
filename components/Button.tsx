@@ -33,15 +33,14 @@ export function buttonClasses(
  * (docs/DESIGN-SYSTEM.md § "Deleting a game", reusing `CellEditor`'s existing
  * "Delete this line" treatment): `ghost` shape, `--error` ink, always paired
  * with a leading icon (`TrashIcon`) by the caller. Exported so every
- * destructive button in the app shares one definition.
+ * destructive button in the app shares one definition. Always full width —
+ * both current call sites (`GameActions`, `DeleteGameCard`) want that, and
+ * this project's own convention is not to carry a parameter with no caller.
  */
-export function destructiveButtonClasses({
-  fullWidth = true,
-}: { fullWidth?: boolean } = {}): string {
+export function destructiveButtonClasses(): string {
   return [
-    "inline-flex h-12 items-center justify-center gap-2 rounded-[var(--radius)] border border-error px-4 text-base font-bold text-error no-underline",
+    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-error px-4 text-base font-bold text-error no-underline",
     "disabled:opacity-60",
-    fullWidth ? "w-full" : "w-full sm:w-auto",
   ].join(" ");
 }
 

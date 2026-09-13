@@ -8,7 +8,7 @@
  * Each test gets a fresh in-memory database, like `tests/games/save.test.ts`.
  */
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
@@ -200,6 +200,38 @@ describe("criterion 122 — a meanwhile-deleted game refuses cleanly, never resu
   });
 });
 
+describe("⚠️ regression — the game-deleted / missing-photo distinction stays honest", () => {
+  it("throws MissingPhotoError, not GameDeletedError, when only the sheet photo row is gone but the game survives", async () => {
+    const gameId = await saveOriginalGame();
+    const { draftId, state } = await startEdit(gameId);
+
+    const { getDb } = await import("@/lib/db");
+    const { photo, game } = await import("@/lib/db/schema");
+    await getDb().delete(photo).where(and(eq(photo.gameId, gameId), eq(photo.kind, "sheet")));
+    // The game itself is untouched — this is deliberately not what a real
+    // `deleteGame` produces (that removes both together), but it isolates
+    // the branch: a missing photo with a game that's still there must be
+    // reported as `missing_photo`, never `game_deleted`.
+    expect(await getDb().select().from(game).where(eq(game.id, gameId))).toHaveLength(1);
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { MissingPhotoError } = await import("@/lib/games/save");
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(MissingPhotoError);
+  });
+
+  it("throws GameDeletedError, not MissingPhotoError, when the whole game (and its photo) is gone", async () => {
+    const gameId = await saveOriginalGame();
+    const { draftId, state } = await startEdit(gameId);
+
+    const { deleteGame } = await import("@/lib/games/delete");
+    await deleteGame(gameId);
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { GameDeletedError } = await import("@/lib/games/save-edit");
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(GameDeletedError);
+  });
+});
+
 describe("idempotency — an edit draft saved twice never double-writes", () => {
   it("the second save returns the same gameId, unchanged, with wasEdit true", async () => {
     const gameId = await saveOriginalGame();
@@ -279,6 +311,18 @@ describe("criterion 120 — the sheet photo can never be replaced, even bypassin
     const { game } = await import("@/lib/db/schema");
     const savedGame = (await getDb().select().from(game).where(eq(game.id, gameId)))[0]!;
     expect(savedGame.playedOn).toBe("2021-05-05");
+  });
+});
+
+describe("⚠️ security review MEDIUM 2 parity — an edit save doesn't trust client ids either", () => {
+  it("refuses (InvalidReferenceError) a locationId that doesn't exist, same as a new save", async () => {
+    const gameId = await saveOriginalGame();
+    const { draftId, state } = await startEdit(gameId);
+    state.locationId = "not-a-real-location-id";
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { InvalidReferenceError } = await import("@/lib/games/save");
+    await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(InvalidReferenceError);
   });
 });
 

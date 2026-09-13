@@ -73,7 +73,12 @@ export async function POST(request: Request) {
       return apiError("invalid_grid", error.message);
     }
     if (error instanceof MissingPhotoError) {
-      return apiError("missing_photo", "This draft has no sheet photo to save with.");
+      // ⚠️ `saveGame`/`saveEditedGame` throw this for three genuinely
+      // different reasons (no sheet photo row at all, the sheet photo was
+      // changed, or an S3 object is missing) with a distinct, accurate
+      // `message` each time — pass it through rather than collapsing all
+      // three into one hardcoded sentence that lies in two of them.
+      return apiError("missing_photo", error.message);
     }
     if (error instanceof DraftNotFoundError) {
       return apiError("not_found", "That draft doesn't exist.");

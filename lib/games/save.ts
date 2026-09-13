@@ -39,19 +39,13 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
-import {
-  draft as draftTable,
-  game,
-  gamePlayer,
-  photo,
-  roundScore,
-} from "@/lib/db/schema";
+import { draft as draftTable, game, photo } from "@/lib/db/schema";
 import { toGridColumns, type DraftState } from "@/lib/draft/state";
 import { getPhotoStorage } from "@/lib/photos";
-import { deriveHandScores, finalScore, validateGrid } from "@/lib/scoring";
+import { validateGrid } from "@/lib/scoring";
 import { describeError, log } from "@/lib/log";
 
 import {
@@ -60,6 +54,7 @@ import {
   resolveLocation,
   resolvePlayers,
   upsertRoster,
+  writeGameRows,
   DraftNotFoundError,
   InvalidGridError,
   InvalidReferenceError,
@@ -175,88 +170,17 @@ export async function saveGame(
         rosterId,
       });
 
-      for (const { column, playerId } of resolved) {
-        const values = valuesByColumnId.get(column.id) ?? [];
-        const handScores = deriveHandScores(values);
-        const final = finalScore(values);
-        if (final === null) {
-          // Cannot happen: validateGrid already rejected any column with an
-          // unread or missing final cell. Defensive, not reachable in tests.
-          throw new InvalidGridError(validation);
-        }
-
-        await tx.insert(gamePlayer).values({
-          gameId: newGameId,
-          playerId,
-          columnOrder: column.order,
-          sheetName: column.sheetName,
-          finalScore: final,
-        });
-
-        await tx.insert(roundScore).values(
-          values.map((value, index) => ({
-            gameId: newGameId,
-            playerId,
-            hand: index + 1,
-            runningTotal: value as number,
-            score: handScores[index] as number,
-          })),
-        );
-
-        // PRD criterion 71: every close-up taken during review attaches to
-        // this game and the player its column resolved to — including one
-        // whose reading was later rejected (it's still evidence of what the
-        // paper said, same reasoning as the sheet photo). `draft_column_id`
-        // was set at upload time (`POST /api/uploads`, kind:'column'); a
-        // draft can be edited after a close-up is taken (reassign the
-        // player, reorder), so this resolves it fresh here rather than
-        // trusting anything decided when the photo was shot.
-        //
-        // ⚠️ Security review: `column.id` comes from the request body
-        // (`state`), so the WHERE is scoped to `draftId` too — otherwise a
-        // crafted save naming another draft's column id could re-parent that
-        // draft's close-ups onto this game. `isNull(gameId)` also stops this
-        // from ever re-parenting a photo already attached to a previously
-        // saved game.
-        await tx
-          .update(photo)
-          .set({ gameId: newGameId, playerId })
-          .where(
-            and(
-              eq(photo.draftColumnId, column.id),
-              eq(photo.kind, "column"),
-              eq(photo.draftId, draftId),
-              isNull(photo.gameId),
-            ),
-          );
-      }
-
-      // PRD criterion 71, continued: a close-up whose *column* was removed
-      // by a structural repair (`removeColumn` in `lib/ui/draft-edits.ts`)
-      // before save. `removeColumn` is pure client-side draft-state editing
-      // — it has no way to touch the `photo` table, and shouldn't, since the
-      // photo is still real evidence of what the paper said even though the
-      // column it was shot for no longer exists in this save. Rather than
-      // leaving it orphaned forever (draftColumnId pointing at nothing,
-      // gameId/playerId null forever), attach it to this game with a null
-      // playerId — the game view already renders a close-up under a
-      // fallback label when it can't resolve a player for it. Scoped to
-      // `draftId` and `isNull(gameId)` for the same reasons as the loop
-      // above.
-      const survivingColumnIds = orderedColumns.map((c) => c.id);
-      await tx
-        .update(photo)
-        .set({ gameId: newGameId })
-        .where(
-          survivingColumnIds.length > 0
-            ? and(
-                eq(photo.kind, "column"),
-                eq(photo.draftId, draftId),
-                isNull(photo.gameId),
-                notInArray(photo.draftColumnId, survivingColumnIds),
-              )
-            : and(eq(photo.kind, "column"), eq(photo.draftId, draftId), isNull(photo.gameId)),
-        );
+      // The per-column `game_player`/`round_score` insert loop and the
+      // close-up re-parenting sweeps — shared with `saveEditedGame`
+      // (PRD criterion 71). See `writeGameRows` in `lib/games/resolve.ts`.
+      await writeGameRows(tx, {
+        gameId: newGameId,
+        draftId,
+        resolved,
+        valuesByColumnId,
+        orderedColumns,
+        validation,
+      });
 
       // Conditional: the backstop for a concurrent save of the same draft.
       const photoLink = await tx

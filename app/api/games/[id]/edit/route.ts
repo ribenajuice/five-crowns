@@ -46,7 +46,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       return apiError("not_found", "That game doesn't exist.");
     }
     if (error instanceof MissingPhotoError) {
-      return apiError("missing_photo", "This game has no sheet photo to edit against.");
+      // ⚠️ `startEditDraft` throws this for two different reasons (no sheet
+      // photo row at all, or an S3 object for it is missing) with a distinct,
+      // accurate `message` each time — see `app/api/games/route.ts`'s own
+      // `MissingPhotoError` handler for the same fix.
+      return apiError("missing_photo", error.message);
     }
     return serverError("games.edit_start_failed", error, { gameId: id });
   }
