@@ -4,19 +4,25 @@
 
 - **Last updated**: 2026-09-13
 - **Phase**: Milestone 1, **Stage 3 is live** at **https://fivecrowns.ribenajuice.xyz**. **Stage 4 (the rest of the
-  override ladder — structural repairs and targeted per-column re-photograph) is built** on branch
-  `feat/m1-stage4`, pushed to origin, but **no PR has been opened yet** — that's the next step before it can be
-  QA'd and shipped.
+  override ladder — structural repairs and targeted per-column re-photograph) has passed QA and code review** and
+  is open as [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), awaiting founder review and CI on the
+  PR before it can be merged and shipped.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live today (200, valid cert). Valid Amazon
   certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation CNAME.
   The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
   (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
   delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
   answers again.
-- **Currently in flight**: `feat/m1-stage4` — five commits (design system, back end, front end, a fix for
-  criterion 71's close-ups on the game view, and a security-review pass capping column re-reads and scoping the
-  close-up sweep to drafts). Pushed to origin but **not yet opened as a PR**, so it hasn't been through QA or CI on
-  its own branch. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) and
+- **Currently in flight**: [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (`feat/m1-stage4`). QA drove
+  the real HTTP API end-to-end against both fixture sheets and passed all in-scope acceptance criteria (29–45, 71).
+  A `/code-review high` pass then found and fixed five real bugs before the PR opened: a close-up photo could be
+  silently lost if its column was removed by a structural repair before save (now kept with the game, unattributed
+  rather than dropped); a column re-read finishing after a 30–60s vision call could overwrite an edit made while it
+  was in flight (now uses optimistic concurrency on the draft's `updated_at`, retrying rather than clobbering); the
+  close-up upload "try again" button could get permanently stuck after a failed presign; inserting/deleting a row
+  could leave the model's uncertainty flag on the wrong row; and reading-history timestamps didn't match the app's
+  `en-AU` format used elsewhere. 834 tests passing, lint and typecheck clean. Awaiting founder PR review.
+  [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) and
   [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (Stage 2/3) remain merged and deployed.
 - **Stage 3 shipped 2026-09-12** ([PR #12](https://github.com/ribenajuice/five-crowns/pull/12)). QA, a
   security-reviewer pass, and two independent `/code-review` runs together found and fixed real bugs before and
@@ -54,8 +60,8 @@
   (`https://fivecrowns.ribenajuice.xyz/admin`) and try "Read the sheet" on a real photo — the one thing nobody but
   the founder can verify. Also still open: the Stage 2 on-phone acceptance check (capture → review → save,
   criterion 11's live side-by-side of a manual vs. imported game would come for free once a real key exists).
-- **Next up**: open the PR for `feat/m1-stage4`, run QA against acceptance criteria 29–45 and 71 on both fixture
-  sheets, then `/ship` it. After that, Stage 5 (go live and prove it) is the last Milestone 1 stage.
+- **Next up**: founder reviews and approves [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), then
+  `/ship` it. After that, Stage 5 (go live and prove it) is the last Milestone 1 stage.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
