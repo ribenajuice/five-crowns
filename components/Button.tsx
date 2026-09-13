@@ -28,6 +28,22 @@ export function buttonClasses(
   ].join(" ");
 }
 
+/**
+ * The one-off destructive variant, not a fourth `Button` kind
+ * (docs/DESIGN-SYSTEM.md § "Deleting a game", reusing `CellEditor`'s existing
+ * "Delete this line" treatment): `ghost` shape, `--error` ink, always paired
+ * with a leading icon (`TrashIcon`) by the caller. Exported so every
+ * destructive button in the app shares one definition. Always full width —
+ * both current call sites (`GameActions`, `DeleteGameCard`) want that, and
+ * this project's own convention is not to carry a parameter with no caller.
+ */
+export function destructiveButtonClasses(): string {
+  return [
+    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-error px-4 text-base font-bold text-error no-underline",
+    "disabled:opacity-60",
+  ].join(" ");
+}
+
 interface ButtonLinkProps {
   href: string;
   variant?: ButtonVariant;

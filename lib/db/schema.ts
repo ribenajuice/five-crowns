@@ -302,12 +302,41 @@ export const draft = sqliteTable(
     id: text("id").primaryKey(),
     stateJson: text("state_json").notNull(),
     savedGameId: text("saved_game_id").references(() => game.id),
+    /**
+     * The game this draft is an **edit of** (M2 Stage 2), or null for the
+     * ordinary new-game draft. Set once, at creation, by
+     * `POST /api/games/{id}/edit`; nothing ever changes it afterwards, and its
+     * presence is the only thing that tells the save to update a game in place
+     * rather than insert one (`lib/games/save-edit.ts`).
+     *
+     * ⚠️ **Deliberately not a foreign key.** Every other reference to `game.id`
+     * here either cascades or is cleaned up when a game is deleted; this one has
+     * to *survive* its target being deleted, because "the game I was editing is
+     * gone" is a state PRD criterion 122 requires the save to detect and refuse.
+     * A declared FK would either block the delete (wherever
+     * `PRAGMA foreign_keys = ON` actually takes) or, with `ON DELETE SET NULL`,
+     * silently demote an abandoned edit to a new-game draft that would then
+     * resurrect the deleted game under a fresh id — exactly what 122 forbids.
+     */
+    editingGameId: text("editing_game_id"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
   },
-  (t) => [index("draft_updated_idx").on(t.updatedAt)],
+  (t) => [
+    index("draft_updated_idx").on(t.updatedAt),
+    index("draft_editing_game_idx").on(t.editingGameId),
+    /**
+     * At most one *open* edit per game. "Edit this game" resumes the open draft
+     * rather than forking a second one (criterion 121), and this index is the
+     * database-level backstop for a double tap — the same role
+     * `photo_one_sheet_per_game` plays inside the save.
+     */
+    uniqueIndex("draft_one_open_edit_per_game")
+      .on(t.editingGameId)
+      .where(sql`${t.editingGameId} IS NOT NULL AND ${t.savedGameId} IS NULL`),
+  ],
 );
 
 /* --------------------------------------------------------- abuse and money */

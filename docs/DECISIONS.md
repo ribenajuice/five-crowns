@@ -20,6 +20,231 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — Editing a saved game: an ordinary draft that carries its target, saved by a separate in-place transaction
+
+- **Context**: Milestone 2 Stage 2, criteria **115–123** — the first code in this project that writes
+  over history. Criterion 115 pins the mechanism harder than it looks: "Edit this game" must open
+  **the same `/review/{draftId}` screen** an import opens, with the same photo-beside-numbers, the
+  same live validation and the same save gate. Criterion 117 then requires the save to update the
+  **same `game` row** (same id, no second game in the list), 118 allows the set of players to change,
+  119 requires **every** round row replaced, 120 forbids ever replacing the sheet photo while still
+  allowing column close-ups, 121 requires an abandoned edit to survive as a resumable draft, and 122
+  requires a save over a meanwhile-deleted game to fail cleanly rather than resurrect it.
+  Four facts in the M1 code decided most of this before any option was weighed:
+  1. ⚠️ **The review screen already loads its photo from `state.photoId`**, through
+     `GET /api/photos/{id}/url` (`app/review/[draftId]/ReviewScreen.tsx`, the effect keyed on
+     `draft?.photoId`). It has never queried `photo.draft_id`. So a draft whose state names an
+     existing sheet photo renders the photo correctly with **no code change and no re-link**.
+  2. `saveGame` is the only thing that *resolves* a sheet photo through `photo.draft_id` (the other
+     readers of that column — `POST /api/drafts`, `POST /api/transcribe` — only check that it is
+     still unclaimed), and it closes its
+     double-submit race with `UPDATE photo SET game_id = … WHERE id = :sheet AND game_id IS NULL`
+     (`lib/games/save.ts`). An edit's sheet photo **already has a `game_id`**, so that conditional
+     can never match: reusing `saveGame` unchanged for an edit would fail as a phantom concurrent
+     save, every time.
+  3. The per-game rows are keyed `(game_id, player_id)` and `(game_id, player_id, hand)`. When
+     criterion 118's player set changes, the departing player's rows are unreachable by any UPDATE —
+     they have to be deleted.
+  4. `POST /api/transcribe` already refuses a photo whose draft is saved ("This game has already been
+     saved", 409), so no full-sheet re-read can reach a saved game's photo. Only the close-up path
+     needs to keep working during an edit.
+- **Decision**: **an edit is an ordinary draft with a target.** No second screen, no second draft
+  format, no "edit mode" on the review screen.
+  1. **One new column, `draft.editing_game_id`** (migration `0003_draft_editing_game`, with its
+     reversing file). Null for every ordinary draft; set once, at creation, to the game being
+     edited. ⚠️ **It carries no `REFERENCES` clause, deliberately** — an edit draft has to remain
+     representable *after* its target is deleted, because that is the exact state criterion 122 asks
+     the save to detect. A real FK would either block the delete wherever
+     `PRAGMA foreign_keys = ON` takes, or, with `ON DELETE SET NULL`, quietly demote an abandoned
+     edit into a new-game draft that resurrects the deleted game under a fresh id. A partial unique
+     index, `draft_one_open_edit_per_game` (`editing_game_id IS NOT NULL AND saved_game_id IS NULL`),
+     keeps at most one *open* edit per game while allowing any number of finished ones — the same
+     backstop role `photo_one_sheet_per_game` plays inside the save. Both directions of the migration
+     were applied to a scratch database and the index's three cases (second open edit refused, two
+     finished edits allowed, ordinary drafts unaffected) checked.
+     ⚠️ **Why a column and not a flag inside `state_json`**: `state` arrives in the body of
+     `POST /api/games`. A draft's edit-ness decides whether the save *overwrites an existing game*,
+     so it must live somewhere the client cannot set. It also has to be indexable, for resume.
+  2. **`POST /api/games/{id}/edit` creates or resumes the edit draft** and answers `{ draftId }`;
+     the game view's "Edit this game" posts to it and navigates to `/review/{draftId}`. A POST, not
+     a GET page, so a link prefetch cannot mint drafts. If an open edit draft for that game already
+     exists it is **returned as-is** — that is what makes criterion 121 true in the strongest sense:
+     press Edit again after the tab was evicted and the half-finished corrections are still there.
+     The state is built from the **game's own rows**: `playedOn`, `locationId`, one column per
+     `game_player` in `column_order` (its `playerId` and `sheetName`), the eleven `running_total`s
+     written into `manualEdits` (`{"0": …, "10": …}`, which `effectiveValues` layers over an empty
+     reading stack), and `photoId` = the game's existing `kind='sheet'` photo. Column ids are fresh
+     UUIDs; `readings` empty, `crop` null. ⚠️ **`photo.draft_id` is not touched**: the sheet photo
+     stays linked to the draft that first imported it, and the edit draft simply names it. Per fact 1
+     the screen is satisfied by that alone.
+  3. **The save branches on the column, in a separate file.** `POST /api/games` keeps its single
+     entry point; `saveGame` gains a two-line dispatch (`if (existing.editingGameId) return
+     saveEditedGame(existing, state)`) after its own `savedGameId` idempotency check, and the edit
+     transaction lives in **`lib/games/save-edit.ts`**. The shared resolvers —
+     `resolveLocation`, `resolvePlayers`, `assertNoDuplicatePlayers`, `upsertRoster`, `nowIso`, the
+     `Tx` type and the four existing error classes — **move unchanged into `lib/games/resolve.ts`**
+     and are imported by both (`save.ts` re-exports the error classes so
+     `app/api/games/route.ts`'s imports keep working). ⚠️ A pure move, no behaviour change: criterion
+     118's roster re-match **is** `upsertRoster`, and two copies of player resolution would drift
+     apart on the first fix to either.
+  4. **The edit transaction**, in order, mirroring `saveGame` step for step so the two can be read
+     side by side: persist `state` to the draft first; find the sheet photo **by
+     `game_id = editing_game_id AND kind='sheet'`** (not by `draft_id`) and check both S3 objects;
+     refuse if `state.photoId` names anything else; re-validate and re-derive server-side. Then one
+     transaction: assert the game still exists; resolve location and players and upsert the roster;
+     `UPDATE game SET played_on, location_id, roster_id WHERE id = :gameId` and treat
+     `rowsAffected === 0` as the deleted-game case; `DELETE FROM round_score` then
+     `DELETE FROM game_player` for that game and **re-insert both from the resolved columns** (that
+     is what criterion 119's "replaces every round row" means concretely — delete-and-insert, not
+     upsert, because of fact 3); run `saveGame`'s two close-up sweeps unchanged but scoped to this
+     draft and setting `game_id = :gameId`; **null the `player_id` of any close-up already on the
+     game whose player is no longer in it**, so a reassigned column degrades to the fallback label
+     the game view already renders rather than naming someone who is not in the game; finally
+     `UPDATE draft SET saved_game_id = :gameId WHERE id = :draftId AND saved_game_id IS NULL`, whose
+     `rowsAffected === 0` is the concurrent-save guard, caught and answered like `saveGame`'s.
+     ⚠️ **The `UPDATE game` sets exactly three columns.** Not `created_at`, not `note`: criterion 123
+     says nothing marks a game as edited, and `created_at` is the games list's tiebreaker — touching
+     it would reorder the list, which is a badge by another name. (A changed `played_on` moving the
+     game is the founder's own edit, not a marker.)
+  5. **The old roster is left completely alone** (criterion 118) — not renamed, not emptied, not
+     deleted, even when this was its only game. `upsertRoster` finds the existing roster for the new
+     exact set or creates one, exactly as a new save does, and Stage 3's listings filter out
+     roster rows with no games (spec decision 5). An unchanged player set resolves to the same
+     signature and rewrites the same `roster_id`.
+  6. **The sheet photo is locked in two places, and one of them is new work.** The review screen has
+     never had a control that replaces the sheet photo — the upload happens in `AddGameFlow`, before
+     a draft exists — so criterion 120's front end is satisfied by omission, with nothing to remove.
+     The real gap is server-side: `PUT /api/drafts/{id}` accepts **any** schema-valid state, so a
+     crafted request could point a draft's `state.photoId` at a freshly uploaded sheet photo. That is
+     closed where it happens — **`PUT /api/drafts/{id}` refuses a state whose `photoId` differs from
+     the stored one** (409 `conflict`, "The sheet photo can't be changed."), for every draft, not
+     only edits — and again at save time, where the edit path reads the photo from the `game` row and
+     refuses if `state.photoId` disagrees. ⚠️ Note this also closes a smaller M1 hole: on the
+     new-game path the same trick would have shown the human one photo and filed a different one,
+     since `saveGame` resolves the photo by `draft_id`. **Column close-ups need no change at all**:
+     `POST /api/uploads` (`kind:'column'`) asks only that the draft exists and is unsaved, both true
+     of an open edit draft, and the sweeps in step 4 attach them to the game like any other.
+  7. **Criterion 122** is an existence check inside the transaction plus the conditional
+     `UPDATE game … WHERE id = :gameId`, symmetric with the existing `ConcurrentSaveError` /
+     `AlreadySavedInTransaction` sentinels: a new `GameDeletedError` thrown inside, caught outside,
+     mapped by the route to a new `game_deleted` error code (409) and a plain sentence
+     ("This game was deleted. Nothing was saved." — final wording is the ui-designer's). Nothing is
+     inserted on that path, so there is no way for it to resurrect the game.
+     ⚠️ **This constrains the delete being built alongside it**: the delete transaction must
+     `DELETE FROM draft WHERE saved_game_id = :gameId` (finished drafts, new-game and edit alike, are
+     worthless once the game is gone) and **leave open edit drafts alone**, so that a save arriving
+     afterwards lands on the check above rather than on "that draft doesn't exist". It must **not**
+     null `saved_game_id` instead — proven on a scratch database: that turns finished edit drafts back
+     into open ones and they collide on `draft_one_open_edit_per_game`.
+  8. **Nothing else changes.** `GET`/`PUT /api/drafts/{id}` work on an edit draft unmodified, which
+     is criterion 121 — autosave, offline banner, eviction and resume are all the M1 code (`GET`
+     additionally returns `editingGameId` so the screen can adjust its wording and its
+     post-save redirect; additive, nothing branches on it in the back end). Idempotency is M1's:
+     a second `POST /api/games` for a saved edit draft returns `{ gameId, alreadySaved: true }`
+     without touching the database. The edit path answers **200**, not 201 — nothing was created.
+- **Alternatives**:
+  - *Re-point `photo.draft_id` at the edit draft so `saveGame` works unchanged* — traced against the
+    real code and rejected on both halves: it is unnecessary (fact 1 — the screen never reads that
+    column) and insufficient (fact 2 — `saveGame`'s photo-link guard still cannot match a photo that
+    already has a `game_id`, so the save fails anyway). It would also overwrite the one row that
+    records which import a photo arrived in, to satisfy a query nobody makes.
+  - *A second code path in the review screen that loads the photo by `gameId` when the draft is an
+    edit* — rejected as machinery for a problem that does not exist: `state.photoId` already carries
+    it, and a second photo-loading path is a second thing that can be wrong on the screen criterion
+    115 says must be identical.
+  - *Delete the game and re-insert it with the same id* — one code path for save and edit, but it
+    destroys and rebuilds `photo.game_id` links and `created_at`, and a failure between the two
+    halves loses a game outright. Delete-and-reinsert of the **child** rows inside a transaction has
+    the same shape with none of that exposure.
+  - *`UPDATE`/upsert the child rows in place* — fails criterion 118: `(game_id, player_id)` rows for
+    a player who left the game are unreachable by an upsert and would silently keep them in the game,
+    in the winner calculation and in every Stage 3 stat.
+  - *Mark the edit inside `state_json` rather than with a column* — rejected on security grounds:
+    `state` is request-body data, and "overwrite game X" is not a decision the client may hand the
+    server. Unindexable for resume, too.
+  - *`editing_game_id REFERENCES game(id) ON DELETE SET NULL` / `ON DELETE CASCADE`* — SET NULL turns
+    an abandoned edit into a new-game draft that would re-insert the deleted game under a new id
+    (criterion 122's exact prohibition); CASCADE makes criterion 122 fail as "that draft doesn't
+    exist", a worse sentence for the one case the criterion exists to make legible. The unenforced
+    reference is the honest shape: **this pointer is allowed to dangle, and the save is where that is
+    handled.**
+  - *Seed the edit draft with the original draft's `readings` and `crop`s* (found via
+    `draft.saved_game_id`) — attractive, because the column strip beside the numbers is tighter with
+    a crop. Rejected for now: the original draft may be absent or unmappable (columns removed by a
+    structural repair, players that were pending names at save time), so the edit screen would behave
+    differently depending on history nobody can see, and matching columns back up needs name-key
+    resolution to be even approximately right. Criterion 15 already covers the no-crop case — the
+    strip shows the whole photo — and re-marking a crop is one gesture. **Revisit if** editing turns
+    out to be common enough that re-cropping is a real annoyance.
+- **Consequences**:
+  - Schema: one nullable column and two indexes on `draft`. **No new table, no new AWS resource, no
+    change to the ~A$0.65/month running cost** (criterion 171's "the footprint did not grow" still
+    holds; `sst.config.ts` is untouched).
+  - `lib/games/save.ts` shrinks by the moved helpers and gains two lines; the QA-visible behaviour of
+    the new-game path is unchanged, which the existing save tests should prove on their own.
+  - ⚠️ **One place where an edit writes over a photo's attribution**: a close-up whose player is no
+    longer in the game loses its `player_id`. Nothing is deleted and the image still shows on the
+    game view under the fallback label. The case it cannot fix — two players *swapped* between
+    columns, both still in the game — leaves each old close-up attributed to the other, and there is
+    no stored link to correct it by. Documented in `docs/ARCHITECTURE.md` § "The edit" rather than
+    guessed at.
+  - The edit screen shows the numbers as **manual edits over an empty reading stack**. A column
+    re-photographed during an edit pushes a new reading, and the founder's typed values stay layered
+    on top exactly as in an import — but "restore the previous reading" has nothing to restore to
+    from before the original save. Consistent with the record: the game rows are the record, the old
+    draft is an artifact of how it arrived.
+  - For the delete feature, in the same stage: delete `round_score`, `game_player`, `transcription`
+    and `photo` rows **explicitly**, not by leaning on the declared cascades —
+    `PRAGMA foreign_keys` is best-effort on Turso's HTTP driver, as `lib/games/save.ts` already
+    documents at its call site, so a cascade that works in tests may silently not fire in production.
+  - **Revisit if**: a second person ever edits concurrently (the whole design assumes one editor, per
+    § "Concurrency, deliberately not solved"), or if edit drafts start accumulating enough that
+    pruning abandoned ones becomes worth a job.
+
+## 2026-09-14 — A suggested player match is pre-selected, not tap-to-confirm
+
+- **Context**: Milestone 2 adds a suggested player match on the review screen (fuzzy match of the
+  handwritten name against existing players). The spec settled *how* matching works — normalise,
+  `1 − levenshtein / max(len)`, suggest at ≥ 0.80 with a clear leader, ambiguity rule at 0.10 — but
+  not what the screen does with a suggestion. Two readings of the agreed scope pulled opposite ways:
+  the PRD says the match is presented *"to confirm or change"* (a tap per column), while the user
+  story it serves says *"never more than a tap or two"* and *"never retype the roster"* (no tap at
+  all). ⚠️ **That is a question about friction in the thing the founder does every game, not a
+  technical one**, so it was raised as PRD open question 4 and two acceptance criteria were left
+  deliberately unwritten rather than guessed.
+- **Decision** (founder, 2026-09-14): **the suggestion is pre-selected and accepting it costs
+  nothing** — no per-column confirmation tap, no acknowledgement state, no "unconfirmed" badge, and
+  no new save gate. A pre-selected column counts as assigned exactly as a hand-picked one does. The
+  founder's reasoning: this is for themselves and **about five other people**, so a wrong guess is
+  rare, and it is still visible and correctable on the review screen like everything else there —
+  *the review screen does not stop being the check just because one field starts pre-filled*. ⚠️ It
+  is the **same stance the product already takes on transcribed numbers**: they arrive pre-filled
+  from a source that is known to be wrong sometimes, every one of them stays editable, and the human
+  read against the photo is the control. A name is not held to a stricter standard than a score.
+  ⚠️ **Where there is no confident suggestion, nothing is guessed**: a near match (0.55–0.80) or a
+  0.10 ambiguity leaves the column **unassigned** with the best candidates offered first, and the
+  existing save gate applies to it. PRD criteria **172–173**.
+- **Alternatives**: (a) *A mandatory per-column confirmation tap* — rejected as friction bought
+  against a risk this group does not have. With six known people and consistent handwriting
+  (kickoff decision 3), the common night is four exact matches, so the tap would be four
+  acknowledgements of something already right, every game, forever — and a confirmation people
+  always accept stops being read, which would weaken the review screen rather than strengthen it.
+  (b) *Pre-select, but mark the column until it is touched* — rejected as the worst of both: it adds
+  a state to the screen and an "is this done?" question without ever blocking anything, and M1's
+  wording rules would then have to stop it reading as *confirmed*. (c) *Pre-select only at
+  similarity 1.0 and offer everything else* — rejected: the exact-match case is the one nobody needs
+  help with, and a one-character misread ("Cady" for "Cody") is precisely the case the feature
+  exists for.
+- **Consequences**: Stage 4 loses its blocker; **nothing in Milestone 2 is waiting on the founder**.
+  ⚠️ **Wording stays under the M1 constraint** — a suggestion reads as a suggestion, and nothing in
+  this flow may say *checked, confirmed, verified* or *correct* (criterion 154). The handwritten name
+  stays displayed beside the selection on every column, which is what makes a wrong pre-selection
+  visible without opening anything, and `sheet_name` still stores the original read, so an identity
+  mistake stays traceable. The repair path if one slips through is already in this milestone: Stage
+  2's game edit, or Stage 4's player merge. **Revisit if**: the group grows enough that two players'
+  names sit inside the 0.10 ambiguity window as a matter of routine, or a mis-assignment actually
+  reaches the record — either is the signal that the tap was worth its cost after all.
+
 ## 2026-09-14 — Milestone 2: player/location merges are permanent; score download is one CSV
 
 - **Context**: Milestone 2 spec work started while Stage 5 wrapped up. Two behaviors needed the

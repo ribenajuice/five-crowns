@@ -5,8 +5,10 @@ the finished paper scoresheet, and the app turns it into a searchable history of
 
 **Where it's at:** **Milestone 1 is complete and live** at https://fivecrowns.ribenajuice.xyz — every
 acceptance criterion re-verified, including a real, paid reading key proven on real scoresheets in
-production. Next up is Milestone 2: player identity matching, roster renaming, and the rest of the
-admin panel. See `docs/STATUS.md`.
+production. **Milestone 2, Stage 2 is built and tested, on a branch, not yet merged or deployed** —
+you'll be able to edit or delete a saved game, and a broken or made-up link will show this app's
+own "not found" or error screen instead of a generic one. Next up after this stage is player and
+roster pages. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
@@ -68,6 +70,41 @@ npm run lint && npm run typecheck     # code style and type errors
 ```
 
 CI runs all three on every pull request.
+
+## Editing a game
+
+A game's page has an **Edit this game** button. It reopens the same review screen you used when you
+first entered the game — the same photo beside the numbers, the same checks — and saving updates
+that game in place; it never creates a second one. You can change the date, venue, players and any
+number. The one thing you can't change is the sheet photo itself — to swap that, delete the game and
+add it again. Saving doesn't mark the game as edited in any way: an edited game looks exactly like
+one that was never touched.
+
+## Deleting a game
+
+A game's page has a **Delete game** button. It leads to a confirmation naming the game's date and
+roster before anything happens — deleting is permanent, there's no undo, and it takes the game's
+photos out of the record with it.
+
+**The photo files themselves are not destroyed.** The app is deliberately never given permission to
+delete from S3, so a deleted game's photo objects stay in the bucket — just no longer linked to
+anything in the record, and the app won't hand out a link to them again. If you ever want to remove
+one by hand, that's a founder action, not something the app does for you:
+
+```bash
+aws s3 rm s3://five-crowns-photos/photos/<photoId>/original.jpg
+aws s3 rm s3://five-crowns-photos/photos/<photoId>/model.jpg
+```
+
+You can find a deleted game's photo id in a database backup (`npm run db:backup`) taken before the
+deletion, or in the S3 console under `photos/`.
+
+## When something goes wrong
+
+A link to a game that's been deleted, a mistyped address, or a made-up player, roster or place all
+show this app's own "not found" page, with a way back to the games list — never a generic
+developer error page. If something breaks unexpectedly, you see a plain error screen instead of a
+crash page. Neither screen ever shows a stack trace, a file path or any other technical detail.
 
 ## Taking a backup
 
