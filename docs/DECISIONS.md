@@ -20,6 +20,50 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — A suggested player match is pre-selected, not tap-to-confirm
+
+- **Context**: Milestone 2 adds a suggested player match on the review screen (fuzzy match of the
+  handwritten name against existing players). The spec settled *how* matching works — normalise,
+  `1 − levenshtein / max(len)`, suggest at ≥ 0.80 with a clear leader, ambiguity rule at 0.10 — but
+  not what the screen does with a suggestion. Two readings of the agreed scope pulled opposite ways:
+  the PRD says the match is presented *"to confirm or change"* (a tap per column), while the user
+  story it serves says *"never more than a tap or two"* and *"never retype the roster"* (no tap at
+  all). ⚠️ **That is a question about friction in the thing the founder does every game, not a
+  technical one**, so it was raised as PRD open question 4 and two acceptance criteria were left
+  deliberately unwritten rather than guessed.
+- **Decision** (founder, 2026-09-14): **the suggestion is pre-selected and accepting it costs
+  nothing** — no per-column confirmation tap, no acknowledgement state, no "unconfirmed" badge, and
+  no new save gate. A pre-selected column counts as assigned exactly as a hand-picked one does. The
+  founder's reasoning: this is for themselves and **about five other people**, so a wrong guess is
+  rare, and it is still visible and correctable on the review screen like everything else there —
+  *the review screen does not stop being the check just because one field starts pre-filled*. ⚠️ It
+  is the **same stance the product already takes on transcribed numbers**: they arrive pre-filled
+  from a source that is known to be wrong sometimes, every one of them stays editable, and the human
+  read against the photo is the control. A name is not held to a stricter standard than a score.
+  ⚠️ **Where there is no confident suggestion, nothing is guessed**: a near match (0.55–0.80) or a
+  0.10 ambiguity leaves the column **unassigned** with the best candidates offered first, and the
+  existing save gate applies to it. PRD criteria **172–173**.
+- **Alternatives**: (a) *A mandatory per-column confirmation tap* — rejected as friction bought
+  against a risk this group does not have. With six known people and consistent handwriting
+  (kickoff decision 3), the common night is four exact matches, so the tap would be four
+  acknowledgements of something already right, every game, forever — and a confirmation people
+  always accept stops being read, which would weaken the review screen rather than strengthen it.
+  (b) *Pre-select, but mark the column until it is touched* — rejected as the worst of both: it adds
+  a state to the screen and an "is this done?" question without ever blocking anything, and M1's
+  wording rules would then have to stop it reading as *confirmed*. (c) *Pre-select only at
+  similarity 1.0 and offer everything else* — rejected: the exact-match case is the one nobody needs
+  help with, and a one-character misread ("Cady" for "Cody") is precisely the case the feature
+  exists for.
+- **Consequences**: Stage 4 loses its blocker; **nothing in Milestone 2 is waiting on the founder**.
+  ⚠️ **Wording stays under the M1 constraint** — a suggestion reads as a suggestion, and nothing in
+  this flow may say *checked, confirmed, verified* or *correct* (criterion 154). The handwritten name
+  stays displayed beside the selection on every column, which is what makes a wrong pre-selection
+  visible without opening anything, and `sheet_name` still stores the original read, so an identity
+  mistake stays traceable. The repair path if one slips through is already in this milestone: Stage
+  2's game edit, or Stage 4's player merge. **Revisit if**: the group grows enough that two players'
+  names sit inside the 0.10 ambiguity window as a matter of routine, or a mis-assignment actually
+  reaches the record — either is the signal that the tap was worth its cost after all.
+
 ## 2026-09-14 — Milestone 2: player/location merges are permanent; score download is one CSV
 
 - **Context**: Milestone 2 spec work started while Stage 5 wrapped up. Two behaviors needed the

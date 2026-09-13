@@ -31,7 +31,9 @@ exists and has enough games to say anything, the games list is the landing scree
 
 **Nothing in Milestone 1 is waiting on the founder.** Two operational questions opened at Stage 5 —
 they change how the last stage is run, not what gets built. A third opened on 2026-09-14 and is a
-**Milestone 3 scope question**, parked until then.
+**Milestone 3 scope question**, parked until then. A fourth, also 2026-09-14, was the one live
+blocker on **Milestone 2 Stage 4**; the founder answered it the same day, so **nothing in Milestone
+2 is waiting on the founder either** and Stage 1 can start.
 
 ## Open questions
 
@@ -59,6 +61,25 @@ either way.*
    glanceable — e.g. tapping to confirm each final score, or the app offering a close-up of the
    final row by default? ⚠️ **This would be new scope, so it is your call, not ours**, and we are
    not proposing it. A second read is not on the table either way: errors repeat.
+
+*Opened 2026-09-14 by the Milestone 2 spec. ✅ **Answered by the founder the same day — no longer
+open.** Kept here with its answer rather than deleted, per the house rule on preserving decision
+history. Full reasoning in `docs/DECISIONS.md`; it produced criteria 172–173.*
+
+4. ✅ **Answered: option (a) — the suggestion is pre-selected, and accepting it costs nothing.** The
+   founder's reasoning: this is for themselves and about five other people, so a wrong guess is rare
+   and is still visible and correctable on the review screen like everything else there — *the review
+   screen does not stop being the check just because one field starts pre-filled*. The original
+   question, for the record: **when the app suggests a player, does a tap have to accept it?** Once a
+   handwritten name is
+   matched to an existing player, either (a) the suggestion is **pre-selected and saveable** — a
+   clean sheet of four known faces is zero taps, and a wrong suggestion can be saved by someone not
+   looking, or (b) **each column needs one tap to accept**, so four known faces cost four taps and
+   nothing enters the record unlooked-at. The agreed scope says the match is presented *"to confirm
+   or change"*, which reads like (b); the story it serves says *"never more than a tap or two"* and
+   *"never retype the roster"*, which reads like (a). ⚠️ **This is about how much friction you want
+   in the thing you do every game**, so it is yours. It is cheap either way and cheap to change
+   later — what it is not is guessable. Everything else about matching is specced and unaffected.
 
 ---
 
@@ -1406,6 +1427,637 @@ usage or spend.
   stats are already wrong.
 - **Rename or merge locations**, for the same reason and by the same mechanism. The pick-list makes
   duplicates unlikely, not impossible.
+
+### Milestone 2 — delivery spec
+
+*Written 2026-09-14, the day after Milestone 1 shipped. Same job as Milestone 1's delivery spec: the
+build contract, not the decision document. Everything above it still governs — the wording
+constraint, the "no second read" prohibition, the no-accounts stance, and the rule that heuristics
+warn and humans decide. **Two founder decisions frame it** (`docs/DECISIONS.md`, 2026-09-14):
+**merges are permanent**, like a game delete, with no undo and no merge-history table; and the
+**score download is one combined CSV**.*
+
+⚠️ **M1 had one risk it was built around (a bad read). M2 has a different one: a wrong change that
+nobody can take back.** Everything new in this milestone either writes over history (edit, merge,
+rename) or destroys it (delete), and this project has deliberately chosen no undo, no audit trail
+and no accounts. So the discipline shifts from *"be checkable"* to *"be honest about what is about
+to happen, and hard to do by accident"*. Criteria below test confirmation wording the way M1's
+tested transcription wording.
+
+⚠️ **Nothing here is a settings screen, and nothing here is analytics.** The admin panel gains four
+functions because the founder cannot do them another way. Player and roster pages carry **games
+played, wins and win rate, and nothing else** — the catalogue is Milestone 3, and a stat that
+sneaks in here is a stat the records board then has to argue with.
+
+#### Decisions taken in this spec
+
+*Ours and the architect's to make, per `CLAUDE.md`. Recorded here with the reasoning so a future
+session doesn't re-derive them. None of these is a founder question.*
+
+1. **How a suggested match works.** Normalise both names (trim, collapse whitespace, lowercase,
+   strip punctuation and diacritics), then score `similarity = 1 − levenshtein / max(len)`.
+   **≥ 0.80 with a clear leader → suggested. 0.55–0.80 → offered, never suggested. < 0.55 → no
+   suggestion at all.** Plus an ambiguity rule: if the best two candidates are within **0.10** of
+   each other, nothing is suggested however high they score. Levenshtein over anything cleverer
+   (phonetic, trigram, an embedding) because the real corpus is **five names**, the real failure is
+   a one- or two-character misread (the spike's "Cady" for "Cody"), and a rule we can state in one
+   line is a rule QA can test and a founder can be told. ⚠️ **`nameConfidence` from the vision path
+   is deliberately not an input** — it is a reading aid, not a check, and letting it gate a
+   suggestion would make the matching rule unexplainable for no measured gain.
+   ⚠️ **What the rule does with its answer was the founder's call, and they made it on 2026-09-14: a
+   suggestion is pre-selected and costs nothing to accept** — no per-column confirmation tap. The
+   player pool is about six people, and the review screen already re-exposes every field for
+   correction however it was filled. Criteria 172–173; ADR in `docs/DECISIONS.md`.
+2. **Merges hard-delete the losing row, and `player.merged_into_id` goes.** The column exists in the
+   schema today, commented "Milestone 2 player merge", and a populated `merged_into_id` **is** a
+   merge history — exactly what the founder's decision says not to keep. It is dropped in M2's
+   migration, with its reversing file.
+3. **A merge that would put one person in a game twice is refused, not resolved.** If both
+   identities appear in the same game, they are not the same person in that game — one column was
+   misassigned. The app names the offending games and points at Stage 2's game edit. Nothing is
+   guessed and nothing is repointed.
+4. **Roster folding on merge**, because a roster signature is built from player IDs and two rosters
+   can collide into one. The **survivor is the roster with more games** (tie: the older). A custom
+   name carries across only if the survivor has none; if both have one, the survivor keeps its name
+   and the result screen says so.
+5. **A roster is never auto-deleted, but listings only show rosters with at least one game.** The
+   alternative — deleting an emptied roster — would silently destroy a name like "Thursday crew"
+   because someone edited a game. Hiding is free and reversible; deleting is neither.
+6. **"Basic record" means exactly three numbers**: games played, wins (a shared win is a full win
+   for each), win rate as wins ÷ games. ⚠️ **The records board's withholding rules do not apply
+   here.** Withholding exists to stop a *ranking* crowning someone on four games; a player page is a
+   statement of fact about one person, and hiding "1 game, 1 win, 100%" from someone looking at
+   their own page would be hiding the sample rather than the claim. Every number states its sample.
+7. **Merging and deleting sit behind the group password, not the admin one.** The PRD already
+   settled that anyone with the group password can edit or delete a game (decision 4, risk 4).
+   A merge is the same class of act on the same data; putting it in the admin panel would be a
+   second, contradictory trust model, not extra safety.
+8. **The score CSV's grain is one row per player per game**, wide: the eleven running totals and
+   eleven derived hands as columns. A decade is ~1,400 rows rather than ~15,000, it is skimmable in
+   a spreadsheet on a phone, and it is lossless for the score data. ⚠️ **`docs/ARCHITECTURE.md`
+   still describes a ZIP of CSVs with a `README.txt`** — written before the founder's decision. The
+   architect updates it; the single CSV wins. One consequence: with no `README.txt` in the file,
+   **the "this is not a backup, the photos are not in it" sentence lives on the panel screen and in
+   the repo README**, and the CSV itself carries no prose (a comment row would break every
+   spreadsheet that opens it).
+9. **The forgotten-admin-password path is the SSM runbook that already exists**, promoted rather
+   than invented: `node scripts/hash-password.js`, then two `aws ssm put-parameter` calls (hash,
+   then the epoch bump). It needs no code change, no deploy and no developer, and it is the same
+   path first-time setup uses — so it is exercised rather than theoretical. M2's work is making it
+   **findable** (linked from the admin login screen, in the README under its own heading) and
+   **runnable without a repo checkout** (AWS CloudShell: clone the public repo, run the script,
+   run the two commands).
+10. ⚠️ **A deleted game's photo leaves the record but its file stays in S3, and the wording must say
+    so.** The app holds no `s3:DeleteObject` by deliberate design (2026-09-11 least-privilege ADR) —
+    that restriction is what makes an accidental deletion recoverable at all. So a delete removes
+    the game, its rounds, its roster membership and its photo rows; the image objects remain in the
+    private, versioned bucket, reachable only with AWS credentials and by nothing in the app. The
+    confirmation says the photos go **from the record**; it must not claim the files are destroyed.
+    Pruning them is a founder-run `aws s3` command, documented, not an app feature.
+
+#### User stories
+
+**Keeping it running — the rest of the panel**
+
+> As the founder, I want to change the group password from the panel, so that someone leaving the
+> group is a thirty-second job and not a developer's afternoon.
+
+- One new password, entered in the panel while holding an admin session. ⚠️ **The current group
+  password is not required** — the reason to rotate it is often that you have lost control of it,
+  and demanding it would be the one place the product locks you out on purpose.
+- ⚠️ **Every device is logged out**, including the one doing it. That is the point, and the screen
+  says so before, not after.
+
+> As the founder, I want to change the admin password, so that a leak or a suspicion costs me a
+> minute.
+
+- ⚠️ **The current admin password is required first**, even inside an authenticated session.
+  Someone at an unattended unlocked screen must not be able to take ownership.
+- Every admin session dies, including the one that made the change. You log back in with the new one.
+- The two passwords are independent: changing one does not log out the other's sessions.
+
+> As the founder, I want a way back in when I have forgotten the admin password, so that the one
+> unrecoverable state in this product isn't real.
+
+- Written down, findable from the admin login screen, and runnable **from a machine with no
+  checkout of this repo**.
+- No deploy, no code change, no developer, and **no data is touched**.
+
+> As the founder, I want my own copy of the scores as one file, so that I am not trapped inside
+> somebody else's database.
+
+- One CSV, one tap, openable in a spreadsheet with no tools.
+- ⚠️ **It is not a backup and must never be worded as one**: the photos are not in it, and the
+  guarantee that any number can be re-checked against the paper does not survive in this file alone.
+- ⚠️ **No secret of any kind is ever in it.** Permanent criterion, not a one-off check.
+
+> As the founder, I want to see what I am spending, so that a runaway or borrowed key shows up here
+> rather than on a credit-card statement.
+
+- This month's reads, sheet and column counted separately, and an estimate in A$.
+- Today's usage against both daily caps, because that is what makes an abused password visible on
+  the day rather than at the end of the month.
+
+**Correcting the record**
+
+> As a player, I want to fix a game that went in wrong, so that the archive stays true rather than
+> just permanent.
+
+- Editing a saved game opens **the same review screen** the game came in through, with the photo
+  beside the numbers and every M1 rule still in force.
+- Numbers, date, venue and who each column belongs to can all change. ⚠️ **Not the sheet photo** —
+  it is the evidence of what the paper said, and swapping it is not a repair.
+- ⚠️ **Not a bypass**: columns must still climb, hands are still derived, save is still gated.
+- ⚠️ **Nothing marks a game as edited.** No stamp, no badge — consistent with a product that keeps
+  no record of who did what.
+
+> As a player, I want to delete a game that should never have been saved, so that a duplicate or a
+> mis-shot sheet doesn't sit in the archive forever.
+
+- Permanent. No undo. It takes the photos out of the record with it.
+- ⚠️ **The screen says exactly that before it happens**, and it takes a deliberate second action —
+  never a single tap.
+
+**The people, the sets, and the places**
+
+> As a player, I want a page for each player, so that "how many has he actually won?" has an answer
+> instead of an argument.
+
+- Games played, wins, win rate. **Three numbers, each with its sample.** Then their games, newest
+  first.
+- A shared win is a full win for each player, everywhere.
+
+> As a player, I want a page for each roster, so that "how do we do when it's exactly these four?"
+> has an answer too.
+
+- The exact set only. Games played, and each member's wins and win rate **within this roster**.
+
+> As the founder, I want to call a roster "Thursday crew", so that the archive reads like the group
+> talks.
+
+- Rename it once; it reads that way on the games list, the game view, the roster page, the players'
+  pages and the rosters index. Clear it and the auto-name comes back.
+- ⚠️ **A rename never changes identity.** The signature is built from player IDs, so the same four
+  people still match the same roster afterwards.
+
+> As the founder, I want to tidy up a venue's name, so that "Player C's" and "Player C's House"
+> don't quietly become two places.
+
+**Identity, repaired**
+
+> As a player, I want the app to suggest who a handwritten name is, so that the common night — the
+> same four faces — costs me almost nothing.
+
+- A suggestion is a suggestion. **"Someone new" is one tap away at every confidence level**,
+  including a perfect match.
+- The handwritten name as read stays on screen beside whoever is selected, so a wrong suggestion is
+  visible without opening anything.
+- ⚠️ **Nothing here is worded as checked, confirmed or correct.**
+
+> As a player, I want to merge two players who turn out to be one person, so that the stats stop
+> being quietly wrong.
+
+- Every game, round and roster the losing identity touched moves to the survivor.
+- ⚠️ **Permanent, by the founder's own decision.** No undo, no history kept, nothing on screen
+  afterwards says a merge happened. The confirmation says so plainly first.
+
+> As the founder, I want to merge two places that are the same place, so that the venue stats M3
+> will build are worth having.
+
+- Same mechanism, same permanence, same wording as a player merge.
+
+#### Acceptance criteria
+
+*Numbering continues from Milestone 1's 86, so a criterion number means one thing across the whole
+project. Executable by QA on a scratch environment with the two fixture sheets and a seeded
+database, except where a criterion names production or the founder's own phone.*
+
+**Changing the passwords**
+
+87. `/admin`'s password controls are reachable only with an **admin** session. A valid group session
+    at `/admin` still gets the admin prompt, and a direct POST to either change route with only a
+    group cookie is refused.
+88. The group password change takes **one new password and no current password**, enforces a
+    **minimum of 12 characters**, offers a reveal control, and on save replaces
+    `/five-crowns/prod/group-password-hash` and bumps `group-session-epoch`.
+89. QA holds group sessions in two browsers, changes the group password from a third (admin), and
+    **both are returned to `/login` on their next navigation**. The old password is refused; the new
+    one works.
+90. Before the change, the screen states that **every device will be logged out and has to be told
+    the new password**, and that includes this one. The wording is verbatim against
+    `docs/DESIGN-SYSTEM.md`.
+91. The admin password change **requires the current admin password on the same form**. A wrong
+    current password is refused, changes nothing, and leaves the existing password working.
+92. The new admin password must be **entered twice** and be **at least 12 characters**; a mismatch
+    or a short value is refused by the server, not only the browser. ⚠️ The asymmetry with the group
+    password (one field there, two here) is deliberate: a typo'd group password is fixed from this
+    panel, a typo'd admin password is fixed only through the SSM runbook.
+93. After an admin change, `admin-session-epoch` is bumped: **the session that made the change is
+    logged out** and lands on the admin login. A group session on another device is **unaffected**.
+94. ⚠️ **Permanent, restated for M2's new writes**: after changing both passwords, a
+    `npm run db:backup` dump contains **no password hash and no key**. Nothing admin-configurable is
+    ever written to a table.
+95. Ten wrong current-admin-password submissions on the change form inside ten minutes cause further
+    attempts to be refused — including a correct one — through the same limiter and scope as admin
+    login.
+96. Neither new password appears in any response body, any server log line, or any client bundle.
+    QA greps the served JavaScript and the CloudWatch log group for the value it typed.
+
+**The way back in**
+
+97. The admin login screen carries **"Forgotten the admin password?"**, leading to the procedure. The
+    README carries it under its own heading, findable by someone who has read neither this PRD nor
+    `docs/ARCHITECTURE.md`.
+98. The written procedure is executable **from a machine with no checkout of this repo**: it names
+    AWS CloudShell, the public clone, `node scripts/hash-password.js`, and both
+    `aws ssm put-parameter` commands (the hash, then the epoch bump) with `--region ap-southeast-2`
+    spelled out.
+99. ⚠️ **QA runs it verbatim** against a scratch environment, from a fresh CloudShell with no
+    checkout, and regains admin access. An admin session that existed before the epoch bump is dead
+    afterwards. A procedure nobody has executed does not pass this criterion.
+100. The same document covers the **group** password hash (one parameter name different) and states
+     why: a founder locked out of both fixes admin first, then uses the panel.
+101. The document states plainly that **no game, photo or score is touched** and that **nothing is
+     redeployed**.
+
+**Downloading the scores**
+
+102. The download is **one file**, `five-crowns-scores-YYYY-MM-DD.csv`, UTF-8 with a BOM, RFC-4180
+     quoted, with a header row.
+103. The grain is **one row per player per game**. Columns, in order: `game_id`, `played_on`,
+     `location`, `roster_name`, `roster_size`, `player_name`, `column_order`, `sheet_name`,
+     `final_score`, `is_winner`, `rt_1`…`rt_11`, `hand_1`…`hand_11`.
+104. Over both fixture games (4 players and 5), the file holds **9 data rows**, and for every row
+     `rt_1`…`rt_11` equal that player's stored `running_total`s and `hand_1`…`hand_11` equal the
+     stored derived `score`s, in hand order.
+105. A game with no location has an **empty** `location` cell (not the words "No location"), and a
+     roster with no custom name carries **the same auto-name the app displays**, so the file and the
+     screen never disagree.
+106. A game with two winners has `is_winner` set on **both** rows.
+107. ⚠️ **Permanent criterion.** QA searches the downloaded file for the Anthropic key, both password
+     hashes, the session secret and every SSM parameter value: none appears. **Every future change
+     to the download re-runs this.**
+108. The panel states, next to the button, that this is **the numbers only and the photos are not in
+     it**, gives the `aws s3 sync s3://five-crowns-photos ./photos` command for the photos, and
+     nowhere calls the file a backup. QA reads the button, the heading, the help text and the
+     filename.
+109. The download route requires an **admin session**: a group session gets the admin gate, not a
+     file, and an unauthenticated GET gets nothing.
+
+**Usage and spend**
+
+110. The panel shows, for the current **UTC calendar month** (labelled as UTC), **sheet reads and
+     column re-reads counted separately**, plus a total.
+111. The spend figure is derived from the **stored `input_tokens`/`output_tokens`** on the
+     `transcription` rows, not from a request count, and is shown in **A$** with the conversion rate
+     stated and the word *estimate*.
+112. Prices are a **dated constant**: the screen names the date they were checked and points at the
+     Anthropic console as the authority for the real number.
+113. Today's usage is shown against **both daily caps** — e.g. "3 of 40 sheet reads today", "0 of 60
+     column re-reads".
+114. A month with no transcriptions renders **zeroes and A$0.00**, not a blank, a dash or an error.
+     Attempts with status `error` or `invalid` are **counted as attempts** and contribute their
+     stored tokens (or zero, where none were recorded) to the estimate.
+
+**Editing a saved game**
+
+115. **"Edit this game"** on the game view opens the review screen. Every M1 review behaviour
+     applies: the photo beside the numbers, derived hands live, paired monotonicity flags, the final
+     row called out, and the wording rules of criterion 24.
+116. The save gate is identical: a column short of eleven values, or one that dips, blocks the save
+     with the same paired flag an import gets.
+117. Numbers, date, venue and **each column's player** can be changed, and saving updates **the same
+     game** — the id is unchanged, the games list holds the same number of games, and no second game
+     appears.
+118. Changing the set of players **re-matches the roster**: to the existing roster for the new exact
+     set, or a new one. The previous roster keeps its custom name and is still reachable if it has
+     other games. ⚠️ **A roster left with zero games is not deleted**, but roster listings show only
+     rosters with at least one game.
+119. Saving an edit **replaces every round row** for that game — both `running_total` and the derived
+     `score` — and recomputes the winner(s), including a tie newly introduced by the edit, on the
+     game view and the games list.
+120. ⚠️ **The sheet photo cannot be replaced.** QA looks for any control that would swap it and finds
+     none. Column close-ups **can** be taken during an edit (rung 3 still works) and are kept with
+     the game like any other.
+121. Leaving an edit without saving leaves the saved game **exactly as it was**. The edit draft
+     survives the page being evicted and can be resumed, as M1 criterion 28 requires of any draft.
+122. Saving an edit over a game that was **deleted meanwhile** fails with a plain message and does
+     **not** resurrect the game.
+123. ⚠️ **Nothing marks a game as edited** — no "last edited" stamp, no badge, no ordering change on
+     the games list. QA compares an edited game against an untouched one and finds nothing
+     distinguishing them, the same test M1 criterion 11 applies to manual entry.
+
+**Deleting a saved game**
+
+124. Delete is on the game view and takes **a deliberate second action**: a confirmation naming the
+     game (its date and roster) and a button labelled **"Delete permanently"**. No single tap deletes
+     anything.
+125. The confirmation states plainly that it is **permanent, cannot be undone, and takes the game's
+     photos out of the record with it**. ⚠️ It does **not** claim the image files are destroyed —
+     they are not, and the wording must not say otherwise (see decision 10).
+126. After a delete: the `game`, its `game_player`, `round_score` and `photo` rows are gone; the
+     game's URL shows the 404 screen; the games list no longer shows it. **Players and locations are
+     untouched.** A roster left with no games survives in the database and drops out of the
+     listings.
+127. ⚠️ The photo objects **remain in S3** — the app holds no `s3:DeleteObject`, by design. QA
+     confirms the object is still in the bucket **and** that no app route will mint a presigned URL
+     for it any more.
+128. The README documents the founder's own `aws s3` path for removing an orphaned image if they
+     ever want to, described as a founder action rather than an app feature.
+129. Player, roster and place pages recompute on the next view after a delete — games played, wins
+     and win rates all drop accordingly, with no cached totals anywhere.
+
+**Error and 404 screens** *(carried over from Stage 5's explicit deferral)*
+
+130. A deleted game's URL, a made-up game URL, a made-up player, roster or place URL all render the
+     app's own **404 screen in the design system's voice**, with a route back to the games list —
+     not Next's default.
+131. An unhandled server error renders the app's own error screen and ⚠️ **leaks no stack trace,
+     file path or internal identifier** in production.
+
+**Player, roster and place pages**
+
+132. A **players index** lists every player with their games played, linking to each player's page.
+133. A **player page** shows the player's name, **games played, wins, and win rate to one decimal
+     place**, each stated with the sample it is drawn from, then that player's games newest first —
+     date, venue or "No location", roster name, their final score, and a winner marker.
+134. ⚠️ **Shared wins count in full for each player.** Using criterion 66's construction (two players
+     tied on the lowest total), both players' pages show that game as a win and both win rates rise.
+     Win rates across a roster may sum past 100% and nothing on screen treats that as an error.
+135. A player with **one game** shows "1 game" and a 0% or 100% rate. ⚠️ **No withholding on these
+     pages** — the M3 records board's 10-game and 5-game rules govern a ranking, not a statement of
+     fact about one person.
+136. A player with **zero games** — created, then edited out of their only game — renders an empty
+     state, not an error and not a blank page.
+137. A **rosters index** lists every roster **with at least one game**, showing its name (custom or
+     auto), its members, and games played.
+138. A **roster page** shows the roster's name, its members, games played, and **per member, wins and
+     win rate within this roster only**, then the roster's games newest first.
+139. Roster numbers cover that exact set only: QA saves a game with the same four people plus a
+     fifth, and **neither roster's page moves the other's numbers**.
+140. A **places index** lists every location with games played. A location that has never been used
+     shows 0 and is still listed, and is still pickable on the review screen.
+
+**Renaming**
+
+141. A roster's name is editable from its page: trimmed, **40 characters maximum**, and the new name
+     appears on the **games list, the game view, the roster page, every member's player page, and
+     the rosters index** — QA checks all five.
+142. Clearing a roster's name restores the **auto-name from its members** everywhere. There is no
+     state in which a roster displays an empty name.
+143. A roster name that matches another roster's name case-insensitively is **accepted after a
+     non-blocking warning** naming the other set. ⚠️ It never blocks — heuristics warn, humans
+     decide.
+144. ⚠️ **A rename never changes identity.** After renaming, re-entering the same exact set of players
+     still matches that roster (M1 criterion 67 still passes) and no second roster is created.
+145. A location can be **renamed from the places index**, and the new name shows on every game that
+     used it, the games list, the game view, the review screen's pick-list and the places index.
+146. A location rename that collides with an existing location's `name_key` is **refused with a
+     message offering to merge into that location instead** (the merge itself is Stage 4).
+147. ~~**Renaming a player** from their player page.~~ ⚠️ **STRUCK 2026-09-14 — out of scope for
+     Milestone 2.** It was offered as a flagged proposal, not part of the agreed scope list, and the
+     founder did not ask for it. **This number is retired, not reused**, so no later criterion ever
+     changes meaning. *Kept visible rather than deleted, per the house rule on preserving decision
+     history. What was proposed, if it is ever wanted: rename from the player page, trimmed, 40
+     characters, reflected everywhere, refused on a `name_key` collision with an offer to merge
+     instead, `sheet_name` untouched. What it would have bought: a typo'd or misread player name is
+     otherwise permanent, since merging only helps when the correctly-named player already exists.
+     Revisit if a misread name ever actually lands in the record — it is a small, self-contained
+     addition at any time.*
+
+**Suggested player match**
+
+148. Matching follows **exactly** decision 1's rule, and unit tests assert the table: normalise, then
+     `1 − levenshtein / max(len)`; **≥ 0.80 with a clear leader suggests**; **0.55–0.80 offers the
+     best two or three at the top of the pick-list without suggesting**; **< 0.55 suggests and offers
+     nothing**, leaving M1's plain pick-list with "someone new" pre-filled with the handwritten name.
+149. ⚠️ **The ambiguity rule.** With players "Jo" and "Joe" both in the book and a column read as
+     "Joe", the two best candidates are within 0.10 of each other, so **nothing is suggested** —
+     both are offered first instead.
+150. A player already assigned to another column of the same game is **never suggested or offered**
+     for a second column. One person cannot hold two columns.
+151. On a **fresh database with no players**, behaviour is identical to M1: no suggestions anywhere,
+     "someone new" pre-filled with the handwritten name.
+152. **"Someone new" is one tap away on every column at every confidence level**, including one that
+     matched exactly.
+153. The **handwritten name as read stays displayed beside** whichever player is selected, on every
+     column, so a wrong match is visible without opening the pick-list. The `sheet_name` saved with
+     the game is still the handwritten one (M1 criterion 31 holds).
+154. ⚠️ **The wording criterion, again.** QA reads every string in the matching flow and finds none of
+     *checked, validated, verified, confirmed, correct, looks right, all good*. A suggestion reads as
+     a suggestion.
+
+*⚠️ **Open question 4 was answered by the founder on 2026-09-14: a suggestion is pre-selected, and
+accepting it costs nothing.** The two criteria reserved against it are written below as **172 and
+173** rather than inserted here, so that no criterion number already circulated ever changes
+meaning. They belong to this block and to Stage 4. Reasoning in `docs/DECISIONS.md`.*
+
+172. ⚠️ **A suggestion is pre-selected, and accepting it takes no action at all.** Where criterion 148
+     produces a suggestion (similarity ≥ 0.80 with a clear leader, ambiguity rule not triggered),
+     that player is **already selected on the column when the review screen first renders**. QA
+     opens a sheet whose four names all match known players, changes nothing, and reaches save:
+     **zero taps are spent on names**, no per-column confirmation exists anywhere in the flow, and
+     the saved game names the four suggested players. A pre-selected column **counts as assigned**
+     for the M1 save gate (criterion 26) exactly as a hand-picked one does — ⚠️ **no new blocking
+     gate, no acknowledgement state, no "unconfirmed" badge.** The review screen is the check, and it
+     holds that weight for a pre-filled name the same way it already does for a pre-filled number.
+173. ⚠️ **Where there is no confident suggestion, nothing is guessed.** The three cases, each run by
+     QA against a seeded player list:
+     - **A near match (0.55–0.80), or two candidates within 0.10 of each other** — the column renders
+       with **no player selected**. The best two or three are offered at the top of the pick-list, in
+       order, and "someone new" is offered pre-filled with the handwritten name. ⚠️ **The column is
+       not assigned**, so the M1 save gate applies to it and the screen says what is missing.
+     - **No plausible match (< 0.55), or an empty player list** — the column renders with **no player
+       selected**, M1's plain pick-list, and "someone new" pre-filled with the handwritten name.
+       Behaviour is indistinguishable from M1 (criterion 151).
+     - **A suggestion that is wrong** — changing it is **one tap to open the column's name control**
+       and one to pick a different existing player or "someone new" (criterion 152), from a
+       pre-selected column exactly as from an unassigned one. Nothing about a column having been
+       pre-filled makes it harder to change than any other field on the review screen, and the
+       handwritten name stays on screen beside the selection either way (criterion 153).
+
+**Merging players**
+
+155. Merge is reached **from a player page** — "this is the same person as…" — and is available to
+     any holder of the **group** password, the same trust level as deleting a game. It is **not** in
+     the admin panel.
+156. The merge screen names both players, **shows each one's games played**, and states plainly which
+     of the two will cease to exist. The founder chooses the survivor explicitly; nothing is picked
+     for them by age or size.
+157. The confirmation takes a deliberate second action — a button labelled **"Merge permanently"** —
+     and states that **there is no undo and no record of the merge is kept**.
+158. On merge, every `game_player`, `round_score` and `roster_member` row referencing the losing
+     player is **repointed to the survivor**, the losing `player` row is **deleted**, and
+     `player.merged_into_id` is dropped from the schema in the same migration, with its reversing
+     file in `lib/db/migrations/down/`.
+159. ⚠️ **Roster folding.** Where repointing makes two rosters' signatures identical, the rosters are
+     folded per decision 4: the survivor is the one with more games (tie: the older), the other's
+     games are repointed, its `roster_member` rows and the roster itself are deleted, and a custom
+     name carries across only if the survivor had none. **If both had custom names, the result screen
+     says which one was kept.** QA constructs this with rosters {A,B,C} and {A',B,C}.
+160. ⚠️ **The same-game refusal.** Where both players appear in the same game, the merge is **refused
+     before anything changes**, naming every offending game with a link to edit it. QA constructs
+     this case and confirms **no row anywhere was repointed**.
+161. After a merge: the surviving player's page shows the **combined** games played, wins and win
+     rate; the losing player's page and URL show the 404 screen; the players index is one player
+     shorter; every game that named the losing player now names the survivor.
+162. ⚠️ **No merge history exists.** A database dump taken after a merge contains **no row naming the
+     merged-away player**, and no screen anywhere mentions that a merge happened. The merge runs in a
+     **single transaction**: QA forces a failure partway and finds the record exactly as it was.
+
+**Merging places**
+
+163. Merge is reached from the **places index**, with the same mechanism, the same "Merge
+     permanently" confirmation and the same permanence wording as a player merge.
+164. On merge, every game referencing the losing location is repointed to the survivor and the losing
+     `location` row is deleted. No history is kept.
+165. **Games with no location are untouched** by any merge.
+166. After a places merge, the review screen's pick-list shows **one** entry, and the
+     "most recently used" default resolves to the survivor. Row counts for players, rosters, rounds
+     and photos are unchanged — QA checks all four.
+
+**Across the milestone**
+
+167. **Wording audit** over every new screen, run the same three ways Stage 5 established
+     (mechanical grep, verbatim check against the fixed-strings table, read-through of what the table
+     doesn't cover), and covering ⚠️ **every new confirmation, empty state and error state** —
+     including the merge refusal, the empty player page and the zero-transcription usage panel.
+168. `npm run audit:a11y` is **extended to every new screen** and passes at 375px and 1280px: no
+     horizontal overflow, ≥44px targets, visible focus, and colour never the only signal on any
+     destructive confirmation.
+169. CI stays green with **real unit tests** over the new logic: the similarity table in criterion
+     148 including its ambiguity rule, roster folding, the same-game refusal, the CSV's shape and
+     grain, and the epoch bump on each password change. **A deliberately broken similarity threshold
+     fails the build.**
+170. ⚠️ **Permanent, restated**: no secret of any kind is written to the database by anything in this
+     milestone, and the score download stays secret-free by construction.
+171. **Running cost is unchanged.** M2 adds no AWS resource, no scheduled job and no new external
+     service; expected running cost stays about **A$0.65/month**, effectively all Anthropic usage.
+     QA confirms nothing new appears in `sst.config.ts`'s resource list.
+
+**86 live acceptance criteria, numbered 87–173.** ⚠️ **147 is struck and retired** (player renaming,
+cut 2026-09-14 — offered as a proposal, not asked for), and its number is never reused. **Nothing is
+reserved and nothing is pending**: open question 4 was answered on 2026-09-14 and produced 172–173.
+
+#### The stages
+
+*Four PRs, each reviewed as it lands, in dependency order rather than value order. The one real
+dependency is that **merges need somewhere to live** — a player page and a places list — so the
+pages come before the merges. Everything else is genuinely independent, which is why Stage 1 is the
+self-contained one and can be worked on in parallel if the founder wants the panel finished first.*
+
+---
+
+**Stage 1 — The panel, finished**
+
+*Scope*: both password changes and their session-epoch behaviour; the forgotten-password path made
+findable and proven; the single combined CSV download; usage and spend.
+
+*Acceptance criteria*: 87–114.
+
+*What the founder sees*: the admin panel stops being a one-trick screen. They can rotate either
+password, take their own copy of the scores, and see what the month has cost — and, for the first
+time, there is a written way back in that somebody has actually run.
+
+⚠️ **Depends on nothing else in M2** and touches no screen the group sees. It is first because it is
+the only stage that removes a dependency on a developer.
+
+---
+
+**Stage 2 — Correcting the record**
+
+*Scope*: edit a saved game through the existing review screen; delete a saved game with its
+confirmation; the route-level 404 and error screens Stage 5 explicitly deferred.
+
+*Acceptance criteria*: 115–131.
+
+*What the founder sees*: the archive stops being append-only. A game that went in wrong can be
+fixed against its photo, and a duplicate can go. ⚠️ **This is the stage to review hardest** — it is
+the first code in this project that writes over history, and the delete confirmation's wording is a
+build contract, not copy.
+
+*Why second*: the two real games already in the record have no way to be corrected today, and every
+later stage benefits — the merge refusal in Stage 4 literally points the founder at this screen.
+
+---
+
+**Stage 3 — People, sets and places**
+
+*Scope*: players, rosters and places index pages; the player page and roster page with the three
+numbers; roster renaming; location renaming. ⚠️ **Not player renaming** — criterion 147 was struck on
+2026-09-14.
+
+*Acceptance criteria*: 132–146.
+
+*What the founder sees*: the archive becomes browsable by person rather than only by night, and
+"Thursday crew" replaces "Player C, Sam & Jo" everywhere at once.
+
+*Why third*: ⚠️ **it builds the surfaces the merges need.** A player merge without a player page has
+nowhere to be invoked from, and a places merge without a places list is a screen built to be used
+once.
+
+---
+
+**Stage 4 — Identity, repaired**
+
+*Scope*: the name-similarity module and suggested matching on review; player merge including roster
+folding and the same-game refusal; place merge; the `merged_into_id` migration.
+
+*Acceptance criteria*: 148–166, **plus 172–173** (the pre-selected suggestion, answered 2026-09-14).
+
+*What the founder sees*: the review screen stops asking who everyone is on a night with the usual
+four, and the two repairs that fix a fractured identity exist for the day one is needed.
+
+*Why last, deliberately*: the preventive feature ships **after** its repair tools, not before. A
+suggestion that matches the wrong person is fixable by Stage 2's game edit and Stage 4's own merge;
+the reverse ordering would put the silent-failure feature in front of the founder with nothing behind
+it. Names are consistent today (decision 3 at kickoff), so nothing is at risk while it waits.
+
+✅ **No longer blocked.** Open question 4 was answered on 2026-09-14 — suggestions are pre-selected,
+and criteria 172–173 carry it. **Nothing in Milestone 2 is waiting on the founder.**
+
+<!-- superseded 2026-09-14, kept for history:
+⚠️ **Blocked on open question 4** for two of its criteria. The rest of the stage can be built; those
+two cannot be guessed.
+-->
+
+---
+
+**Closing the milestone**
+
+Criteria 167–171 are run at the end of the last stage, the way Stage 5 ran M1's audits: the wording
+audit, the accessibility pass extended to the new screens, CI, the permanent secret-free checks, and
+a confirmation that the AWS footprint did not grow. ⚠️ **No separate stage** — M2 does not finish
+live-and-prove-it the way M1 did, because it is already live; each stage deploys as it merges.
+
+#### Explicitly out of scope for Milestone 2
+
+*Restated so nobody widens it mid-build. Each is a decision, not an oversight.*
+
+- **All analytics and the records board.** Player and roster pages carry three numbers each.
+  Head-to-head, streaks, nemesis, averages, best/worst, hand-by-hand, location slices and the
+  day-of-week cuts are **Milestone 3**, entire.
+- **Filtering the games list** by venue or roster. M3, with the analytics that need it.
+- **Any undo, trash, soft-delete, or record of who changed what.** Founder decision, twice over
+  (deletes at kickoff, merges on 2026-09-14). ⚠️ Not deferred — **decided**.
+- **Reversible merges, a merge-history table, or a merge preview beyond the plain warning.** The
+  2026-09-14 ADR rejected all three by name.
+- **A ZIP of per-table CSVs, a `.db` file, or a SQL dump from the panel.** One CSV. The SQL dump
+  already exists as `npm run db:backup` and stays a command, not a button.
+- **Deleting orphaned photo objects from S3.** The app has no delete permission by design; pruning
+  is a documented founder-run AWS command.
+- **Replacing a game's sheet photo during an edit.** The photo is the evidence; swapping it is not
+  a repair.
+- **A spend alert, a budget threshold email, or a cap the founder can set from the panel.** The
+  zero-spend AWS budget alarm and the two daily caps already exist; a configurable cap would make
+  the panel a settings screen.
+- **Merging rosters directly.** Rosters fold as a *consequence* of a player merge and never as an
+  action in their own right — a roster is a set, and two different sets are two different sets.
+- **Bulk anything**: bulk delete, bulk merge, bulk rename, bulk import.
+- **A second read for confirmation.** ⚠️ Still prohibited, not deferred. Errors repeat.
+- **STATUS's engineering follow-ups** (arm64 CI coverage, the deploy role's remaining SSM/KMS
+  breadth, Playwright in PR CI). They are tracked in `docs/STATUS.md` and folded into a stage by the
+  team when convenient; ⚠️ **they are not product scope and carry no acceptance criterion here.**
 
 ### Milestone 3 — The records board and the analytics
 
