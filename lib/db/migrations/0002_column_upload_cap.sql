@@ -1,0 +1,1 @@
+ALTER TABLE `usage_day` ADD `column_uploads` integer DEFAULT 0 NOT NULL;

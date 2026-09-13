@@ -106,12 +106,12 @@
   - The deploy role's SSM grant was wider than "read": it held `ssm:GetParameter*`, `ssm:PutParameter` **and**
     `ssm:DeleteParameter` on `*` — every parameter in this shared account, including other projects' secrets and
     this project's own `/five-crowns/prod/admin-password-hash`, which the web Lambda is deliberately not allowed to
-    write. ✅ **Fixed on branch `fix/deploy-role-least-privilege`** (not merged, not deployed): those three actions
-    are now scoped to `/five-crowns/*` plus the `/sst/*` paths SST itself needs (passphrase, bootstrap).
-    ⚠️ **Applying it needs `scripts/aws-bootstrap.sh` re-run** — a merge alone changes nothing in AWS — and the
-    first deploy after it should be watched. Still open on that role: `kms:Encrypt`/`kms:Decrypt` on `*`,
-    `ssm:DescribeParameters` on `*` (SSM supports no resource scope for it), and the unconditioned `iam:PassRole`
-    on `five-crowns-*`.
+    write. ✅ **Fixed and merged to `main`** (PR #18, 2026-09-13): those three actions are now scoped to
+    `/five-crowns/*` plus the `/sst/*` paths SST itself needs (passphrase, bootstrap). ⚠️ **Not yet applied in AWS**
+    — `scripts/aws-bootstrap.sh` needs a founder-credentialed re-run to push the template change live; merging the
+    template alone changes nothing. Watch the next deploy once that's done. Still open on that role:
+    `kms:Encrypt`/`kms:Decrypt` on `*`, `ssm:DescribeParameters` on `*` (SSM supports no resource scope for it), and
+    the unconditioned `iam:PassRole` on `five-crowns-*`.
   - **Stage 2 hazard**: middleware skips image-extension paths, so photo and `/review` routes must call
     `requireGroupSession()` themselves.
   - The Lambda/CloudFront origin timeout is set to 120s (`sst.config.ts`), but CloudFront's *default* per-origin
@@ -130,9 +130,12 @@
   - The admin cookie's `Path` changed from `/admin` to `/` in Stage 3 (fixing a real reachability bug) — a
     browser holding a pre-Stage-3 `Path=/admin` cookie may keep both until it expires. Harmless: revocation is
     checked from the token's own signed epoch, not cookie freshness, so this can't grant stale access.
-- **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** and **100% of
-  final scores and winners** right. ⚠️ Monotonicity caught 0 of 9 misreads, so the human review screen is the entire
-  quality control. Errors repeat deterministically, so don't build "transcribe twice and compare".
+- **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
+  monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
+  deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original
+  spike's "100% of final scores" claim was an unsampled zero, not a structural guarantee — a Stage 5 re-run through
+  the real API found the final row misread in 3 of 6 reads (see below). Winners stayed correct 6/6, but by margin,
+  not because the final row is protected the way interior cells are.
 - **Development cost posture**: founder's Claude subscription. The real key is now live and has run two real
   transcriptions (2026-09-13). The M0 spike itself (against the fixture sheets with known ground truth, ~A$0.30)
   is still worth re-running at Stage 5 — the two real games don't substitute for that, since there's no

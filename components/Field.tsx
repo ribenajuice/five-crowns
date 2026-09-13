@@ -31,11 +31,11 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
         <input
           ref={ref}
           id={inputId}
-          className={`h-13 w-full rounded-[var(--radius)] border border-text-muted bg-surface px-3 text-base text-text ${trailing ? "pr-11" : ""} ${className ?? ""}`}
+          className={`h-13 w-full rounded-[var(--radius)] border border-text-muted bg-surface px-3 text-base text-text ${trailing ? "pr-14" : ""} ${className ?? ""}`}
           {...rest}
         />
         {trailing ? (
-          <div className="absolute inset-y-0 right-2 flex items-center">{trailing}</div>
+          <div className="absolute inset-y-0 right-1 flex items-center">{trailing}</div>
         ) : null}
       </div>
       {hint ? <p className="mt-1 text-sm text-text-muted">{hint}</p> : null}

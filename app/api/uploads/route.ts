@@ -15,13 +15,15 @@
  * `rate_limited` beyond that — far more than the real 1–2 sheets a week, and
  * counted separately from the vision-call caps.
  *
- * A **column** upload (`docs/ARCHITECTURE.md` § "Targeted column re-read")
- * has no such cap — the architecture doc is explicit that re-shoots are
- * unlimited on this path — but it does need an existing, unsaved draft with
- * that exact column still on it: `draftId` and `columnId` are stamped onto
- * the new `photo` row (`draft_id`, `draft_column_id`) so the game view can
- * later attach the close-up to the right player, whichever way the
- * transcription itself turns out.
+ * A **column** upload (`docs/ARCHITECTURE.md` § "Targeted column re-read") is
+ * capped separately at 200/UTC day (`reserveColumnUpload`,
+ * `lib/photos/upload-cap.ts`) — far beyond a heavy legitimate re-shoot night,
+ * added in security review MEDIUM 1 (Stage 5) after this path was found to
+ * have no cap of its own, unlike the sheet-upload path above. It also needs
+ * an existing, unsaved draft with that exact column still on it: `draftId`
+ * and `columnId` are stamped onto the new `photo` row (`draft_id`,
+ * `draft_column_id`) so the game view can later attach the close-up to the
+ * right player, whichever way the transcription itself turns out.
  */
 
 import "server-only";
@@ -39,7 +41,7 @@ import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 import { photoKey } from "@/lib/photos/keys";
 import { getPhotoStorage } from "@/lib/photos/storage";
-import { reserveSheetUpload } from "@/lib/photos/upload-cap";
+import { reserveColumnUpload, reserveSheetUpload } from "@/lib/photos/upload-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,6 +132,14 @@ async function createColumnUpload(data: {
   const columnExists = state.columns.some((c) => c.id === data.columnId);
   if (!columnExists) {
     return apiError("bad_request", "That column doesn't exist on this draft.");
+  }
+
+  const reservation = await reserveColumnUpload();
+  if (!reservation.allowed) {
+    return apiError(
+      "rate_limited",
+      "That's the day's upload limit reached. Try again tomorrow.",
+    );
   }
 
   const photoId = randomUUID();

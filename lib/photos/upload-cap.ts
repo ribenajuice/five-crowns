@@ -76,3 +76,46 @@ export async function reserveSheetUpload(
 
   return { allowed: true, count: row!.sheetUploads };
 }
+
+/**
+ * The daily column-upload cap (security review MEDIUM 1, Stage 5).
+ *
+ * The `kind:'column'` branch of `POST /api/uploads` used to return before
+ * `reserveSheetUpload` ran and never reserved anything of its own — the same
+ * kind of gap `reserveColumnTranscription` (`lib/vision/usage-cap.ts`) was
+ * given a cap for in Stage 4, found again here because this path costs
+ * nothing against the Anthropic budget but still costs permanent S3 storage
+ * (the bucket is versioned with no expiry lifecycle and the app is denied
+ * `s3:DeleteObject*`, `sst.config.ts`). Counted in `usage_day.column_uploads`,
+ * UTC days, separately from `sheet_uploads` and `column_transcriptions`.
+ *
+ * Same atomic increment-and-return shape as `reserveSheetUpload` above — read
+ * that function's comment for the full "why".
+ */
+export const DAILY_COLUMN_UPLOAD_CAP = 200;
+
+export async function reserveColumnUpload(
+  now: Date = new Date(),
+): Promise<UploadReservation> {
+  const db = getDb();
+  const day = todayUtc(now);
+
+  const [row] = await db
+    .insert(usageDay)
+    .values({ day, columnUploads: 1 })
+    .onConflictDoUpdate({
+      target: usageDay.day,
+      set: { columnUploads: sql`${usageDay.columnUploads} + 1` },
+    })
+    .returning({ columnUploads: usageDay.columnUploads });
+
+  if (row!.columnUploads > DAILY_COLUMN_UPLOAD_CAP) {
+    await db
+      .update(usageDay)
+      .set({ columnUploads: sql`max(${usageDay.columnUploads} - 1, 0)` })
+      .where(eq(usageDay.day, day));
+    return { allowed: false, count: DAILY_COLUMN_UPLOAD_CAP };
+  }
+
+  return { allowed: true, count: row!.columnUploads };
+}

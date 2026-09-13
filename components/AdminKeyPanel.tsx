@@ -254,7 +254,9 @@ export function AdminKeyPanel() {
                 type="button"
                 onClick={() => setShowKey((current) => !current)}
                 aria-label={showKey ? ADMIN_HIDE_KEY_LABEL : ADMIN_SHOW_KEY_LABEL}
-                className="inline-flex size-8 items-center justify-center text-text-muted"
+                // size-11 (44px) — PRD criterion 73's touch-target minimum;
+                // size-8 (32px) was the audit harness's first real finding.
+                className="inline-flex size-11 items-center justify-center text-text-muted"
               >
                 <EyeIcon crossed={showKey} />
               </button>

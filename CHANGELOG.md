@@ -2,8 +2,32 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
-isn't one right now, because the latest build is already live.
+production. Anything not yet deployed sits in an **Unreleased** section at the top.
+
+## [Unreleased] - Stage 5
+
+This stage was a checkup, not a new feature — an audit pass, top to bottom, to make sure everything
+already shipped actually works and is easy to use on a phone. There's almost nothing to see here on
+purpose.
+
+### Fixed
+
+- **Three buttons were slightly too small to tap reliably on a phone.** The "As written / Per hand"
+  toggle on a game's page, the "Fix something" link on the review screen, and the show/hide icon
+  next to the API key field in the admin panel were all a little under the minimum comfortable tap
+  size. All three are now easy to tap.
+
+### Verified, nothing to fix
+
+- Every game and every screen was checked again from scratch, all 86 of the app's original
+  requirements, including running "Read the sheet" against the real, paid reading service (not a
+  stand-in) — it worked cleanly.
+- The original test of how accurate automatic reading is was re-run for real, using the paid
+  reading service instead of an estimate. The numbers held up: it gets the vast majority of
+  individual scores right, but you should still glance over every reading before saving, because it
+  can't catch every mistake by itself. Worth knowing: a mis-read final score in a column is just as
+  likely as any other mistake, and it's the one kind that nothing else in the app would catch for
+  you — so it's worth a second look on that last number especially.
 
 ## [Stage 4] - 2026-09-13
 

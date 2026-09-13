@@ -20,6 +20,74 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — Milestone 2: player/location merges are permanent; score download is one CSV
+
+- **Context**: Milestone 2 spec work started while Stage 5 wrapped up. Two behaviors needed the
+  founder's sign-off before building, raised directly rather than guessed: whether merging two
+  player (or location) records should be reversible, and how the score download should be
+  packaged.
+- **Decision**: **merges are permanent, like a game delete** — merging reassigns every game,
+  round and roster reference from the losing identity to the surviving one, and the losing
+  record is gone, with no stored record of what was merged and no way to split it back apart.
+  Consistent with this project's existing stance (no accounts, no audit trail, deletes are
+  already permanent and silent). **The score download is one combined CSV**, not a zip of
+  per-table files — simplest to open and skim as a single spreadsheet.
+- **Alternatives**: a reversible merge (keeps a record of which rows moved from which original
+  player, so it can be undone) was rejected — extra data model and build cost for a safety net
+  this project doesn't extend to deletes either, and it raises its own edge cases (what if the
+  "wrong" identity plays a genuinely new game before anyone notices the mismerge?). A zip of
+  per-table CSVs (players/games/rounds/rosters) was rejected as over-structured for what the
+  founder actually wants: something to open and eyeball, not feed to a script.
+- **Consequences**: Milestone 2's merge feature needs no undo path, no "merge history" table, and
+  no confirmation-with-preview beyond a plain "this can't be undone" warning (matching the
+  existing delete-game warning's pattern). The download is a single flattened CSV joining
+  players, games, rounds and rosters, one row per round-per-player being the natural grain, or
+  whatever grain the architect/backend developer judges most useful for a spreadsheet skim —
+  that shape is a technical call, not reopened here. **Revisit if**: multiple founders/admins
+  ever share write access and a mis-merge becomes a real, not hypothetical, risk.
+
+## 2026-09-14 — Row 11 is not self-cancelling: correcting "exposure is bounded"
+
+- **Context**: "Monotonicity is a floor, not an error detector" (2026-09-10) closed with *"final
+  scores, winners and total-derived records are safe (0 errors in row 11 across all six reads)"*,
+  and set its own revisit-if as a re-run through the production API path. Stage 5's go-live
+  checklist ran exactly that on 2026-09-14: six cold reads through `POST /api/transcribe` with a
+  real key and the real structured-output schema. **That revisit-if has fired.** Workings in
+  `docs/SPIKE-M0-READING.md`.
+- **Decision**: **the monotonicity verdict stands unchanged; the "exposure is bounded" consequence
+  is corrected, not superseded.** Cell accuracy (96%), catch rate (0 of 11) and winner-correctness
+  (6/6) all reproduced. What did not reproduce is the row-11 claim: **3 of 6 reads misread a final
+  score of 144 as 174**, identically each time. The reasoning behind the original claim only ever
+  covered *interior* cells — an error at hand *n* cancels against hand *n+1* — and **row 11 has no
+  hand 12 to cancel against**. The original sentence generalised a zero-count in a six-read sample
+  into a structural guarantee. ⚠️ **No product wording may describe final scores, averages or
+  best/worst records as safe, protected or self-cancelling.** Winners and win-rate stats stay safe
+  **in practice, by margin** — a game is rarely close enough for one misread total to flip it —
+  which is a different and weaker claim than "safe by construction", and must be written as such.
+  **The mitigation is unchanged and already shipped**: the final row gets its own `FinalRow`
+  treatment on the review screen (PRD criterion 23) and the founder reads it. This ADR adds no
+  build work.
+- **Alternatives**: (a) *Read row 11 a second time and compare* — **prohibited, not deferred**, and
+  this run is the strongest evidence yet: the 174 came back in 3 of 3 independent reads, as did a
+  Cody/hand-4 error and the name "Cady". A second read manufactures confidence and buys nothing.
+  (b) *Lean on `leastConfidentIndex` to flag it* — measured and rejected: all three affected reads
+  pointed at hand 5 or 6, never at 11. The read-hint is a reading aid, not a check; the design
+  system already says so and this is now observed rather than reasoned. (c) *A new check or forced
+  confirmation on the final row* — a scope change, and therefore **the founder's call, not ours**;
+  raised as open question 3 in `docs/PRD.md` against Milestone 3, where average score and
+  best/worst game get built on these numbers. Deliberately not decided here.
+- **Consequences**:
+  - `docs/PRD.md` risk 1 carries the correction, and its two stale "100% of final scores correct"
+    claims (risk 2, the Milestone 0 box) are struck through and pointed at it.
+  - **The exposed set is now larger than hand-by-hand analytics**: average score, best/worst game
+    ever, and anything else treating a final score as a number join it. M3's analytics catalogue
+    should be read with that in mind.
+  - The fidelity caveat on the 2026-09-10 spike numbers ("development runs on the founder's Claude
+    subscription", same date) is **closed** — these numbers came through the product's own path.
+  - **Revisit if**: row 11 misreads at a materially different rate over a larger sample (the real
+    corpus grows by a sheet a week, and any founder-caught final-score error is a data point worth
+    logging here), or a later model changes the profile again.
+
 ## 2026-09-14 — The deploy role's Parameter Store grant is scoped to this project (and to SST's own paths)
 
 - **Context**: the Milestone 1 go-live security audit found that the GitHub Actions OIDC deploy role
@@ -63,6 +131,63 @@ Format:
   possible, but the message will point at secrets rather than at permissions.
   **Revisit if**: a second app is deployed from this repo, the SST app name ever changes (the SSM
   prefix follows it), or SST changes where it keeps its state.
+
+## 2026-09-13 — Criterion 73 is verified by a local Playwright audit, not jsdom and not in CI
+
+- **Context**: Stage 5 has to run "accessibility and a 375px/1280px pass". That is PRD criterion 73
+  — every M1 screen at 375px and 1280px, every touch target ≥ 44px, focus visible on everything
+  interactive. It has been verified by **reading code** since Stage 2, which `docs/STATUS.md` records
+  as a known follow-up ("no component-rendering test harness exists yet… worth a Playwright smoke
+  test in a later stage"). Stage 5 is the last stage of M1, so it is decide-or-ship-it-unproven.
+- **Decision**: add **Playwright** as a dev dependency and a single audit spec, run on demand via
+  `npm run audit:a11y` against a production build on the scratch database. It logs in once, visits
+  every M1 screen at 375×667 and 1280×800, and asserts three things mechanically: no horizontal
+  overflow (`document.scrollWidth <= clientWidth`), a ≥44×44 CSS-px hit area on every `button`, link,
+  input, select and `[role="button"]`, and a computed focus indicator (`outline`/`box-shadow`) that
+  actually changes when the element is focused. ⚠️ **Not wired into the PR CI job in Milestone 1.**
+- **Alternatives**: (a) *jsdom + Testing Library* — **not an option at all**, and this is the
+  decisive fact rather than a preference: jsdom has no layout engine and does not compute Tailwind
+  styles, so it can answer none of criterion 73's three questions. It would produce a green suite
+  that proves nothing about the thing being claimed. The real choice was therefore a headless browser
+  or human eyes, never a middle tier. (b) *Keep code-reading* — rejected: 73 covers ten screens and is
+  now the largest unproven block left in M1, while M1's whole definition of done (criterion 85) is a
+  phone. Reading Tailwind classes cannot tell you a flex row overflows at 375px. (c) *Playwright
+  wired into CI on every PR* — rejected for M1: a browser download plus a layout-sensitive suite
+  gating every PR is exactly the footprint the milestone refuses ("no queue, no staging environment,
+  running costs stay minimal"), for a check that only changes when the design does.
+- **Consequences**: 73 gets a real, repeatable result instead of a judgement call, and M2/M3 inherit
+  a harness that is already configured. The cost is that an on-demand suite can rot between stages —
+  mitigated by making it part of every future stage's QA pass rather than a one-off script.
+  ⚠️ **It does not replace the founder's phone**: criteria 6 (camera opens directly), 8 (rotation
+  surviving to the saved game) and 70 (pinch-zoom and pan) are real-device facts and stay founder-run.
+  *Revisit if* M3's analytics screens land — that is the point to wire it into CI.
+
+## 2026-09-13 — Stage 5's "full re-run of all 86" runs on a scratch environment, not production
+
+- **Context**: Stage 5's scope line reads "a full re-run of all 86 against the live domain". Taken
+  literally that means executing every acceptance criterion against `fivecrowns.ribenajuice.xyz`.
+  It also needs credentials QA does not hold — both passwords and a real Anthropic key.
+- **Decision**: the full 1–86 re-run happens on a **disposable scratch environment** built from the
+  same `main` artefact that produced the live deploy, with the same schema and config shape, scratch
+  passwords and a scratch database. Production gets two much smaller sets instead: a
+  **credential-free live smoke set** (criteria 1, 5, 9, 57, 82, 83, 84, 86) and a **founder-only
+  live set** (2, 3, 4, 6, 8, 85, plus a first live exercise of Stage 4's repairs and criterion 11).
+  Every criterion is recorded with the bucket it was run in.
+- **Alternatives**: *Literally re-run all 86 against production* — rejected, and not on grounds of
+  convenience: ⚠️ **criterion 64 is unrunnable there.** It asserts the database holds *exactly*
+  5 players, 2 rosters, 2 games and 99 round rows after both fixtures save — a fresh-database
+  assertion. Production now holds the founder's two real games (saved 2026-09-13), so running 64
+  against it means deleting the real record to test it. 59, 62, 63, 66 and 67 carry the same
+  assumption. A test that destroys the artefact it exists to protect is the wrong test.
+  *Stand up a permanent staging environment* — rejected: explicitly out of scope for M1, and a
+  disposable scratch environment (which QA already used for Stages 2–4) does the same job for the
+  duration of a QA pass and then goes away.
+- **Consequences**: the re-run proves the **build**; the live smoke set proves the **deployment** is
+  that build and is correctly locked down; the founder's run proves the **product**. ⚠️ The
+  scratch-environment pass is only as good as its fidelity to production — if the artefact under test
+  is not the one on `main` that deployed, the re-run proves nothing, so pinning the commit is part of
+  the task rather than a nicety. *Revisit if* a defect is ever found live that the scratch
+  environment could not reproduce — that is the signal the two have drifted.
 
 ## 2026-09-12 — Insert/delete-a-value repairs push a new reading rather than widening `manualEdits`
 
@@ -525,14 +650,22 @@ Format:
   - **The human review step is the entire quality control**, not most of it. Every argument for
     the Column Sweep and against a "looks fine, save" shortcut is now evidence-backed.
   - Exposure is **bounded**: a wrong interior cell is self-cancelling in a running total, so
-    final scores, winners and total-derived records are safe (**0 errors in row 11 across all six
-    reads; winner correct 6/6**). ⚠️ **Hand-by-hand analytics are the exposed ones** and will be
+    ~~final scores, winners and total-derived records are safe (**0 errors in row 11 across all six
+    reads; winner correct 6/6**)~~.
+    ⚠️ ***Corrected 2026-09-14**: that struck-through clause reported this spike's six-read sample
+    as if it were a structural property. Self-cancelling covers **interior** cells only — row 11 has
+    no hand 12 to cancel against — and a real-API re-run found **row 11 wrong in 3 of 6 reads**
+    (winners still 6/6, by margin rather than by construction). Final scores and total-derived
+    records are **not** safe. See "Row 11 is not self-cancelling" at the top of this log.*
+    ⚠️ **Hand-by-hand analytics are the exposed ones** and will be
     confidently wrong when a cell is wrong.
   - Row 11 gets its own treatment on the review screen (`FinalRow`) — already in the design
     system, now justified by evidence.
   - The **name pick-list in M1 is load-bearing**: a player's name was misread in 2 of 6 reads.
   - **Revisit if**: a re-run through the production API path with structured outputs shows a
-    materially different error profile, or a later model changes the numbers.
+    materially different error profile, or a later model changes the numbers. *(⚠️ **This condition
+    fired on 2026-09-14.** The re-run confirmed the monotonicity verdict and corrected the row-11
+    claim above — see the 2026-09-14 entry at the top of this log.)*
 
 ## 2026-09-10 — Development runs on the founder's Claude subscription until an API key is needed
 

@@ -26,9 +26,16 @@ coverage/
 
 # Local-only Claude Code settings
 .claude/settings.local.json
+.claude/worktrees/
 
 # OS noise
 .DS_Store
+
+# Playwright's on-demand a11y/responsive audit (npm run audit:a11y) — local
+# only, never wired into CI. See docs/DECISIONS.md.
+/playwright-report/
+/test-results/
+/playwright/.auth/
 
 # Real scoresheet photos and their transcriptions — local only, never committed.
 # Contains personal photos and real names; the repo is public.
