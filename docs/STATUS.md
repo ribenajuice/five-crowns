@@ -9,7 +9,9 @@
   forgotten-password runbook, the score CSV, usage and spend) is built, tested, and open as
   [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **not merged**, pending the founder's decision on
   PRD open question 5 (see below). **Stage 2** (editing and deleting a saved game, plus app-level 404/error screens)
-  is built and going through review on branch `feat/m2-stage2`, not yet a PR.
+  is built, fully reviewed (QA, security, and a `/code-review high` pass all complete with fixes landed), and now
+  open as [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **not merged**, ready for founder review,
+  CI green.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -23,9 +25,11 @@
     question 5): the password-change routes need an AWS permission the app was deliberately never given, and
     widening it re-opens a risk a 2026-09-11 review closed on purpose. Everything else in the PR (the recovery
     runbook, the CSV download, usage/spend) is unaffected and ready.
-  - `feat/m2-stage2` (not yet a PR) — **Milestone 2 Stage 2**, editing and deleting a saved game, plus app-level
-    404/error screens. Built; QA and security review both passed after two rounds of real bugs found and fixed
-    (see below); code review found more, being fixed now.
+  - [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **Milestone 2 Stage 2**, editing and deleting a
+    saved game, plus app-level 404/error screens. Built; QA and security review both passed after two rounds of real
+    bugs found and fixed (see below); a subsequent `/code-review high` pass found three more real issues (stale
+    edit-draft resume, a TOCTOU misreport, a silently swallowed autosave failure), all fixed. CHANGELOG and README
+    updated. Ready for founder review — no known blockers.
   - One separate, non-urgent founder action: re-run `scripts/aws-bootstrap.sh` to actually apply PR #18's IAM
     tightening in AWS — merging its template alone changed nothing live.
 - **Stage 2 build notes (2026-09-14, not yet shipped)**: this is the first code in the project that writes over or
