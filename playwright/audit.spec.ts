@@ -1,0 +1,414 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+// Real fixture bytes, not the anonymised numeric grids `tests/fixtures/`
+// uses — the review screen's photo strip needs an actual loadable image.
+// Gitignored (`.gitignore`: "/fixtures/"), same as every other QA pass on
+// this project — present in a real checkout, absent from CI.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURES_DIR = path.join(__dirname, "..", "fixtures", "sheets");
+
+/**
+ * The Stage 5 accessibility/responsive audit (`docs/DECISIONS.md`,
+ * "Criterion 73 is verified by a local Playwright audit, not jsdom and not
+ * in CI"). Local, on-demand only (`npm run audit:a11y`) — never wired into
+ * `.github/workflows/ci.yml`.
+ *
+ * Scope, exactly per the ADR: at 375×667 and 1280×800 (the two
+ * `playwright.config.ts` projects run this file once per width),
+ *   1. no horizontal overflow on any M1 screen;
+ *   2. every interactive element has a ≥44×44 CSS-px hit area;
+ *   3. a computed focus indicator that actually changes on focus;
+ * plus PRD criterion 21 — colour is never the only carrier of meaning —
+ * checked directly on the one screen that has a colour-coded state
+ * (the review grid's monotonicity flag).
+ *
+ * Needs a production build (`npm run build && npm run start`) on a scratch
+ * database, never a developer's own `.env.local` database and never
+ * production. Configure with:
+ *   AUDIT_BASE_URL       default http://localhost:4300
+ *   AUDIT_GROUP_PASSWORD the scratch environment's group password
+ *   AUDIT_ADMIN_PASSWORD the scratch environment's admin password
+ */
+
+const GROUP_PASSWORD = process.env.AUDIT_GROUP_PASSWORD ?? "";
+const ADMIN_PASSWORD = process.env.AUDIT_ADMIN_PASSWORD ?? "";
+
+if (!GROUP_PASSWORD || !ADMIN_PASSWORD) {
+  throw new Error(
+    "Set AUDIT_GROUP_PASSWORD and AUDIT_ADMIN_PASSWORD before running npm run audit:a11y " +
+      "— point them at a scratch environment's two passwords, never production's.",
+  );
+}
+
+// This spec is not read-only — it uploads real files, creates real drafts,
+// and (with `trace: "retain-on-failure"`) can write plaintext passwords into
+// a trace file — so it refuses to run anywhere but a local scratch server.
+const AUDIT_HOST = new URL(process.env.AUDIT_BASE_URL ?? "http://localhost:4300").hostname;
+if (!["localhost", "127.0.0.1"].includes(AUDIT_HOST) && process.env.AUDIT_ALLOW_REMOTE !== "1") {
+  throw new Error(
+    `AUDIT_BASE_URL resolves to '${AUDIT_HOST}', not a local scratch server — refusing to run ` +
+      "against a remote host (including fivecrowns.ribenajuice.xyz). Set AUDIT_ALLOW_REMOTE=1 to override.",
+  );
+}
+
+const MIN_HIT_AREA = 44;
+// Real touch/pointer targets a person can actually reach. Excludes
+// `aria-hidden="true"` and `tabindex="-1"` nodes on purpose: `PhotoCapture`'s
+// `<input type="file">` pair is exactly this — invisible, untabbable, and
+// triggered by the real, visibly-sized "Take a photo"/"Choose a photo"
+// `<button>` beside it, which *is* checked. Counting the proxy input as a
+// second, tiny "target" is a false positive, not a real touch-target bug.
+const INTERACTIVE_SELECTOR =
+  'button:not([aria-hidden="true"]):not([tabindex="-1"]), ' +
+  'a[href]:not([aria-hidden="true"]):not([tabindex="-1"]), ' +
+  'input:not([type="hidden"]):not([aria-hidden="true"]):not([tabindex="-1"]), ' +
+  'select:not([aria-hidden="true"]):not([tabindex="-1"]), ' +
+  '[role="button"]:not([aria-hidden="true"]):not([tabindex="-1"])';
+
+/** Criterion 73: `document.scrollWidth` must never exceed the viewport. */
+async function assertNoHorizontalOverflow(page: Page, screen: string) {
+  const overflow = await page.evaluate(() => {
+    const docEl = document.documentElement;
+    return {
+      scrollWidth: docEl.scrollWidth,
+      clientWidth: docEl.clientWidth,
+    };
+  });
+  expect
+    .soft(
+      overflow.scrollWidth,
+      `${screen}: document.scrollWidth (${overflow.scrollWidth}) exceeds clientWidth ` +
+        `(${overflow.clientWidth}) — horizontal overflow at this viewport.`,
+    )
+    .toBeLessThanOrEqual(overflow.clientWidth + 1); // 1px rounding tolerance
+}
+
+/** Criterion 73: every visible interactive element clears 44×44 CSS px. */
+async function assertTouchTargets(page: Page, screen: string) {
+  const handles = await page.locator(INTERACTIVE_SELECTOR).all();
+  for (const handle of handles) {
+    if (!(await handle.isVisible())) continue;
+    const box = await handle.boundingBox();
+    if (!box) continue;
+    const label = await describeElement(handle);
+    expect
+      .soft(
+        box.width >= MIN_HIT_AREA - 0.5 && box.height >= MIN_HIT_AREA - 0.5,
+        `${screen}: "${label}" is ${box.width.toFixed(1)}×${box.height.toFixed(1)}px — ` +
+          `below the ${MIN_HIT_AREA}px minimum.`,
+      )
+      .toBeTruthy();
+  }
+}
+
+async function describeElement(locator: Locator): Promise<string> {
+  return locator.evaluate((el) => {
+    const aria = el.getAttribute("aria-label");
+    if (aria) return aria;
+    const text = el.textContent?.trim();
+    if (text) return text.slice(0, 40);
+    return el.outerHTML.slice(0, 60);
+  });
+}
+
+/**
+ * Criterion 73: a computed focus indicator that actually changes. Walks
+ * *real* keyboard `Tab` presses rather than calling `.focus()` on each
+ * element — this app's focus ring is written on `:focus-visible`
+ * (`app/globals.css`), and Chromium's `:focus-visible` heuristic does not
+ * reliably match a script-triggered `.focus()` the way it matches an actual
+ * keyboard tab, so `.focus()` under-reports here. Tabbing is also a closer
+ * proxy for the thing criterion 73 actually cares about: a keyboard user
+ * moving through the page. Capped per screen so this stays fast.
+ */
+async function assertFocusVisible(page: Page, screen: string) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
+  // Dedup by a marker stamped onto the actual DOM node the first time we
+  // visit it, not by a truncated class-string prefix: several screens
+  // (CellEditor's nine digit buttons, ColumnPager's inactive chips) share an
+  // identical `className` well past 80 characters, so a string-prefix key
+  // collides across genuinely distinct elements and the walk would wrongly
+  // conclude it had looped back to the start after only the second one —
+  // silently skipping every control after it while still reporting green.
+  // The marker attribute is removed again once the walk finishes so it never
+  // leaks into a later assertion (e.g. a touch-target or overflow check that
+  // runs against the same DOM).
+  const MARKER = "data-audit-tab-seen";
+  const maxSteps = 40;
+  let stepsTaken = 0;
+  try {
+    for (let i = 0; i < maxSteps; i++) {
+      await page.keyboard.press("Tab");
+      stepsTaken++;
+      const info = await page.evaluate((marker) => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el || el === document.body) return null;
+        const alreadySeen = el.hasAttribute(marker);
+        if (!alreadySeen) el.setAttribute(marker, "1");
+        const s = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        const aria = el.getAttribute("aria-label");
+        const text = el.textContent?.trim();
+        const label = aria || text || el.outerHTML.slice(0, 60);
+        return {
+          looped: alreadySeen,
+          label: label.slice(0, 60),
+          outline: `${s.outlineStyle} ${s.outlineWidth}`,
+          boxShadow: s.boxShadow,
+          visible: rect.width > 0 && rect.height > 0,
+        };
+      }, MARKER);
+      if (!info) break;
+      if (info.looped) break; // focus order genuinely looped back to the start
+      if (!info.visible) continue;
+
+      const hasOutline = !info.outline.startsWith("none");
+      const hasBoxShadow = info.boxShadow !== "none";
+      expect
+        .soft(
+          hasOutline || hasBoxShadow,
+          `${screen}: tabbing to "${info.label}" produced no visible focus indicator ` +
+            `(outline: ${info.outline}, box-shadow: ${info.boxShadow}).`,
+        )
+        .toBeTruthy();
+    }
+  } finally {
+    if (stepsTaken > 0) {
+      await page.evaluate((marker) => {
+        document.querySelectorAll(`[${marker}]`).forEach((el) => el.removeAttribute(marker));
+      }, MARKER);
+    }
+  }
+}
+
+async function auditScreen(page: Page, screen: string) {
+  await assertNoHorizontalOverflow(page, screen);
+  await assertTouchTargets(page, screen);
+  await assertFocusVisible(page, screen);
+}
+
+async function loginAsGroup(page: Page) {
+  await page.goto("/login");
+  await page.locator("#password").fill(GROUP_PASSWORD);
+  await page.getByRole("button", { name: "Let me in" }).click();
+  await page.waitForURL("**/games");
+}
+
+async function loginAsAdmin(page: Page) {
+  await page.goto("/admin");
+  await page.locator("#password").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "Let me in" }).click();
+  // `AdminKeyPanel` only opens the "Anthropic API key" form when no key is
+  // configured yet (`setFormOpen(!body.configured)`); against a scratch
+  // environment that already has a key saved (e.g. re-running this audit
+  // against the same scratch DB), a collapsed "Key ending ..." status card
+  // renders instead and asserting the form text unconditionally would hang
+  // this `mode: "serial"` file's last test on a misleading "not visible"
+  // error. Accept whichever of the two states is actually showing.
+  const keyForm = page.getByText("Anthropic API key");
+  const statusCard = page.getByText(/^Key ending /);
+  await expect(keyForm.or(statusCard)).toBeVisible();
+}
+
+test.describe.configure({ mode: "serial" });
+
+test("audit: /login (unauthenticated)", async ({ page }) => {
+  await page.goto("/login");
+  await auditScreen(page, "/login");
+});
+
+test("audit: full loop, then every M1 screen", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+  await auditScreen(page, "/games (populated)");
+
+  // A game view, if any game exists in the scratch database.
+  const gamesListHtml = await page.content();
+  const gameLinkMatch = gamesListHtml.match(/\/games\/([0-9a-f-]{36})/);
+  if (gameLinkMatch) {
+    await page.goto(`/games/${gameLinkMatch[1]}`);
+    await auditScreen(page, "/games/{id}");
+  } else {
+    test.info().annotations.push({
+      type: "note",
+      description: "No saved game in the scratch database — /games/{id} not audited.",
+    });
+  }
+
+  await page.goto("/games/new");
+  await auditScreen(page, "/games/new");
+
+  // A review screen: create a throwaway draft via the API (same cookies the
+  // browser context holds), point the page at it directly. Real fixture
+  // bytes are uploaded for both variants — the photo strip only renders the
+  // grid once its `<img>` reports real `naturalWidth`/`naturalHeight`
+  // (`ReviewScreen.tsx`), so a photoId with nothing in storage never gets
+  // past "Loading the photo…" and none of criterion 73's checks below it
+  // would run at all.
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+  });
+  if (!uploadRes.ok()) {
+    throw new Error(
+      `POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()} — ` +
+        "check the scratch DB isn't already at the 40/day sheet-upload cap and the " +
+        "group-password cookie is valid.",
+    );
+  }
+  const { photoId, original, model } = await uploadRes.json();
+
+  const fixtureBytes = await readFile(
+    path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"),
+  );
+  for (const variant of [original, model]) {
+    // `variant.url` is relative against the local dev driver
+    // (`lib/photos/local.ts`, `/api/dev-photos/...`) but absolute against the
+    // real S3 driver (`lib/photos/s3.ts`'s `presignPost` returns a full
+    // `https://<bucket>.s3...` URL) — prefixing `baseURL` onto an already-
+    // absolute URL produces a malformed one, the upload silently fails, and
+    // every later screen audit runs against a photo stuck on "Loading the
+    // photo…", checking almost nothing while still reporting green.
+    const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+    await request.post(uploadUrl, {
+      multipart: {
+        ...variant.fields,
+        file: {
+          name: "photo.jpg",
+          mimeType: "image/jpeg",
+          buffer: fixtureBytes,
+        },
+      },
+    });
+  }
+
+  const draftState = {
+    version: 1,
+    photoId,
+    playedOn: "2026-01-01",
+    locationId: null,
+    newLocationName: null,
+    columns: ["a1", "a2", "a3", "a4"].map((id, order) => ({
+      id,
+      order,
+      playerId: null,
+      newPlayerName: `Audit ${id}`,
+      sheetName: null,
+      activeReadingId: null,
+      readings: [],
+      manualEdits:
+        order === 0
+          ? // Dani's row: monotonic, unflagged seed data (28, 32, 60, ... 137
+            // never decreases) — this does *not* produce a paired-flag break
+            // on its own, so nothing here is checkable on first paint.
+            // Criterion 21's flag only appears once hand 6 (index 5) is
+            // edited from 100 down to 70 below — that edit is the only real
+            // criterion-21 coverage in this file; do not delete it under the
+            // mistaken belief the seed already covers it.
+            Object.fromEntries(
+              [28, 32, 60, 71, 74, 100, 118, 123, 123, 123, 137].map((v, i) => [
+                String(i),
+                v,
+              ]),
+            )
+          : {},
+      crop: null,
+    })),
+  };
+  const draftRes = await request.post(`${baseURL}/api/drafts`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { photoId, state: draftState },
+  });
+  if (!draftRes.ok()) {
+    throw new Error(
+      `POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`,
+    );
+  }
+  const { draftId } = await draftRes.json();
+
+  await page.goto(`/review/${draftId}`);
+  await auditScreen(page, "/review/{draftId} (clean grid)");
+
+  // ---- Criterion 21: colour is never the only signal ----
+  // Edit "Audit a1"'s hand 6 (index 5) from 100 to 70 — the PRD's own worked
+  // example (criterion 21): both 70 and the 74 above it must flag with a
+  // border, a tint, an icon *and* a sentence naming the numbers, not colour
+  // alone.
+  const cellButtons = page.locator("ol li button");
+  // Row order is hand 1..11 (3s..Kings); hand 6 is the 6th cell (index 5).
+  const hand6Button = cellButtons.nth(5);
+  await hand6Button.click();
+
+  // Audit the cell editor itself, open, before touching it further —
+  // `CellEditor`'s "Fix the shape" link (and its nine digit buttons, all
+  // sharing one >80-char class string) is only reachable in this state, and
+  // the criterion-21 flow below closes the sheet again before it gets an
+  // audit pass. Skipping this was exactly how a real 44px touch-target
+  // violation on "Fix the shape" shipped while this harness reported green.
+  await auditScreen(page, "/review/{draftId} (cell editor open)");
+
+  // Clear the field via backspace buttons, then type 7 0.
+  const valueField = page.locator("#cell-editor-value");
+  const backspace = page.getByRole("button", { name: /back|delete|⌫/i }).first();
+  for (let i = 0; i < 3; i++) {
+    await backspace.click().catch(() => {});
+  }
+  // Assert the field is actually empty before typing new digits — the loop
+  // above swallows every click failure, so without this a dropped click
+  // (e.g. during a bottom-sheet open/close animation) leaves a leftover
+  // digit that corrupts the typed value, and the resulting assertion
+  // failure further down would point at the wrong place.
+  await expect(valueField, "cell editor: value should be empty after clearing before typing 7 0").toHaveValue("");
+  await page.getByRole("button", { name: "7", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).click();
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+
+  await auditScreen(page, "/review/{draftId} (flagged grid)");
+
+  // Scoped to the paired-flag banner's own wording, not just any
+  // `role="alert"` — `ReviewScreen.tsx` also renders a generic autosave-error
+  // `Banner` with the same role, positioned earlier in DOM order, and
+  // `.first()` alone could pick that one instead under CI/scratch-environment
+  // latency, producing a misleading failure against unrelated content.
+  const alertBanners = page.getByRole("alert").filter({ hasText: "is lower than" });
+  const alertCount = await alertBanners.count();
+  expect
+    .soft(alertCount, "criterion 21: editing hand 6 to 70 should raise a role=alert paired-flag banner")
+    .toBeGreaterThan(0);
+
+  if (alertCount > 0) {
+    const alertText = (await alertBanners.first().textContent()) ?? "";
+    expect
+      .soft(
+        /\d+ is lower than the \d+ above it/.test(alertText),
+        `criterion 21: paired-flag text should name both numbers, got: "${alertText}"`,
+      )
+      .toBeTruthy();
+    const hasSvgIcon = await alertBanners.first().locator("svg").count();
+    expect
+      .soft(hasSvgIcon > 0, "criterion 21: paired-flag banner should carry a non-colour icon, not just a tint")
+      .toBeTruthy();
+    // The flagged cell button itself must carry a border-colour class change,
+    // not rely on colour of the fill alone — confirm it also differs in
+    // more than background hue (a class name change is enough evidence the
+    // treatment is systematic, not colour-only, given PairedFlag's icon+text
+    // above already carries the accessible signal).
+    const flaggedClass = await hand6Button.getAttribute("class");
+    expect
+      .soft(flaggedClass?.includes("border-error"), "criterion 21: flagged cell should carry a distinct border class")
+      .toBeTruthy();
+  }
+
+  await page.goto("/admin");
+  await auditScreen(page, "/admin (locked)");
+  await loginAsAdmin(page);
+  await auditScreen(page, "/admin (unlocked panel)");
+});

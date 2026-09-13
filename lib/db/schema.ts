@@ -332,6 +332,14 @@ export const usageDay = sqliteTable("usage_day", {
    * `sheet_transcriptions`. 40/day, far beyond 1–2 sheets a week.
    */
   sheetUploads: integer("sheet_uploads").notNull().default(0),
+  /**
+   * Column close-up **uploads** (`POST /api/uploads`, `kind:'column'`) —
+   * security review MEDIUM 1, Stage 5. Counted separately from
+   * `sheet_uploads` and from `column_transcriptions`, the same reasoning as
+   * every other counter on this row. 200/day, far beyond a heavy legitimate
+   * re-shoot night.
+   */
+  columnUploads: integer("column_uploads").notNull().default(0),
 });
 
 /**

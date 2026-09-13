@@ -18,8 +18,11 @@ export function Seg<T extends string>({
   return (
     <div
       role="tablist"
-      // h-13 (52px) with p-1 padding leaves each button a 44px+ touch target.
-      className="inline-flex h-13 rounded-[var(--radius)] border border-line bg-sunk p-1"
+      // h-14 (56px), minus the 1px border on each edge and the 4px padding
+      // on each edge, leaves each button 46px tall — the border was the part
+      // the previous h-13 (52px) comment missed, landing tabs at 42px
+      // (PRD criterion 73: every touch target at least 44px).
+      className="inline-flex h-14 rounded-[var(--radius)] border border-line bg-sunk p-1"
     >
       {options.map((option) => {
         const active = option.value === value;

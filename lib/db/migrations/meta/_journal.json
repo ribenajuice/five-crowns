@@ -15,6 +15,13 @@
       "when": 1789131033065,
       "tag": "0001_player_name_key_and_upload_cap",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789310642275,
+      "tag": "0002_column_upload_cap",
+      "breakpoints": true
     }
   ]
 }

@@ -552,7 +552,7 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
                   <button
                     type="button"
                     onClick={() => setStructureStep("menu")}
-                    className="text-sm font-bold text-brand underline underline-offset-2"
+                    className="flex h-12 items-center text-sm font-bold text-brand underline underline-offset-2"
                   >
                     {FIX_SOMETHING_LINK}
                   </button>

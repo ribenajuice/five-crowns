@@ -89,3 +89,52 @@ describe("reserveSheetUpload", () => {
     expect((await reserveSheetUpload(dayTwo)).allowed).toBe(true);
   });
 });
+
+describe("reserveColumnUpload", () => {
+  it("allows the first 200 uploads of a UTC day and refuses the 201st", async () => {
+    const { reserveColumnUpload, DAILY_COLUMN_UPLOAD_CAP } = await import(
+      "@/lib/photos/upload-cap"
+    );
+    const day = new Date("2026-05-01T12:00:00Z");
+
+    for (let i = 1; i <= DAILY_COLUMN_UPLOAD_CAP; i += 1) {
+      const reservation = await reserveColumnUpload(day);
+      expect(reservation.allowed, `upload ${i}`).toBe(true);
+      expect(reservation.count).toBe(i);
+    }
+
+    const refused = await reserveColumnUpload(day);
+    expect(refused.allowed).toBe(false);
+  });
+
+  it("⚠️ a refused reservation releases its own increment — the day's count stays at the cap", async () => {
+    const { reserveColumnUpload, DAILY_COLUMN_UPLOAD_CAP } = await import(
+      "@/lib/photos/upload-cap"
+    );
+    const { getDb } = await import("@/lib/db");
+    const { usageDay } = await import("@/lib/db/schema");
+    const day = new Date("2026-05-02T00:00:00Z");
+
+    for (let i = 0; i < DAILY_COLUMN_UPLOAD_CAP; i += 1) await reserveColumnUpload(day);
+    await reserveColumnUpload(day); // refused
+    await reserveColumnUpload(day); // refused again
+
+    const row = (
+      await getDb().select().from(usageDay).where(eq(usageDay.day, "2026-05-02"))
+    )[0]!;
+    expect(row.columnUploads).toBe(DAILY_COLUMN_UPLOAD_CAP);
+  });
+
+  it("counts a different UTC day separately, and separately from sheetUploads", async () => {
+    const { reserveColumnUpload, reserveSheetUpload, DAILY_COLUMN_UPLOAD_CAP } = await import(
+      "@/lib/photos/upload-cap"
+    );
+    const dayOne = new Date("2026-05-03T23:00:00Z");
+    const dayTwo = new Date("2026-05-04T01:00:00Z");
+
+    for (let i = 0; i < DAILY_COLUMN_UPLOAD_CAP; i += 1) await reserveColumnUpload(dayOne);
+    expect((await reserveColumnUpload(dayOne)).allowed).toBe(false);
+    expect((await reserveColumnUpload(dayTwo)).allowed).toBe(true);
+    expect((await reserveSheetUpload(dayOne)).allowed).toBe(true);
+  });
+});

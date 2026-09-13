@@ -247,5 +247,29 @@ describe("POST /api/uploads", () => {
       );
       expect(response.status).toBe(201);
     });
+
+    it("⚠️ security review MEDIUM 1: 429 rate_limited once its own daily cap is reached, and no photo row is created", async () => {
+      const { getDb } = await import("@/lib/db");
+      const { usageDay, photo } = await import("@/lib/db/schema");
+      const today = new Date().toISOString().slice(0, 10);
+
+      await getDb()
+        .insert(usageDay)
+        .values({ day: today, columnUploads: 200 })
+        .onConflictDoUpdate({ target: usageDay.day, set: { columnUploads: 200 } });
+
+      const { draftId, columnId } = await createDraftWithColumn();
+      const before = (await getDb().select().from(photo)).length;
+
+      const { POST } = await import("@/app/api/uploads/route");
+      const response = await POST(
+        post({ kind: "column", draftId, columnId, rotation: 0, width: 800, height: 1600 }),
+      );
+      expect(response.status).toBe(429);
+      expect((await response.json()).error.code).toBe("rate_limited");
+
+      const after = (await getDb().select().from(photo)).length;
+      expect(after).toBe(before);
+    });
   });
 });
