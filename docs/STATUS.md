@@ -9,9 +9,10 @@
   forgotten-password runbook, the score CSV, usage and spend) is built, tested, and open as
   [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **not merged**, pending the founder's decision on
   PRD open question 5 (see below). **Stage 2** (editing and deleting a saved game, plus app-level 404/error screens)
-  is built, fully reviewed (QA, security, and a `/code-review high` pass all complete with fixes landed), and now
-  open as [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **not merged**, ready for founder review,
-  CI green.
+  is **merged and live in production** ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), merged and
+  deployed 2026-09-14). Its CHANGELOG/README wrap-up is a separate docs-only
+  [PR #23](https://github.com/ribenajuice/five-crowns/pull/23), CI green, **awaiting the founder's merge** — the
+  auto-merge attempt was correctly refused pending review.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -25,11 +26,17 @@
     question 5): the password-change routes need an AWS permission the app was deliberately never given, and
     widening it re-opens a risk a 2026-09-11 review closed on purpose. Everything else in the PR (the recovery
     runbook, the CSV download, usage/spend) is unaffected and ready.
-  - [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **Milestone 2 Stage 2**, editing and deleting a
-    saved game, plus app-level 404/error screens. Built; QA and security review both passed after two rounds of real
-    bugs found and fixed (see below); a subsequent `/code-review high` pass found three more real issues (stale
-    edit-draft resume, a TOCTOU misreport, a silently swallowed autosave failure), all fixed. CHANGELOG and README
-    updated. Ready for founder review — no known blockers.
+  - ✅ [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **Milestone 2 Stage 2**, editing and deleting
+    a saved game, plus app-level 404/error screens. **Shipped 2026-09-14**: QA and security review both passed
+    after two rounds of real bugs found and fixed (see below); a subsequent `/code-review high` pass found three
+    more real issues (stale edit-draft resume, a TOCTOU misreport, a silently swallowed autosave failure), all
+    fixed. Merged, deployed, and verified live: the login gate still correctly redirects every route — including a
+    made-up game id and a nonexistent path — to `/login` with no data or error leakage. ⚠️ **Not yet verified**: the
+    actual edit/delete screens and the new 404/error pages, since they sit behind the group password, which only the
+    founder holds — same pattern as prior stages' on-phone acceptance step.
+  - [PR #23](https://github.com/ribenajuice/five-crowns/pull/23) — docs-only wrap-up for Stage 2 (CHANGELOG entry
+    moved from Unreleased to a dated, shipped heading; README's status line updated). CI green, **needs the
+    founder's merge** — this is a normal review checkpoint, not a blocker on anything else.
   - One separate, non-urgent founder action: re-run `scripts/aws-bootstrap.sh` to actually apply PR #18's IAM
     tightening in AWS — merging its template alone changed nothing live.
 - **Stage 2 build notes (2026-09-14, not yet shipped)**: this is the first code in the project that writes over or
