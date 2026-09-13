@@ -2,9 +2,10 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed sits in an **Unreleased** section at the top.
+production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
+isn't one right now, because the latest build is already live.
 
-## [Unreleased] - Stage 5
+## [Stage 5] - 2026-09-13
 
 This stage was a checkup, not a new feature — an audit pass, top to bottom, to make sure everything
 already shipped actually works and is easy to use on a phone. There's almost nothing to see here on
@@ -12,10 +13,14 @@ purpose.
 
 ### Fixed
 
-- **Three buttons were slightly too small to tap reliably on a phone.** The "As written / Per hand"
-  toggle on a game's page, the "Fix something" link on the review screen, and the show/hide icon
-  next to the API key field in the admin panel were all a little under the minimum comfortable tap
-  size. All three are now easy to tap.
+- **Four buttons were slightly too small to tap reliably on a phone.** The "As written / Per hand"
+  toggle on a game's page, the "Fix something" link on both the review screen and the cell editor,
+  and the show/hide icon next to the API key field in the admin panel were all a little under the
+  minimum comfortable tap size. All four are now easy to tap.
+- **The rotate button's icon was actually broken, not just a bit off.** Its circular arrow was drawn
+  too large for its own frame, so most of it was invisibly clipped away — what showed up was an odd
+  little hook, not a proper arrow. Replaced with a correctly-drawn one that also turns the same way
+  the button actually rotates your photo.
 
 ### Verified, nothing to fix
 
