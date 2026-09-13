@@ -81,6 +81,27 @@ history. Full reasoning in `docs/DECISIONS.md`; it produced criteria 172–173.*
    in the thing you do every game**, so it is yours. It is cheap either way and cheap to change
    later — what it is not is guessable. Everything else about matching is specced and unaffected.
 
+*Opened 2026-09-14 by Milestone 2 Stage 1's security review and independently confirmed by QA.
+⚠️ **Blocks shipping Stage 1's password-change routes; blocks nothing else in the stage.***
+
+5. **Password rotation from the panel needs a permission the app was deliberately never given.**
+   The group and admin password-change routes write four SSM parameters
+   (`group-password-hash`, `admin-password-hash`, `group-session-epoch`, `admin-session-epoch`).
+   The web Lambda's IAM role can currently write only the three `anthropic-api-key*` parameters —
+   narrowed on 2026-09-11 specifically so a bug in the internet-facing app could never overwrite
+   either password hash. As built and deployed today, both routes would get `AccessDeniedException`
+   from SSM and surface as a plain 500: the panel would appear broken, with no way for the founder
+   to tell whether a password actually changed. Two ways forward, not guessable:
+   - **(a) Widen the grant** to the four new parameters, re-accepting the 2026-09-11 risk in
+     exchange for in-panel rotation actually working. A new ADR would supersede the relevant clause
+     of the 2026-09-11 one, naming this trade explicitly.
+   - **(b) Keep the narrower grant** and drop in-panel password rotation from Stage 1 entirely —
+     both passwords are rotated only through the SSM runbook already written for the forgotten-
+     password case (criteria 97–101), which needs no app permission at all.
+   ⚠️ Whichever way, criteria 87–96 (the panel forms) either ship for real or are cut; everything
+   else in Stage 1 (the recovery runbook, the CSV download, usage and spend) is unaffected and
+   already verified.
+
 ---
 
 ## What it is, and who it's for

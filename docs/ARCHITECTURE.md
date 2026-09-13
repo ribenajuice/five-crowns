@@ -1006,18 +1006,17 @@ in the README of the download itself, because it is precisely the kind of thing 
 discovered at the moment it matters most. The photos are separately protected by bucket versioning
 and no delete lifecycle; the database by this download and the manual `npm run db:backup` dump.
 
-**Format: a ZIP of CSVs** — `players.csv`, `games.csv`, `rosters.csv`, `roster_members.csv`,
-`round_scores.csv`, plus a denormalised `games-wide.csv` (one row per player per game, the eleven
-running totals and eleven derived hands as columns) that a human can actually read, plus
-`schema.sql` and a short `README.txt`. CSV is chosen over a raw SQLite file or a SQL dump for one
-reason: **it opens in a spreadsheet on a phone with no software, and it still restores into any
-database on earth** — whereas a `.db` file needs tools the founder does not have, which would make
-the escape hatch depend on finding a developer.
+**Format: one combined CSV** (`docs/DECISIONS.md`, 2026-09-14 — supersedes an earlier "ZIP of CSVs
+plus `schema.sql` and `README.txt`" plan written before that decision) — `five-crowns-scores-
+YYYY-MM-DD.csv`, one row per player per game (`game_id`, `played_on`, `location`, `roster_name`,
+`roster_size`, `player_name`, `column_order`, `sheet_name`, `final_score`, `is_winner`, `rt_1`…
+`rt_11`, `hand_1`…`hand_11`). A decade is ~1,400 rows, not ~15,000 — skimmable on a phone in one
+tab, and lossless for the score data. With no `README.txt` to carry it, the "this is not a backup,
+the photos are not in it" disclosure lives on the panel screen and in the repo README instead; the
+file itself carries no prose, since a comment row breaks every spreadsheet that opens it.
 
 **Delivery: generated in the Lambda and streamed straight back**, no S3 round trip and no presigned
-URL. A decade of play is roughly 15,000 round rows — well under 1 MB zipped, against a 6 MB
-buffered Lambda response limit. Revisit at around 4 MB, which on this trajectory is somewhere past
-the year 2100.
+URL. Well under 1 MB at this scale, against a 6 MB buffered Lambda response limit.
 
 ### Footprint and IAM
 
@@ -1027,11 +1026,19 @@ the year 2100.
   requests are $0.03 per 10,000; with a 60-second cache and this traffic, under a cent a month.
 - The **web Lambda's role** (`sst.config.ts`, written out by hand, never granted through SST
   `link`) may:
-  - `ssm:GetParameter`/`ssm:GetParameters` and `ssm:PutParameter` on exactly the five app-owned
-    parameters under `/five-crowns/prod/`: `group-password-hash`, `admin-password-hash`,
-    `group-session-epoch`, `admin-session-epoch` and `anthropic-api-key`. Nothing else under the
-    prefix. The session secret is injected at deploy. The domain and budget parameters are read
-    only by `scripts/deploy.sh`.
+  - `ssm:GetParameter`/`ssm:GetParameters` on the app-owned parameters under `/five-crowns/prod/`,
+    and `ssm:PutParameter` on exactly three: `anthropic-api-key`, `anthropic-api-key-last4`,
+    `anthropic-api-key-set-at` (2026-09-11 least-privilege ADR — deliberately narrowed so a bug in
+    the internet-facing app cannot overwrite either password hash). ⚠️ **This section previously
+    claimed the write grant also covered `group-password-hash`, `admin-password-hash`,
+    `group-session-epoch` and `admin-session-epoch` — it never did; that was written ahead of
+    Milestone 2 Stage 1 actually needing it, and the two drifted apart until a 2026-09-14 security
+    review caught it.** Stage 1's in-panel password-change routes call `putParameter` on those four
+    parameters and will get `AccessDeniedException` (surfacing as a 500) against the real deployed
+    role until this is resolved — deliberately not resolved by widening the grant here without the
+    founder's sign-off, since doing so re-opens the exact escalation the 2026-09-11 narrowing
+    existed to close. See `docs/DECISIONS.md` for the pending decision. The session secret is
+    injected at deploy. The domain and budget parameters are read only by `scripts/deploy.sh`.
   - `s3:GetObject`/`s3:PutObject` on `five-crowns-photos/*`. ⚠️ **Never `s3:DeleteObject*` and
     no bucket-level action** (`PutBucket*`, `PutLifecycle*`, `PutEncryption*`, versioning,
     public-access block). The internet-facing code cannot undo the versioning that makes a deletion
