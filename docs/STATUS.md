@@ -3,27 +3,41 @@
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
 - **Last updated**: 2026-09-13
-- **Phase**: Milestone 1, **Stage 3 is live** at **https://fivecrowns.ribenajuice.xyz**. **Stage 4 (the rest of the
-  override ladder — structural repairs and targeted per-column re-photograph) has passed QA and code review** and
-  is open as [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), awaiting founder review and CI on the
-  PR before it can be merged and shipped.
-- **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live today (200, valid cert). Valid Amazon
-  certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation CNAME.
-  The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is attached
-  (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever breaks:**
-  delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the CloudFront URL
-  answers again.
-- **Currently in flight**: [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (`feat/m1-stage4`). QA drove
-  the real HTTP API end-to-end against both fixture sheets and passed all in-scope acceptance criteria (29–45, 71).
-  A `/code-review high` pass then found and fixed five real bugs before the PR opened: a close-up photo could be
-  silently lost if its column was removed by a structural repair before save (now kept with the game, unattributed
-  rather than dropped); a column re-read finishing after a 30–60s vision call could overwrite an edit made while it
-  was in flight (now uses optimistic concurrency on the draft's `updated_at`, retrying rather than clobbering); the
-  close-up upload "try again" button could get permanently stuck after a failed presign; inserting/deleting a row
-  could leave the model's uncertainty flag on the wrong row; and reading-history timestamps didn't match the app's
-  `en-AU` format used elsewhere. 834 tests passing, lint and typecheck clean. Awaiting founder PR review.
-  [PR #11](https://github.com/ribenajuice/five-crowns/pull/11) and
-  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) (Stage 2/3) remain merged and deployed.
+- **Phase**: Milestone 1, **Stage 4 is live** at **https://fivecrowns.ribenajuice.xyz** — the rest of the
+  manual-override ladder: structural column repairs (add/remove/reassign/reorder a column, insert/delete a value)
+  and targeted per-column re-photograph. Shipped via
+  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (merged by the founder 2026-09-13T13:12Z; CI and
+  Deploy both green on `main`, deploy completed in 2m28s). Next is Stage 5 — go live and prove it (the last stage
+  of Milestone 1).
+- **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
+  unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
+  Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
+  CNAME. The CloudFront URL (`darn4m0ss1uf4.cloudfront.net`) **deliberately answers 403** now that the domain is
+  attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
+  breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
+  CloudFront URL answers again.
+- **Currently in flight**: nothing. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11),
+  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) and
+  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (Stage 2/3/4) are all merged and deployed.
+- ✅ **The real API key is live and proven, 2026-09-13**: the founder pasted a real Anthropic key into the
+  production admin panel and ran "Read the sheet" on two real scoresheets. Both worked cleanly end-to-end — read,
+  reviewed, saved — and **both games are now saved for real in the production record**: the archive is no longer
+  empty. This resolves the last standing blocker from Stage 3 and, in effect, Stage 2's on-phone acceptance check
+  (capture → review → save on a real device with real credentials). It also gives a first real-world data point
+  against the ⚠️ 60s CloudFront-timeout risk noted below: two full transcriptions completed without hitting it.
+- **Stage 4 shipped 2026-09-13** ([PR #15](https://github.com/ribenajuice/five-crowns/pull/15)). QA drove the real
+  HTTP API end-to-end against both fixture sheets on a disposable scratch environment and passed all in-scope
+  acceptance criteria (29–45, 71). A `/code-review high` pass then found and fixed five real bugs before the PR
+  opened: a close-up photo could be silently lost if its column was removed by a structural repair before save
+  (now kept with the game, unattributed rather than dropped); a column re-read finishing after a 30–60s vision call
+  could overwrite an edit made while it was in flight (now uses optimistic concurrency on the draft's `updated_at`,
+  retrying rather than clobbering); the close-up upload "try again" button could get permanently stuck after a
+  failed presign; inserting/deleting a row could leave the model's uncertainty flag on the wrong row; and
+  reading-history timestamps didn't match the app's `en-AU` format used elsewhere. 834 tests passing, lint and
+  typecheck clean. ⚠️ **Not yet verified live**: the actual review-screen features (structural repairs, targeted
+  re-photograph) require the group password, which only the founder holds. The founder's two real transcriptions
+  (below) didn't happen to need any of Stage 4's repair/re-photograph tools, so those specific screens are still
+  unverified against a live, real key.
 - **Stage 3 shipped 2026-09-12** ([PR #12](https://github.com/ribenajuice/five-crowns/pull/12)). QA, a
   security-reviewer pass, and two independent `/code-review` runs together found and fixed real bugs before and
   after the PR opened, most notably: the admin session cookie was scoped to `Path=/admin`, making `/api/admin/*`
@@ -34,16 +48,18 @@
   letting the app `PutParameter` over both password hashes though it only ever writes the API key; a missing
   double-submit guard on "Read the sheet"; and an admin-panel bug where a brand-new key could show the *previous*
   key's failed status. 697 tests passing, lint and typecheck clean. Confirmed live post-deploy: login gate and
-  redirects intact, no server errors. ⚠️ **Not yet verified live**: an actual sheet transcription with a real
-  Anthropic API key — the founder has one ready and hasn't pasted it into the production admin panel yet.
+  redirects intact, no server errors. ✅ **Verified live 2026-09-13**: the founder pasted a real Anthropic API key
+  into production and ran two real transcriptions successfully — see above.
 - **Stage 2 shipped 2026-09-12** ([PR #10](https://github.com/ribenajuice/five-crowns/pull/10)). QA passed all its
   acceptance criteria (6–28 except 11, 46–49, 58–70, 73) against both fixture sheets, driving the real HTTP API
   end-to-end. QA and `/code-review high` together found and fixed three real bugs before the PR opened: a
   corrupted migration journal entry that made `npm run db:migrate` (and every deploy) fail silently, a race in the
   daily upload cap that could let more than 40/day through under concurrent requests, and EXIF orientations 5/7
-  swapped in the rotation table (a mirrored, sideways photo would land 180° off). ⚠️ **Not yet verified live**: an
-  actual capture → review → save run on the founder's own phone with the group password — the PRD reserves this as
-  the founder's own acceptance step, and it needs credentials this session doesn't hold.
+  swapped in the rotation table (a mirrored, sideways photo would land 180° off). ✅ **Verified live 2026-09-13**:
+  the founder's two real transcriptions (see above) each ran the full capture → review → save loop end to end on
+  real credentials, satisfying the PRD's reserved founder acceptance step. Not yet separately confirmed: criterion
+  11's live side-by-side of a manual vs. imported game — both real games so far went through "Read the sheet",
+  not full manual entry.
 - **Stage 1 acceptance criteria**: **all pass.**
   - 1–5, 72, 79 and 81: QA against production builds. **Criterion 5 is also proven live:** 10 wrong passwords gave
     401, the 11th gave 429 "Too many tries. Try again later.", and a forged `CloudFront-Viewer-Address` (with or
@@ -56,12 +72,13 @@
   the forged-header lockout check holds.
 - **Measured**: a warm login takes 0.45–0.58 s; a page with no database work takes 0.13–0.21 s. Each Sydney↔Tokyo
   query costs about 110–130 ms, as the Tokyo ADR estimated. The first request after a deploy (cold start) took 3.9 s.
-- **Blocked on founder**: paste the real Anthropic API key into the production admin panel
-  (`https://fivecrowns.ribenajuice.xyz/admin`) and try "Read the sheet" on a real photo — the one thing nobody but
-  the founder can verify. Also still open: the Stage 2 on-phone acceptance check (capture → review → save,
-  criterion 11's live side-by-side of a manual vs. imported game would come for free once a real key exists).
-- **Next up**: founder reviews and approves [PR #15](https://github.com/ribenajuice/five-crowns/pull/15), then
-  `/ship` it. After that, Stage 5 (go live and prove it) is the last Milestone 1 stage.
+- **Blocked on founder**: nothing right now. The real-key transcription and Stage 2's on-phone acceptance check
+  are both done (above). What's left for a full founder acceptance run is Stage 4's repair/re-photograph tools and
+  criterion 11's manual-vs-imported side-by-side — neither is urgent, both can happen naturally or as part of
+  Stage 5.
+- **Next up**: Stage 5 — go live and prove it: the wording audit across every screen, an accessibility and
+  375px/1280px pass, and a full re-run of all 86 acceptance criteria against the live domain. Run
+  `/feature Milestone 1 Stage 5`.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -89,11 +106,12 @@
   - The deploy role still has broad SSM/KMS read and an unconditioned `iam:PassRole` on `five-crowns-*`.
   - **Stage 2 hazard**: middleware skips image-extension paths, so photo and `/review` routes must call
     `requireGroupSession()` themselves.
-  - ⚠️ **Watch this on the founder's first real transcription**: the Lambda/CloudFront origin timeout is set to
-    120s (`sst.config.ts`), but CloudFront's *default* per-origin response-timeout quota is 60s and this is
-    unverified against a real call. If "Read the sheet" errors out mysteriously right around the 60s mark, this is
-    why — the fix is a free AWS support quota-increase request (or lower the SST timeout to "60 seconds" and accept
-    a tighter budget for the vision call).
+  - The Lambda/CloudFront origin timeout is set to 120s (`sst.config.ts`), but CloudFront's *default* per-origin
+    response-timeout quota is 60s. ✅ **Partially eased 2026-09-13**: the founder's two real transcriptions both
+    completed without hitting it, so it isn't the common case — but with only two data points this isn't proof the
+    quota was raised or that a slow call can't still clip at 60s. If "Read the sheet" ever errors out mysteriously
+    right around the 60s mark, this is why — the fix is a free AWS support quota-increase request (or lower the SST
+    timeout to "60 seconds" and accept a tighter budget for the vision call).
   - No component-rendering test harness (jsdom/Playwright) exists yet. Criterion 73 (375px/1280px, 44px touch
     targets, focus visibility) and other pixel-level review-screen behaviour are verified by reading the code,
     not by rendering it. Worth a Playwright smoke test in a later stage.
@@ -107,6 +125,7 @@
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** and **100% of
   final scores and winners** right. ⚠️ Monotonicity caught 0 of 9 misreads, so the human review screen is the entire
   quality control. Errors repeat deterministically, so don't build "transcribe twice and compare".
-- **Development cost posture**: founder's Claude subscription. The API key panel exists now (Stage 3) — the founder
-  has a real key ready to paste in. Re-run the M0 spike through the real API (~A$0.30) at Stage 5. Running cost is
-  expected at about A$0.65/month.
+- **Development cost posture**: founder's Claude subscription. The real key is now live and has run two real
+  transcriptions (2026-09-13). The M0 spike itself (against the fixture sheets with known ground truth, ~A$0.30)
+  is still worth re-running at Stage 5 — the two real games don't substitute for that, since there's no
+  independently verified ground truth to score them against. Running cost is expected at about A$0.65/month.
