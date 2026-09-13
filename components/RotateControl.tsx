@@ -29,8 +29,8 @@ export function RotateControl({ onRotate }: { onRotate: () => void }) {
           aria-hidden="true"
           focusable="false"
         >
-          <path d="M4 4v6h6" />
-          <path d="M20 20a9 9 0 1 0-2.6-13.4L4 10" />
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
         </svg>
       </button>
       <p className="text-center text-sm text-text-muted">{ROTATE_CAPTION}</p>
