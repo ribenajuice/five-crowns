@@ -20,6 +20,63 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-13 — Criterion 73 is verified by a local Playwright audit, not jsdom and not in CI
+
+- **Context**: Stage 5 has to run "accessibility and a 375px/1280px pass". That is PRD criterion 73
+  — every M1 screen at 375px and 1280px, every touch target ≥ 44px, focus visible on everything
+  interactive. It has been verified by **reading code** since Stage 2, which `docs/STATUS.md` records
+  as a known follow-up ("no component-rendering test harness exists yet… worth a Playwright smoke
+  test in a later stage"). Stage 5 is the last stage of M1, so it is decide-or-ship-it-unproven.
+- **Decision**: add **Playwright** as a dev dependency and a single audit spec, run on demand via
+  `npm run audit:a11y` against a production build on the scratch database. It logs in once, visits
+  every M1 screen at 375×667 and 1280×800, and asserts three things mechanically: no horizontal
+  overflow (`document.scrollWidth <= clientWidth`), a ≥44×44 CSS-px hit area on every `button`, link,
+  input, select and `[role="button"]`, and a computed focus indicator (`outline`/`box-shadow`) that
+  actually changes when the element is focused. ⚠️ **Not wired into the PR CI job in Milestone 1.**
+- **Alternatives**: (a) *jsdom + Testing Library* — **not an option at all**, and this is the
+  decisive fact rather than a preference: jsdom has no layout engine and does not compute Tailwind
+  styles, so it can answer none of criterion 73's three questions. It would produce a green suite
+  that proves nothing about the thing being claimed. The real choice was therefore a headless browser
+  or human eyes, never a middle tier. (b) *Keep code-reading* — rejected: 73 covers ten screens and is
+  now the largest unproven block left in M1, while M1's whole definition of done (criterion 85) is a
+  phone. Reading Tailwind classes cannot tell you a flex row overflows at 375px. (c) *Playwright
+  wired into CI on every PR* — rejected for M1: a browser download plus a layout-sensitive suite
+  gating every PR is exactly the footprint the milestone refuses ("no queue, no staging environment,
+  running costs stay minimal"), for a check that only changes when the design does.
+- **Consequences**: 73 gets a real, repeatable result instead of a judgement call, and M2/M3 inherit
+  a harness that is already configured. The cost is that an on-demand suite can rot between stages —
+  mitigated by making it part of every future stage's QA pass rather than a one-off script.
+  ⚠️ **It does not replace the founder's phone**: criteria 6 (camera opens directly), 8 (rotation
+  surviving to the saved game) and 70 (pinch-zoom and pan) are real-device facts and stay founder-run.
+  *Revisit if* M3's analytics screens land — that is the point to wire it into CI.
+
+## 2026-09-13 — Stage 5's "full re-run of all 86" runs on a scratch environment, not production
+
+- **Context**: Stage 5's scope line reads "a full re-run of all 86 against the live domain". Taken
+  literally that means executing every acceptance criterion against `fivecrowns.ribenajuice.xyz`.
+  It also needs credentials QA does not hold — both passwords and a real Anthropic key.
+- **Decision**: the full 1–86 re-run happens on a **disposable scratch environment** built from the
+  same `main` artefact that produced the live deploy, with the same schema and config shape, scratch
+  passwords and a scratch database. Production gets two much smaller sets instead: a
+  **credential-free live smoke set** (criteria 1, 5, 9, 57, 82, 83, 84, 86) and a **founder-only
+  live set** (2, 3, 4, 6, 8, 85, plus a first live exercise of Stage 4's repairs and criterion 11).
+  Every criterion is recorded with the bucket it was run in.
+- **Alternatives**: *Literally re-run all 86 against production* — rejected, and not on grounds of
+  convenience: ⚠️ **criterion 64 is unrunnable there.** It asserts the database holds *exactly*
+  5 players, 2 rosters, 2 games and 99 round rows after both fixtures save — a fresh-database
+  assertion. Production now holds the founder's two real games (saved 2026-09-13), so running 64
+  against it means deleting the real record to test it. 59, 62, 63, 66 and 67 carry the same
+  assumption. A test that destroys the artefact it exists to protect is the wrong test.
+  *Stand up a permanent staging environment* — rejected: explicitly out of scope for M1, and a
+  disposable scratch environment (which QA already used for Stages 2–4) does the same job for the
+  duration of a QA pass and then goes away.
+- **Consequences**: the re-run proves the **build**; the live smoke set proves the **deployment** is
+  that build and is correctly locked down; the founder's run proves the **product**. ⚠️ The
+  scratch-environment pass is only as good as its fidelity to production — if the artefact under test
+  is not the one on `main` that deployed, the re-run proves nothing, so pinning the commit is part of
+  the task rather than a nicety. *Revisit if* a defect is ever found live that the scratch
+  environment could not reproduce — that is the signal the two have drifted.
+
 ## 2026-09-12 — Insert/delete-a-value repairs push a new reading rather than widening `manualEdits`
 
 - **Context**: Stage 4 needed `insertValueAt`/`deleteValueAt` (PRD criterion 33: inserting leaves

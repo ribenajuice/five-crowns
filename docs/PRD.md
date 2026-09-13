@@ -29,7 +29,24 @@ opens the app on a night they aren't uploading anything, so it should be the fir
 with the games list and "add a game" reachable from it. **From Milestone 3** — until the board
 exists and has enough games to say anything, the games list is the landing screen.
 
-**No open questions remain.** Nothing below is waiting on the founder.
+**No open questions remain about the product.** Nothing below is waiting on the founder. Two
+operational questions opened at Stage 5 — they change how the last stage is run, not what gets
+built.
+
+## Open questions
+
+*Opened 2026-09-13 for Milestone 1 Stage 5. Both are the founder's to answer; neither blocks the
+scratch-environment work starting.*
+
+1. **The key window.** Criteria 50–57 and the M0 spike re-run need a working Anthropic key that QA
+   does not hold. Two ways: paste a key into the **scratch** environment for the Stage 5 window and
+   revoke it after, or keep the key to yourself and run those items on the live site yourself.
+   ⚠️ **Cost either way is about A$0.30–0.60**, so this is a question about who does the clicking,
+   not about money.
+2. **Signing off criterion 85.** When you ran the two real sheets on 2026-09-13, did you check
+   **every cell** against the photo, or the totals and the winner? 85's wording is *"correct and
+   checkable against the photo, cell by cell"*. If it was the totals, one of the two games needs a
+   five-minute cell-by-cell pass to close it — the run itself doesn't need repeating.
 
 ---
 
@@ -1192,6 +1209,129 @@ the game sitting in the record where it will still be in ten years.
 *One cheap thing worth doing here*: re-run the Milestone 0 reading spike through the production API
 path now that a key exists — about **A$0.30**, and it turns the spike's indicative error rates into
 real ones.
+
+##### Stage 5 — the checklist
+
+*Written 2026-09-13, after Stage 4 shipped and the founder ran a real key on the live domain. This
+is an audit checklist, not a feature spec. **Stage 5 adds no product behaviour and no acceptance
+criterion** — 86 is the final count. Everything below either proves an existing criterion or updates
+a document.*
+
+**Already done. Do not redo any of this.**
+
+- **Criterion 84 — done at Stage 1, as reworded.** The domain answers with a valid certificate
+  (renewing to Mar 2027 through the kept validation CNAME), the CloudFront URL is deliberately 403,
+  and the recovery path is documented. ⚠️ Stage 5's *scope line* says "the custom domain attached" —
+  **that work happened early.** Re-confirm it in thirty seconds; do not re-provision anything.
+- **Criterion 85 — substantially done 2026-09-13.** The founder pasted a real key into production,
+  ran two real sheets end to end on the live domain, and both are saved in the record. This also
+  closed Stage 2's reserved on-phone acceptance step and Stage 3's real-key check. What is left is a
+  **sign-off**, not a re-run — see the open question below.
+- **Per-stage QA passes stand.** 1–5, 72, 79, 81–83, 86 (Stage 1); 6–28 except 11, 46–49, 58–70, 73
+  (Stage 2); 11, 50–57, 74–80 (Stage 3); 29–45, 71 (Stage 4). Stage 5 re-runs them; it does not
+  re-litigate their results.
+
+**What "a full re-run of all 86 against the live domain" actually means.**
+
+⚠️ **It cannot be literal, and the reason is a criterion, not an inconvenience.** Criterion 64
+asserts the database holds **exactly** 5 players, 2 rosters, 2 games and 99 round rows after both
+fixtures are saved — that is a fresh-database assertion, and production now holds the founder's two
+real games. Running 64 against production means **emptying the real record to test it**. 62, 63, 66,
+67 and 59 carry the same fresh-database assumption. So:
+
+- **Bucket A — the full 1–86 re-run, on a scratch environment.** The same build artefact deployed to
+  production, the same schema and config shape, a disposable database, scratch passwords, the two
+  fixtures. This is the re-run. QA owns it and it is the bulk of the stage. ⚠️ **The artefact must be
+  the one on `main` that produced the live deploy** — a re-run against a different build proves
+  nothing about the live site.
+- **Bucket B — the live smoke set, on production, no credentials needed.** 1 (redirects leak no
+  fragment of the record), 5 (lockout, including the forged-header path), 9 (unauthenticated GET on
+  both photo objects denied), 57 (no key in any bundle served to the browser), 82, 83, 84, 86.
+- **Bucket C — founder-only, on production, on a phone.** Anything needing a real password, a real
+  key or a real camera: 2, 3, 4, 6, 8, 85, plus two things STATUS flags as still unverified live —
+  **Stage 4's structural repairs and per-column re-photograph** (the founder's two real sheets
+  didn't happen to need them) and **criterion 11's manual-versus-imported side-by-side**. Budget
+  fifteen minutes on the sofa, not a session.
+
+Every criterion ends the stage with a recorded result and **where it was run**. A criterion that
+passed only in Bucket A says so.
+
+**The wording audit.**
+
+The banned set, from the milestone constraint: *checked, validated, verified, confirmed, correct,
+looks right, all good* — plus, for the re-photograph flow, *checking, verifying, confirming,
+double-check*. Three passes, in order:
+
+1. **Mechanical sweep.** Case-insensitive grep of every banned stem across `app/`, `components/` and
+   `lib/`, including `aria-label`s, `alt` text, placeholders, `<title>` and any toast. Every hit is
+   triaged to *not user-facing* (recorded) or *fail*. Cheap and complete; do it first.
+2. **Verbatim check against the fixed-strings table** in `docs/DESIGN-SYSTEM.md` (Voice & tone).
+   Every row is rendered exactly as written. ⚠️ **A paraphrase is a fail even when it uses no banned
+   word** — the table is the contract.
+3. **Read-through of what the table doesn't cover.** Login, games list, game view, add-a-game, admin,
+   and ⚠️ **every error and empty state**: upload failure, read failure, daily cap reached, presign
+   failure, draft not found, no games yet, fresh-database venue and player lists.
+
+**Numbered criteria this re-verifies**: 24 (all three states — clean read, flag resolved by hand,
+fully manual), 45, 47. **Wording-bearing criteria that also re-run here**: 19, 20 (no wording of
+*any* kind suspecting a repeat), 23, 25 (literal "10 of 11"), 42, 43, 53, 61, 69, 72, 75, 78, 80.
+
+⚠️ **Yes, it covers copy no criterion names.** There is no marketing copy — the app is behind a
+password gate — so "everything else" is the README and the login screen. ⚠️ **Scope guard: the audit
+fixes copy and styling only.** `app/` has no `error.tsx`, `not-found.tsx` or `loading.tsx`, so an
+unhandled error or a bad game URL falls through to Next's defaults, which are off-voice. **Designing
+route-level error and 404 screens is new surface — it is an M2 follow-up, not Stage 5.** The single
+exception: if a default error page leaks a stack trace or an internal path in production, that is a
+security fail and is fixed here.
+
+**Accessibility and the 375px/1280px pass.**
+
+This is **criterion 73** — every M1 screen at 375px and 1280px, every touch target ≥ 44px, focus
+visible on everything interactive — plus **criterion 21**'s "colour is never the only signal" and the
+hard rules in `docs/DESIGN-SYSTEM.md`: semantic landmarks, real `<button>`s, labelled inputs, one
+`h1` per page.
+
+⚠️ **Decision, taken here: 73 stops being verified by reading code.** Stage 5 adds a **local,
+on-demand Playwright audit harness** scoped to exactly this criterion — `npm run audit:a11y` against
+a production build on the scratch database, visiting every M1 screen at 375×667 and 1280×800 and
+asserting no horizontal overflow, a ≥44×44 CSS-px hit area on every interactive element, and a
+computed focus indicator that actually changes on focus. ⚠️ **jsdom was never an option** — it has no
+layout engine and no computed Tailwind styles, so it can answer none of those three questions. The
+real choice was a headless browser or human eyes, and 73 is the largest block of M1 still unproven
+while M1's whole definition of done is a phone. ⚠️ **It is deliberately not wired into PR CI in M1**
+— a browser download and a layout-sensitive suite gating every PR is exactly the footprint this
+milestone refuses. Revisit when M3's analytics screens land. Full reasoning in `docs/DECISIONS.md`.
+
+⚠️ **The harness does not replace the founder's phone.** Criterion 6 (the camera opening directly),
+8 (rotation surviving to the saved game days later) and 70 (pinch-zoom and pan) are real-device
+facts. They stay in Bucket C.
+
+**Docs, and the cheap spike.**
+
+- **README is currently wrong** — it says Stages 1–3 are deployed and Stage 4 is waiting to merge.
+  Stage 4 is live. README, CHANGELOG and `docs/STATUS.md` are all updated at the end of the stage.
+- ⚠️ Criteria 83 and 84 both say **"documented"** in their own wording. The manual backup command and
+  the CloudFront-reopen recovery path must each be findable from the README by someone who has not
+  read this PRD.
+- **Re-run the Milestone 0 spike through the production API path** (~A$0.30), both fixtures, scored
+  against `fixtures/sheets/GROUND-TRUTH.md`, findings appended to `docs/SPIKE-M0-READING.md`. ⚠️ The
+  founder's two real games **do not substitute** — there is no independently verified ground truth to
+  score them against.
+
+**Done means all six, and nothing beyond them.**
+
+1. Every criterion 1–86 has a recorded result, a bucket and a date.
+2. Wording audit: zero banned words in user-facing strings; every fixed string verbatim.
+3. `npm run audit:a11y` green at both widths across every M1 screen.
+4. README, CHANGELOG and STATUS current; this stage's decisions in DECISIONS.md.
+5. Criterion 85 signed off by the founder.
+6. M0 spike re-run recorded.
+
+⚠️ **Explicitly not Stage 5**, so nobody widens it: route-level error and 404 screens; Playwright in
+CI; STATUS's known follow-ups (arm64 CI coverage, the deploy role's SSM breadth, the HMAC-helper /
+`resolvePlayers` / usage-cap duplications) — all M2 unless a numbered criterion fails without them.
+The CloudFront 60s origin-timeout quota increase is a free AWS support request the founder can raise
+whenever; it is not a build task and does not gate this stage.
 
 #### Explicitly out of scope for Milestone 1
 
