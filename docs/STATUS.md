@@ -3,12 +3,13 @@
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
 - **Last updated**: 2026-09-13
-- **Phase**: Milestone 1, **Stage 4 is live** at **https://fivecrowns.ribenajuice.xyz** — the rest of the
-  manual-override ladder: structural column repairs (add/remove/reassign/reorder a column, insert/delete a value)
-  and targeted per-column re-photograph. Shipped via
-  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (merged by the founder 2026-09-13T13:12Z; CI and
-  Deploy both green on `main`, deploy completed in 2m28s). Next is Stage 5 — go live and prove it (the last stage
-  of Milestone 1).
+- **Phase**: **Milestone 1 is complete.** Stage 5 — "go live and prove it" — shipped via
+  [PR #19](https://github.com/ribenajuice/five-crowns/pull/19) (merged 2026-09-13T15:28Z; CI and Deploy both green
+  on `main`, deploy completed in 3m0s). All 86 acceptance criteria pass. Two small independent PRs merged alongside
+  it: [PR #17](https://github.com/ribenajuice/five-crowns/pull/17) (a code-duplication cleanup) and
+  [PR #18](https://github.com/ribenajuice/five-crowns/pull/18) (deploy-role IAM tightening — **template merged, not
+  yet applied in AWS**, see below). **Next is Milestone 2** — identity, rosters, and the rest of the admin panel.
+  Run `/feature Milestone 2` or a specific slice of it to start.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -16,9 +17,32 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: nothing. [PR #11](https://github.com/ribenajuice/five-crowns/pull/11),
-  [PR #12](https://github.com/ribenajuice/five-crowns/pull/12) and
-  [PR #15](https://github.com/ribenajuice/five-crowns/pull/15) (Stage 2/3/4) are all merged and deployed.
+- **Currently in flight**: nothing. Every PR through #19 is merged and deployed. One founder action remains
+  outstanding (not blocking, not urgent): re-run `scripts/aws-bootstrap.sh` to actually apply PR #18's IAM
+  tightening in AWS — merging its template alone changed nothing live.
+- **Stage 5 shipped 2026-09-13** ([PR #19](https://github.com/ribenajuice/five-crowns/pull/19), closing Milestone
+  1). An audit-and-prove stage, not new features: every one of the 86 acceptance criteria was re-verified — most on
+  a disposable scratch build of the exact deployed code (driving the real HTTP API end-to-end, including the
+  founder's real Anthropic key against both fixture sheets and a real targeted column re-photograph), a small set
+  credential-free directly against production, and the rest requiring the founder's own phone (already satisfied
+  by 2026-09-13's real transcriptions, confirmed cell-by-cell). The Milestone 0 reading-accuracy spike was re-run
+  through the real, paid API for the first time — confirmed the original verdict, and found one new, real risk:
+  **the final score row can be misread just as often as any other cell** (3 of 6 real-API reads got it wrong,
+  identically each time), and unlike interior cells nothing catches it automatically. Documented honestly in
+  `docs/PRD.md`'s risk section and `docs/SPIKE-M0-READING.md`, correcting the original spike's overstated "final
+  scores are safe" claim — no new build work follows, the existing final-row call-out and the founder's own read
+  of it remain the correct mitigation. A milestone-closing security audit found and fixed one real gap (column
+  close-up photo uploads had no daily cap — now 200/day); `/code-review high` then found and fixed a same-bug
+  regression (a touch-target fix applied to one component but missed an identical sibling) plus eight robustness
+  bugs in the new Playwright accessibility harness this stage built. The founder separately flagged the sheet
+  rotate icon as looking "funky" — turned out to be a real, already-shipping bug (the icon's arc geometry extended
+  outside its own frame and got clipped to a stub, not merely pointing the wrong direction) — fixed everywhere
+  `RotateControl` is used. 838 tests passing, lint and typecheck clean.
+- **Two more merged alongside Stage 5**: [PR #17](https://github.com/ribenajuice/five-crowns/pull/17) (a
+  non-blocking code-duplication cleanup flagged by an earlier review) and
+  [PR #18](https://github.com/ribenajuice/five-crowns/pull/18) (the deploy role's Parameter Store grant scoped down
+  to this project's own paths — see "Known follow-ups" below for what's still open on that role, and the
+  outstanding `aws-bootstrap.sh` re-run needed to actually apply it).
 - ✅ **The real API key is live and proven, 2026-09-13**: the founder pasted a real Anthropic key into the
   production admin panel and ran "Read the sheet" on two real scoresheets. Both worked cleanly end-to-end — read,
   reviewed, saved — and **both games are now saved for real in the production record**: the archive is no longer
@@ -72,13 +96,13 @@
   the forged-header lockout check holds.
 - **Measured**: a warm login takes 0.45–0.58 s; a page with no database work takes 0.13–0.21 s. Each Sydney↔Tokyo
   query costs about 110–130 ms, as the Tokyo ADR estimated. The first request after a deploy (cold start) took 3.9 s.
-- **Blocked on founder**: nothing right now. The real-key transcription and Stage 2's on-phone acceptance check
-  are both done (above). What's left for a full founder acceptance run is Stage 4's repair/re-photograph tools and
-  criterion 11's manual-vs-imported side-by-side — neither is urgent, both can happen naturally or as part of
-  Stage 5.
-- **Next up**: Stage 5 — go live and prove it: the wording audit across every screen, an accessibility and
-  375px/1280px pass, and a full re-run of all 86 acceptance criteria against the live domain. Run
-  `/feature Milestone 1 Stage 5`.
+- **Blocked on founder**: nothing right now. One optional, non-blocking action outstanding: re-run
+  `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
+  template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
+  watched.
+- **Next up**: **Milestone 2** — identity, rosters, and the rest of the admin panel. Two founder decisions are
+  already recorded (`docs/DECISIONS.md`, 2026-09-14): player/location merges are permanent, like a game delete; the
+  score download is one combined CSV. Run `/feature Milestone 2` to start, or name a specific slice of it.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
