@@ -15,6 +15,7 @@ import {
   MissingPhotoError,
   saveGame,
 } from "@/lib/games/save";
+import { GameDeletedError } from "@/lib/games/save-edit";
 import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 
@@ -43,11 +44,17 @@ export async function POST(request: Request) {
 
   try {
     const result = await saveGame(parsed.data.draftId, parsed.data.state);
+    // ⚠️ An edit never creates a game — 200 either way, even the first time
+    // this particular edit draft is saved (`docs/ARCHITECTURE.md` § "The
+    // edit": "The route answers 200, not 201 — nothing was created.").
     return NextResponse.json(
       { gameId: result.gameId },
-      { status: result.alreadySaved ? 200 : 201 },
+      { status: result.alreadySaved || result.wasEdit ? 200 : 201 },
     );
   } catch (error) {
+    if (error instanceof GameDeletedError) {
+      return apiError("game_deleted", "This game was already deleted.");
+    }
     if (error instanceof InvalidGridError) {
       return NextResponse.json(
         {

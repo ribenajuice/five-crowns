@@ -2,6 +2,7 @@
  * POST /api/games — the save route.
  */
 
+import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb } from "../helpers/db";
@@ -143,5 +144,51 @@ describe("POST /api/games", () => {
     const second = await POST(post({ draftId, state }));
     expect(second.status).toBe(200);
     expect((await second.json()).gameId).toBe(firstBody.gameId);
+  });
+
+  describe("M2 Stage 2 — saving an edit through this same route", () => {
+    it("⚠️ criterion 123: an edit answers 200, never 201 — nothing was created", async () => {
+      const { draftId, state } = await setUpDraft(SHEET_01);
+      const { POST } = await import("@/app/api/games/route");
+      const created = await (await POST(post({ draftId, state }))).json();
+
+      const { startEditDraft } = await import("@/lib/games/start-edit");
+      const { getDb } = await import("@/lib/db");
+      const { draft: draftTable } = await import("@/lib/db/schema");
+
+      const edit = await startEditDraft(created.gameId);
+      const editRow = (
+        await getDb().select().from(draftTable).where(eq(draftTable.id, edit.draftId))
+      )[0]!;
+      const editState = JSON.parse(editRow.stateJson);
+      editState.playedOn = "2020-05-05";
+
+      const response = await POST(post({ draftId: edit.draftId, state: editState }));
+      expect(response.status).toBe(200);
+      expect((await response.json()).gameId).toBe(created.gameId);
+    });
+
+    it("⚠️ criterion 122: a 409 game_deleted when the target game was deleted meanwhile", async () => {
+      const { draftId, state } = await setUpDraft(SHEET_01);
+      const { POST } = await import("@/app/api/games/route");
+      const created = await (await POST(post({ draftId, state }))).json();
+
+      const { startEditDraft } = await import("@/lib/games/start-edit");
+      const { getDb } = await import("@/lib/db");
+      const { draft: draftTable } = await import("@/lib/db/schema");
+
+      const edit = await startEditDraft(created.gameId);
+      const editRow = (
+        await getDb().select().from(draftTable).where(eq(draftTable.id, edit.draftId))
+      )[0]!;
+      const editState = JSON.parse(editRow.stateJson);
+
+      const { deleteGame } = await import("@/lib/games/delete");
+      await deleteGame(created.gameId);
+
+      const response = await POST(post({ draftId: edit.draftId, state: editState }));
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.code).toBe("game_deleted");
+    });
   });
 });
