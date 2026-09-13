@@ -8,27 +8,11 @@
  * Web Crypto so it works in every runtime the app has.
  */
 
+import { hmacHex } from "@/lib/crypto/hmac-hex";
 import { SESSION_SECRET_ENV } from "@/lib/config/parameters";
 
 export async function hashIp(ip: string): Promise<string> {
   const secret = process.env[SESSION_SECRET_ENV] ?? "";
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret || "five-crowns-unkeyed"),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(ip),
-  );
-
-  return [...new Uint8Array(signature)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 32);
+  const digest = await hmacHex(ip, secret || "five-crowns-unkeyed");
+  return digest.slice(0, 32);
 }

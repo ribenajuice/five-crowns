@@ -9,6 +9,7 @@
 
 import "server-only";
 
+import { hmacHex } from "@/lib/crypto/hmac-hex";
 import { SESSION_SECRET_ENV } from "@/lib/config/parameters";
 
 import type { PhotoVariant } from "./types";
@@ -38,24 +39,6 @@ function secret(): string {
 
 function message(payload: LocalPhotoUrlPayload): string {
   return `${payload.photoId}:${payload.variant}:${payload.method}:${payload.exp}`;
-}
-
-async function hmacHex(text: string, key: string): Promise<string> {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(key),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(signature)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 function timingSafeEqualHex(a: string, b: string): boolean {
