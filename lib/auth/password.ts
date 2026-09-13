@@ -41,6 +41,14 @@ export const SCRYPT_KEYLEN = 32;
 const SALT_BYTES = 16;
 
 /**
+ * The floor for either password's *new* value, enforced server-side by both
+ * `POST /api/admin/password/group` and `POST /api/admin/password/admin` (PRD
+ * criteria 88, 92) — never only in the panel's `Field`, which a direct POST
+ * bypasses entirely.
+ */
+export const NEW_PASSWORD_MIN_LENGTH = 12;
+
+/**
  * The stored format: `scrypt:N:r:p:salt:hash`, salt and hash in unpadded
  * base64url. Self-describing, so the cost parameters can be raised later.
  *

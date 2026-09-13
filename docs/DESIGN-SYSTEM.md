@@ -555,8 +555,8 @@ verified, confirmed, correct, looks right* or *all good*.
 | Admin, usage label — total | Total |
 | Admin, usage estimate label | Estimated cost this month |
 | Admin, usage estimate disclosure | An estimate — converted at US$1 ≈ A$1.55, prices checked against the Anthropic console on {date}. |
-| Admin, usage today — sheet reads | {n} of 40 sheet reads today |
-| Admin, usage today — column re-reads | {n} of 60 column re-reads today |
+| Admin, usage today — sheet reads | {n} of {sheetCap} sheet reads today |
+| Admin, usage today — column re-reads | {n} of {columnCap} column re-reads today |
 | Fix-something link (`StructureMenu`) | Fix something |
 | Structure menu, reorder row | Reorder columns · Match the order they're written in on the photo. |
 | Structure menu, insert/delete row | Insert or delete a value · Fixes a row that's shifted by one. |

@@ -1713,8 +1713,12 @@ database, except where a criterion names production or the founder's own phone.*
      stated and the word *estimate*.
 112. Prices are a **dated constant**: the screen names the date they were checked and points at the
      Anthropic console as the authority for the real number.
-113. Today's usage is shown against **both daily caps** — e.g. "3 of 40 sheet reads today", "0 of 60
-     column re-reads".
+113. Today's usage is shown against **both daily caps**, read from the real cap constants rather than
+     a hardcoded number — e.g. "3 of 20 sheet reads today", "0 of 60 column re-reads". ⚠️ **20, not
+     40**: the sheet-transcription cap (`DAILY_SHEET_TRANSCRIPTION_CAP`) is a different, smaller
+     counter than the sheet-*upload* cap (40/day) this criterion's first draft was copied from. The
+     panel must interpolate whichever number the code actually enforces, so this can never drift out
+     of sync with reality again.
 114. A month with no transcriptions renders **zeroes and A$0.00**, not a blank, a dash or an error.
      Attempts with status `error` or `invalid` are **counted as attempts** and contribute their
      stored tokens (or zero, where none were recorded) to the estimate.

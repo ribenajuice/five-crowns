@@ -92,8 +92,72 @@ Store. It prints the exact commands you need.
 - **First time:** follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) § One-time setup.
 - **Your own domain:** see the runbook for `fivecrowns.ribenajuice.xyz` in the same file. The app
   works on its CloudFront address without it.
-- **Forgot the admin password:** see § Lockout recovery in the same file. You don't need a
-  developer.
+- **Forgot a password:** see "Forgotten the admin password?" below. You don't need a developer.
+
+## Forgotten the admin password?
+
+No developer, no deploy, no code change — and **no game, photo or score is touched.** This only
+ever writes two values in AWS Parameter Store. It works from a machine that has never seen this
+repository before, using AWS CloudShell.
+
+1. **Open AWS CloudShell** in the Sydney region: sign in to the AWS console, switch the region
+   selector (top right) to **Asia Pacific (Sydney) `ap-southeast-2`**, then open CloudShell (the
+   `>_` icon in the top nav bar).
+
+2. **Clone the public repo and generate a new hash.** This repo is public, so no credentials are
+   needed to clone it:
+
+   ```bash
+   git clone https://github.com/ribenajuice/five-crowns.git
+   cd five-crowns
+   node scripts/hash-password.js
+   ```
+
+   Type the new password when it prompts (nothing is shown as you type — that's deliberate). It
+   prints one line starting with `scrypt:`. Copy it.
+
+3. **Write the new hash and revoke every existing session that used the old one.** Pick the pair of
+   commands for whichever password you're resetting — the parameter name is the only thing that
+   differs:
+
+   **Admin password:**
+
+   ```bash
+   aws ssm put-parameter --region ap-southeast-2 --overwrite --type SecureString \
+     --name /five-crowns/prod/admin-password-hash --value '<the scrypt:... line from step 2>'
+
+   aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
+     --name /five-crowns/prod/admin-session-epoch --value '<current value + 1>'
+   ```
+
+   **Group password:**
+
+   ```bash
+   aws ssm put-parameter --region ap-southeast-2 --overwrite --type SecureString \
+     --name /five-crowns/prod/group-password-hash --value '<the scrypt:... line from step 2>'
+
+   aws ssm put-parameter --region ap-southeast-2 --overwrite --type String \
+     --name /five-crowns/prod/group-session-epoch --value '<current value + 1>'
+   ```
+
+   The epoch bump is what actually logs everyone out — skipping it changes the password but leaves
+   every already-open session working. To find "current value", read it first, then add 1:
+
+   ```bash
+   aws ssm get-parameter --region ap-southeast-2 \
+     --name /five-crowns/prod/admin-session-epoch --query Parameter.Value --output text
+   ```
+
+   (swap in `group-session-epoch` for the group one.)
+
+**Locked out of both?** Reset the admin password first, using the two commands above, then sign in
+to `/admin` and use the panel's own "Change group password" form for the other one — you don't need
+to run CloudShell twice.
+
+Nothing else changes. **No game, photo or score is touched, and nothing is redeployed** — this
+procedure is exactly the two `aws ssm put-parameter` calls above, and it's the same path used for
+first-time setup, not a separate untested one. Full reasoning:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) § Lockout recovery.
 
 ## Where the docs live
 

@@ -233,4 +233,23 @@ export async function passwordHash(scope: "group" | "admin"): Promise<string> {
   );
 }
 
+/**
+ * Bump a scope's session epoch by one, logging out every device holding a
+ * cookie for that scope — including whichever one just made the change
+ * (docs/ARCHITECTURE.md § Passwords and sessions). This is the entire
+ * revocation mechanism for a stateless, signed session cookie: the epoch is
+ * inside the signed payload, and verification rejects anything that does not
+ * match the current value.
+ *
+ * A plain `String` parameter, not a `SecureString` — an epoch is a counter,
+ * not a secret (see the parameter layout table).
+ */
+export async function bumpSessionEpoch(scope: "group" | "admin"): Promise<number> {
+  const name =
+    scope === "group" ? PARAM.groupSessionEpoch : PARAM.adminSessionEpoch;
+  const next = (await sessionEpoch(scope)) + 1;
+  await putParameter(name, String(next), { secure: false });
+  return next;
+}
+
 export { STAGE };
