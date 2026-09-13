@@ -29,9 +29,9 @@ opens the app on a night they aren't uploading anything, so it should be the fir
 with the games list and "add a game" reachable from it. **From Milestone 3** — until the board
 exists and has enough games to say anything, the games list is the landing screen.
 
-**No open questions remain about the product.** Nothing below is waiting on the founder. Two
-operational questions opened at Stage 5 — they change how the last stage is run, not what gets
-built.
+**Nothing in Milestone 1 is waiting on the founder.** Two operational questions opened at Stage 5 —
+they change how the last stage is run, not what gets built. A third opened on 2026-09-14 and is a
+**Milestone 3 scope question**, parked until then.
 
 ## Open questions
 
@@ -47,6 +47,18 @@ scratch-environment work starting.*
    **every cell** against the photo, or the totals and the winner? 85's wording is *"correct and
    checkable against the photo, cell by cell"*. If it was the totals, one of the two games needs a
    five-minute cell-by-cell pass to close it — the run itself doesn't need repeating.
+
+*Opened 2026-09-14 by the real-API re-run. Does not block Milestone 1 — nothing changes in M1
+either way.*
+
+3. **Should the final row cost you more than a glance?** The re-run showed a final score can be
+   read wrong, repeatably, with nothing on screen hinting at it (risk 1). Today the final row is
+   called out on its own and you read it — that is the whole defence, and for M1 we are leaving it
+   there. The question is for **Milestone 3**, where average score and "best game ever" get built
+   on those numbers: would you want the review screen to make the last row *deliberate* rather than
+   glanceable — e.g. tapping to confirm each final score, or the app offering a close-up of the
+   final row by default? ⚠️ **This would be new scope, so it is your call, not ours**, and we are
+   not proposing it. A second read is not on the table either way: errors repeat.
 
 ---
 
@@ -617,11 +629,31 @@ Each is a decision, not an omission.
    one technical lever that genuinely helps is the targeted re-photograph** — a close-up of a
    doubtful column is a far easier read than the same column on a full page, and it is available on
    any column, not just the ones that trip a check.
+
+   ⚠️ **Corrected 2026-09-14 by the real-API re-run: the final row is not structurally protected,
+   and this paragraph used to imply it was.** The comfort above rests on interior errors
+   self-cancelling — an error at hand *n* inflates hand *n* and deflates hand *n+1* by the same
+   amount, so every total below it survives. **Row 11 has no hand 12 to cancel against**, and the
+   first spike never sampled an error there; its "0 errors in row 11" was a small sample, not a
+   property. The re-run found the opposite: **3 of 6 reads turned a true final score of 144 into
+   174 — the same wrong number every time.** Nothing in the product would say so: 134 → 174 still
+   climbs, so monotonicity is silent; the read-hint pointed at hands 5 and 6, never at 11; the
+   derived hands either side stay ordinary. **Winners survived on margin, not on structure** (still
+   6/6 correct, because a game is rarely close enough for 30 points to flip it) — but **average
+   score and best/worst game ever read a final score as a number rather than a comparison, and a
+   wrong one there is permanent**, findable only by going back to the photo. **The mitigation is
+   already built and it is the founder's eyes**: the final row is called out on its own on the
+   review screen (criterion 23), which is exactly the treatment this finding justifies. ⚠️ **The
+   answer is still not a second read** — the 174 reproduced three times out of three, so reading it
+   again buys a second wrong answer and the false confidence that goes with it. Read the last row
+   against the paper, every game. Full workings: `docs/SPIKE-M0-READING.md`, 2026-09-14.
 2. **Reading conditions are hostile and permanent.** Hand-ruled columns with no fixed geometry,
    arbitrary rotation, hard shadow, glare, thumbs in shot, and crossings-out where the wrong value
    is often the more legible one. This is the normal case. **Measured by Milestone 0 on
-   2026-09-10: 97% of cells correct, 100% of final scores and winners correct, roughly one column
-   in three carrying an error.** Hostile conditions are survivable; the errors they produce are
+   2026-09-10: 97% of cells correct, ~~100% of final scores and~~ winners correct, roughly one column
+   in three carrying an error.** *(⚠️ final-score claim corrected 2026-09-14 — the real-API re-run
+   scored 96% of cells correct, winners still 6/6, but **final scores wrong in 3 of 6 reads**. See
+   risk 1.)* Hostile conditions are survivable; the errors they produce are
    invisible to every automated check, which is the real finding. See `docs/SPIKE-M0-READING.md`.
 
    ⚠️ **Manual override is the mitigation, and it is why this risk is survivable.** If Milestone 0
@@ -665,9 +697,11 @@ Each is a decision, not an omission.
 ### Milestone 0 — Reading spike (half a day, throwaway) — ✅ DONE 2026-09-10
 
 > **Complete. Verdict: reading works well enough to build on; the automated check does not.**
-> 97% cell accuracy, 100% of final scores and winners correct, and **monotonicity caught 0 of 9
+> 97% cell accuracy, ~~100% of final scores and~~ winners correct, and **monotonicity caught 0 of 9
 > misreads**. Full findings in `docs/SPIKE-M0-READING.md`; consequences recorded as an ADR.
 > Milestone 1 proceeds unchanged, manual override included.
+> ⚠️ **Re-run through the real API 2026-09-14** (Stage 5): the verdict holds, but the final-score
+> claim does not — **row 11 was wrong in 3 of 6 reads**, and is not self-cancelling. See risk 1.
 
 
 **Not a milestone the founder can touch, and deliberately not Milestone 1.** The question has

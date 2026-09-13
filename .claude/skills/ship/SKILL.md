@@ -28,5 +28,5 @@ Take the current branch/PR from "approved" to "live and verified". Stop and repo
 - If production is broken: roll back first (revert the merge and redeploy, or redeploy the previous version), diagnose second. Tell the founder immediately.
 
 ## 6. Wrap up
-- tech-writer agent updates `CHANGELOG.md`.
+- tech-writer agent updates `CHANGELOG.md` and README's "Where it's at" line — both, every time, not just the changelog.
 - Final message: what's live, the production URL, verification evidence, and rollback status if anything went wrong. Update `docs/STATUS.md`.
