@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseTranscribeEvent } from "@/lib/ui/transcribe-events";
+import { parseTranscribeColumnEvent, parseTranscribeEvent } from "@/lib/ui/transcribe-events";
 
 describe("parseTranscribeEvent", () => {
   it("parses a progress event, defaulting an unexpected stage", () => {
@@ -83,5 +83,100 @@ describe("parseTranscribeEvent", () => {
     expect(parseTranscribeEvent("just a string")).toBeNull();
     expect(parseTranscribeEvent(null)).toBeNull();
     expect(parseTranscribeEvent(42)).toBeNull();
+  });
+});
+
+describe("parseTranscribeColumnEvent (Stage 4: POST /api/transcribe/column)", () => {
+  it("parses progress and error events identically to the sheet path", () => {
+    expect(parseTranscribeColumnEvent({ type: "progress", stage: "transcribing" })).toEqual({
+      type: "progress",
+      stage: "transcribing",
+    });
+    expect(parseTranscribeColumnEvent({ type: "error" })).toEqual({
+      type: "error",
+      code: "server_error",
+      message: "Something went wrong at our end.",
+    });
+  });
+
+  it("parses a result event with its single diagnostics object, not an array", () => {
+    const raw = {
+      type: "result",
+      status: "ok",
+      draftId: "draft_1",
+      columnId: "col_1",
+      updatedAt: "2026-09-12T00:00:00.000Z",
+      transcriptionId: "tr_1",
+      state: { version: 1, columns: [] },
+      diagnostics: {
+        columnId: "col_1",
+        nameConfidence: "high",
+        leastConfidentIndex: 4,
+        readPlayerName: "Player D",
+        possibleWrongColumn: false,
+        disagreesWithTypedCells: [{ index: 2, typedValue: 64, closeUpValue: 84 }],
+      },
+    };
+    expect(parseTranscribeColumnEvent(raw)).toEqual(raw);
+  });
+
+  it("defaults a missing or malformed diagnostics object rather than throwing", () => {
+    const raw = {
+      type: "result",
+      status: "ok",
+      draftId: "draft_1",
+      columnId: "col_1",
+      updatedAt: "2026-09-12T00:00:00.000Z",
+      transcriptionId: "tr_1",
+      state: {},
+    };
+    const parsed = parseTranscribeColumnEvent(raw);
+    if (parsed?.type !== "result") throw new Error("expected a result event");
+    expect(parsed.diagnostics).toEqual({
+      columnId: "col_1",
+      nameConfidence: "low",
+      leastConfidentIndex: null,
+      readPlayerName: null,
+      possibleWrongColumn: false,
+      disagreesWithTypedCells: [],
+    });
+  });
+
+  it("drops a malformed typed-cell disagreement entry rather than keeping a broken one", () => {
+    const raw = {
+      type: "result",
+      status: "ok",
+      draftId: "draft_1",
+      columnId: "col_1",
+      updatedAt: "2026-09-12T00:00:00.000Z",
+      transcriptionId: "tr_1",
+      state: {},
+      diagnostics: {
+        disagreesWithTypedCells: [{ index: 2, typedValue: 64, closeUpValue: 84 }, { index: "oops" }],
+      },
+    };
+    const parsed = parseTranscribeColumnEvent(raw);
+    if (parsed?.type !== "result") throw new Error("expected a result event");
+    expect(parsed.diagnostics.disagreesWithTypedCells).toEqual([
+      { index: 2, typedValue: 64, closeUpValue: 84 },
+    ]);
+  });
+
+  it("returns null for a result event missing required fields (no `state`)", () => {
+    expect(
+      parseTranscribeColumnEvent({
+        type: "result",
+        draftId: "draft_1",
+        columnId: "col_1",
+        updatedAt: "2026-09-12T00:00:00.000Z",
+        transcriptionId: "tr_1",
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for an unrecognised type, or a non-object line", () => {
+    expect(parseTranscribeColumnEvent({ type: "something-else" })).toBeNull();
+    expect(parseTranscribeColumnEvent("just a string")).toBeNull();
+    expect(parseTranscribeColumnEvent(null)).toBeNull();
   });
 });

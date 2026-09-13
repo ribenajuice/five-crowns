@@ -20,6 +20,69 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-12 — Insert/delete-a-value repairs push a new reading rather than widening `manualEdits`
+
+- **Context**: Stage 4 needed `insertValueAt`/`deleteValueAt` (PRD criterion 33: inserting leaves
+  twelve values and reports "12 of 11", deleting leaves ten and reports "10 of 11"). The obvious
+  first attempt — write every post-splice value into `manualEdits` as an explicit index override —
+  works for insert but is silently broken for delete: `effectiveValues` (`lib/draft/state.ts`)
+  builds its base array from the active reading (or eleven empty cells) and only ever *extends*
+  that base to fit a higher edit index, it never truncates it. A column with an 11-value active
+  reading can't be shrunk to 10 by an overlay that can only add or override entries — the eleventh
+  value survives underneath, untouched, and `validateColumn` would still see eleven.
+- **Decision**: both repairs compute the correct post-splice array once (`effectiveValues`, then
+  `slice`/`splice`) and push it as a **brand new reading** onto the column's stack — the same
+  rung-3 "push, move `activeReadingId`, never overwrite" pattern `lib/draft/merge-sheet.ts` already
+  established for a fresh vision read, reused here for a fresh *hand* read. `manualEdits` is
+  cleared on the column, because the new reading's `values` now *is* the current shape and every
+  prior edit is already folded into it. The new reading's `source`/`photoId` are inherited from
+  whichever reading was previously active, so a repaired column still says where its numbers came
+  from; a column typed from scratch (no reading at all yet) is tagged `source: "sheet"` against
+  the draft's own `state.photoId` — the one photo a draft is always guaranteed to have, and the one
+  the founder was looking at while typing it.
+- **Alternatives**: (a) *Add a `valueCount` field to `DraftColumn`* that overrides the base array's
+  length before the `manualEdits` overlay runs — considered first, technically correct, but it's a
+  second, parallel way to express "how long is this column" alongside the reading's own `values`
+  length, needs a backward-compatible zod default for every already-persisted draft, and touches
+  `effectiveValues` itself (used everywhere: autosave, save, the sheet and column merges) for a
+  benefit only these two functions need. (b) *Mutate the active reading's `values` array in
+  place*, keeping its `id`/`photoId`/`transcriptionId` — rejected: `readings` is otherwise treated
+  as an immutable, append-only history (criterion 41, "every reading a column has ever had is
+  retained and reachable"), and starting to overwrite one after the fact for structural edits only
+  would make that guarantee conditional in a way nothing else in the codebase is.
+- **Consequences**: `reorderColumns`, by contrast, needed no new mechanism at all — column identity
+  is already the id, not array position, so renumbering `order` is the whole repair (criterion 32
+  falls out for free). Every structural insert/delete now shows up in a column's reading history
+  like any other read, which is arguably a feature (the founder can see exactly when a repair
+  happened) rather than a cost. *Revisit if* the review screen ever needs to distinguish "this
+  reading came from a repair" from "this reading came from a photo" in its own right — `source` has
+  no third value for that today and reuses `"sheet"`/`"close-up"` as the closest fit.
+
+## 2026-09-12 — Column re-read diagnostics: one object, not a one-element array
+
+- **Context**: `POST /api/transcribe` (Stage 3) returns `columns: [{columnId, nameConfidence,
+  leastConfidentIndex}]` — one diagnostic per column, because that route can touch every column on
+  the sheet in one call. `POST /api/transcribe/column` (Stage 4) is scoped to exactly one column by
+  its own contract (`{photoId, columnId}` in, that one column's reading out), plus two fields the
+  sheet path has no equivalent for: `possibleWrongColumn` (criterion 42) and
+  `disagreesWithTypedCells` (criterion 43). The response shape for these was left as this build's
+  call.
+- **Decision**: a single `diagnostics` object, not a `diagnostics: [...]` array of length one.
+  `{ columnId, nameConfidence, leastConfidentIndex, readPlayerName, possibleWrongColumn,
+  disagreesWithTypedCells }` — see `lib/draft/merge-column.ts`'s `ColumnMergeDiagnostics`.
+- **Alternatives**: *Keep the array shape* so the frontend could reuse whatever component renders
+  the sheet path's `columns[]` — rejected: there is exactly one column here by construction (the
+  route's own request already names it), and a length-one array the caller must immediately
+  `[0]`-index adds a layer of "why is this a list" with no case where it's ever anything else.
+  A single object is also where `possibleWrongColumn` and `disagreesWithTypedCells` read more
+  naturally — they're facts about *this* re-read, not about a column in a list of columns.
+- **Consequences**: ⚠️ **Follow-up for the frontend.** The two routes' diagnostics are shaped
+  differently on purpose (a list for the sheet path, an object for the column path) — do not
+  write one shared "diagnostics" component expecting the same envelope from both; the column
+  path's extra two fields (`possibleWrongColumn`, `disagreesWithTypedCells`) are what criteria 42
+  and 43 need on screen (a non-blocking "this looks like Player B's column, not Player D's" banner,
+  and a per-cell "you typed 64; the close-up reads 84" callout) and have no sheet-path equivalent.
+
 ## 2026-09-12 — The API key's status is derived, not stored
 
 - **Context**: Stage 3 needed somewhere for the admin panel's "last four characters, when it was

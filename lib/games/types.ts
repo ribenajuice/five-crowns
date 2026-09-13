@@ -54,4 +54,22 @@ export interface GameDetail {
     width: number | null;
     height: number | null;
   } | null;
+  /**
+   * Every close-up taken during review, attached to the player whose column
+   * it shows — including one whose reading was later rejected, since it's
+   * still evidence of what the paper said (criterion 71). Newest first.
+   *
+   * `playerId` is `null` when the close-up's column was removed by a
+   * structural repair before save (`lib/games/save.ts`'s orphaned-photo
+   * sweep) — there is no player left to attribute it to, but the PRD is
+   * explicit that a close-up is never dropped just because its reading (or
+   * here, its whole column) was superseded.
+   */
+  closeUps: {
+    playerId: string | null;
+    url: string;
+    expiresAt: string;
+    width: number | null;
+    height: number | null;
+  }[];
 }

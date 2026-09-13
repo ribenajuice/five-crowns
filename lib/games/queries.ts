@@ -205,6 +205,34 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     }
   }
 
+  const closeUpRows = await db
+    .select()
+    .from(photo)
+    .where(and(eq(photo.gameId, id), eq(photo.kind, "column")))
+    .orderBy(desc(photo.createdAt));
+
+  const storage = getPhotoStorage();
+  const closeUpEntries = await Promise.all(
+    closeUpRows.map(async (row) => {
+      // `playerId` is null when the close-up's column was removed by a
+      // structural repair before save (`lib/games/save.ts`'s orphaned-photo
+      // sweep) — still rendered, just with nobody to attribute it to.
+      const exists = await storage.objectExists(row.id, "original");
+      if (!exists) return null;
+      const presigned = await storage.presignGet(row.id, "original");
+      return {
+        playerId: row.playerId,
+        url: presigned.url,
+        expiresAt: presigned.expiresAt,
+        width: row.width,
+        height: row.height,
+      };
+    }),
+  );
+  const closeUps: GameDetail["closeUps"] = closeUpEntries.filter(
+    (entry): entry is NonNullable<typeof entry> => entry !== null,
+  );
+
   return {
     id: gameRow.id,
     playedOn: gameRow.playedOn,
@@ -214,5 +242,6 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     winners,
     winningScore: winningScore(scores) ?? 0,
     sheetPhoto,
+    closeUps,
   };
 }

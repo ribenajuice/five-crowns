@@ -41,6 +41,7 @@ export default async function GamePage({
     finalScore: column.finalScore,
   }));
   const winnerIds = game.columns.filter((c) => c.isWinner).map((c) => c.playerId);
+  const displayNameByPlayerId = new Map(game.columns.map((c) => [c.playerId, c.displayName]));
 
   return (
     <>
@@ -75,6 +76,40 @@ export default async function GamePage({
             </p>
           )}
         </section>
+
+        {game.closeUps.length > 0 ? (
+          <section aria-labelledby="close-ups-heading">
+            <h2 id="close-ups-heading" className="mb-2 font-display text-lg font-bold">
+              Close-ups
+            </h2>
+            <div className="flex flex-col gap-4">
+              {game.closeUps.map((closeUp, index) => {
+                // `playerId` is null for a close-up whose column was removed
+                // by a structural repair before save (criterion 71: kept as
+                // evidence regardless) — there's no player to name it after.
+                const name = closeUp.playerId
+                  ? displayNameByPlayerId.get(closeUp.playerId) ?? "a player"
+                  : null;
+                const caption = name ? `${name}'s column` : "A removed column";
+                return (
+                  <div key={`${closeUp.playerId ?? "unassigned"}-${index}`}>
+                    <p className="mb-2 text-sm text-text-muted">{caption}</p>
+                    <SheetPhoto
+                      url={closeUp.url}
+                      width={closeUp.width}
+                      height={closeUp.height}
+                      alt={
+                        name
+                          ? `A close-up of ${name}'s column for ${game.rosterName} on ${game.playedOn}`
+                          : `A close-up of a column removed before saving ${game.rosterName}'s game on ${game.playedOn}`
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </main>
     </>
   );

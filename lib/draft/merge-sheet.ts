@@ -64,14 +64,19 @@ export interface MergeSheetTranscriptionArgs {
  * same 0–{@link MAX_RUNNING_TOTAL} integer range; this keeps a merged draft
  * inside it by construction rather than relying on validation to catch it
  * after the fact.
+ *
+ * Exported: `lib/draft/merge-column.ts` (Stage 4's targeted re-read) shares
+ * this and the three helpers below rather than duplicating them — the same
+ * sanitisation applies to a value or a name however it reached the merge
+ * boundary, sheet or close-up alike.
  */
-function sanitiseValue(value: number | null): number | null {
+export function sanitiseValue(value: number | null): number | null {
   if (value === null) return null;
   if (!Number.isInteger(value) || value < 0 || value > MAX_RUNNING_TOTAL) return null;
   return value;
 }
 
-function sanitiseValues(values: readonly (number | null)[]): (number | null)[] {
+export function sanitiseValues(values: readonly (number | null)[]): (number | null)[] {
   return values.slice(0, MAX_VALUES_PER_COLUMN).map(sanitiseValue);
 }
 
@@ -84,7 +89,7 @@ function sanitiseValues(values: readonly (number | null)[]): (number | null)[] {
  * checked (autosave, save), silently blocking the draft with no UI that edits
  * `sheetName` to recover — so it's truncated here instead of trusted verbatim.
  */
-function sanitiseName(name: string | null): string | null {
+export function sanitiseName(name: string | null): string | null {
   if (name === null) return null;
   const trimmed = name.trim().slice(0, MAX_NAME_LENGTH);
   return trimmed.length > 0 ? trimmed : null;
@@ -101,7 +106,7 @@ function sanitiseName(name: string | null): string | null {
  * would otherwise render a sentence naming a hand that doesn't exist on the
  * column, with no visible cell for the accompanying badge.
  */
-function sanitiseLeastConfidentIndex(
+export function sanitiseLeastConfidentIndex(
   index: number | null,
   valueCount: number,
 ): number | null {

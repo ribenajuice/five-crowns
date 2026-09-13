@@ -60,3 +60,45 @@ export async function reserveSheetTranscription(
 
   return { allowed: true, count: row!.sheetTranscriptions };
 }
+
+/**
+ * Far beyond a legitimate re-shoot session; see docs/ARCHITECTURE.md § Flow 1
+ * ("20 sheet reads and 60 column reads per day").
+ *
+ * ⚠️ **Security review, Stage 4**: this used to be uncounted-but-uncapped —
+ * `docs/ARCHITECTURE.md` § "Targeted column re-read" says "no re-read cap, no
+ * cheaper model on this path", which is true of the *quality* tradeoffs (same
+ * model, same thinking budget, unlimited re-shots of a column you're actually
+ * working on) but was never meant to leave the endpoint that spends real
+ * money with no ceiling at all. A leaked shared password could otherwise loop
+ * this endpoint with no limit. 60/day is ~8× a heavy legitimate night (the
+ * threat model's own number) and the founder chose to enforce it once this
+ * gap was found.
+ */
+export const DAILY_COLUMN_TRANSCRIPTION_CAP = 60;
+
+export async function reserveColumnTranscription(
+  now: Date = new Date(),
+): Promise<TranscriptionReservation> {
+  const db = getDb();
+  const day = todayUtc(now);
+
+  const [row] = await db
+    .insert(usageDay)
+    .values({ day, columnTranscriptions: 1 })
+    .onConflictDoUpdate({
+      target: usageDay.day,
+      set: { columnTranscriptions: sql`${usageDay.columnTranscriptions} + 1` },
+    })
+    .returning({ columnTranscriptions: usageDay.columnTranscriptions });
+
+  if (row!.columnTranscriptions > DAILY_COLUMN_TRANSCRIPTION_CAP) {
+    await db
+      .update(usageDay)
+      .set({ columnTranscriptions: sql`max(${usageDay.columnTranscriptions} - 1, 0)` })
+      .where(eq(usageDay.day, day));
+    return { allowed: false, count: DAILY_COLUMN_TRANSCRIPTION_CAP };
+  }
+
+  return { allowed: true, count: row!.columnTranscriptions };
+}

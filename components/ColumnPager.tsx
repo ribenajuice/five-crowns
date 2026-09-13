@@ -6,7 +6,7 @@
  * *grid* at 375px (PRD criterion 13), but the pager itself may scroll.
  */
 
-export type ColumnStatus = "ok" | "warn" | "err" | "todo";
+export type ColumnStatus = "ok" | "warn" | "err" | "todo" | "reading";
 
 export interface ColumnPagerItem {
   id: string;
@@ -19,6 +19,11 @@ const DOT_CLASSES: Record<ColumnStatus, string> = {
   warn: "bg-warn",
   err: "bg-error",
   todo: "border-2 border-text-muted bg-transparent",
+  // Stage 4: a column-scoped close-up read in flight — a hollow *accent* ring
+  // rather than `todo`'s hollow neutral one, so it reads as "busy, camera
+  // path" rather than "incomplete" (docs/DESIGN-SYSTEM.md § Column-scoped
+  // `TranscribeProgress`).
+  reading: "border-2 border-accent bg-transparent",
 };
 
 export function ColumnPager({

@@ -117,6 +117,29 @@ export async function createSheetPhoto(
   }
 }
 
+/**
+ * A `photo` row (kind='column'), the shape `POST /api/uploads` leaves for a
+ * close-up taken during review — linked to a draft column, not yet a game.
+ */
+export async function createColumnPhoto(
+  photoId: string,
+  draftId: string,
+  draftColumnId: string,
+): Promise<void> {
+  await getDb()
+    .insert(photo)
+    .values({
+      id: photoId,
+      kind: "column",
+      draftId,
+      draftColumnId,
+      s3KeyOriginal: photoKey(photoId, "original"),
+      s3KeyModel: photoKey(photoId, "model"),
+    });
+  await writeLocalPhoto(photoId, "original", Buffer.from("fake-closeup-original-jpeg"));
+  await writeLocalPhoto(photoId, "model", Buffer.from("fake-closeup-model-jpeg"));
+}
+
 /** A `draft` row, with its photo linked, the way `POST /api/drafts` leaves it. */
 export async function createDraft(state: DraftState): Promise<string> {
   const db = getDb();

@@ -8,7 +8,7 @@
  * these sentences renders it the same way.
  */
 
-import { handLabel, type GridValidation } from "@/lib/scoring";
+import { HANDS_PER_GAME, handLabel, type GridValidation } from "@/lib/scoring";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -169,6 +169,33 @@ export function sharedWinGamesListLabel(winners: readonly string[]): string {
 }
 
 /**
+ * "1st", "2nd", "3rd", "4th" … — used for the cell editor's "Nth line down"
+ * caption and for every structural-repair confirm sentence, so a repair that
+ * temporarily leaves a column at other than eleven rows never has to invent a
+ * card rank for a row that doesn't have one yet (docs/DESIGN-SYSTEM.md § "Insert
+ * or delete a value within a column").
+ */
+export function ordinal(n: number): string {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
+}
+
+/**
+ * The cell editor's row label: the card rank (`"6s"` … `"Kings"`) while the
+ * column holds exactly eleven values, or a plain position (`"1st"`, `"2nd"`)
+ * while it doesn't — mid a structural repair, there is no card rank for a
+ * twelfth or tenth row (docs/DESIGN-SYSTEM.md § "Insert or delete a value
+ * within a column").
+ */
+export function cellRowLabel(index: number, totalValues: number): string {
+  if (totalValues === HANDS_PER_GAME) {
+    return handLabel(index + 1) ?? ordinal(index + 1);
+  }
+  return ordinal(index + 1);
+}
+
+/**
  * The single most relevant reason save is blocked, in the order a person
  * would want to hear it: too few players, then a dipping column, then a short
  * one. `null` once the grid passes (which is never a claim of correctness —
@@ -209,4 +236,154 @@ export function saveBlockedMessage(
   }
 
   return "Something on this sheet still needs fixing.";
+}
+
+/* ---------------------------------------------- Stage 4: structural repairs */
+
+export const FIX_SOMETHING_LINK = "Fix something";
+
+export const STRUCTURE_MENU_ADD_COLUMN_ROW = "Add a missing column";
+export const STRUCTURE_MENU_ADD_COLUMN_SUBCAPTION =
+  "A player's whole column never got typed in.";
+export const STRUCTURE_MENU_REMOVE_COLUMN_ROW = "Remove this column";
+export const STRUCTURE_MENU_REMOVE_COLUMN_SUBCAPTION =
+  "A margin note or stray column that isn't really a player.";
+export const STRUCTURE_MENU_REASSIGN_ROW = "Reassign this column's player";
+export const STRUCTURE_MENU_REASSIGN_SUBCAPTION = "Pick a different name for this column.";
+export const STRUCTURE_MENU_REORDER_ROW = "Reorder columns";
+export const STRUCTURE_MENU_REORDER_SUBCAPTION =
+  "Match the order they're written in on the photo.";
+export const STRUCTURE_MENU_INSERT_DELETE_ROW = "Insert or delete a value";
+export const STRUCTURE_MENU_INSERT_DELETE_SUBCAPTION = "Fixes a row that's shifted by one.";
+export const STRUCTURE_MENU_HAND_ENTRY_ROW = HAND_ENTRY_LABEL;
+export const STRUCTURE_MENU_HAND_ENTRY_SUBCAPTION =
+  "Every cell is already editable — this just closes the menu.";
+
+export const REORDER_SCREEN_HEADING = "Reorder columns";
+export const REORDER_SCREEN_CAPTION =
+  "Match the order the columns are written in on the photo — top is the left-most column.";
+export const REORDER_DONE_BUTTON = "Done";
+export const REORDER_MOVE_UP_ARIA_LABEL = "Move up";
+export const REORDER_MOVE_DOWN_ARIA_LABEL = "Move down";
+
+export const FIX_THE_SHAPE_LINK = "Fix the shape";
+export const FIX_THE_SHAPE_HELPER =
+  "If a row got missed or doubled near here, fix the shape instead of retyping the column.";
+export const INSERT_ABOVE_ACTION = "Insert a blank line above";
+export const INSERT_BELOW_ACTION = "Insert a blank line below";
+export const DELETE_LINE_ACTION = "Delete this line";
+export const STRUCTURE_CANCEL_BUTTON = "Cancel";
+
+/** {n}th line down, above which a blank row will be inserted. */
+export function insertConfirmQuestion(n: number): string {
+  return `Insert a blank line above the ${ordinal(n)} line down?`;
+}
+export function insertConfirmDetail(n: number): string {
+  return `Everything below shifts down one — this column will read ${columnStatusLabel(n + 1, HANDS_PER_GAME)} until it's filled in.`;
+}
+export function deleteConfirmQuestion(n: number, value: number | null): string {
+  return `Delete the ${ordinal(n)} line down — ${value ?? "–"}?`;
+}
+export function deleteConfirmDetail(n: number): string {
+  return `Everything below shifts up one — this column will read ${columnStatusLabel(n - 1, HANDS_PER_GAME)}.`;
+}
+
+/* ------------------------------------------------- Stage 4: re-photograph */
+
+export const PHOTOGRAPH_COLUMN_BUTTON = "Photograph this column";
+export function photographColumnHeading(player: string): string {
+  return `Photograph ${player}'s column.`;
+}
+export const PHOTOGRAPH_COLUMN_HELPER =
+  "A close-up gives the reader far more pixels per digit than the whole page did — new pixels, not a second opinion.";
+
+export function columnReadHeading(player: string): string {
+  return `Reading ${player}'s column…`;
+}
+export const COLUMN_READ_CAPTION_PRIMARY = "One column, eleven numbers.";
+/** Shares Stage 3's slow-only line rather than inventing a second one. */
+export const COLUMN_READ_CAPTIONS = [
+  COLUMN_READ_CAPTION_PRIMARY,
+  TRANSCRIBE_PROGRESS_CAPTIONS[2],
+] as const;
+
+export const COMPARE_SUBHEADING = "Compared with what's saved now.";
+export const COMPARE_OLD_LABEL_DEFAULT = "Saved now";
+export const COMPARE_NEW_LABEL_DEFAULT = "New close-up";
+export const COMPARE_KEEP_NEW_LABEL = "Keep the new reading";
+export const COMPARE_KEEP_OLD_LABEL = "Keep what's saved";
+export const COMPARE_RESHOOT_LINK = "Photograph again";
+export function compareHistoryLink(n: number): string {
+  return `See every reading (${n})`;
+}
+
+/** "Reading {n}" — the short handle used both in the history list and when
+ *  comparing against a specific past reading (docs/DESIGN-SYSTEM.md's
+ *  "{Reading} vs what's active now"). `n` is 1-based, oldest reading first. */
+export function readingLabel(n: number): string {
+  return `Reading ${n}`;
+}
+
+export const READING_SOURCE_LABEL: Record<"sheet" | "close-up", string> = {
+  sheet: "full sheet",
+  "close-up": "close-up",
+};
+
+export function readingHistoryHeading(player: string): string {
+  return `Every reading of ${player}'s column`;
+}
+export function readingHistoryRowLabel(
+  n: number,
+  source: "sheet" | "close-up",
+  when: string,
+): string {
+  return `${readingLabel(n)} · ${READING_SOURCE_LABEL[source]} · ${when}`;
+}
+export const READING_HISTORY_ACTIVE_PILL = "Active";
+export const READING_HISTORY_LINK_TEXT = "See every reading";
+
+export function compareVsPastReadingHeading(reading: string): string {
+  return `${reading} vs what's active now`;
+}
+export function compareMakeActiveLabel(reading: string): string {
+  return `Make ${reading} active`;
+}
+export function compareKeepActiveLabel(reading: string): string {
+  return `Keep ${reading} active`;
+}
+
+/**
+ * The differing-lines summary beneath `ReadingCompare`'s grid. Fixed template
+ * for the common newest-vs-saved case (docs/DESIGN-SYSTEM.md, verbatim example
+ * "4 lines differ from what's saved: 8s, 9s, 10s, Jacks."); a second form below
+ * covers the generalised any-two-readings case the design system extends the
+ * component to, which has no "saved" side to name.
+ */
+export function compareDifferingLinesSummary(handLabels: readonly string[]): string {
+  if (handLabels.length === 0) return "Every line matches what's saved.";
+  const verb = handLabels.length === 1 ? "line differs" : "lines differ";
+  return `${handLabels.length} ${verb} from what's saved: ${handLabels.join(", ")}.`;
+}
+export function compareDifferingLinesSummaryGeneral(handLabels: readonly string[]): string {
+  if (handLabels.length === 0) return "Every line matches between the two readings.";
+  const verb = handLabels.length === 1 ? "line differs" : "lines differ";
+  return `${handLabels.length} ${verb} between the two readings: ${handLabels.join(", ")}.`;
+}
+
+export function wrongColumnWarningTitle(sheetPlayer: string, assignedPlayer: string): string {
+  return `This looks like ${sheetPlayer}'s column, not ${assignedPlayer}'s.`;
+}
+export const WRONG_COLUMN_WARNING_MESSAGE =
+  "The close-up's own reading of the name doesn't match — you can use the new numbers anyway.";
+
+export function typedCellDisagreementSentence(typed: number, read: number): string {
+  return `You typed ${typed}; the close-up reads ${read}.`;
+}
+
+export function incompleteCloseupNote(
+  player: string,
+  filled: number,
+  expected: number = HANDS_PER_GAME,
+): string {
+  return `Keeping this leaves ${player}'s column at ${columnStatusLabel(filled, expected)} — ${SAVE_BUTTON_LABEL} stays blocked until it's filled in.`;
 }

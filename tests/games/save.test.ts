@@ -12,6 +12,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 import {
+  createColumnPhoto,
   createDraft,
   createPlayers,
   createSheetPhoto,
@@ -124,6 +125,107 @@ describe("criterion 27 — a soft warning never blocks a save", () => {
     )[0]!;
     expect(hand4.runningTotal).toBe(54);
     expect(hand4.score).toBe(51);
+  });
+});
+
+describe("criterion 71 — close-ups attach to the game and the right player at save", () => {
+  it("stamps a column photo's gameId and playerId from the column it was shot for", async () => {
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo, gamePlayer } = await import("@/lib/db/schema");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const playerBColumn = state.columns.find((c) => c.sheetName === "Player B")!;
+    await createColumnPhoto("closeup-1", draftId, playerBColumn.id);
+
+    const result = await saveGame(draftId, state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-1"))
+    )[0]!;
+    const playerB = (
+      await getDb()
+        .select()
+        .from(gamePlayer)
+        .where(and(eq(gamePlayer.gameId, result.gameId), eq(gamePlayer.sheetName, "Player B")))
+    )[0]!;
+
+    expect(closeUpRow.gameId).toBe(result.gameId);
+    expect(closeUpRow.playerId).toBe(playerB.playerId);
+  });
+
+  it("attaches a close-up even when its reading was never made active (still evidence of the paper)", async () => {
+    // The photo is attached by draftColumnId alone — this test's point is
+    // that saveGame doesn't care whether the column's activeReadingId ever
+    // pointed at a reading from this specific photo.
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo } = await import("@/lib/db/schema");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const playerAColumn = state.columns.find((c) => c.sheetName === "Player A")!;
+    await createColumnPhoto("closeup-rejected", draftId, playerAColumn.id);
+
+    const result = await saveGame(draftId, state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-rejected"))
+    )[0]!;
+    expect(closeUpRow.gameId).toBe(result.gameId);
+    expect(closeUpRow.playerId).not.toBeNull();
+  });
+
+  it("⚠️ regression: a close-up whose column was removed before save still attaches to the game, with a null playerId", async () => {
+    // Mirrors `removeColumn` in `lib/ui/draft-edits.ts`: it only filters
+    // `state.columns`, with no way to touch the `photo` table, so a close-up
+    // shot for a column that's since been removed is still sitting in
+    // `photo` pointing at a `draftColumnId` that no longer matches any
+    // column in the submitted state.
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo } = await import("@/lib/db/schema");
+
+    const { draftId, state } = await setUpDraft(SHEET_01);
+    const removedColumn = state.columns.find((c) => c.sheetName === "Player B")!;
+    await createColumnPhoto("closeup-orphaned", draftId, removedColumn.id);
+
+    // The structural repair: remove the column from the state that actually
+    // gets saved. The photo row still names its (now nonexistent) column.
+    state.columns = state.columns.filter((c) => c.id !== removedColumn.id);
+
+    const result = await saveGame(draftId, state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-orphaned"))
+    )[0]!;
+    expect(closeUpRow.gameId).toBe(result.gameId);
+    expect(closeUpRow.playerId).toBeNull();
+  });
+
+  it("⚠️ security review: never sweeps another draft's close-up onto this game, even if the saved state names its column id", async () => {
+    // draftA genuinely owns this column id and its close-up.
+    const draftA = await setUpDraft(SHEET_01);
+    const sharedColumnId = draftA.state.columns.find((c) => c.sheetName === "Player B")!.id;
+    await createColumnPhoto("closeup-cross-draft", draftA.draftId, sharedColumnId);
+
+    // draftB's *submitted* state is crafted to reuse that same column id —
+    // draftStateSchema only enforces uniqueness within one submitted state,
+    // not across drafts, so the save transaction's own WHERE clause is what
+    // has to hold the line.
+    const draftB = await setUpDraft(SHEET_02);
+    draftB.state.columns[0]!.id = sharedColumnId;
+
+    const { saveGame } = await import("@/lib/games/save");
+    const { getDb } = await import("@/lib/db");
+    const { photo } = await import("@/lib/db/schema");
+
+    const resultB = await saveGame(draftB.draftId, draftB.state);
+
+    const closeUpRow = (
+      await getDb().select().from(photo).where(eq(photo.id, "closeup-cross-draft"))
+    )[0]!;
+    expect(closeUpRow.gameId).not.toBe(resultB.gameId);
+    expect(closeUpRow.gameId).toBeNull();
   });
 });
 
