@@ -88,6 +88,50 @@ Format:
     corpus grows by a sheet a week, and any founder-caught final-score error is a data point worth
     logging here), or a later model changes the profile again.
 
+## 2026-09-14 — The deploy role's Parameter Store grant is scoped to this project (and to SST's own paths)
+
+- **Context**: the Milestone 1 go-live security audit found that the GitHub Actions OIDC deploy role
+  (`infra/github-oidc.yaml`) held `ssm:GetParameter*`, `ssm:PutParameter` **and** `ssm:DeleteParameter`
+  on `Resource: "*"`. This AWS account is shared with other projects, so that is read, overwrite and
+  delete over every parameter in it — other projects' secrets included. It also quietly undid the
+  2026-09-11 least-privilege ADR: the web Lambda's own write grant was narrowed to the three
+  `anthropic-api-key*` parameters *specifically* so that a bug in the internet-facing app could not
+  overwrite `/five-crowns/prod/admin-password-hash`. The deploy role could do exactly that, and
+  anyone who can land a commit on `main` reaches it. `docs/STATUS.md` had this listed as "broad
+  SSM/KMS read"; the write and delete halves were the part nobody had noticed.
+- **Decision**: the three parameter-**value** actions move to their own `SsmScoped` statement,
+  limited to four prefixes: `parameter/five-crowns/*` (everything the app and `scripts/deploy.sh`
+  actually touch — `session-secret`, both password hashes, the API-key trio, `app-domain`,
+  `app-cert-arn`, `budget-alert-email`), plus `parameter/sst/passphrase/five-crowns/*`,
+  `parameter/sst/five-crowns/*` and `parameter/sst/bootstrap*`.
+  ⚠️ **The `/sst/*` prefixes are required, not decoration**: SST v4 keeps its state-encryption
+  passphrase at `/sst/passphrase/<app>/<stage>` and its per-region bootstrap record at
+  `/sst/bootstrap` (`sst.dev/docs/state`, `sst.dev/docs/iam-credentials`). Without them a deploy
+  cannot read its own state. `/sst/bootstrap` is account- and region-wide by SST's design and
+  cannot be narrowed to one app.
+  `ssm:DescribeParameters` stays on `*` because SSM supports **no** resource-level permission for
+  it (it lists names and metadata, never values); `ssm:AddTagsToResource` / `ListTagsForResource`
+  stay as they were, for the same "no values, and SST tags parameters we do not name up front"
+  reason. KMS and S3 on this role are deliberately untouched here.
+- **Alternatives**: (a) *Grant `parameter/sst/*`, SST's own published policy* — simpler, but in a
+  shared account it leaves every other SST app's passphrase readable, which is the same class of
+  problem one level down. Kept as the documented fallback if a deploy ever fails on an `/sst/...`
+  path this list misses. (b) *Add explicit `Deny` on the two password hashes* — a deny list over a
+  still-unscoped allow is brittle, and the deploy legitimately reads those two (the preflight
+  check). (c) *Leave it and rely on branch protection* — branch protection is the control that was
+  already assumed; this is what stops it being the only one. (d) *Narrow KMS at the same time* —
+  rejected for now: the audit costed the SSM change only, and the `aws/ssm` key's own policy
+  already limits use to Parameter Store; narrowing it blind risks breaking SecureString reads that
+  cannot be tested from a sandbox.
+- **Consequences**: cost impact **A$0.00** — no resource is created or removed, IAM is free.
+  ⚠️ **`scripts/aws-bootstrap.sh` must be re-run to apply it**; merging the template changes
+  nothing in AWS. The failure mode if a prefix is wrong is safe but misleading: `sst secret list`
+  in `scripts/deploy.sh` returns nothing on an IAM denial, and the script then refuses to deploy
+  with "SST secrets not set", *before* `sst deploy` touches anything — so a half-deploy is not
+  possible, but the message will point at secrets rather than at permissions.
+  **Revisit if**: a second app is deployed from this repo, the SST app name ever changes (the SSM
+  prefix follows it), or SST changes where it keeps its state.
+
 ## 2026-09-13 — Criterion 73 is verified by a local Playwright audit, not jsdom and not in CI
 
 - **Context**: Stage 5 has to run "accessibility and a 375px/1280px pass". That is PRD criterion 73

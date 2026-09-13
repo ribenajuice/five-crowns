@@ -1546,6 +1546,17 @@ that would mean the header is not arriving and everyone shares one bucket.
    types in a deploy log and check that each one's AWS permission family is granted. If a tag condition ever proves too
    brittle, the fallback is a global `$transform(aws.iam.Role, …)` in `sst.config.ts` that puts
    every role under an IAM path `/five-crowns/` and scopes the deploy role to that path.
+7. **The deploy role's Parameter Store access is scoped to prefixes, and two of them are SST's.**
+   `ssm:GetParameter*`, `ssm:PutParameter` and `ssm:DeleteParameter` are limited to
+   `/five-crowns/*`, `/sst/passphrase/five-crowns/*`, `/sst/five-crowns/*` and `/sst/bootstrap*`
+   (statement `SsmScoped`; ADR 2026-09-14). ⚠️ SST v4 keeps its state-encryption passphrase at
+   `/sst/passphrase/<app>/<stage>` and its per-region bootstrap record at `/sst/bootstrap`, so
+   dropping the `/sst/*` entries breaks deploys even though nothing in this repo reads them.
+   The denial surfaces as `scripts/deploy.sh` reporting **"SST secrets not set"** — it refuses to
+   deploy before `sst deploy` runs, so there is no half-deploy, but the message points at the
+   wrong thing. If a deploy ever fails on an `/sst/...` parameter not in that list, widen to
+   `parameter/sst/*` (SST's own published policy), never back to `*`.
+   ⚠️ **Re-run `scripts/aws-bootstrap.sh` to apply a change to this template.**
 
 ---
 

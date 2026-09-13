@@ -103,7 +103,15 @@
   - The Turso CLI is at `~/.turso/turso` (not on PATH). Local `main` tracks `origin/main`.
 - **Known follow-ups (non-blocking)**:
   - Nothing in CI builds or runs the app on arm64. PR #8's regression test pins the libSQL crash only.
-  - The deploy role still has broad SSM/KMS read and an unconditioned `iam:PassRole` on `five-crowns-*`.
+  - The deploy role's SSM grant was wider than "read": it held `ssm:GetParameter*`, `ssm:PutParameter` **and**
+    `ssm:DeleteParameter` on `*` — every parameter in this shared account, including other projects' secrets and
+    this project's own `/five-crowns/prod/admin-password-hash`, which the web Lambda is deliberately not allowed to
+    write. ✅ **Fixed and merged to `main`** (PR #18, 2026-09-13): those three actions are now scoped to
+    `/five-crowns/*` plus the `/sst/*` paths SST itself needs (passphrase, bootstrap). ⚠️ **Not yet applied in AWS**
+    — `scripts/aws-bootstrap.sh` needs a founder-credentialed re-run to push the template change live; merging the
+    template alone changes nothing. Watch the next deploy once that's done. Still open on that role:
+    `kms:Encrypt`/`kms:Decrypt` on `*`, `ssm:DescribeParameters` on `*` (SSM supports no resource scope for it), and
+    the unconditioned `iam:PassRole` on `five-crowns-*`.
   - **Stage 2 hazard**: middleware skips image-extension paths, so photo and `/review` routes must call
     `requireGroupSession()` themselves.
   - The Lambda/CloudFront origin timeout is set to 120s (`sst.config.ts`), but CloudFront's *default* per-origin

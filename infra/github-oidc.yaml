@@ -90,9 +90,14 @@ Resources:
                   - apigateway:*
                   - dynamodb:*
                   - logs:*
-                  - ssm:GetParameter*
-                  - ssm:PutParameter
-                  - ssm:DeleteParameter
+                  # ⚠️ The parameter-VALUE actions (GetParameter*, PutParameter,
+                  # DeleteParameter) are deliberately not here — see the
+                  # SsmScoped statement below. These three stay account-wide:
+                  # ssm:DescribeParameters supports no resource-level
+                  # permissions at all (it is a list API; it returns names and
+                  # metadata, never values), and the two tag actions carry no
+                  # parameter values either, while SST calls
+                  # AddTagsToResource on parameters it does not name up front.
                   - ssm:AddTagsToResource
                   - ssm:ListTagsForResource
                   - ssm:DescribeParameters
@@ -110,6 +115,48 @@ Resources:
                   - ecr:*
                   - budgets:*
                 Resource: "*"
+              # Parameter Store, scoped to this project's own parameters and
+              # SST's own. Other projects share this account, and every secret
+              # this design has lives in Parameter Store, so an unscoped
+              # PutParameter/DeleteParameter here meant anyone who could land a
+              # commit on `main` could read, overwrite or delete *any*
+              # parameter in the account — other projects' secrets included,
+              # and this project's own /five-crowns/prod/admin-password-hash,
+              # which the web Lambda is deliberately NOT allowed to write
+              # (sst.config.ts `writableAppParameterArns`; least-privilege ADR
+              # 2026-09-11). The deploy role should not be a way around a
+              # narrowing the runtime role already has.
+              #
+              # ⚠️ The /sst/* entries are load-bearing, not tidiness. SST v4
+              # keeps the state-encryption passphrase in
+              # /sst/passphrase/<app>/<stage> and the per-region bootstrap
+              # record (state bucket, asset bucket, ECR repo) in /sst/bootstrap
+              # — sst.dev/docs/state and sst.dev/docs/iam-credentials. Remove
+              # them and `sst secret list` in scripts/deploy.sh returns nothing,
+              # which the script reports as "secrets missing" and refuses to
+              # deploy. ⚠️ /sst/bootstrap is account- and region-wide by SST's
+              # own design: it cannot be scoped to this app, and any other SST
+              # app in this account shares it. If a deploy ever fails on an
+              # /sst/... parameter this list does not cover, widen to
+              # parameter/sst/* (SST's own published policy) rather than
+              # returning this statement to "*".
+              - Sid: SsmScoped
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter*
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                Resource:
+                  # Everything the app owns: session-secret, both password
+                  # hashes, the anthropic-api-key trio, the optional
+                  # app-domain / app-cert-arn / budget-alert-email
+                  # (scripts/deploy.sh and sst.config.ts read these).
+                  # ⚠️ The SSM prefix is the SST **app** name, which must stay
+                  # equal to the repository name — see sst.config.ts.
+                  - !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/${RepositoryName}/*
+                  - !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/sst/passphrase/${RepositoryName}/*
+                  - !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/sst/${RepositoryName}/*
+                  - !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/sst/bootstrap*
               # SST's Nextjs component creates a FIFO queue (plus its queue
               # policy) for OpenNext's cache-revalidation events. Found at the
               # first deploy: sqs:CreateQueue was refused. Scoped to this app's
