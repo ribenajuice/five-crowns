@@ -5,8 +5,13 @@ the finished paper scoresheet, and the app turns it into a searchable history of
 
 **Where it's at:** **Milestone 1 is complete and live** at https://fivecrowns.ribenajuice.xyz — every
 acceptance criterion re-verified, including a real, paid reading key proven on real scoresheets in
-production. Next up is Milestone 2: player identity matching, roster renaming, and the rest of the
-admin panel. See `docs/STATUS.md`.
+production. **Milestone 2, Stage 1 is built and tested, on a branch, not yet merged or deployed** —
+it adds the score CSV download, the usage-and-spend summary, and a written, tested way to recover
+a forgotten admin password. It also adds two password-change buttons to the admin panel, but those
+are **not yet safe to turn on**: they need a permission the app was deliberately not given, and
+turning that on means loosening a security setting that was tightened on purpose. Until that's
+decided, keep using the recovery steps below to change either password. Next up after this stage
+is player identity matching and roster renaming. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
@@ -150,9 +155,9 @@ repository before, using AWS CloudShell.
 
    (swap in `group-session-epoch` for the group one.)
 
-**Locked out of both?** Reset the admin password first, using the two commands above, then sign in
-to `/admin` and use the panel's own "Change group password" form for the other one — you don't need
-to run CloudShell twice.
+**Locked out of both?** Run the CloudShell steps above twice — once for the admin password, once
+for the group password. (The panel has its own "Change group password" form, but see "Where it's
+at" above: it isn't safe to use in production yet, so this is the reliable path for now.)
 
 Nothing else changes. **No game, photo or score is touched, and nothing is redeployed** — this
 procedure is exactly the two `aws ssm put-parameter` calls above, and it's the same path used for

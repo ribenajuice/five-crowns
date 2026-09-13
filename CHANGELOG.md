@@ -2,8 +2,35 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
-isn't one right now, because the latest build is already live.
+production. Anything not yet deployed sits in an **Unreleased** section at the top.
+
+## [Unreleased]
+
+The first stage of Milestone 2: the rest of the admin panel. Built and tested, but not merged or
+deployed yet.
+
+### Added
+
+- **A single button downloads every game's scores as one spreadsheet file.** It's one CSV with a
+  row for every player in every game — everyone's running totals and per-hand scores, all in one
+  place, openable on a phone or a computer. To be clear about what it isn't: **this is not a
+  backup**, and **the photos aren't in it** — just the numbers. The button says so.
+- **The panel now shows what this month's automatic reading has cost**, alongside how many reads
+  you've used today against the daily limits — in Australian dollars, clearly marked as an
+  estimate.
+- **A written, step-by-step way to get back into the admin panel if you forget its password.**
+  It needs no developer and no code change, and it's been run for real, start to finish, to make
+  sure it actually works. It's linked from the admin login screen and from this project's README.
+
+### Built, but not yet safe to use
+
+- **Changing the group password or the admin password from the panel.** Both forms are built and
+  tested, but they must not go live as they stand: a permission the app was deliberately not given
+  is missing, so on the real site both buttons would fail with an error instead of changing
+  anything. This needs a founder decision before it ships — either widen that permission (in-panel
+  password changes, at the cost of loosening a security setting tightened on purpose), or keep the
+  tighter security and only ever change passwords through the recovery steps above. Nothing else in
+  this release is affected.
 
 ## [Stage 5] - 2026-09-13
 
