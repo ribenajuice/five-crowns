@@ -8,6 +8,7 @@ import { FinalRow } from "@/components/FinalRow";
 import { ScoreTable } from "@/components/ScoreTable";
 import { SheetPhoto } from "@/components/SheetPhoto";
 import { NO_LOCATION_GAMES_LIST, winnerConfirmationDetail } from "@/lib/ui/copy";
+import { GameActions } from "./GameActions";
 
 /**
  * The game view: the eleven running totals in the paper's column order, the
@@ -110,6 +111,13 @@ export default async function GamePage({
             </div>
           </section>
         ) : null}
+
+        <section aria-labelledby="manage-game-heading">
+          <h2 id="manage-game-heading" className="mb-2 font-display text-lg font-bold">
+            Manage this game
+          </h2>
+          <GameActions gameId={game.id} />
+        </section>
       </main>
     </>
   );

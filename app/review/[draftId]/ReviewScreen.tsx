@@ -55,6 +55,7 @@ import {
   VENUE_FIELD_LABEL,
   VENUE_LIST_EMPTY,
   DATE_FIELD_LABEL,
+  GAME_DELETED_MID_EDIT_MESSAGE,
   columnStatusLabel,
   saveBlockedMessage,
 } from "@/lib/ui/copy";
@@ -499,6 +500,12 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       setSaveErrorMessage(message ?? "Something on this sheet still needs fixing — have another look above.");
     } else if (result.body?.error?.code === "missing_photo") {
       setSaveErrorMessage("This draft has no sheet photo to save with.");
+    } else if (result.body?.error?.code === "game_deleted") {
+      // PRD criterion 122: the edit's target game was deleted meanwhile.
+      // The server already refused the write — nothing here resurrects it,
+      // and the plain message says exactly what happened rather than
+      // implying a connectivity problem.
+      setSaveErrorMessage(GAME_DELETED_MID_EDIT_MESSAGE);
     } else {
       setSaveErrorMessage("That didn't save. Check your connection and try again.");
     }
