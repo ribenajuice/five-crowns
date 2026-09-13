@@ -2,8 +2,39 @@
 
 Every change you would notice, in plain language, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each dated heading below is live in
-production. Anything not yet deployed would sit in an **Unreleased** section at the top — there
-isn't one right now, because the latest build is already live.
+production. Anything not yet deployed sits in an **Unreleased** section at the top.
+
+## [Unreleased]
+
+The second stage of Milestone 2: correcting the record. Built and tested, but not merged or
+deployed yet.
+
+### Added
+
+- **A saved game can now be corrected.** "Edit this game" on a game's page reopens the same review
+  screen used when it was first entered — the same photo beside the numbers, the same checks — and
+  saving updates that game in place instead of creating a new one. You can change the date, venue,
+  players and every number; the sheet photo itself is the one thing that can't be swapped for
+  another. Nothing marks a game as edited — an edited game looks exactly like one that was never
+  touched.
+- **A saved game can now be permanently deleted.** "Delete game" leads to a confirmation naming the
+  exact game — its date and who played — and needs a second, deliberate tap on "Delete permanently".
+  A single tap never deletes anything. The confirmation is upfront that this can't be undone and
+  that it takes the game's photos out of the record with it — though the photo files themselves
+  aren't destroyed; the app is deliberately never given permission to do that, so one could still be
+  recovered by hand later if it ever mattered.
+- **Broken and made-up links now show this app's own screens, not a generic one.** A deleted game's
+  page, a mistyped address, or a link to a player, roster or place that doesn't exist all show a
+  plain "not found" page with a clear way back to the games list. If something goes wrong
+  unexpectedly, you see a plain, honest error screen instead — neither screen ever shows a
+  technical detail.
+
+### Fixed
+
+- Both new buttons, "Edit this game" and "Delete permanently", didn't actually do anything when
+  tapped in a real browser. Found by review and fixed before anyone would have hit it.
+- A few edge cases around doing two things to the same game at once — editing it right as someone
+  else deletes it, for instance — were found and closed before this shipped.
 
 ## [Stage 5] - 2026-09-13
 
