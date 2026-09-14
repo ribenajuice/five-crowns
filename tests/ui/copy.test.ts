@@ -107,6 +107,15 @@ import {
   headToHeadDrillThroughHeading,
   headToHeadTogetherCaption,
   nemesisDetailSentence,
+  collectiveTriviaSentence,
+  comebackSentence,
+  currentDroughtSentence,
+  flatlinerSentence,
+  funFactDisplay,
+  overdueSentence,
+  randomOldNightSentence,
+  rivalryNeedleSentence,
+  slumpSentence,
 } from "@/lib/ui/copy";
 import {
   HAND_DERIVATION_HONESTY_LINE,
@@ -125,6 +134,7 @@ import {
   singleEventSampleLine,
   villainsRowSampleCaption,
 } from "@/lib/ui/copy";
+import type { FunFact } from "@/lib/scoring/facts";
 
 const BANNED_WORDS = [
   "checked",
@@ -947,5 +957,218 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
     expect(rosterAverageSampleCaption(9, 40)).toBe("9 games · 40 scores");
     expect(rosterAverageSampleCaption(1, 4)).toBe("1 game · 4 scores");
     expect(rosterAverageSampleCaption(5, 1)).toBe("5 games · 1 score");
+  });
+});
+
+describe("Milestone 4, first slice — fun facts (PRD criteria 281–293)", () => {
+  /**
+   * ⚠️ Criterion 290's own wording line, restated for this feature: the
+   * honesty ban (*checked, validated, verified, confirmed, correct, safe,
+   * protected, self-cancelling*) still applies here even though criterion
+   * 202's characterisation ban does not. The shared `BANNED_WORDS` list above
+   * (criteria 24/45) already covers the first five; this adds the three this
+   * feature's own criterion spells out by name (criterion 192/290) that
+   * aren't already in that list, so every one of the eight templates below is
+   * scanned against the full set.
+   */
+  const HONESTY_BANNED_WORDS = [...BANNED_WORDS, "safe", "protected", "self-cancelling"];
+
+  function assertNoDishonestWords(sentence: string) {
+    const lower = sentence.toLowerCase();
+    for (const word of HONESTY_BANNED_WORDS) {
+      expect(lower).not.toContain(word);
+    }
+  }
+
+  const flatlinerFact = {
+    key: "flatliner" as const,
+    playerId: "p1",
+    displayName: "Cody",
+    gameId: "g1",
+    playedOn: "2026-02-01",
+    runLength: 5,
+  };
+  const currentDroughtFact = {
+    key: "currentDrought" as const,
+    playerId: "p2",
+    displayName: "Priya",
+    gamesSinceWin: 7,
+  };
+  const comebackFact = {
+    key: "comeback" as const,
+    playerId: "p3",
+    displayName: "Dev",
+    worstGameId: "g10",
+    worstPlayedOn: "2026-01-05",
+    hand: 11,
+    score: 44,
+    nextGameId: "g11",
+    nextPlayedOn: "2026-01-12",
+  };
+  const slumpFact = {
+    key: "slump" as const,
+    playerId: "p4",
+    displayName: "Ash",
+    allTimeAverage: 41.2,
+    recentAverage: 55.8,
+    gamesPlayed: 9,
+  };
+  const rivalryNeedleFact = {
+    key: "rivalryNeedle" as const,
+    dominantPlayerId: "p5",
+    dominantDisplayName: "Sam",
+    opponentPlayerId: "p6",
+    opponentDisplayName: "Lee",
+    aboveRate: 0.8,
+    gamesTogether: 5,
+  };
+  const overdueFact = { key: "overdue" as const, gamesSinceSharedWin: 12 };
+  const randomOldNightFact = {
+    key: "randomOldNight" as const,
+    gameId: "g42",
+    playedOn: "2026-03-14",
+    locationName: null,
+    rosterName: "Thursday crew",
+    players: [{ displayName: "Cody", finalScore: 40 }],
+    winners: ["Cody"],
+    winningScore: 40,
+  };
+  const collectiveTriviaFact = { key: "collectiveTrivia" as const, totalGames: 12, totalHands: 132 };
+
+  const allFacts: FunFact[] = [
+    flatlinerFact,
+    currentDroughtFact,
+    comebackFact,
+    slumpFact,
+    rivalryNeedleFact,
+    overdueFact,
+    randomOldNightFact,
+    collectiveTriviaFact,
+  ];
+
+  describe("the eight templates — each states only the numbers it was given", () => {
+    it("flatliner (criterion 282): player, run length, the game's own date", () => {
+      expect(flatlinerSentence(flatlinerFact)).toBe(
+        "Cody put up exactly nothing for 5 hands straight in the Sun, 1 Feb 2026 game.",
+      );
+    });
+
+    it("flatliner keeps a single hand grammatically singular", () => {
+      expect(flatlinerSentence({ ...flatlinerFact, runLength: 1 })).toBe(
+        "Cody put up exactly nothing for 1 hand in the Sun, 1 Feb 2026 game.",
+      );
+    });
+
+    it("current drought (criterion 283): verbatim seed, counted in games", () => {
+      expect(currentDroughtSentence(currentDroughtFact)).toBe(
+        "It's been 7 games since Priya last won. Maybe go easy on them.",
+      );
+    });
+
+    it("current drought keeps '1 game' honest", () => {
+      expect(currentDroughtSentence({ ...currentDroughtFact, gamesSinceWin: 1 })).toContain(
+        "It's been 1 game since Priya last won.",
+      );
+    });
+
+    it("the comeback nobody asked for (criterion 284): the disaster, then the very next result plainly", () => {
+      expect(comebackSentence(comebackFact)).toBe(
+        "Dev gave up 44 points on the Kings hand in the Mon, 5 Jan 2026 game. Their very next game was a win.",
+      );
+    });
+
+    it("the slump (criterion 285): both averages, one decimal place", () => {
+      expect(slumpSentence(slumpFact)).toBe(
+        "Ash's last three games are averaging 55.8, well up from their 9-game average of 41.2.",
+      );
+    });
+
+    it("rivalry needle (criterion 286): both players named, the above-rate stated", () => {
+      expect(rivalryNeedleSentence(rivalryNeedleFact)).toBe(
+        "Sam finishes above Lee in 4 of their 5 games together (80.0%).",
+      );
+    });
+
+    it("overdue (criterion 287): verbatim, archive-wide, targets nobody", () => {
+      expect(overdueSentence(overdueFact)).toBe("It's been 12 games since anyone shared a win.");
+    });
+
+    it("a random old night (criterion 288): date, 'no location', roster, winner and score — no joke, no comparison", () => {
+      expect(randomOldNightSentence(randomOldNightFact)).toBe(
+        "Sat, 14 Mar 2026 — No location, with Thursday crew. Cody won on 40.",
+      );
+    });
+
+    it("a random old night states a real venue when there is one", () => {
+      expect(randomOldNightSentence({ ...randomOldNightFact, locationName: "The Deck" })).toContain(
+        "The Deck, with Thursday crew.",
+      );
+    });
+
+    it("a random old night states a shared win with both names, same grammar as the save confirmation", () => {
+      expect(
+        randomOldNightSentence({ ...randomOldNightFact, winners: ["Cody", "Priya"], winningScore: 40 }),
+      ).toContain("Cody and Priya shared it on 40.");
+    });
+
+    it("collective trivia (criterion 289): verbatim, archive-wide, targets nobody", () => {
+      expect(collectiveTriviaSentence(collectiveTriviaFact)).toBe(
+        "You've played 12 games and 132 hands together.",
+      );
+    });
+  });
+
+  describe("funFactDisplay (criterion 292: tap-through wherever meaningful)", () => {
+    it("flatliner, comeback and a random old night each link straight to their own game", () => {
+      expect(funFactDisplay(flatlinerFact).href).toBe("/games/g1");
+      expect(funFactDisplay(comebackFact).href).toBe("/games/g10");
+      expect(funFactDisplay(randomOldNightFact).href).toBe("/games/g42");
+    });
+
+    it("current drought and the slump link to the player's own page — neither fact carries a gameId", () => {
+      expect(funFactDisplay(currentDroughtFact).href).toBe("/players/p2");
+      expect(funFactDisplay(slumpFact).href).toBe("/players/p4");
+    });
+
+    it("rivalry needle links to the existing head-to-head drill-through (M3 Stage 2), never a second implementation", () => {
+      expect(funFactDisplay(rivalryNeedleFact).href).toBe("/players/p5?opponent=p6");
+    });
+
+    it("overdue and collective trivia have no tap-through at all (criterion 292's own carve-out)", () => {
+      expect(funFactDisplay(overdueFact).href).toBeNull();
+      expect(funFactDisplay(collectiveTriviaFact).href).toBeNull();
+    });
+
+    it("every fact's sentence matches its own dedicated template function", () => {
+      expect(funFactDisplay(flatlinerFact).sentence).toBe(flatlinerSentence(flatlinerFact));
+      expect(funFactDisplay(currentDroughtFact).sentence).toBe(currentDroughtSentence(currentDroughtFact));
+      expect(funFactDisplay(comebackFact).sentence).toBe(comebackSentence(comebackFact));
+      expect(funFactDisplay(slumpFact).sentence).toBe(slumpSentence(slumpFact));
+      expect(funFactDisplay(rivalryNeedleFact).sentence).toBe(rivalryNeedleSentence(rivalryNeedleFact));
+      expect(funFactDisplay(overdueFact).sentence).toBe(overdueSentence(overdueFact));
+      expect(funFactDisplay(randomOldNightFact).sentence).toBe(randomOldNightSentence(randomOldNightFact));
+      expect(funFactDisplay(collectiveTriviaFact).sentence).toBe(
+        collectiveTriviaSentence(collectiveTriviaFact),
+      );
+    });
+  });
+
+  describe("⚠️ criterion 290: the honesty ban still applies even though the characterisation ban doesn't", () => {
+    it("none of the eight templates ever uses a still-banned word, however sharp the rest of the sentence gets", () => {
+      for (const fact of allFacts) {
+        assertNoDishonestWords(funFactDisplay(fact).sentence);
+      }
+    });
+
+    it("⚠️ the relaxation is real: the flatliner and the comeback are allowed to name a specific, unflattering consequence", () => {
+      // Criterion 202's ban (nothing characterises a player) is exactly what
+      // doesn't apply here — unlike the nemesis test above, this deliberately
+      // does NOT scan for words like "gave up" or "nothing": naming the
+      // specific, true, unflattering thing is the whole point of this feature.
+      expect(flatlinerSentence(flatlinerFact)).toContain("Cody");
+      expect(flatlinerSentence(flatlinerFact)).toContain("exactly nothing");
+      expect(comebackSentence(comebackFact)).toContain("Dev");
+      expect(comebackSentence(comebackFact)).toContain("gave up 44 points");
+    });
   });
 });

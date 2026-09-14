@@ -2,8 +2,10 @@ import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { ArchiveLine } from "@/components/ArchiveLine";
 import { BoardNav } from "@/components/BoardNav";
+import { FunFactCard } from "@/components/FunFactCard";
 import { RecordCard, type RecordCardProps } from "@/components/RecordCard";
 import { StatsNavLink } from "@/components/StatsNavLink";
+import { getFunFacts, pickFunFact } from "@/lib/board/facts";
 import { getBoard, type BoardRecord, type SingleEventBoardRecord } from "@/lib/board/queries";
 import {
   BOARD_APPBAR_TITLE,
@@ -13,6 +15,7 @@ import {
   RECORD_UNITS,
   SINGLE_EVENT_RECORD_TITLES,
   SINGLE_EVENT_RECORD_UNITS,
+  funFactDisplay,
   recordDisplayFacts,
   singleEventDisplayFacts,
 } from "@/lib/ui/copy";
@@ -81,6 +84,12 @@ export default async function Home() {
   await requireGroupSession();
   const board = await getBoard();
 
+  // Milestone 4, first slice (criteria 281, 292): freshly computed and freshly
+  // picked on every load, never cached — an empty archive already 404s the
+  // pool's own first query, so this is skipped entirely on that path rather
+  // than run only to be thrown away (criterion 293's bounded-query stance).
+  const fact = board.empty ? null : pickFunFact(await getFunFacts());
+
   return (
     <>
       <AppBar title={BOARD_APPBAR_TITLE} />
@@ -97,6 +106,7 @@ export default async function Home() {
         ) : (
           <div className="flex flex-col gap-4">
             <ArchiveLine archiveGameCount={board.archiveGameCount} earlyDays={board.earlyDays} />
+            {fact ? <FunFactCard {...funFactDisplay(fact)} /> : null}
             <BoardNav />
             <StatsNavLink />
             {/*
