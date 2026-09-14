@@ -6,10 +6,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   averageFinalScore,
+  headToHead,
+  longestDrought,
   longestStreak,
+  nemesis,
   roundsWon,
   roundWinners,
+  secondPlace,
+  winningMargin,
   type GameHandScoreRow,
+  type HeadToHeadGame,
+  type NemesisCandidate,
   type StreakGame,
 } from "@/lib/scoring";
 import { PLAYER_A, PLAYER_B, PLAYER_C, PLAYER_D, SHEET_01, SHEET_02 } from "../fixtures/sheets";
@@ -237,5 +244,250 @@ describe("averageFinalScore — criterion 178", () => {
     );
     expect(averageFinalScore(scoresBySheet[0]!)?.gamesPlayed).toBe(4);
     expect(averageFinalScore(scoresBySheet[1]!)?.gamesPlayed).toBe(5);
+  });
+});
+
+describe("secondPlace and winningMargin — criteria 214–215", () => {
+  it("a normal game: one winner, one clear second", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 100 },
+      { playerId: PLAYER_B, score: 110 },
+      { playerId: PLAYER_C, score: 130 },
+    ];
+    expect(secondPlace(scores)).toEqual({ score: 110, playerIds: [PLAYER_B] });
+    expect(winningMargin(scores)).toBe(10);
+  });
+
+  it("⚠️ two players tie the win, one player behind them — second place is not skipped because the win was shared", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 100 },
+      { playerId: PLAYER_B, score: 100 },
+      { playerId: PLAYER_C, score: 110 },
+    ];
+    expect(secondPlace(scores)).toEqual({ score: 110, playerIds: [PLAYER_C] });
+    expect(winningMargin(scores)).toBe(10);
+  });
+
+  it("⚠️ two players tie on second place behind a single winner — both are second, in full", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 100 },
+      { playerId: PLAYER_B, score: 110 },
+      { playerId: PLAYER_C, score: 110 },
+    ];
+    const second = secondPlace(scores);
+    expect(second?.score).toBe(110);
+    expect(second?.playerIds.sort()).toEqual([PLAYER_B, PLAYER_C].sort());
+    expect(winningMargin(scores)).toBe(10);
+  });
+
+  it("a two-player game: the loser is automatically second", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 90 },
+      { playerId: PLAYER_B, score: 120 },
+    ];
+    expect(secondPlace(scores)).toEqual({ score: 120, playerIds: [PLAYER_B] });
+    expect(winningMargin(scores)).toBe(30);
+  });
+
+  it("a two-player game that ties has no second place", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 90 },
+      { playerId: PLAYER_B, score: 90 },
+    ];
+    expect(secondPlace(scores)).toBeNull();
+    expect(winningMargin(scores)).toBeNull();
+  });
+
+  it("⚠️ every player finished level: one distinct score, everybody won, no second place at all", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 75 },
+      { playerId: PLAYER_B, score: 75 },
+      { playerId: PLAYER_C, score: 75 },
+      { playerId: PLAYER_D, score: 75 },
+    ];
+    expect(secondPlace(scores)).toBeNull();
+    expect(winningMargin(scores)).toBeNull();
+  });
+
+  it("a winner is never also a second place in the same game", () => {
+    const scores = [
+      { playerId: PLAYER_A, score: 50 },
+      { playerId: PLAYER_B, score: 80 },
+    ];
+    const second = secondPlace(scores);
+    expect(second?.playerIds).not.toContain(PLAYER_A);
+  });
+
+  it("an empty game has no second place and no margin", () => {
+    expect(secondPlace([])).toBeNull();
+    expect(winningMargin([])).toBeNull();
+  });
+});
+
+describe("longestDrought — criterion 212 (the streak rule, negated)", () => {
+  it("the PRD's own inverted construction: loses games 1, 2, 4, 5, misses game 3 entirely → drought of 4", () => {
+    const games: StreakGame[] = [
+      { gameId: "g1", playedOn: "2026-01-01", createdAt: "2026-01-01T00:00:00Z", won: false },
+      { gameId: "g2", playedOn: "2026-01-08", createdAt: "2026-01-08T00:00:00Z", won: false },
+      // g3 is absent entirely — this player was not in it.
+      { gameId: "g4", playedOn: "2026-01-22", createdAt: "2026-01-22T00:00:00Z", won: false },
+      { gameId: "g5", playedOn: "2026-01-29", createdAt: "2026-01-29T00:00:00Z", won: false },
+    ];
+    const drought = longestDrought(games);
+    expect(drought.length).toBe(4);
+    expect(drought.gameIds).toEqual(["g1", "g2", "g4", "g5"]);
+  });
+
+  it("the inverted second archive: played and won game 3 → drought of 2", () => {
+    const games: StreakGame[] = [
+      { gameId: "g1", playedOn: "2026-01-01", createdAt: "2026-01-01T00:00:00Z", won: false },
+      { gameId: "g2", playedOn: "2026-01-08", createdAt: "2026-01-08T00:00:00Z", won: false },
+      { gameId: "g3", playedOn: "2026-01-15", createdAt: "2026-01-15T00:00:00Z", won: true },
+      { gameId: "g4", playedOn: "2026-01-22", createdAt: "2026-01-22T00:00:00Z", won: false },
+      { gameId: "g5", playedOn: "2026-01-29", createdAt: "2026-01-29T00:00:00Z", won: false },
+    ];
+    const drought = longestDrought(games);
+    expect(drought.length).toBe(2);
+    expect(drought.gameIds).toEqual(["g1", "g2"]);
+  });
+
+  it("is the longest EVER, not the current run", () => {
+    const games: StreakGame[] = [
+      { gameId: "g1", playedOn: "2026-01-01", createdAt: "2026-01-01T00:00:00Z", won: false },
+      { gameId: "g2", playedOn: "2026-01-08", createdAt: "2026-01-08T00:00:00Z", won: false },
+      { gameId: "g3", playedOn: "2026-01-15", createdAt: "2026-01-15T00:00:00Z", won: false },
+      { gameId: "g4", playedOn: "2026-01-22", createdAt: "2026-01-22T00:00:00Z", won: true },
+    ];
+    const drought = longestDrought(games);
+    expect(drought.length).toBe(3);
+    expect(drought.gameIds).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("a shared win ends a drought exactly as a solo win does", () => {
+    const games: StreakGame[] = [
+      { gameId: "g1", playedOn: "2026-01-01", createdAt: "2026-01-01T00:00:00Z", won: false },
+      { gameId: "g2", playedOn: "2026-01-08", createdAt: "2026-01-08T00:00:00Z", won: true }, // shared win
+      { gameId: "g3", playedOn: "2026-01-15", createdAt: "2026-01-15T00:00:00Z", won: false },
+    ];
+    expect(longestDrought(games).length).toBe(1);
+  });
+
+  it("a player who has won every game has a drought of zero", () => {
+    const games: StreakGame[] = [
+      { gameId: "g1", playedOn: "2026-01-01", createdAt: "2026-01-01T00:00:00Z", won: true },
+      { gameId: "g2", playedOn: "2026-01-08", createdAt: "2026-01-08T00:00:00Z", won: true },
+    ];
+    expect(longestDrought(games)).toEqual({ length: 0, gameIds: [] });
+  });
+
+  it("an empty games array has no drought", () => {
+    expect(longestDrought([])).toEqual({ length: 0, gameIds: [] });
+  });
+});
+
+describe("headToHead — criterion 197 (symmetric, one function)", () => {
+  it("a solo win each way, over two shared games", () => {
+    const games: HeadToHeadGame[] = [
+      { gameId: "g1", aWon: true, bWon: false, aScore: 50, bScore: 90 },
+      { gameId: "g2", aWon: false, bWon: true, aScore: 90, bScore: 50 },
+    ];
+    const h2h = headToHead(games);
+    expect(h2h.gamesTogether).toBe(2);
+    expect(h2h.a).toEqual({ wins: 1, winRate: 0.5, above: 1, aboveRate: 0.5 });
+    expect(h2h.b).toEqual({ wins: 1, winRate: 0.5, above: 1, aboveRate: 0.5 });
+  });
+
+  it("⚠️ a shared win between A and B counts in full for both", () => {
+    const games: HeadToHeadGame[] = [
+      { gameId: "g1", aWon: true, bWon: true, aScore: 50, bScore: 50 },
+    ];
+    const h2h = headToHead(games);
+    expect(h2h.a.wins).toBe(1);
+    expect(h2h.b.wins).toBe(1);
+    // A level final score is neither above nor below (criterion 198).
+    expect(h2h.a.above).toBe(0);
+    expect(h2h.b.above).toBe(0);
+  });
+
+  it("⚠️ a third player's win counts in gamesTogether and in neither win column", () => {
+    const games: HeadToHeadGame[] = [
+      // Neither A nor B won this game (a third player did) — both aWon/bWon are false —
+      // but A still finished above B on final score.
+      { gameId: "g1", aWon: false, bWon: false, aScore: 60, bScore: 90 },
+    ];
+    const h2h = headToHead(games);
+    expect(h2h.gamesTogether).toBe(1);
+    expect(h2h.a.wins).toBe(0);
+    expect(h2h.b.wins).toBe(0);
+    expect(h2h.a.above).toBe(1);
+    expect(h2h.a.aboveRate).toBe(1);
+    expect(h2h.b.above).toBe(0);
+  });
+
+  it("⚠️ symmetric: swapping A and B in every game mirrors the result exactly", () => {
+    const games: HeadToHeadGame[] = [
+      { gameId: "g1", aWon: true, bWon: false, aScore: 40, bScore: 90 },
+      { gameId: "g2", aWon: false, bWon: false, aScore: 60, bScore: 55 },
+      { gameId: "g3", aWon: true, bWon: true, aScore: 30, bScore: 30 },
+    ];
+    const mirrored: HeadToHeadGame[] = games.map((g) => ({
+      gameId: g.gameId,
+      aWon: g.bWon,
+      bWon: g.aWon,
+      aScore: g.bScore,
+      bScore: g.aScore,
+    }));
+    const forward = headToHead(games);
+    const backward = headToHead(mirrored);
+    expect(backward.a).toEqual(forward.b);
+    expect(backward.b).toEqual(forward.a);
+    expect(backward.gamesTogether).toBe(forward.gamesTogether);
+  });
+
+  it("an empty shared history has no games together and no rates", () => {
+    const h2h = headToHead([]);
+    expect(h2h.gamesTogether).toBe(0);
+    expect(h2h.a).toEqual({ wins: 0, winRate: 0, above: 0, aboveRate: 0 });
+  });
+});
+
+describe("nemesis — criteria 199–201", () => {
+  it("a clear holder: the single opponent with the highest above-rate", () => {
+    const candidates: NemesisCandidate[] = [
+      { playerId: "p-sam", displayName: "Sam", aboveRate: 8 / 9, gamesTogether: 9 },
+      { playerId: "p-jo", displayName: "Jo", aboveRate: 0.5, gamesTogether: 4 },
+    ];
+    const result = nemesis(candidates);
+    expect(result.holders.map((h) => h.playerId)).toEqual(["p-sam"]);
+    expect(result.aboveRatePercent).toBeCloseTo(88.9, 1);
+  });
+
+  it("a tie: joint holders, alphabetical, no games-played tie-break", () => {
+    const candidates: NemesisCandidate[] = [
+      { playerId: "p-zoe", displayName: "Zoe", aboveRate: 2 / 3, gamesTogether: 3 },
+      { playerId: "p-amy", displayName: "Amy", aboveRate: 2 / 3, gamesTogether: 30 },
+    ];
+    const result = nemesis(candidates);
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zoe"]);
+    expect(result.aboveRatePercent).toBeCloseTo(66.7, 1);
+  });
+
+  it("⚠️ nobody qualifies: every candidate is at a zero above-rate", () => {
+    const candidates: NemesisCandidate[] = [
+      { playerId: "p-sam", displayName: "Sam", aboveRate: 0, gamesTogether: 5 },
+      { playerId: "p-jo", displayName: "Jo", aboveRate: 0, gamesTogether: 2 },
+    ];
+    expect(nemesis(candidates)).toEqual({ holders: [], aboveRatePercent: null });
+  });
+
+  it("a player with no shared games at all has no candidates and no nemesis", () => {
+    expect(nemesis([])).toEqual({ holders: [], aboveRatePercent: null });
+  });
+
+  it("an opponent who has never once finished above P never holds the title, even alone", () => {
+    const candidates: NemesisCandidate[] = [
+      { playerId: "p-sam", displayName: "Sam", aboveRate: 0, gamesTogether: 12 },
+    ];
+    expect(nemesis(candidates)).toEqual({ holders: [], aboveRatePercent: null });
   });
 });

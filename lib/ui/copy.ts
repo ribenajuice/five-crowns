@@ -808,21 +808,36 @@ export function archiveCountLine(archiveGameCount: number): string {
 export const BOARD_NAV_GAMES_LABEL = "Games";
 export const BOARD_NAV_ADD_GAME_LABEL = "Add a game";
 
-/** Record titles, verbatim (`docs/DESIGN-SYSTEM.md`'s fixed-strings table). */
+/**
+ * Record titles, verbatim (`docs/DESIGN-SYSTEM.md`'s fixed-strings table,
+ * "Record title — the drought (board)" / "the nearly man (board)").
+ */
 export const RECORD_TITLES: Record<BoardRecordKey, string> = {
   mostWins: "Most wins",
   mostWinsInARow: "Most wins in a row",
   lowestAverageScore: "Lowest average score",
   mostRoundsWon: "Most rounds won",
   stalwart: "The stalwart",
+  drought: "The drought",
+  nearlyMan: "The nearly man",
 };
-/** Record units, verbatim — plain-English, beside the number in `--num-lg`. */
+/**
+ * Record units, verbatim — plain-English, beside the number in `--num-lg`.
+ *
+ * ⚠️ **The drought's board unit is "games" (plain), not "games without a
+ * win"** — that longer phrase is the *personal* record card's unit (the
+ * player page's "Streak, in context" section, a different component), per
+ * `docs/DESIGN-SYSTEM.md`'s fixed-strings table rows for "Record unit — the
+ * drought (board)" and "Personal record card unit — drought" respectively.
+ */
 export const RECORD_UNITS: Record<BoardRecordKey, string> = {
   mostWins: "wins",
   mostWinsInARow: "games in a row",
   lowestAverageScore: "avg. score",
   mostRoundsWon: "rounds",
   stalwart: "games played",
+  drought: "games",
+  nearlyMan: "second places",
 };
 
 /** Lowest average score to one decimal place (criterion 178); every other

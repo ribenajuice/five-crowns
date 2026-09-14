@@ -580,6 +580,208 @@ describe("getBoard — every game counts towards every number (criterion 188)", 
   });
 });
 
+describe("getBoard — the drought (criterion 213)", () => {
+  it("crowns the player with the longest run of games played without a win", async () => {
+    const players = await createPlayers(["Winner", "Loser"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-01-01", "2026-01-08", "2026-01-15"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Winner"]!, finalScore: 50 },
+          { playerId: players["Loser"]!, finalScore: 80 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const drought = board.records.find((r) => r.key === "drought")!;
+    expect(drought.holders.map((h) => h.displayName)).toEqual(["Loser"]);
+    expect(drought.value).toBe(3);
+    expect(drought.games).toHaveLength(3);
+    // Oldest → newest, the same exception to newest-first the streak uses.
+    expect(drought.games.map((g) => g.playedOn)).toEqual(["2026-01-01", "2026-01-08", "2026-01-15"]);
+  });
+
+  it("a winner never appears in the drought, even at length zero", async () => {
+    const players = await createPlayers(["Winner", "Loser"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Winner"]!, finalScore: 50 },
+        { playerId: players["Loser"]!, finalScore: 80 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const drought = board.records.find((r) => r.key === "drought")!;
+    expect(drought.holders.map((h) => h.displayName)).toEqual(["Loser"]);
+    expect(drought.value).toBe(1);
+  });
+
+  it("joint holders, alphabetical", async () => {
+    const players = await createPlayers(["Zoe", "Abby", "Winner"]);
+    const seedGame = createGameSeeder();
+    // Zoe and Abby each lose two games in a row; Winner takes both.
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Zoe"]!, finalScore: 80 },
+          { playerId: players["Abby"]!, finalScore: 90 },
+          { playerId: players["Winner"]!, finalScore: 50 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const drought = board.records.find((r) => r.key === "drought")!;
+    expect(drought.value).toBe(2);
+    expect(drought.holders.map((h) => h.displayName)).toEqual(["Abby", "Zoe"]);
+  });
+});
+
+describe("getBoard — the nearly man (criterion 216)", () => {
+  it("crowns the player with the most second places", async () => {
+    const players = await createPlayers(["Winner", "Runner Up", "Last"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Winner"]!, finalScore: 50 },
+          { playerId: players["Runner Up"]!, finalScore: 80 },
+          { playerId: players["Last"]!, finalScore: 120 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const nearlyMan = board.records.find((r) => r.key === "nearlyMan")!;
+    expect(nearlyMan.holders.map((h) => h.displayName)).toEqual(["Runner Up"]);
+    expect(nearlyMan.value).toBe(2);
+    expect(nearlyMan.games).toHaveLength(2);
+  });
+
+  it("⚠️ second place is not skipped because the win was shared", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 100 },
+        { playerId: players["Bo"]!, finalScore: 100 },
+        { playerId: players["Cy"]!, finalScore: 110 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const nearlyMan = board.records.find((r) => r.key === "nearlyMan")!;
+    expect(nearlyMan.holders.map((h) => h.displayName)).toEqual(["Cy"]);
+    expect(nearlyMan.value).toBe(1);
+  });
+
+  it("a shared second place counts in full for each holder", async () => {
+    const players = await createPlayers(["Zoe", "Abby", "Winner"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Winner"]!, finalScore: 50 },
+        { playerId: players["Zoe"]!, finalScore: 90 },
+        { playerId: players["Abby"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const nearlyMan = board.records.find((r) => r.key === "nearlyMan")!;
+    expect(nearlyMan.value).toBe(1);
+    expect(nearlyMan.holders.map((h) => h.displayName)).toEqual(["Abby", "Zoe"]);
+  });
+});
+
+describe("getBoard — both new rows survive an archive where nobody holds them (criterion 217)", () => {
+  it("the single degenerate game where everyone finished level: neither the drought nor the nearly man has a holder", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 75 },
+        { playerId: players["Bo"]!, finalScore: 75 },
+        { playerId: players["Cy"]!, finalScore: 75 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const drought = board.records.find((r) => r.key === "drought")!;
+    expect(drought).toEqual({ key: "drought", value: null, holders: [], games: [] });
+
+    const nearlyMan = board.records.find((r) => r.key === "nearlyMan")!;
+    expect(nearlyMan).toEqual({ key: "nearlyMan", value: null, holders: [], games: [] });
+
+    // Neither record ever shows 0 with a name beside it — both are absent instead.
+    expect(drought.holders).toHaveLength(0);
+    expect(nearlyMan.holders).toHaveLength(0);
+  });
+});
+
+describe("getBoard — Stage 2 adds no query of its own (criterion 219)", () => {
+  it("still issues the same bounded query count now the board carries seven records", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-01-01", "2026-01-08", "2026-01-15"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 50 },
+          { playerId: players["Bo"]!, finalScore: 80 },
+          { playerId: players["Cy"]!, finalScore: 110 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    selectCallCount = 0;
+    const board = await getBoard();
+    expect(board.empty).toBe(false);
+    expect(selectCallCount).toBe(3);
+    if (board.empty) throw new Error("unreachable");
+    expect(board.records).toHaveLength(7);
+    expect(board.records.map((r) => r.key)).toEqual([
+      "mostWins",
+      "mostWinsInARow",
+      "lowestAverageScore",
+      "mostRoundsWon",
+      "stalwart",
+      "drought",
+      "nearlyMan",
+    ]);
+  });
+});
+
 describe("getBoard — the no-holder branch (criterion 185)", () => {
   it("⚠️ is defensive code, not a reachable production state: a game with zero round_score rows " +
     "(never possible for a real saved game — the save handler always writes all 11 hands) still " +
