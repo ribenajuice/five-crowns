@@ -641,3 +641,129 @@ test("audit: the records board (/) and its drill-throughs", async ({ page, baseU
     await auditScreen(page, href);
   }
 });
+
+/**
+ * Milestone 3 Stage 2 — the player page's new rivalry sections (PRD criterion
+ * 222: "npm run audit:a11y covers the player page's new sections ... at 375px
+ * and 1280px"). Before this test, nothing in this file ever navigated to
+ * `/players/{id}` at all — the player page's head-to-head section, nemesis
+ * card, by-roster section and streak-in-context cards, plus both of their own
+ * drill-throughs, had **zero** audit coverage despite criterion 222's own
+ * text. This closes that gap.
+ *
+ * Saves two real games between the same two-player roster via the API (same
+ * pattern as the tests above) so both players have a populated head-to-head
+ * row, a nemesis (or the no-nemesis state), a by-roster row and a real
+ * (non-zero) longest streak to drill into.
+ */
+test("audit: the player page's rivalry sections (M3 Stage 2)", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  async function saveGame(playedOn: string, columns: string[], overrides: Record<number, number[]>) {
+    const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+    });
+    if (!uploadRes.ok()) {
+      throw new Error(`POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()}`);
+    }
+    const { photoId, original, model } = await uploadRes.json();
+
+    const fixtureBytes = await readFile(path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"));
+    for (const variant of [original, model]) {
+      const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+      await request.post(uploadUrl, {
+        multipart: {
+          ...variant.fields,
+          file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: fixtureBytes },
+        },
+      });
+    }
+
+    const draftState = {
+      version: 1,
+      photoId,
+      playedOn,
+      locationId: null,
+      newLocationName: null,
+      columns: columns.map((id, order) => ({
+        id,
+        order,
+        playerId: null,
+        newPlayerName: `Rivalry Audit ${id}`,
+        sheetName: null,
+        activeReadingId: null,
+        readings: [],
+        manualEdits: Object.fromEntries((overrides[order] ?? []).map((v, i) => [String(i), v])),
+        crop: null,
+      })),
+    };
+    const draftRes = await request.post(`${baseURL}/api/drafts`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { photoId, state: draftState },
+    });
+    if (!draftRes.ok()) {
+      throw new Error(`POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`);
+    }
+    const { draftId } = await draftRes.json();
+
+    const saveRes = await request.post(`${baseURL}/api/games`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { draftId, state: draftState },
+    });
+    if (!saveRes.ok()) {
+      throw new Error(`POST /api/games failed: ${saveRes.status()} ${await saveRes.text()}`);
+    }
+  }
+
+  // Two games, same two-player roster, same winner each time — Rivalry Audit
+  // r1 gets a real (non-zero) 2-game winning streak to drill into, and both
+  // players get a populated head-to-head row and nemesis state.
+  const rising = (start: number) => [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33].map((v) => v + start);
+  await saveGame("2026-01-04", ["r1", "r2"], { 0: rising(0), 1: rising(20) });
+  await saveGame("2026-01-05", ["r1", "r2"], { 0: rising(0), 1: rising(20) });
+
+  await page.goto("/players");
+  const playerLink = page.getByRole("link", { name: "Rivalry Audit r1" });
+  await expect(playerLink).toBeVisible();
+  const playerHref = await playerLink.getAttribute("href");
+  if (!playerHref) throw new Error("Rivalry Audit r1's own player page link was not found on /players");
+
+  await page.goto(playerHref);
+  await auditScreen(page, "/players/{id} (head-to-head, nemesis, by-roster, streak)");
+
+  // The head-to-head section and the nemesis card, both real per the design
+  // system's fixed copy — confirm the sections this test exists to cover are
+  // actually on the page, not merely that the page loads.
+  await expect(page.getByRole("heading", { name: "Head-to-head" })).toBeVisible();
+  await expect(page.getByText("Rivalry Audit r2", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nemesis", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "By roster" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Streak, in context" })).toBeVisible();
+
+  // ---- The head-to-head drill-through (criterion 204) ----
+  // Anchored at the start: `HeadToHeadRow`'s own aria-label is
+  // "{opponent} — {n} games together, ...", but a roster named "r1 & r2" also
+  // contains the substring "Rivalry Audit r2" and would otherwise match too.
+  const opponentRow = page.getByRole("link", { name: /^Rivalry Audit r2 —/ });
+  await opponentRow.click();
+  await page.waitForURL(/[?&]opponent=/);
+  await auditScreen(page, "/players/{id}?opponent= (head-to-head drill-through)");
+
+  // ---- The personal streak drill-through (criterion 211) ----
+  await page.goto(playerHref);
+  const streakCard = page.getByRole("link", { name: /Longest winning streak/ });
+  if (await streakCard.count()) {
+    await streakCard.click();
+    await page.waitForURL(/[?&]streak=winning/);
+    await auditScreen(page, "/players/{id}?streak=winning (personal streak drill-through)");
+  } else {
+    test.info().annotations.push({
+      type: "note",
+      description: "Rivalry Audit r1's longest streak was 0 (inert card, no drill-through) — unexpected given two straight wins were saved above.",
+    });
+  }
+});

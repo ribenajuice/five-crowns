@@ -322,6 +322,33 @@ describe("secondPlace and winningMargin — criteria 214–215", () => {
     expect(secondPlace([])).toBeNull();
     expect(winningMargin([])).toBeNull();
   });
+
+  it("⚠️ QA hand-count against fixtures/sheets/GROUND-TRUTH.md — criterion 216's own worked example", () => {
+    // SHEET_01: Player C wins outright on 78. The next-lowest final score is
+    // Player B's 109 (Player A 137, Player D 111 are both further behind) —
+    // GROUND-TRUTH.md's own table, hand-counted, names Player B as the sheet's
+    // clear second place. This is the fixture-sheet check criterion 216 asks
+    // for, the same way criterion 176's "most rounds won" is hand-counted
+    // against SHEET_01 above — nearlyMan (`lib/board/queries.ts`) is bound to
+    // this exact function (criterion 214) and must never re-derive its own.
+    const scores = SHEET_01.columns.map((c) => ({
+      playerId: c.player,
+      score: c.runningTotals[c.runningTotals.length - 1]!,
+    }));
+    const second = secondPlace(scores);
+    expect(second).toEqual({ score: 109, playerIds: [PLAYER_B] });
+    expect(winningMargin(scores)).toBe(109 - 78);
+
+    // SHEET_02: Player B wins outright on 71 (GROUND-TRUTH.md's "Caitlyn
+    // (71)"). The next-lowest final score is Player C's 144, ahead of Player
+    // E (154), Player A (222) and Player D (240).
+    const scores2 = SHEET_02.columns.map((c) => ({
+      playerId: c.player,
+      score: c.runningTotals[c.runningTotals.length - 1]!,
+    }));
+    const second2 = secondPlace(scores2);
+    expect(second2).toEqual({ score: 144, playerIds: [PLAYER_C] });
+  });
 });
 
 describe("longestDrought — criterion 212 (the streak rule, negated)", () => {
@@ -489,5 +516,26 @@ describe("nemesis — criteria 199–201", () => {
       { playerId: "p-sam", displayName: "Sam", aboveRate: 0, gamesTogether: 12 },
     ];
     expect(nemesis(candidates)).toEqual({ holders: [], aboveRatePercent: null });
+  });
+
+  it("⚠️ rounds to one decimal place BEFORE comparing — two genuinely different raw above-rates that display identically are joint holders, not a hidden single winner", () => {
+    // 6/31 = 19.3548…%, 7/36 = 19.4444…% — different raw fractions (neither a
+    // multiple of the other), but both round to the same displayed 19.4%.
+    const a = 6 / 31; // 19.35...%
+    const b = 7 / 36; // 19.44...%
+    expect(a).not.toBe(b); // genuinely distinct raw fractions, the whole point of this case
+    expect(Math.round(a * 1000) / 10).toBe(Math.round(b * 1000) / 10); // both round to 19.4
+
+    const candidates: NemesisCandidate[] = [
+      { playerId: "p-zed", displayName: "Zed", aboveRate: a, gamesTogether: 31 },
+      { playerId: "p-amy", displayName: "Amy", aboveRate: b, gamesTogether: 36 },
+    ];
+    const result = nemesis(candidates);
+    // A naive "strictly highest raw aboveRate wins" implementation would crown
+    // only Amy (the larger raw fraction) here — this is exactly the invisible,
+    // sub-decimal tie-break criterion 199 forbids. Both must be joint holders,
+    // because on screen both read "19.4%".
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zed"]);
+    expect(result.aboveRatePercent).toBeCloseTo(19.4, 1);
   });
 });
