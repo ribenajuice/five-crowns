@@ -8,13 +8,32 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { HandLabel } from "@/lib/scoring";
 
+import type { Board, BoardData } from "@/lib/board/queries";
+
 vi.mock("@/lib/auth/session", () => ({
   requireGroupSession: vi.fn(async () => ({ s: "group", v: 1 })),
 }));
 
+// `getBoardData` is stubbed alongside `getBoard`, not left real: it's now
+// `app/page.tsx`'s own shared fetch (code review fix — `getBoard()` and
+// `getFunFacts()` both read from it), and this file's whole point is a real
+// `db.select(...)` never runs here (see the `getFunFacts` comment below,
+// which predates this and makes the same point about that call).
+const STUB_BOARD_DATA = {} as BoardData;
+
 vi.mock("@/lib/board/queries", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/board/queries")>();
-  return { ...actual, getBoard: vi.fn() };
+  return { ...actual, getBoard: vi.fn(), getBoardData: vi.fn(async () => STUB_BOARD_DATA) };
+});
+
+// Milestone 4, first slice: every existing test in this file predates fun
+// facts and asserts nothing about them, so the pool defaults to empty here —
+// `getFunFacts` is a real `db.select(...)` call otherwise, which this
+// shallow-render style never wants any of its tests reaching for. The
+// dedicated "fun facts" describe block below overrides this per test.
+vi.mock("@/lib/board/facts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/board/facts")>();
+  return { ...actual, getFunFacts: vi.fn(async () => []) };
 });
 
 function holder(displayName: string, gamesPlayed: number) {
@@ -31,6 +50,24 @@ function game(id: string, playedOn: string, overrides: Partial<Record<string, un
     winners: ["Player A"],
     winningScore: 50,
     ...overrides,
+  };
+}
+
+/** A minimal non-empty board — the fun facts tests below don't care about
+ *  the five records themselves, only that the board isn't in its empty state. */
+function minimalBoard(): Board {
+  return {
+    empty: false,
+    archiveGameCount: 12,
+    earlyDays: false,
+    records: [
+      { key: "mostWins", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+      { key: "mostWinsInARow", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+      { key: "lowestAverageScore", value: 40, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+      { key: "mostRoundsWon", value: 5, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+      { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+    ],
+    singleEventRecords: [],
   };
 }
 
@@ -370,5 +407,202 @@ describe("/ — every card links to its own drill-through", () => {
     for (const key of ["mostWins", "mostWinsInARow", "lowestAverageScore", "mostRoundsWon", "stalwart"]) {
       expect(html).toContain(`/records/${key}`);
     }
+  });
+});
+
+describe("/ — fun facts (PRD criteria 281–293, Milestone 4 first slice)", () => {
+  it("an empty archive never calls the fact pool, and shows no fact slot", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(getFunFacts).not.toHaveBeenCalled();
+    expect(html).not.toContain("border-dashed");
+  });
+
+  it("an empty pool over a non-empty archive renders no fact slot at all — not an empty one (criterion 292)", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).not.toContain("border-dashed");
+    // The rest of the board still renders normally.
+    expect(html).toContain("Add a game");
+  });
+
+  it("the flatliner: player, run length and the game's own date, links straight to that game", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      {
+        key: "flatliner",
+        playerId: "p1",
+        displayName: "Cody",
+        gameId: "g99",
+        playedOn: "2026-02-01",
+        runLength: 5,
+      },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Cody put up exactly nothing for 5 hands straight");
+    expect(html).toContain("/games/g99");
+  });
+
+  it("current drought: names the player and the count, links to their own page (no gameId on this fact)", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      { key: "currentDrought", playerId: "p2", displayName: "Priya", gamesSinceWin: 7 },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("It&#x27;s been 7 games since Priya last won.");
+    expect(html).toContain("/players/p2");
+  });
+
+  it("the comeback nobody asked for: the disaster then the very next result, links to the disaster's own game", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      {
+        key: "comeback",
+        playerId: "p3",
+        displayName: "Dev",
+        worstGameId: "g10",
+        worstPlayedOn: "2026-01-05",
+        hand: 11,
+        score: 44,
+        nextGameId: "g11",
+        nextPlayedOn: "2026-01-12",
+      },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Dev gave up 44 points on the Kings hand");
+    expect(html).toContain("Their very next game was a win.");
+    expect(html).toContain("/games/g10");
+    expect(html).not.toContain("/games/g11");
+  });
+
+  it("the slump: both averages named, links to the player's own page", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      {
+        key: "slump",
+        playerId: "p4",
+        displayName: "Ash",
+        allTimeAverage: 41.2,
+        recentAverage: 55.8,
+        gamesPlayed: 9,
+      },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Ash&#x27;s last three games are averaging 55.8");
+    expect(html).toContain("9-game average of 41.2");
+    expect(html).toContain("/players/p4");
+  });
+
+  it("rivalry needle: names both players and the rate, links to the existing head-to-head drill-through", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      {
+        key: "rivalryNeedle",
+        dominantPlayerId: "p5",
+        dominantDisplayName: "Sam",
+        opponentPlayerId: "p6",
+        opponentDisplayName: "Lee",
+        aboveRate: 0.8,
+        gamesTogether: 5,
+      },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Sam finishes above Lee in 4 of their 5 games together (80.0%)");
+    expect(html).toContain("/players/p5?opponent=p6");
+  });
+
+  it("overdue: archive-wide, no player, no tap-through (criterion 292's own carve-out)", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([{ key: "overdue", gamesSinceSharedWin: 12 }]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("It&#x27;s been 12 games since anyone shared a win.");
+    // Plain text, not a link — the no-`href` branch renders a `<div>`, never an `<a>`.
+    expect(html).toMatch(
+      /<div class="flex min-h-11 items-center rounded-\[var\(--radius\)\] border border-dashed[^"]*"><p[^>]*>It&#x27;s been 12 games since anyone shared a win\.<\/p><\/div>/,
+    );
+  });
+
+  it("a random old night: restates date, venue, roster and result, links straight to that game", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      {
+        key: "randomOldNight",
+        gameId: "g42",
+        playedOn: "2026-03-14",
+        locationName: null,
+        rosterName: "Thursday crew",
+        players: [{ displayName: "Cody", finalScore: 40 }],
+        winners: ["Cody"],
+        winningScore: 40,
+      },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("No location, with Thursday crew");
+    expect(html).toContain("Cody won on 40.");
+    expect(html).toContain("/games/g42");
+  });
+
+  it("collective trivia: archive-wide totals, no tap-through", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+    vi.mocked(getBoard).mockResolvedValueOnce(minimalBoard());
+    vi.mocked(getFunFacts).mockResolvedValueOnce([
+      { key: "collectiveTrivia", totalGames: 12, totalHands: 132 },
+    ]);
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("You&#x27;ve played 12 games and 132 hands together.");
+    // Plain text, not a link — the no-`href` branch renders a `<div>`, never an `<a>`.
+    expect(html).toMatch(
+      /<div class="flex min-h-11 items-center rounded-\[var\(--radius\)\] border border-dashed[^"]*"><p[^>]*>You&#x27;ve played 12 games and 132 hands together\.<\/p><\/div>/,
+    );
   });
 });

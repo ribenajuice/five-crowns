@@ -26,7 +26,11 @@ catastrophe (the single worst hand anyone's scored), cleanest sheet, and biggest
 largest winning margin in any game) — each one dated and tappable through to its exact game. A new
 "Stats" catalogue at `/stats` adds an eleven-hand trend, a hand-by-hand villains table, the ten
 biggest single-hand disasters, and player and roster averages; player and roster pages each gain
-their own averages too. See `docs/STATUS.md`.
+their own averages too. **Milestone 4's first slice — fun facts — is also built and reviewed,
+on its own branch, not yet merged or deployed**: the board now occasionally shows a fun fact about
+the group's history below the archive line — something like "it's been 7 games since Sam last won"
+or a quick retelling of a random past night — a different one each time the page loads. See
+`docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app

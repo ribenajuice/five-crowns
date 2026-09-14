@@ -3362,6 +3362,77 @@ it, and the only board record that needs another screen's numbers to exist first
   clutch comeback, most consistent.
 - Whatever the old sheets teach us once they're all entered.
 
+### Milestone 4, first slice — Fun facts
+
+*Written 2026-09-15, out of a live conversation with the founder rather than a milestone kickoff.
+Numbered from **281**, after Stage 4's reserved 250–280, so it cannot collide with that stage
+whenever it lands — same discipline as the Stage 2/3 numbering fix. Scoped deliberately smaller than
+a Milestone 3 stage: this is flavour, not a record, and the founder's own words were "something like
+this can always be polished later."*
+
+**The idea, in the founder's words**: a fact that's different every time someone opens the app —
+"it's been {n} days since Player A won, maybe go gentle on them" was the seed. Not a new permanent
+record, not cached, not the same one every visit. ⚠️ **The founder explicitly said not to shy away
+from making someone the butt of the joke** — "this is for fun among friends" — which is a real,
+deliberate departure from criterion 202's "nothing characterises a player" rule. That rule stays for
+Milestone 3's rivalry stat (nemesis); it does **not** apply here, by the founder's own instruction,
+scoped to this feature only.
+
+281. ⚠️ **The mechanism.** A fixed pool of independent **fact generators**, each a pure function over
+     the archive returning **one fact or nothing** — nothing when it doesn't currently apply (no
+     floor to satisfy, no minimum sample required, matching M3's no-withholding stance: a generator
+     either has a true thing to say right now or it stays silent). On every page load, the board
+     computes the pool fresh, keeps whichever generators returned a fact, and shows **exactly one**,
+     chosen at random. Refresh the page, get another. **Nothing is cached or precomputed** — same
+     stance as every M3 screen, and the reason this is free to build: a random pick over data that's
+     already recomputed every load costs nothing extra.
+282. **The flatliner** — the longest run of *consecutive* zero-point hands one player had in one
+     game, stated with the player, the game's date, and the run length. ⚠️ **Distinct from cleanest
+     sheet** (criterion 231, M3 Stage 3): that counts *total* zero hands in a game; this counts the
+     longest unbroken *run* of them, a genuinely different number nothing else on the board shows.
+283. **Current drought** — for a player with at least one loss since their last win, "It's been {n}
+     games since {player} won." Skipped entirely (not shown as "0" or "never") for a player currently
+     on a win, and skipped for a player with no games at all. Counted in **games**, not calendar
+     days — a fortnight with no games played shouldn't read as a longer drought than it is.
+284. **The comeback nobody asked for** — a player's single worst hand on record, where their **very
+     next game**, in `played_on` order, was a win. States the disaster (points, hand, date) and the
+     very next result plainly, with no editorialising beyond the two facts sitting next to each
+     other. Skipped if no player's worst hand happens to precede a win.
+285. **The slump** — a player with at least 3 games whose mean score over their **last 3 games** is
+     worse than their **all-time average** by a stated margin, naming both numbers. Skipped for
+     anyone without 3 games, and skipped when nobody currently qualifies.
+286. **Rivalry needle** — for a pair of players with at least 3 games played together, the most
+     lopsided head-to-head record in the archive right now — reuses M3 Stage 2's `headToHead`
+     function (criterion 197) unchanged, never a second implementation of "finishes above." Skipped
+     if no pair has played together 3 or more times.
+287. **Overdue** — "It's been {n} games since anyone shared a win," archive-wide, once {n} clears a
+     stated threshold. Skipped below that threshold and skipped if no shared win has ever happened.
+288. **A random old night** — picks any one past game at random and simply restates its story: date,
+     venue or "no location", roster, winner(s), final score. No joke, no comparison — pure nostalgia,
+     and the one generator in the pool guaranteed available the moment a single game exists.
+289. **Collective trivia** — "You've played {n} games and {m} hands together" (hands = games × 11),
+     archive-wide. Targets nobody. Available from the first saved game.
+290. ⚠️ **The wording line, redrawn for this feature specifically.** Criterion 192's bans on
+     *checked/validated/verified/confirmed/correct* and *safe/protected/self-cancelling* still apply
+     — a fun fact never overclaims the accuracy of a number, same as every other screen. **Criterion
+     202's "nothing characterises a player" ban does not apply to this feature** — the founder asked
+     for real edge, and a generator may say a real, true, unflattering thing about a named player.
+     What still isn't allowed: **inventing or exaggerating a number**. Every fact states only what's
+     literally true of the stored rows — the honesty rule and the tone rule are separate, and only
+     the second one relaxes here.
+291. **No schema change, no new table, no cache.** Every generator reads rows M1–M3 already store.
+292. **Renders on the board** (`/`), near the top, below `ArchiveLine` — one fact, plainly stated,
+     with a tap-through to the game(s) it's drawn from wherever that's meaningful (all except
+     collective trivia and overdue, which have no single game to point at). An empty archive shows no
+     fact slot at all, not an empty one.
+293. **Bounded query count and a11y**, same discipline as every M3 screen: the fact pool's queries
+     don't grow with archive size, and the fact slot passes the existing audit at 375px and 1280px
+     with no colour-only signal.
+
+**Founder calls already made, recorded so they aren't relitigated**: the tone relaxation (criterion
+290) and the mechanism itself (a random pick from a pool, not a fixed rotation or a single "fact of
+the day") were both the founder's own framing, given directly rather than proposed by the team.
+
 ### v2 and beyond (not now)
 
 Exports, sharing outside the group, multiple groups, live scoring, anything that knows the rules.

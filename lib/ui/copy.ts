@@ -23,6 +23,7 @@ import type {
   SingleEventHolder,
   SingleEventRecordKey,
 } from "@/lib/board/queries";
+import type { FunFact } from "@/lib/scoring/facts";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -1013,7 +1014,8 @@ export const PERSONAL_RECORD_DROUGHT_UNIT = "games without a win";
  * own private copy of this same format; this one is exported because
  * `lib/ui/copy.ts` itself needs to embed a formatted date inside a fixed
  * sentence (a sample line, an instance row, an `aria-label` claim) rather than
- * just a component's own JSX.
+ * just a component's own JSX. Milestone 4's fun facts (below) reuse this same
+ * function rather than keeping a seventh private copy.
  */
 export function formatRecordDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`);
@@ -1238,3 +1240,145 @@ export const PERSONAL_GAME_CARD_WORST_LABEL = "Worst game";
 /** Roster page (criterion 244). */
 export const ROSTER_TABLE_AVERAGE_LABEL = "Table average";
 export const ROSTER_MEMBER_AVERAGE_LABEL = "avg";
+
+/* ----------------------------------- Milestone 4, first slice: fun facts */
+
+/**
+ * ⚠️ **Criterion 290's tone relaxation, in force below** — criterion 202's
+ * "nothing characterises a player" ban does not apply to this feature, at the
+ * founder's own request ("don't shy away from making someone the butt of the
+ * joke"). Criterion 192's wording ban (*checked, validated, verified,
+ * confirmed, correct, safe, protected, self-cancelling*) still applies —
+ * every sentence below states only arithmetic already performed by
+ * `lib/scoring/facts.ts`'s generators, nothing estimated, nothing implied
+ * about accuracy. `tests/ui/copy.test.ts` scans every one of these against
+ * both lists.
+ */
+
+/** The flatliner (criterion 282) — the player, the run length, the game's own date. */
+export function flatlinerSentence(
+  fact: Pick<Extract<FunFact, { key: "flatliner" }>, "displayName" | "runLength" | "playedOn">,
+): string {
+  const date = formatRecordDate(fact.playedOn);
+  const handWord = fact.runLength === 1 ? "hand" : "hands";
+  const straight = fact.runLength === 1 ? "" : " straight";
+  return `${fact.displayName} put up exactly nothing for ${fact.runLength} ${handWord}${straight} in the ${date} game.`;
+}
+
+/** Current drought (criterion 283) — verbatim seed ("It's been {n} games since
+ *  {player} won"), plus the founder's own aside ("maybe go gentle on them"). */
+export function currentDroughtSentence(
+  fact: Pick<Extract<FunFact, { key: "currentDrought" }>, "displayName" | "gamesSinceWin">,
+): string {
+  return `It's been ${fact.gamesSinceWin} ${gamesNoun(fact.gamesSinceWin)} since ${fact.displayName} last won. Maybe go easy on them.`;
+}
+
+/** The comeback nobody asked for (criterion 284) — the disaster, then the very
+ *  next result, no editorialising beyond the two facts sitting next to each other. */
+export function comebackSentence(
+  fact: Pick<
+    Extract<FunFact, { key: "comeback" }>,
+    "displayName" | "score" | "hand" | "worstPlayedOn"
+  >,
+): string {
+  const handName = handLabel(fact.hand) ?? `hand ${fact.hand}`;
+  const date = formatRecordDate(fact.worstPlayedOn);
+  return `${fact.displayName} gave up ${fact.score} points on the ${handName} hand in the ${date} game. Their very next game was a win.`;
+}
+
+/** The slump (criterion 285) — both averages named, one decimal place, same
+ *  convention `averageFinalScore` (`lib/scoring/records.ts`) already uses. */
+export function slumpSentence(
+  fact: Pick<
+    Extract<FunFact, { key: "slump" }>,
+    "displayName" | "recentAverage" | "allTimeAverage" | "gamesPlayed"
+  >,
+): string {
+  return `${fact.displayName}'s last three games are averaging ${fact.recentAverage.toFixed(1)}, well up from their ${fact.gamesPlayed}-game average of ${fact.allTimeAverage.toFixed(1)}.`;
+}
+
+/** Rivalry needle (criterion 286) — third-person restatement of
+ *  `nemesisDetailSentence`'s own phrasing, since this reuses the identical
+ *  `headToHead` numbers, just for a pair rather than "you." */
+export function rivalryNeedleSentence(
+  fact: Pick<
+    Extract<FunFact, { key: "rivalryNeedle" }>,
+    "dominantDisplayName" | "opponentDisplayName" | "aboveRate" | "gamesTogether"
+  >,
+): string {
+  const above = Math.round(fact.aboveRate * fact.gamesTogether);
+  const percent = (fact.aboveRate * 100).toFixed(1);
+  return `${fact.dominantDisplayName} finishes above ${fact.opponentDisplayName} in ${above} of their ${fact.gamesTogether} ${gamesNoun(fact.gamesTogether)} together (${percent}%).`;
+}
+
+/** Overdue (criterion 287) — verbatim, archive-wide, targets nobody. */
+export function overdueSentence(
+  fact: Pick<Extract<FunFact, { key: "overdue" }>, "gamesSinceSharedWin">,
+): string {
+  return `It's been ${fact.gamesSinceSharedWin} ${gamesNoun(fact.gamesSinceSharedWin)} since anyone shared a win.`;
+}
+
+/** A random old night (criterion 288) — date, venue or "no location," roster,
+ *  winner(s), final score. No joke, no comparison — pure nostalgia. Reuses
+ *  `winnerConfirmationDetail` for the winner clause, same "{A} won on {score}"
+ *  / "{A} and {B} shared it on {score}" grammar the save confirmation uses. */
+export function randomOldNightSentence(
+  fact: Pick<
+    Extract<FunFact, { key: "randomOldNight" }>,
+    "playedOn" | "locationName" | "rosterName" | "winners" | "winningScore"
+  >,
+): string {
+  const date = formatRecordDate(fact.playedOn);
+  const location = fact.locationName ?? NO_LOCATION_GAMES_LIST;
+  return `${date} — ${location}, with ${fact.rosterName}. ${winnerConfirmationDetail(fact.winners, fact.winningScore)}`;
+}
+
+/** Collective trivia (criterion 289) — verbatim, targets nobody. */
+export function collectiveTriviaSentence(
+  fact: Pick<Extract<FunFact, { key: "collectiveTrivia" }>, "totalGames" | "totalHands">,
+): string {
+  return `You've played ${fact.totalGames} ${gamesNoun(fact.totalGames)} and ${fact.totalHands} hands together.`;
+}
+
+/**
+ * A `FunFact`'s own display facts — the one sentence `FunFactCard` (`/`)
+ * renders, and where it taps through to (criterion 292): a single game for
+ * the flatliner, the comeback (its own worst game) and a random old night; a
+ * player's own page for a current drought or a slump (neither carries a
+ * `gameId` — the fact is about their ongoing record, not one game); the
+ * head-to-head drill-through already built for rivalry (Milestone 3 Stage 2)
+ * for the rivalry needle; and `null` — no tap-through at all — for overdue
+ * and collective trivia, both archive-wide facts with no single game or
+ * player to point at (criterion 292's own carve-out).
+ *
+ * An exhaustive `switch` over `FunFact.key` — adding a ninth generator
+ * without adding a case here fails the typecheck, not silently drops a fact.
+ */
+export interface FunFactDisplay {
+  sentence: string;
+  href: string | null;
+}
+
+export function funFactDisplay(fact: FunFact): FunFactDisplay {
+  switch (fact.key) {
+    case "flatliner":
+      return { sentence: flatlinerSentence(fact), href: `/games/${fact.gameId}` };
+    case "currentDrought":
+      return { sentence: currentDroughtSentence(fact), href: `/players/${fact.playerId}` };
+    case "comeback":
+      return { sentence: comebackSentence(fact), href: `/games/${fact.worstGameId}` };
+    case "slump":
+      return { sentence: slumpSentence(fact), href: `/players/${fact.playerId}` };
+    case "rivalryNeedle":
+      return {
+        sentence: rivalryNeedleSentence(fact),
+        href: `/players/${fact.dominantPlayerId}?opponent=${fact.opponentPlayerId}`,
+      };
+    case "overdue":
+      return { sentence: overdueSentence(fact), href: null };
+    case "randomOldNight":
+      return { sentence: randomOldNightSentence(fact), href: `/games/${fact.gameId}` };
+    case "collectiveTrivia":
+      return { sentence: collectiveTriviaSentence(fact), href: null };
+  }
+}
