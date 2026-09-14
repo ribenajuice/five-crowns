@@ -44,6 +44,10 @@ vi.mock("@/lib/players/rivalry", () => ({
   getPlayerStreaks: vi.fn(),
 }));
 
+vi.mock("@/lib/players/distributions", () => ({
+  getPlayerDistributions: vi.fn(),
+}));
+
 type FragmentElement = { type: unknown; props: { children: unknown[] } };
 
 const noSearchParams = Promise.resolve({});
@@ -62,6 +66,14 @@ const NO_STREAKS = {
  *  fix, not a behavior change) — its return value is otherwise irrelevant to
  *  these tests since the other three are mocked directly regardless of what
  *  they're passed. */
+const NO_DISTRIBUTIONS = {
+  average: null as { average: number; gamesPlayed: number } | null,
+  handProfile: [] as { hand: number; label: string; mean: number }[],
+  worstHands: [] as string[],
+  bestGame: null as { score: number; games: unknown[] } | null,
+  worstGame: null as { score: number; games: unknown[] } | null,
+};
+
 async function mockEmptyRivalry() {
   const { getPlayerGameFacts, getPlayerHeadToHead, nemesisFromHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
     await import("@/lib/players/rivalry");
@@ -70,6 +82,11 @@ async function mockEmptyRivalry() {
   vi.mocked(nemesisFromHeadToHead).mockReturnValue(NO_NEMESIS);
   vi.mocked(getPlayerRosterStats).mockResolvedValue([]);
   vi.mocked(getPlayerStreaks).mockResolvedValue(NO_STREAKS);
+
+  const { getPlayerDistributions } = await import("@/lib/players/distributions");
+  vi.mocked(getPlayerDistributions).mockResolvedValue(
+    NO_DISTRIBUTIONS as unknown as Awaited<ReturnType<typeof getPlayerDistributions>>,
+  );
 }
 
 beforeEach(async () => {
@@ -760,5 +777,125 @@ describe("/players/{id}?streak= — the personal streak/drought drill-through (c
     };
     expect(appBar.props.title).toBe("The drought — Sam");
     expect(appBar.props.context).toBe("2 games without a win");
+  });
+});
+
+describe("/players/{id} — distributions (M3 Stage 3, criterion 243)", () => {
+  it("renders average final score, the eleven-hand profile with the worst hand marked, and best/worst game", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerDistributions } = await import("@/lib/players/distributions");
+    vi.mocked(getPlayerDistributions).mockResolvedValueOnce({
+      average: { average: 61.4, gamesPlayed: 9 },
+      handProfile: [
+        { hand: 1, label: "3s", mean: 3.4 },
+        { hand: 11, label: "Kings", mean: 15.5 },
+      ],
+      worstHands: ["Kings"],
+      bestGame: {
+        score: 39,
+        games: [
+          { id: "g10", playedOn: "2026-07-12", locationName: null, rosterId: "r1", rosterName: "Sunday crew", winners: ["Sam"] },
+        ],
+      },
+      worstGame: {
+        score: 142,
+        games: [
+          { id: "g11", playedOn: "2026-09-05", locationName: null, rosterId: "r1", rosterName: "Sunday crew", winners: ["Player B"] },
+        ],
+      },
+    });
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Average final score");
+    expect(html).toContain("61.4");
+    expect(html).toContain("from 9 games");
+
+    expect(html).toContain("Eleven-hand profile");
+    expect(html).toContain("3.4");
+    expect(html).toContain("15.5");
+
+    expect(html).toContain("Best and worst game");
+    expect(html).toContain("Best game");
+    expect(html).toContain("39");
+    expect(html).toContain("/games/g10");
+    expect(html).toContain("Worst game");
+    expect(html).toContain("142");
+    expect(html).toContain("/games/g11");
+  });
+
+  it("⚠️ criterion 245: a one-game player still shows every one of these three, with no floor", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce({
+      id: "p1",
+      displayName: "Sam",
+      gamesPlayed: 1,
+      wins: 1,
+      winRate: 1,
+      games: [],
+    });
+
+    const { getPlayerDistributions } = await import("@/lib/players/distributions");
+    vi.mocked(getPlayerDistributions).mockResolvedValueOnce({
+      average: { average: 40, gamesPlayed: 1 },
+      handProfile: [{ hand: 1, label: "3s", mean: 4 }],
+      worstHands: ["3s"],
+      bestGame: {
+        score: 40,
+        games: [{ id: "g1", playedOn: "2026-01-01", locationName: null, rosterId: "r1", rosterName: "Thursday crew", winners: ["Sam"] }],
+      },
+      worstGame: {
+        score: 40,
+        games: [{ id: "g1", playedOn: "2026-01-01", locationName: null, rosterId: "r1", rosterName: "Thursday crew", winners: ["Sam"] }],
+      },
+    });
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("from 1 game<");
+    expect(html).toContain("Best game");
+    expect(html).toContain("Worst game");
+  });
+
+  it("a personal best repeated across two games links to the newest of them", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerDistributions } = await import("@/lib/players/distributions");
+    vi.mocked(getPlayerDistributions).mockResolvedValueOnce({
+      average: { average: 50, gamesPlayed: 2 },
+      handProfile: [],
+      worstHands: [],
+      bestGame: {
+        score: 40,
+        games: [
+          { id: "g-newest", playedOn: "2026-02-08", locationName: null, rosterId: "r1", rosterName: "Thursday crew", winners: ["Sam"] },
+          { id: "g-oldest", playedOn: "2026-02-01", locationName: null, rosterId: "r1", rosterName: "Thursday crew", winners: ["Sam"] },
+        ],
+      },
+      worstGame: null,
+    });
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("/games/g-newest");
+    expect(html).not.toContain("/games/g-oldest");
   });
 });

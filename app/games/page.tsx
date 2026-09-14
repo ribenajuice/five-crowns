@@ -3,6 +3,7 @@ import { AppBar } from "@/components/AppBar";
 import { ButtonLink } from "@/components/Button";
 import { GameRow } from "@/components/GameRow";
 import { IndexNav } from "@/components/IndexNav";
+import { StatsNavLink } from "@/components/StatsNavLink";
 import { listGames } from "@/lib/games/queries";
 
 /**
@@ -26,6 +27,9 @@ export default async function GamesPage() {
               the three index pages are worth reaching before the archive has a
               single game in it (docs/DESIGN-SYSTEM.md § "Reaching these pages"). */}
           <IndexNav />
+          {/* Criterion 236: reachable in one tap from the games list too, same
+              "always reachable" precedent as IndexNav above it. */}
+          <StatsNavLink />
           {games.length === 0 ? (
             <div className="rounded-[var(--radius)] border border-line bg-surface p-6">
               <p className="mb-2 font-bold">Nothing in the book yet.</p>

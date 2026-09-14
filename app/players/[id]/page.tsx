@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { requireGroupSession } from "@/lib/auth/session";
+import { getPlayerDistributions } from "@/lib/players/distributions";
 import { getPlayerPage, type PlayerPage as PlayerPageData } from "@/lib/players/queries";
 import {
   getPlayerGameFacts,
@@ -16,8 +17,10 @@ import { Banner } from "@/components/Banner";
 import { ButtonLink } from "@/components/Button";
 import { ByRosterRow } from "@/components/ByRosterRow";
 import { GameRow } from "@/components/GameRow";
+import { HandTrendBars } from "@/components/HandTrendBars";
 import { HeadToHeadRow } from "@/components/HeadToHeadRow";
 import { NemesisCard } from "@/components/NemesisCard";
+import { PersonalGameCard } from "@/components/PersonalGameCard";
 import { PersonalRecordCard } from "@/components/PersonalRecordCard";
 import { PlayerGameRow } from "@/components/PlayerGameRow";
 import { StatBlock } from "@/components/StatBlock";
@@ -25,12 +28,17 @@ import {
   MERGE_ENTRY_POINT_LABEL,
   MERGE_SUCCESS_TITLE,
   NEMESIS_CARD_TITLE,
+  PERSONAL_GAME_CARD_BEST_LABEL,
+  PERSONAL_GAME_CARD_WORST_LABEL,
   PERSONAL_RECORD_DROUGHT_TITLE,
   PERSONAL_RECORD_DROUGHT_UNIT,
   PERSONAL_RECORD_STREAK_TITLE,
   PERSONAL_RECORD_STREAK_UNIT,
+  PLAYER_AVERAGE_FINAL_SCORE_LABEL,
+  PLAYER_BEST_WORST_GAME_HEADING,
   PLAYER_BY_ROSTER_HEADING,
   PLAYER_BY_ROSTER_SAMPLE_LINE,
+  PLAYER_HAND_PROFILE_HEADING,
   PLAYER_HEAD_TO_HEAD_EMPTY_SENTENCE,
   PLAYER_HEAD_TO_HEAD_HEADING,
   PLAYER_HEAD_TO_HEAD_SAMPLE_LINE,
@@ -40,13 +48,16 @@ import {
   STAT_LABEL_WINS,
   STAT_LABEL_WIN_RATE,
   drillThroughHeading,
+  formatRecordDate,
   formatWinRatePercent,
   headToHeadDrillThroughHeading,
   headToHeadTogetherCaption,
   mergeSuccessBodyPlayer,
   nemesisDetailSentence,
   playerGamesHeading,
+  playerHandProfileSampleLine,
   playerZeroGamesBody,
+  recordSampleLine,
   rosterFoldNote,
   statSampleCaption,
 } from "@/lib/ui/copy";
@@ -211,10 +222,11 @@ function nemesisFacts(playerId: string, rows: readonly HeadToHeadRowData[]): Nem
  */
 async function renderPopulatedBody(playerId: string, player: PlayerPageData) {
   const facts = await getPlayerGameFacts(playerId);
-  const [headToHeadRows, rosterStats, streaks] = await Promise.all([
+  const [headToHeadRows, rosterStats, streaks, distributions] = await Promise.all([
     getPlayerHeadToHead(playerId, facts),
     getPlayerRosterStats(playerId, facts),
     getPlayerStreaks(playerId, facts),
+    getPlayerDistributions(playerId, facts),
   ]);
   const nemesis = nemesisFacts(playerId, headToHeadRows);
 
@@ -310,6 +322,71 @@ async function renderPopulatedBody(playerId: string, player: PlayerPageData) {
             href={streaks.drought.games.length > 0 ? `/players/${playerId}?streak=drought` : null}
             claim={`${PERSONAL_RECORD_DROUGHT_TITLE}: ${player.displayName}, ${streaks.drought.length} ${PERSONAL_RECORD_DROUGHT_UNIT}`}
           />
+        </div>
+      </div>
+
+      {/*
+       * M3 Stage 3 (criterion 243): average final score, the eleven-hand
+       * profile and this player's own best/worst game — appended below
+       * every one of Stage 2's sections above, nothing above them moves or
+       * is re-explained. A one-game player still shows every one of these
+       * three, with "1 game" or that game's own date beside it (criterion
+       * 245: no floor, nobody set aside), since `distributions` is only
+       * ever the empty shape for a *zero*-game player, and this whole
+       * function only runs once `player.gamesPlayed > 0`.
+       */}
+      <div>
+        <h2 className="mb-1 font-display text-lg font-bold">{PLAYER_AVERAGE_FINAL_SCORE_LABEL}</h2>
+        <div className="max-w-[220px]">
+          <StatBlock
+            label={PLAYER_AVERAGE_FINAL_SCORE_LABEL}
+            value={distributions.average ? distributions.average.average.toFixed(1) : "–"}
+            sample={
+              distributions.average
+                ? recordSampleLine([
+                    { displayName: player.displayName, gamesPlayed: distributions.average.gamesPlayed },
+                  ])
+                : undefined
+            }
+          />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-1 font-display text-lg font-bold">{PLAYER_HAND_PROFILE_HEADING}</h2>
+        <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+          <p className="mb-3 text-sm text-text-muted">
+            {playerHandProfileSampleLine(distributions.average?.gamesPlayed ?? 0)}
+          </p>
+          <HandTrendBars hands={distributions.handProfile} worstHands={distributions.worstHands} />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-1 font-display text-lg font-bold">{PLAYER_BEST_WORST_GAME_HEADING}</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {distributions.bestGame ? (
+            <PersonalGameCard
+              label={PERSONAL_GAME_CARD_BEST_LABEL}
+              score={distributions.bestGame.score}
+              date={formatRecordDate(distributions.bestGame.games[0]!.playedOn)}
+              href={`/games/${distributions.bestGame.games[0]!.id}`}
+              claim={`${PERSONAL_GAME_CARD_BEST_LABEL}: ${distributions.bestGame.score}, ${formatRecordDate(
+                distributions.bestGame.games[0]!.playedOn,
+              )}`}
+            />
+          ) : null}
+          {distributions.worstGame ? (
+            <PersonalGameCard
+              label={PERSONAL_GAME_CARD_WORST_LABEL}
+              score={distributions.worstGame.score}
+              date={formatRecordDate(distributions.worstGame.games[0]!.playedOn)}
+              href={`/games/${distributions.worstGame.games[0]!.id}`}
+              claim={`${PERSONAL_GAME_CARD_WORST_LABEL}: ${distributions.worstGame.score}, ${formatRecordDate(
+                distributions.worstGame.games[0]!.playedOn,
+              )}`}
+            />
+          ) : null}
         </div>
       </div>
 
