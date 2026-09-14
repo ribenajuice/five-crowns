@@ -37,6 +37,7 @@ vi.mock("@/lib/players/queries", () => ({
 }));
 
 vi.mock("@/lib/players/rivalry", () => ({
+  getPlayerGameFacts: vi.fn(),
   getPlayerHeadToHead: vi.fn(),
   nemesisFromHeadToHead: vi.fn(),
   getPlayerRosterStats: vi.fn(),
@@ -55,10 +56,16 @@ const NO_STREAKS = {
 
 /** Sets every Stage 2 rivalry function to its empty/no-holder default —
  *  called before every test so the pre-Stage-2 tests below need no changes
- *  to keep passing, and new tests only override what they care about. */
+ *  to keep passing, and new tests only override what they care about.
+ *  `getPlayerGameFacts` is mocked to `[]` here too: the populated body now
+ *  fetches it once and threads it through to the other three (a query-count
+ *  fix, not a behavior change) — its return value is otherwise irrelevant to
+ *  these tests since the other three are mocked directly regardless of what
+ *  they're passed. */
 async function mockEmptyRivalry() {
-  const { getPlayerHeadToHead, nemesisFromHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
+  const { getPlayerGameFacts, getPlayerHeadToHead, nemesisFromHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
     await import("@/lib/players/rivalry");
+  vi.mocked(getPlayerGameFacts).mockResolvedValue([]);
   vi.mocked(getPlayerHeadToHead).mockResolvedValue([]);
   vi.mocked(nemesisFromHeadToHead).mockReturnValue(NO_NEMESIS);
   vi.mocked(getPlayerRosterStats).mockResolvedValue([]);
@@ -258,6 +265,26 @@ function populatedPlayer() {
   };
 }
 
+describe("/players/{id} — fetches game facts once, not once per rivalry section (code review fix)", () => {
+  it("calls getPlayerGameFacts exactly once and passes its result into each of the three rivalry functions", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerGameFacts, getPlayerHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
+      await import("@/lib/players/rivalry");
+    const facts = [{ gameId: "g1" }] as unknown as Awaited<ReturnType<typeof getPlayerGameFacts>>;
+    vi.mocked(getPlayerGameFacts).mockResolvedValueOnce(facts);
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    await PlayerPage({ params: Promise.resolve({ id: "p1" }), searchParams: noSearchParams });
+
+    expect(getPlayerGameFacts).toHaveBeenCalledTimes(1);
+    expect(getPlayerHeadToHead).toHaveBeenCalledWith("p1", facts);
+    expect(getPlayerRosterStats).toHaveBeenCalledWith("p1", facts);
+    expect(getPlayerStreaks).toHaveBeenCalledWith("p1", facts);
+  });
+});
+
 describe("/players/{id} — Head-to-head section (M3 Stage 2, criteria 203–204)", () => {
   it("renders one row per opponent, in the order the backend already sorted", async () => {
     const { getPlayerPage } = await import("@/lib/players/queries");
@@ -411,6 +438,79 @@ describe("/players/{id} — Nemesis card (M3 Stage 2, criteria 199–202, founde
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("Jo &amp; Sam");
+    expect(html).toContain("4 of your 6 games together");
+    expect(html).toContain("6 of your 9 games together");
+  });
+
+  it("a 3-way tied nemesis uses the app's joint-list grammar ('A, B & C'), not a bare '&' chain", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    // All three tie at the same above-rate, 2/3, which `nemesis()` rounds
+    // to the same 66.7% (`Math.round(aboveRate * 1000) / 10`) despite
+    // different raw counts — a genuine three-way tie, not a coincidence
+    // of the mock.
+    const { getPlayerHeadToHead, nemesisFromHeadToHead } = await import("@/lib/players/rivalry");
+    const rows = [
+      {
+        opponentId: "p2",
+        displayName: "Zoe",
+        gamesTogether: 3,
+        wins: 1,
+        opponentWins: 2,
+        winRate: 1 / 3,
+        opponentWinRate: 2 / 3,
+        aboveRate: 1 / 3,
+        opponentAboveRate: 2 / 3,
+        games: [],
+      },
+      {
+        opponentId: "p3",
+        displayName: "Amy",
+        gamesTogether: 6,
+        wins: 2,
+        opponentWins: 4,
+        winRate: 2 / 6,
+        opponentWinRate: 4 / 6,
+        aboveRate: 2 / 6,
+        opponentAboveRate: 4 / 6,
+        games: [],
+      },
+      {
+        opponentId: "p4",
+        displayName: "Mia",
+        gamesTogether: 9,
+        wins: 3,
+        opponentWins: 6,
+        winRate: 3 / 9,
+        opponentWinRate: 6 / 9,
+        aboveRate: 3 / 9,
+        opponentAboveRate: 6 / 9,
+        games: [],
+      },
+    ];
+    vi.mocked(getPlayerHeadToHead).mockResolvedValueOnce(rows);
+    // `nemesis()` returns holders alphabetical (criterion 181's grammar),
+    // regardless of input order — mocked here matching that contract.
+    vi.mocked(nemesisFromHeadToHead).mockReturnValueOnce({
+      holders: [
+        { playerId: "p3", displayName: "Amy", gamesTogether: 6 },
+        { playerId: "p4", displayName: "Mia", gamesTogether: 9 },
+        { playerId: "p2", displayName: "Zoe", gamesTogether: 3 },
+      ],
+      aboveRatePercent: 66.7,
+    });
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Amy, Mia &amp; Zoe");
+    expect(html).not.toContain("Amy &amp; Mia &amp; Zoe");
+    expect(html).toContain("2 of your 3 games together");
     expect(html).toContain("4 of your 6 games together");
     expect(html).toContain("6 of your 9 games together");
   });

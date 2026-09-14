@@ -13,6 +13,7 @@
  * Pure and dependency-free, same as the rest of `lib/scoring`.
  */
 
+import { compareOldestFirst } from "./chronology";
 import { compareDisplayNames } from "./names";
 import { determineWinners, winningScore, type PlayerScore } from "./winners";
 
@@ -144,11 +145,7 @@ const EMPTY_STREAK: Streak = { length: 0, gameIds: [] };
  * drill-through points at.
  */
 export function longestStreak(games: readonly StreakGame[]): Streak {
-  const sorted = [...games].sort((a, b) => {
-    if (a.playedOn !== b.playedOn) return a.playedOn < b.playedOn ? -1 : 1;
-    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
-    return 0;
-  });
+  const sorted = [...games].sort(compareOldestFirst);
 
   let best: Streak = EMPTY_STREAK;
   let current: string[] = [];

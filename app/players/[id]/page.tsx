@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { requireGroupSession } from "@/lib/auth/session";
 import { getPlayerPage, type PlayerPage as PlayerPageData } from "@/lib/players/queries";
 import {
+  getPlayerGameFacts,
   getPlayerHeadToHead,
   getPlayerRosterStats,
   getPlayerStreaks,
   nemesisFromHeadToHead,
   type HeadToHeadRow as HeadToHeadRowData,
 } from "@/lib/players/rivalry";
+import { rosterDisplayName } from "@/lib/scoring";
 import { AppBar } from "@/components/AppBar";
 import { Banner } from "@/components/Banner";
 import { ButtonLink } from "@/components/Button";
@@ -175,7 +177,7 @@ function nemesisFacts(playerId: string, rows: readonly HeadToHeadRowData[]): Nem
     return { opponentName: null, detail: null, href: null };
   }
 
-  const opponentName = result.holders.map((h) => h.displayName).join(" & ");
+  const opponentName = rosterDisplayName(result.holders.map((h) => h.displayName));
   const primaryRow = rows.find((r) => r.opponentId === result.holders[0]!.playerId)!;
 
   // Every joint holder shares the same above-rate percent (criterion 199) but
@@ -200,12 +202,19 @@ function nemesisFacts(playerId: string, rows: readonly HeadToHeadRowData[]): Nem
  * The populated player page's own body (criteria 133–136, 203–212): the
  * headline stat grid (unchanged since M2), the merge entry point, then the
  * three new rivalry sections, then this player's own games list.
+ *
+ * `getPlayerGameFacts` is fetched exactly once here and threaded through to
+ * all three rivalry functions below — each of them would otherwise re-fetch
+ * the same rows itself, tripling the query count for no reason (the same
+ * "fetch once, compute several things from the one result" shape
+ * `lib/board/queries.ts`'s `getBoard()` already uses).
  */
 async function renderPopulatedBody(playerId: string, player: PlayerPageData) {
+  const facts = await getPlayerGameFacts(playerId);
   const [headToHeadRows, rosterStats, streaks] = await Promise.all([
-    getPlayerHeadToHead(playerId),
-    getPlayerRosterStats(playerId),
-    getPlayerStreaks(playerId),
+    getPlayerHeadToHead(playerId, facts),
+    getPlayerRosterStats(playerId, facts),
+    getPlayerStreaks(playerId, facts),
   ]);
   const nemesis = nemesisFacts(playerId, headToHeadRows);
 

@@ -9,6 +9,7 @@
  * final score or a winner computed by the browser.
  */
 
+export * from "./chronology";
 export * from "./constants";
 export * from "./monotonicity";
 export * from "./hands";

@@ -34,6 +34,7 @@ import { game, gamePlayer, location, player, roster, roundScore } from "@/lib/db
 import {
   averageFinalScore,
   compareDisplayNames,
+  compareNewestFirst,
   determineWinners,
   longestDrought,
   longestStreak,
@@ -253,12 +254,22 @@ export async function getBoard(): Promise<Board> {
     }
   }
 
+  // The same games, reshaped once into exactly what `longestStreak` /
+  // `longestDrought` need — reused by both the streak and the drought below,
+  // rather than each re-mapping every player's games into this shape on its
+  // own.
+  const streakGamesByPlayer = new Map<string, StreakGame[]>();
+  for (const [playerId, games] of gamesByPlayer) {
+    streakGamesByPlayer.set(
+      playerId,
+      games.map((g) => ({ gameId: g.gameId, playedOn: g.playedOn, createdAt: g.createdAt, won: g.won })),
+    );
+  }
+
+  // Delegates to `lib/scoring`'s one shared chronological comparator — this
+  // module's own job is just resolving a game id to the row it needs.
   function sortNewestFirst(a: string, b: string): number {
-    const ga = gamesById.get(a)!;
-    const gb = gamesById.get(b)!;
-    if (ga.playedOn !== gb.playedOn) return ga.playedOn < gb.playedOn ? 1 : -1;
-    if (ga.createdAt !== gb.createdAt) return ga.createdAt < gb.createdAt ? 1 : -1;
-    return 0;
+    return compareNewestFirst(gamesById.get(a)!, gamesById.get(b)!);
   }
 
   function toRecordGame(
@@ -353,13 +364,7 @@ export async function getBoard(): Promise<Board> {
 
   // --------------------------------------------------------- most wins in a row
   const streakByPlayer = new Map<string, { length: number; gameIds: string[] }>();
-  for (const [playerId, games] of gamesByPlayer) {
-    const streakGames: StreakGame[] = games.map((g) => ({
-      gameId: g.gameId,
-      playedOn: g.playedOn,
-      createdAt: g.createdAt,
-      won: g.won,
-    }));
+  for (const [playerId, streakGames] of streakGamesByPlayer) {
     streakByPlayer.set(playerId, longestStreak(streakGames));
   }
   const streakLengthByPlayer = new Map<string, number>();
@@ -400,13 +405,7 @@ export async function getBoard(): Promise<Board> {
   // this map empty, and `buildRecord` reports the no-holder case on its own.
   const droughtByPlayer = new Map<string, { length: number; gameIds: string[] }>();
   const droughtLengthByPlayer = new Map<string, number>();
-  for (const [playerId, games] of gamesByPlayer) {
-    const streakGames: StreakGame[] = games.map((g) => ({
-      gameId: g.gameId,
-      playedOn: g.playedOn,
-      createdAt: g.createdAt,
-      won: g.won,
-    }));
+  for (const [playerId, streakGames] of streakGamesByPlayer) {
     const drought = longestDrought(streakGames);
     droughtByPlayer.set(playerId, drought);
     if (drought.length > 0) droughtLengthByPlayer.set(playerId, drought.length);

@@ -580,3 +580,42 @@ describe("the query count does not grow with the archive or the group (criterion
     expect(queriesAt8).toBe(queriesAt4);
   });
 });
+
+describe("fetching game facts once and threading them through (code review fix)", () => {
+  it("⚠️ calling all three of head-to-head, roster stats and streaks separately triples the query count that passing pre-fetched facts avoids", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 50 },
+        { playerId: players["Bo"]!, finalScore: 80 },
+      ],
+    });
+
+    const { getPlayerGameFacts, getPlayerHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
+      await import("@/lib/players/rivalry");
+
+    // Each function fetching its own facts: three independent trips.
+    selectCallCount = 0;
+    await getPlayerHeadToHead(players["Amy"]!);
+    await getPlayerRosterStats(players["Amy"]!);
+    await getPlayerStreaks(players["Amy"]!);
+    const standaloneQueries = selectCallCount;
+
+    // Fetched once and threaded through: exactly one of those three trips.
+    selectCallCount = 0;
+    const facts = await getPlayerGameFacts(players["Amy"]!);
+    const oneFetchQueries = selectCallCount;
+    selectCallCount = 0;
+    await getPlayerHeadToHead(players["Amy"]!, facts);
+    await getPlayerRosterStats(players["Amy"]!, facts);
+    await getPlayerStreaks(players["Amy"]!, facts);
+    const threadedQueries = oneFetchQueries + selectCallCount;
+
+    // Passing the already-fetched facts through issues no further queries at all.
+    expect(selectCallCount).toBe(0);
+    expect(threadedQueries).toBe(oneFetchQueries);
+    expect(threadedQueries * 3).toBe(standaloneQueries);
+  });
+});

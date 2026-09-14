@@ -3,14 +3,20 @@
  *
  * Head-to-head, nemesis, per-roster win rate and streak-in-context, all
  * gathered from one player's own point of view. `getPlayerGameFacts` is this
- * module's one entry point into the database: **two queries** (this player's
- * own games with their roster/location, and every `game_player` row for
- * those games), then head-to-head, nemesis, the by-roster breakdown and the
- * streak/drought pair are all worked out in memory from those rows using
- * `lib/scoring`'s pure definitions — never a per-opponent, per-roster or
- * per-game query in a loop (criterion 221). Bounded by this player's own
- * game count, which does not grow with the size of the archive or the size
- * of the group.
+ * module's one entry point into the database: **two queries, run
+ * concurrently** (this player's own games with their roster/location, and
+ * every `game_player` row for those games), then head-to-head, nemesis, the
+ * by-roster breakdown and the streak/drought pair are all worked out in
+ * memory from those rows using `lib/scoring`'s pure definitions — never a
+ * per-opponent, per-roster or per-game query in a loop (criterion 221).
+ * Bounded by this player's own game count, which does not grow with the size
+ * of the archive or the size of the group.
+ *
+ * `getPlayerHeadToHead`, `getPlayerRosterStats` and `getPlayerStreaks` each
+ * accept an already-fetched result of `getPlayerGameFacts` as an optional
+ * second argument, so a caller needing more than one of them — the player
+ * page's own populated body — fetches this once and threads it through,
+ * rather than each function independently re-querying the same rows.
  *
  * ⚠️ **Nothing is cached** (criterion 220): every export here reads
  * `game_player.final_score` and the game/roster rows at call time, so a
@@ -26,6 +32,7 @@ import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster } from "@/lib/db/schema";
 import {
   compareDisplayNames,
+  compareNewestFirst,
   determineWinners,
   headToHead as computeHeadToHead,
   longestDrought,
@@ -47,7 +54,7 @@ interface Participant {
   finalScore: number;
 }
 
-interface PlayerGameFact {
+export interface PlayerGameFact {
   gameId: string;
   playedOn: string;
   createdAt: string;
@@ -89,19 +96,22 @@ function toRecordGame(fact: PlayerGameFact): PlayerRecordGame {
   };
 }
 
-function sortNewestFirst(a: PlayerGameFact, b: PlayerGameFact): number {
-  if (a.playedOn !== b.playedOn) return a.playedOn < b.playedOn ? 1 : -1;
-  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
-  return 0;
-}
-
 /**
  * This player's own games, each carrying every other participant's own
  * score and outcome — the one fetch every function below is built from.
  * `[]` for a player who exists but has no games (criterion 136's own case),
  * never an error.
+ *
+ * ⚠️ **Exported so a caller needing more than one of `getPlayerHeadToHead` /
+ * `getPlayerRosterStats` / `getPlayerStreaks` for the same player can fetch
+ * this once and pass it to each** — every one of those three accepts the
+ * result of this call as an optional second argument and only calls this
+ * itself when one isn't given. `app/players/[id]/page.tsx`'s populated body
+ * does exactly that: one call here instead of three, the same "fetch once,
+ * compute several things from the one result" shape `lib/board/queries.ts`'s
+ * `getBoard()` already uses for its own three queries.
  */
-async function getPlayerGameFacts(playerId: string): Promise<PlayerGameFact[]> {
+export async function getPlayerGameFacts(playerId: string): Promise<PlayerGameFact[]> {
   const db = getDb();
 
   const participations = await db
@@ -113,34 +123,38 @@ async function getPlayerGameFacts(playerId: string): Promise<PlayerGameFact[]> {
 
   const gameIds = participations.map((p) => p.gameId);
 
-  // Query 1 of 2: this player's own games, with location and roster names.
-  const gameRows = await db
-    .select({
-      id: game.id,
-      playedOn: game.playedOn,
-      createdAt: game.createdAt,
-      locationName: location.name,
-      rosterId: game.rosterId,
-      rosterName: roster.name,
-    })
-    .from(game)
-    .leftJoin(location, eq(game.locationId, location.id))
-    .innerJoin(roster, eq(game.rosterId, roster.id))
-    .where(inArray(game.id, gameIds));
-
-  // Query 2 of 2: every participant (this player and every opponent) in
-  // those same games — needed to determine each game's own winner(s), which
-  // "finishing above" (198) is deliberately not the same thing as.
-  const participantRows = await db
-    .select({
-      gameId: gamePlayer.gameId,
-      playerId: gamePlayer.playerId,
-      displayName: player.displayName,
-      finalScore: gamePlayer.finalScore,
-    })
-    .from(gamePlayer)
-    .innerJoin(player, eq(gamePlayer.playerId, player.id))
-    .where(inArray(gamePlayer.gameId, gameIds));
+  // Queries 1 and 2 of 2: this player's own games (with location and roster
+  // names) and every participant (this player and every opponent) in those
+  // same games — needed to determine each game's own winner(s), which
+  // "finishing above" (198) is deliberately not the same thing as. Neither
+  // depends on the other's result — only on `gameIds` above — so they run
+  // concurrently, the same pattern `lib/board/queries.ts`'s `getBoard()`
+  // already uses for its own two independent queries.
+  const [gameRows, participantRows] = await Promise.all([
+    db
+      .select({
+        id: game.id,
+        playedOn: game.playedOn,
+        createdAt: game.createdAt,
+        locationName: location.name,
+        rosterId: game.rosterId,
+        rosterName: roster.name,
+      })
+      .from(game)
+      .leftJoin(location, eq(game.locationId, location.id))
+      .innerJoin(roster, eq(game.rosterId, roster.id))
+      .where(inArray(game.id, gameIds)),
+    db
+      .select({
+        gameId: gamePlayer.gameId,
+        playerId: gamePlayer.playerId,
+        displayName: player.displayName,
+        finalScore: gamePlayer.finalScore,
+      })
+      .from(gamePlayer)
+      .innerJoin(player, eq(gamePlayer.playerId, player.id))
+      .where(inArray(gamePlayer.gameId, gameIds)),
+  ]);
 
   const byGame = new Map<string, Participant[]>();
   for (const row of participantRows) {
@@ -206,9 +220,17 @@ export interface HeadToHeadRow {
  * same call from A's page and from B's page reads mirrored input, so
  * criterion 205 ("the same pair reads the same from either side") holds by
  * construction, not by convention.
+ *
+ * `gameFacts` is `getPlayerGameFacts(playerId)`'s own result — pass it in
+ * when the caller already has it (the player page's populated body does, to
+ * avoid fetching it three times over); left out, this fetches it itself, so
+ * every existing standalone call site keeps working unchanged.
  */
-export async function getPlayerHeadToHead(playerId: string): Promise<HeadToHeadRow[]> {
-  const facts = await getPlayerGameFacts(playerId);
+export async function getPlayerHeadToHead(
+  playerId: string,
+  gameFacts?: readonly PlayerGameFact[],
+): Promise<HeadToHeadRow[]> {
+  const facts = gameFacts ?? (await getPlayerGameFacts(playerId));
 
   const byOpponent = new Map<
     string,
@@ -246,7 +268,7 @@ export async function getPlayerHeadToHead(playerId: string): Promise<HeadToHeadR
       opponentWinRate: h2h.b.winRate,
       aboveRate: h2h.a.aboveRate,
       opponentAboveRate: h2h.b.aboveRate,
-      games: [...entry.facts].sort(sortNewestFirst).map(toRecordGame),
+      games: [...entry.facts].sort(compareNewestFirst).map(toRecordGame),
     });
   }
 
@@ -277,9 +299,15 @@ export function nemesisFromHeadToHead(rows: readonly HeadToHeadRow[]): NemesisRe
 
 /**
  * Standalone convenience wrapper — fetches head-to-head itself. Equivalent
- * to `nemesisFromHeadToHead(await getPlayerHeadToHead(playerId))`; useful for
- * a caller that only wants the nemesis and nothing else, at the cost of its
- * own pair of queries.
+ * to `nemesisFromHeadToHead(await getPlayerHeadToHead(playerId))`.
+ *
+ * ⚠️ Not used by the player page itself, which already has head-to-head rows
+ * in hand and calls `nemesisFromHeadToHead` directly rather than re-deriving
+ * them here — that's the "prefer this over `getPlayerNemesis`" note above.
+ * Kept as a real, tested entry point for a standalone caller (a script, a
+ * future admin tool, this module's own tests) that wants just the nemesis
+ * and has no head-to-head rows of its own to hand it, at the cost of its own
+ * pair of queries.
  */
 export async function getPlayerNemesis(playerId: string): Promise<NemesisResult> {
   return nemesisFromHeadToHead(await getPlayerHeadToHead(playerId));
@@ -313,9 +341,15 @@ export interface PlayerRosterStat {
  * `gamesPlayed` therefore always sum to exactly `getPlayerPage`'s
  * `gamesPlayed` for the same player (criterion 207), which is the provable
  * invariant criterion 210 asks QA to check.
+ *
+ * `gameFacts` is `getPlayerGameFacts(playerId)`'s own result — pass it in
+ * when the caller already has it; left out, this fetches it itself.
  */
-export async function getPlayerRosterStats(playerId: string): Promise<PlayerRosterStat[]> {
-  const facts = await getPlayerGameFacts(playerId);
+export async function getPlayerRosterStats(
+  playerId: string,
+  gameFacts?: readonly PlayerGameFact[],
+): Promise<PlayerRosterStat[]> {
+  const facts = gameFacts ?? (await getPlayerGameFacts(playerId));
 
   const byRoster = new Map<string, { rosterName: string; gamesPlayed: number; wins: number }>();
   for (const fact of facts) {
@@ -357,9 +391,15 @@ export interface PlayerStreaks {
  * recorded. Reuses `longestStreak` (criterion 177's own function, never a
  * second implementation) and `longestDrought` (its documented negation) over
  * this player's own games.
+ *
+ * `gameFacts` is `getPlayerGameFacts(playerId)`'s own result — pass it in
+ * when the caller already has it; left out, this fetches it itself.
  */
-export async function getPlayerStreaks(playerId: string): Promise<PlayerStreaks> {
-  const facts = await getPlayerGameFacts(playerId);
+export async function getPlayerStreaks(
+  playerId: string,
+  gameFacts?: readonly PlayerGameFact[],
+): Promise<PlayerStreaks> {
+  const facts = gameFacts ?? (await getPlayerGameFacts(playerId));
   const factsByGameId = new Map(facts.map((f) => [f.gameId, f]));
   const streakGames: StreakGame[] = facts.map((f) => ({
     gameId: f.gameId,
