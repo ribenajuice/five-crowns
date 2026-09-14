@@ -296,4 +296,63 @@ describe("PUT /api/drafts/{id}", () => {
     });
     expect(response.status).toBe(409);
   });
+
+  describe("⚠️ PRD criterion 120 — the sheet photo can never change, for every draft", () => {
+    it("409s a state naming a different photoId than the one the draft was created with", async () => {
+      const { draftId, state } = await createDraftViaRoute();
+      const smuggled = { ...state, photoId: "someone-elses-photo-id" };
+
+      const { PUT } = await import("@/app/api/drafts/[id]/route");
+      const response = await PUT(req(`/api/drafts/${draftId}`, "PUT", { state: smuggled }), {
+        params: Promise.resolve({ id: draftId }),
+      });
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.code).toBe("conflict");
+
+      // ⚠️ Nothing was written: the stored state still names the original photo.
+      const { GET } = await import("@/app/api/drafts/[id]/route");
+      const after = await (
+        await GET(req(`/api/drafts/${draftId}`, "GET"), { params: Promise.resolve({ id: draftId }) })
+      ).json();
+      expect(after.state.photoId).toBe(state.photoId);
+    });
+
+    it("still accepts an ordinary update that leaves photoId untouched", async () => {
+      const { draftId, state } = await createDraftViaRoute();
+      const edited = { ...state, playedOn: "2020-06-01" };
+
+      const { PUT } = await import("@/app/api/drafts/[id]/route");
+      const response = await PUT(req(`/api/drafts/${draftId}`, "PUT", { state: edited }), {
+        params: Promise.resolve({ id: draftId }),
+      });
+      expect(response.status).toBe(200);
+    });
+
+    it("409s the same smuggled photoId on an edit draft too", async () => {
+      const { setUpDraft } = await import("../helpers/draft");
+      const { saveGame } = await import("@/lib/games/save");
+      const { startEditDraft } = await import("@/lib/games/start-edit");
+      const { SHEET_01 } = await import("../fixtures/sheets");
+
+      const { draftId: importDraftId, state: importState } = await setUpDraft(SHEET_01);
+      const saved = await saveGame(importDraftId, importState);
+
+      const { draftId: editDraftId } = await startEditDraft(saved.gameId);
+
+      const { GET, PUT } = await import("@/app/api/drafts/[id]/route");
+      const editState = (
+        await (
+          await GET(req(`/api/drafts/${editDraftId}`, "GET"), {
+            params: Promise.resolve({ id: editDraftId }),
+          })
+        ).json()
+      ).state;
+
+      const smuggled = { ...editState, photoId: "a-different-photo-id" };
+      const response = await PUT(req(`/api/drafts/${editDraftId}`, "PUT", { state: smuggled }), {
+        params: Promise.resolve({ id: editDraftId }),
+      });
+      expect(response.status).toBe(409);
+    });
+  });
 });

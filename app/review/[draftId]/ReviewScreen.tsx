@@ -39,7 +39,7 @@ import {
   type PlayerScore,
 } from "@/lib/scoring";
 import { toGridColumns, type DraftColumn, type DraftState } from "@/lib/draft/state";
-import { createDebouncer, type Debounced } from "@/lib/ui/autosave";
+import { createDebouncer, resolveAutosaveOutcome, type Debounced } from "@/lib/ui/autosave";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/ui/constants";
 import {
   CROP_STEP_HEADING,
@@ -55,6 +55,7 @@ import {
   VENUE_FIELD_LABEL,
   VENUE_LIST_EMPTY,
   DATE_FIELD_LABEL,
+  GAME_DELETED_MID_EDIT_MESSAGE,
   columnStatusLabel,
   saveBlockedMessage,
 } from "@/lib/ui/copy";
@@ -206,8 +207,17 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       );
 
       if (result.status === 409) {
+        // A 409 here means either "this draft was already saved" (redirect,
+        // the happy case) or the immutability guard refusing a `photoId`
+        // mismatch. ⚠️ These used to be treated as the same thing: a
+        // `savedGameId` that turns out still null after the re-fetch was
+        // silently swallowed, no error shown at all, so a real save failure
+        // looked identical to a successful autosave. `resolveAutosaveOutcome`
+        // (`lib/ui/autosave.ts`) is the honest version of this decision.
         const fresh = await fetchJson<{ savedGameId: string | null }>(`/api/drafts/${draftId}`);
-        if (fresh.body?.savedGameId) router.replace(`/games/${fresh.body.savedGameId}`);
+        const outcome = resolveAutosaveOutcome(result.status, fresh.body?.savedGameId);
+        if (outcome.redirectGameId) router.replace(`/games/${outcome.redirectGameId}`);
+        setAutosaveError(outcome.autosaveError);
         return;
       }
       setAutosaveError(!result.ok);
@@ -499,6 +509,12 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       setSaveErrorMessage(message ?? "Something on this sheet still needs fixing — have another look above.");
     } else if (result.body?.error?.code === "missing_photo") {
       setSaveErrorMessage("This draft has no sheet photo to save with.");
+    } else if (result.body?.error?.code === "game_deleted") {
+      // PRD criterion 122: the edit's target game was deleted meanwhile.
+      // The server already refused the write — nothing here resurrects it,
+      // and the plain message says exactly what happened rather than
+      // implying a connectivity problem.
+      setSaveErrorMessage(GAME_DELETED_MID_EDIT_MESSAGE);
     } else {
       setSaveErrorMessage("That didn't save. Check your connection and try again.");
     }

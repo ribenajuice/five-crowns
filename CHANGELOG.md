@@ -6,8 +6,8 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
-The first stage of Milestone 2: the rest of the admin panel. Built and tested, but not merged or
-deployed yet.
+The first stage of Milestone 2: the rest of the admin panel. Built and tested, not yet merged or
+deployed.
 
 ### Added
 
@@ -21,16 +21,41 @@ deployed yet.
 - **A written, step-by-step way to get back into the admin panel if you forget its password.**
   It needs no developer and no code change, and it's been run for real, start to finish, to make
   sure it actually works. It's linked from the admin login screen and from this project's README.
+- **Changing the group password or the admin password from the panel.** Both forms were built and
+  tested but held back pending a decision: the app needed a permission it was deliberately never
+  given. The founder decided to grant it (2026-09-14) rather than drop in-panel rotation — see
+  `docs/DECISIONS.md`. Both buttons now work on the real site.
 
-### Built, but not yet safe to use
+## [Stage 6] - 2026-09-14
 
-- **Changing the group password or the admin password from the panel.** Both forms are built and
-  tested, but they must not go live as they stand: a permission the app was deliberately not given
-  is missing, so on the real site both buttons would fail with an error instead of changing
-  anything. This needs a founder decision before it ships — either widen that permission (in-panel
-  password changes, at the cost of loosening a security setting tightened on purpose), or keep the
-  tighter security and only ever change passwords through the recovery steps above. Nothing else in
-  this release is affected.
+The second stage of Milestone 2: correcting the record. Live in production.
+
+### Added
+
+- **A saved game can now be corrected.** "Edit this game" on a game's page reopens the same review
+  screen used when it was first entered — the same photo beside the numbers, the same checks — and
+  saving updates that game in place instead of creating a new one. You can change the date, venue,
+  players and every number; the sheet photo itself is the one thing that can't be swapped for
+  another. Nothing marks a game as edited — an edited game looks exactly like one that was never
+  touched.
+- **A saved game can now be permanently deleted.** "Delete game" leads to a confirmation naming the
+  exact game — its date and who played — and needs a second, deliberate tap on "Delete permanently".
+  A single tap never deletes anything. The confirmation is upfront that this can't be undone and
+  that it takes the game's photos out of the record with it — though the photo files themselves
+  aren't destroyed; the app is deliberately never given permission to do that, so one could still be
+  recovered by hand later if it ever mattered.
+- **Broken and made-up links now show this app's own screens, not a generic one.** A deleted game's
+  page, a mistyped address, or a link to a player, roster or place that doesn't exist all show a
+  plain "not found" page with a clear way back to the games list. If something goes wrong
+  unexpectedly, you see a plain, honest error screen instead — neither screen ever shows a
+  technical detail.
+
+### Fixed
+
+- Both new buttons, "Edit this game" and "Delete permanently", didn't actually do anything when
+  tapped in a real browser. Found by review and fixed before anyone would have hit it.
+- A few edge cases around doing two things to the same game at once — editing it right as someone
+  else deletes it, for instance — were found and closed before this shipped.
 
 ## [Stage 5] - 2026-09-13
 

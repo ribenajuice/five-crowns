@@ -27,82 +27,46 @@
  * save is refused (422) if it doesn't resolve to a real, non-merged row.
  * `PRAGMA foreign_keys = ON` is also attempted as defence in depth — see the
  * comment at its call site for why it's best-effort, not the guarantee.
+ *
+ * ⚠️ **M2 Stage 2 dispatch.** A draft carrying `editing_game_id` is an edit of
+ * an existing game, not a new one — `saveEditedGame` (`lib/games/save-edit.ts`)
+ * owns that whole transaction. This file dispatches to it right after its own
+ * `savedGameId` idempotency check and otherwise runs exactly as M1 left it.
+ * `docs/DECISIONS.md`, 2026-09-14, "Editing a saved game".
  */
 
 import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
-import type { LibSQLDatabase } from "drizzle-orm/libsql";
-
-import { getDb, schema } from "@/lib/db";
-import {
-  draft as draftTable,
-  game,
-  gamePlayer,
-  location,
-  photo,
-  player,
-  roster,
-  rosterMember,
-  roundScore,
-} from "@/lib/db/schema";
-import {
-  nameKey,
-  toGridColumns,
-  type DraftColumn,
-  type DraftState,
-} from "@/lib/draft/state";
+import { getDb } from "@/lib/db";
+import { draft as draftTable, game, photo } from "@/lib/db/schema";
+import { toGridColumns, type DraftState } from "@/lib/draft/state";
 import { getPhotoStorage } from "@/lib/photos";
-import {
-  deriveHandScores,
-  finalScore,
-  rosterSignature,
-  validateGrid,
-  type GridValidation,
-} from "@/lib/scoring";
+import { validateGrid } from "@/lib/scoring";
 import { describeError, log } from "@/lib/log";
 
-import { uniqueSlug } from "./slug";
+import {
+  assertNoDuplicatePlayers,
+  nowIso,
+  resolveLocation,
+  resolvePlayers,
+  upsertRoster,
+  writeGameRows,
+  DraftNotFoundError,
+  InvalidGridError,
+  InvalidReferenceError,
+  MissingPhotoError,
+  type SaveGameResult,
+} from "./resolve";
+import { saveEditedGame } from "./save-edit";
 
-export class DraftNotFoundError extends Error {
-  override name = "DraftNotFoundError";
-}
-
-export class InvalidGridError extends Error {
-  override name = "InvalidGridError";
-  constructor(public readonly validation: GridValidation) {
-    super("The grid fails a hard check and cannot be saved.");
-  }
-}
-
-export class MissingPhotoError extends Error {
-  override name = "MissingPhotoError";
-}
-
-/**
- * ⚠️ Security review MEDIUM 2: a client-supplied `playerId` or `locationId`
- * that doesn't resolve to a real, usable row. Mapped to 422 by the route,
- * same status as `InvalidGridError` — it's the same family of "this save
- * cannot go ahead" failure, just discovered a step later.
- */
-export class InvalidReferenceError extends Error {
-  override name = "InvalidReferenceError";
-  constructor(
-    public readonly kind: "player" | "location",
-    public readonly id: string,
-  ) {
-    super(`That ${kind} no longer exists. Pick again.`);
-  }
-}
-
-export interface SaveGameResult {
-  gameId: string;
-  /** True when this call found an already-saved draft rather than saving it. */
-  alreadySaved: boolean;
-}
+// Re-exported so existing imports (`app/api/games/route.ts`, the test suite)
+// keep working unchanged now that these live in `lib/games/resolve.ts`.
+export { DraftNotFoundError, InvalidGridError, InvalidReferenceError, MissingPhotoError };
+export type { SaveGameResult };
 
 /** Race-guard sentinel: thrown inside the transaction, caught just outside it. */
 class ConcurrentSaveError extends Error {
@@ -121,7 +85,17 @@ export async function saveGame(
   if (!existing) throw new DraftNotFoundError(draftId);
 
   if (existing.savedGameId) {
-    return { gameId: existing.savedGameId, alreadySaved: true };
+    return {
+      gameId: existing.savedGameId,
+      alreadySaved: true,
+      wasEdit: existing.editingGameId !== null,
+    };
+  }
+
+  // M2 Stage 2: an edit draft never runs the new-game path below — it updates
+  // the game it names in place. `docs/ARCHITECTURE.md` § "The edit".
+  if (existing.editingGameId) {
+    return saveEditedGame(existing, state);
   }
 
   // Step 0 — persist the state, whatever happens next.
@@ -196,88 +170,17 @@ export async function saveGame(
         rosterId,
       });
 
-      for (const { column, playerId } of resolved) {
-        const values = valuesByColumnId.get(column.id) ?? [];
-        const handScores = deriveHandScores(values);
-        const final = finalScore(values);
-        if (final === null) {
-          // Cannot happen: validateGrid already rejected any column with an
-          // unread or missing final cell. Defensive, not reachable in tests.
-          throw new InvalidGridError(validation);
-        }
-
-        await tx.insert(gamePlayer).values({
-          gameId: newGameId,
-          playerId,
-          columnOrder: column.order,
-          sheetName: column.sheetName,
-          finalScore: final,
-        });
-
-        await tx.insert(roundScore).values(
-          values.map((value, index) => ({
-            gameId: newGameId,
-            playerId,
-            hand: index + 1,
-            runningTotal: value as number,
-            score: handScores[index] as number,
-          })),
-        );
-
-        // PRD criterion 71: every close-up taken during review attaches to
-        // this game and the player its column resolved to — including one
-        // whose reading was later rejected (it's still evidence of what the
-        // paper said, same reasoning as the sheet photo). `draft_column_id`
-        // was set at upload time (`POST /api/uploads`, kind:'column'); a
-        // draft can be edited after a close-up is taken (reassign the
-        // player, reorder), so this resolves it fresh here rather than
-        // trusting anything decided when the photo was shot.
-        //
-        // ⚠️ Security review: `column.id` comes from the request body
-        // (`state`), so the WHERE is scoped to `draftId` too — otherwise a
-        // crafted save naming another draft's column id could re-parent that
-        // draft's close-ups onto this game. `isNull(gameId)` also stops this
-        // from ever re-parenting a photo already attached to a previously
-        // saved game.
-        await tx
-          .update(photo)
-          .set({ gameId: newGameId, playerId })
-          .where(
-            and(
-              eq(photo.draftColumnId, column.id),
-              eq(photo.kind, "column"),
-              eq(photo.draftId, draftId),
-              isNull(photo.gameId),
-            ),
-          );
-      }
-
-      // PRD criterion 71, continued: a close-up whose *column* was removed
-      // by a structural repair (`removeColumn` in `lib/ui/draft-edits.ts`)
-      // before save. `removeColumn` is pure client-side draft-state editing
-      // — it has no way to touch the `photo` table, and shouldn't, since the
-      // photo is still real evidence of what the paper said even though the
-      // column it was shot for no longer exists in this save. Rather than
-      // leaving it orphaned forever (draftColumnId pointing at nothing,
-      // gameId/playerId null forever), attach it to this game with a null
-      // playerId — the game view already renders a close-up under a
-      // fallback label when it can't resolve a player for it. Scoped to
-      // `draftId` and `isNull(gameId)` for the same reasons as the loop
-      // above.
-      const survivingColumnIds = orderedColumns.map((c) => c.id);
-      await tx
-        .update(photo)
-        .set({ gameId: newGameId })
-        .where(
-          survivingColumnIds.length > 0
-            ? and(
-                eq(photo.kind, "column"),
-                eq(photo.draftId, draftId),
-                isNull(photo.gameId),
-                notInArray(photo.draftColumnId, survivingColumnIds),
-              )
-            : and(eq(photo.kind, "column"), eq(photo.draftId, draftId), isNull(photo.gameId)),
-        );
+      // The per-column `game_player`/`round_score` insert loop and the
+      // close-up re-parenting sweeps — shared with `saveEditedGame`
+      // (PRD criterion 71). See `writeGameRows` in `lib/games/resolve.ts`.
+      await writeGameRows(tx, {
+        gameId: newGameId,
+        draftId,
+        resolved,
+        valuesByColumnId,
+        orderedColumns,
+        validation,
+      });
 
       // Conditional: the backstop for a concurrent save of the same draft.
       const photoLink = await tx
@@ -322,189 +225,4 @@ class AlreadySavedInTransaction extends Error {
   constructor(public readonly gameId: string) {
     super("This draft was saved by a concurrent request.");
   }
-}
-
-function nowIso(): string {
-  // Matches the schema's own default: strftime('%Y-%m-%dT%H:%M:%fZ','now').
-  return new Date().toISOString();
-}
-
-/** The `tx` handle `db.transaction(async (tx) => ...)` hands its callback. */
-type Tx = Parameters<
-  Parameters<LibSQLDatabase<typeof schema>["transaction"]>[0]
->[0];
-
-async function resolveLocation(
-  tx: Tx,
-  state: DraftState,
-): Promise<string | null> {
-  if (state.locationId) {
-    // ⚠️ Security review MEDIUM 2: a client-supplied id, looked up for real.
-    const found = (
-      await tx.select().from(location).where(eq(location.id, state.locationId))
-    )[0];
-    if (!found) throw new InvalidReferenceError("location", state.locationId);
-    return state.locationId;
-  }
-  if (!state.newLocationName) return null;
-
-  const key = nameKey(state.newLocationName);
-  const found = (
-    await tx.select().from(location).where(eq(location.nameKey, key))
-  )[0];
-  if (found) return found.id as string;
-
-  const id = randomUUID();
-  await tx
-    .insert(location)
-    .values({
-      id,
-      name: state.newLocationName.trim(),
-      slug: uniqueSlug(state.newLocationName),
-      nameKey: key,
-    })
-    .onConflictDoNothing({ target: location.nameKey });
-
-  const row = (
-    await tx.select().from(location).where(eq(location.nameKey, key))
-  )[0];
-  return (row?.id as string) ?? id;
-}
-
-interface ResolvedColumn {
-  column: DraftColumn;
-  playerId: string;
-}
-
-/**
- * Resolve every column to a player id.
- *
- * - An existing player (`column.playerId`) is looked up for real and must
- *   exist with no `merged_into_id` (security review MEDIUM 2).
- * - A pending name (`column.newPlayerName`) resolves by `name_key` against an
- *   existing player first — ⚠️ security review LOW 4: without this, retyping
- *   an existing player's name as "someone new" minted a second row for the
- *   same person — and only creates one when no match exists, grouped by
- *   `nameKey` so two columns with the same new name share one new player.
- *
- * `assertNoDuplicatePlayers`, called on the result, is what turns a name that
- * resolves onto a player already used in another column into `duplicate_player`
- * (criterion: caught *after* resolution, because before it a pending name and
- * an existing player's id are different `columnPlayerKey`s and look distinct).
- */
-async function resolvePlayers(
-  tx: Tx,
-  orderedColumns: DraftColumn[],
-): Promise<ResolvedColumn[]> {
-  const newPlayerIdByKey = new Map<string, string>();
-  const resolved: ResolvedColumn[] = [];
-
-  for (const column of orderedColumns) {
-    let playerId: string;
-
-    if (column.playerId) {
-      const found = (
-        await tx.select().from(player).where(eq(player.id, column.playerId))
-      )[0];
-      if (!found || found.mergedIntoId) {
-        throw new InvalidReferenceError("player", column.playerId);
-      }
-      playerId = column.playerId;
-    } else if (column.newPlayerName) {
-      const key = nameKey(column.newPlayerName);
-      const cached = newPlayerIdByKey.get(key);
-      if (cached) {
-        playerId = cached;
-      } else {
-        const existing = (
-          await tx.select().from(player).where(eq(player.nameKey, key))
-        )[0];
-        if (existing) {
-          playerId = existing.id;
-        } else {
-          const newId = randomUUID();
-          await tx
-            .insert(player)
-            .values({
-              id: newId,
-              displayName: column.newPlayerName.trim(),
-              slug: uniqueSlug(column.newPlayerName),
-              nameKey: key,
-            })
-            .onConflictDoNothing({ target: player.nameKey });
-
-          const row = (
-            await tx.select().from(player).where(eq(player.nameKey, key))
-          )[0];
-          playerId = (row?.id as string) ?? newId;
-        }
-        newPlayerIdByKey.set(key, playerId);
-      }
-    } else {
-      // validateGrid's unassigned_column check already rejected this shape.
-      throw new Error("A column reached resolution with no player.");
-    }
-
-    resolved.push({ column, playerId });
-  }
-
-  return resolved;
-}
-
-/**
- * ⚠️ Security review LOW 4. Genuinely reachable now that pending names
- * resolve against existing players: an existing player picked directly in one
- * column and typed as "someone new" (in a name that resolves to them) in
- * another now collide here rather than earlier, since their `columnPlayerKey`s
- * — `id:x` versus `new:namekey` — look different until resolution.
- */
-function assertNoDuplicatePlayers(resolved: ResolvedColumn[]): void {
-  const seenAt = new Map<string, string>();
-  for (const { column, playerId } of resolved) {
-    const firstColumnId = seenAt.get(playerId);
-    if (firstColumnId) {
-      throw new InvalidGridError({
-        ok: false,
-        columns: {},
-        issues: [
-          {
-            code: "duplicate_player",
-            message:
-              "The same player is picked for more than one column. Pick a different player for each.",
-            indices: [],
-            columnIds: [firstColumnId, column.id],
-          },
-        ],
-      });
-    }
-    seenAt.set(playerId, column.id);
-  }
-}
-
-async function upsertRoster(tx: Tx, memberIds: string[]): Promise<string> {
-  const signature = rosterSignature(memberIds);
-  const uniqueMembers = [...new Set(memberIds)];
-
-  const found = (
-    await tx.select().from(roster).where(eq(roster.signature, signature))
-  )[0];
-  if (found) return found.id as string;
-
-  const id = randomUUID();
-  await tx
-    .insert(roster)
-    .values({ id, signature, size: uniqueMembers.length, name: null })
-    .onConflictDoNothing({ target: roster.signature });
-
-  const row = (
-    await tx.select().from(roster).where(eq(roster.signature, signature))
-  )[0];
-  const rosterId = (row?.id as string) ?? id;
-
-  await tx
-    .insert(rosterMember)
-    .values(uniqueMembers.map((playerId) => ({ rosterId, playerId })))
-    .onConflictDoNothing();
-
-  return rosterId;
 }

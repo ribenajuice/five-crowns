@@ -15,6 +15,7 @@ import {
   MissingPhotoError,
   saveGame,
 } from "@/lib/games/save";
+import { GameDeletedError } from "@/lib/games/save-edit";
 import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 
@@ -43,11 +44,17 @@ export async function POST(request: Request) {
 
   try {
     const result = await saveGame(parsed.data.draftId, parsed.data.state);
+    // ⚠️ An edit never creates a game — 200 either way, even the first time
+    // this particular edit draft is saved (`docs/ARCHITECTURE.md` § "The
+    // edit": "The route answers 200, not 201 — nothing was created.").
     return NextResponse.json(
       { gameId: result.gameId },
-      { status: result.alreadySaved ? 200 : 201 },
+      { status: result.alreadySaved || result.wasEdit ? 200 : 201 },
     );
   } catch (error) {
+    if (error instanceof GameDeletedError) {
+      return apiError("game_deleted", "This game was already deleted.");
+    }
     if (error instanceof InvalidGridError) {
       return NextResponse.json(
         {
@@ -66,7 +73,12 @@ export async function POST(request: Request) {
       return apiError("invalid_grid", error.message);
     }
     if (error instanceof MissingPhotoError) {
-      return apiError("missing_photo", "This draft has no sheet photo to save with.");
+      // ⚠️ `saveGame`/`saveEditedGame` throw this for three genuinely
+      // different reasons (no sheet photo row at all, the sheet photo was
+      // changed, or an S3 object is missing) with a distinct, accurate
+      // `message` each time — pass it through rather than collapsing all
+      // three into one hardcoded sentence that lies in two of them.
+      return apiError("missing_photo", error.message);
     }
     if (error instanceof DraftNotFoundError) {
       return apiError("not_found", "That draft doesn't exist.");

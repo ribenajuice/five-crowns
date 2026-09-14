@@ -522,3 +522,56 @@ export function formatUsageMonthLabel(yyyyMm: string): string {
   const monthName = date.toLocaleString("en-AU", { month: "long", timeZone: "UTC" });
   return `${monthName} ${year} (UTC)`;
 }
+
+/* --------------------------------------- Stage 2 (M2): edit and delete a game */
+
+/** PRD criterion 115: "Edit this game" on the game view. */
+export const EDIT_GAME_BUTTON_LABEL = "Edit this game";
+/** Not in the design system's fixed table (no error state was specced for
+ *  this button) — matches the voice this project already uses for every
+ *  other "couldn't start" failure (e.g. `AddGameFlow`'s "type it in by
+ *  hand" draft-create failure). */
+export const EDIT_GAME_START_ERROR_TITLE = "That didn't start.";
+export const EDIT_GAME_START_ERROR_BODY = "Check your connection and try again.";
+
+/** `docs/DESIGN-SYSTEM.md` § "Deleting a game" — verbatim strings table. */
+export const DELETE_GAME_BUTTON_LABEL = "Delete game";
+export const DELETE_CONFIRM_APPBAR_TITLE = "Delete this game?";
+export const DELETE_CONFIRM_BACK_LABEL = "Back to the game";
+export function deleteConfirmHeading(playedOn: string, rosterName: string): string {
+  return `Delete the ${playedOn} game with ${rosterName}?`;
+}
+export const DELETE_CONFIRM_BODY =
+  "This can't be undone. The game and its scores are gone for good, and its photos come out of the record with it.";
+export const DELETE_CONFIRM_CANCEL_BUTTON = "Cancel";
+export const DELETE_CONFIRM_COMMIT_BUTTON = "Delete permanently";
+/** Same reasoning as `EDIT_GAME_START_ERROR_*` above — not a specced string,
+ *  matches the house voice for a failed network action. */
+export const DELETE_GAME_ERROR_TITLE = "That didn't delete.";
+export const DELETE_GAME_ERROR_BODY = "Check your connection and try again.";
+
+/** `docs/DESIGN-SYSTEM.md` § "A game that no longer exists — the 404 screen". */
+export const NOT_FOUND_APPBAR_TITLE = "Not found";
+export const NOT_FOUND_BACK_LABEL = "Back to games";
+export const NOT_FOUND_BANNER_TITLE = "Nothing here.";
+export const NOT_FOUND_BANNER_BODY =
+  "The link's wrong, or it's been deleted — either way, it's not in the record.";
+export const NOT_FOUND_BUTTON_LABEL = "Back to games";
+
+/** `docs/DESIGN-SYSTEM.md` § "An unhandled error". */
+export const ERROR_APPBAR_TITLE = "Five Crowns Ledger";
+export const ERROR_BACK_LABEL = "Back to games";
+export const ERROR_BANNER_TITLE = "Something went wrong.";
+export const ERROR_BANNER_BODY = "Try again, or head back to the games list.";
+export const ERROR_RETRY_BUTTON_LABEL = "Try again";
+export const ERROR_BACK_BUTTON_LABEL = "Back to games";
+
+/**
+ * PRD criterion 122: saving an edit over a game deleted meanwhile "fails with
+ * a plain message and does not resurrect the game". The server's own honest
+ * answer (`POST /api/games`'s `game_deleted` error code) is surfaced as-is
+ * rather than folded into the generic "that didn't save" case, which would
+ * wrongly suggest a connectivity problem.
+ */
+export const GAME_DELETED_MID_EDIT_MESSAGE =
+  "This game was deleted before your changes went through — nothing was saved.";

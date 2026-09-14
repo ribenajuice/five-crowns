@@ -441,6 +441,60 @@ the digit; this is a correctness feature, not typography.
   everywhere else on the screen, blocking `SaveBar` with the same `blockedColumnShort` copy. "Keep
   what's saved" remains the one-tap way out.
 
+- **Deleting a game** (Stage 2, criteria 124–129, and decision 10). Reached from the game view: a
+  full-width `Button` in `ghost` shape with `--error` ink and a trash icon, labelled **"Delete
+  game"** — the same documented one-off destructive variant already established for `CellEditor`'s
+  "Delete this line" (§ `StructureMenu` above), reused rather than invented a second time or given
+  its own fourth `Button` kind. Tapping it is not the delete itself: it opens a dedicated
+  confirmation screen — `AppBar` (title **"Delete this game?"**, back arrow labelled **"Back to the
+  game"**, which doubles as Cancel) over one `Card` — because criterion 125's "deliberate second
+  action" means an interstitial screen, never a single extra tap on the same view.
+  - **The heading names the game itself**, never a bare "Are you sure?": **"Delete the {date} game
+    with {roster}?"**, using the same date and roster-name the game view's own `AppBar` already
+    shows for this game.
+  - **Two fixed sentences beneath it** say plainly what is about to happen: **"This can't be undone.
+    The game and its scores are gone for good, and its photos come out of the record with it."**
+    ⚠️ **Never "the photos are deleted."** Decision 10 keeps the underlying S3 objects — nothing in
+    this app holds `s3:DeleteObject` at all (`docs/ARCHITECTURE.md` § IAM) — so the honest claim is
+    that the photos leave the *record*, not that the files are destroyed. This is a real
+    distinction the copy must hold exactly, in both directions: the founder could still retrieve one
+    from S3 directly with AWS access, and the sentence must never claim otherwise, but nobody using
+    the app should read it as "the photos are safe somewhere" either — as far as the record is
+    concerned, they're gone.
+  - **Two full-width buttons, "Cancel" then "Delete permanently"** — `Cancel` first (`ghost`, plain:
+    the safe option should be the easy one to reach), **"Delete permanently"** second, in the same
+    `ghost` + `--error`-ink + trash-icon treatment as the button that opened this screen. Exactly
+    **"Delete permanently"** — never "Delete", "Yes" or "Confirm" (criterion 124's literal label).
+    The same "name what happens, then a Cancel/commit pair" shape `CellEditor`'s row-level delete
+    already uses, generalised from a row to a whole game.
+
+- **A game that no longer exists — the 404 screen** (criterion 130). A deleted game's old URL, a
+  mistyped one, or a made-up player/roster/location address all land here alike. This is Next's
+  global `not-found.tsx`, so it never knows *which* of the three happened, and the copy is written
+  to be honestly true of all three at once, never implying one specific cause. Reuses `AppBar`
+  (title **"Not found"**, back arrow labelled **"Back to games"** — the same bar every other
+  in-session screen carries; only the two password gates skip it, and this page is only ever
+  reached already signed in, criterion 1) and the `Banner` `error` idiom the review screen already
+  uses for its own "this draft doesn't exist any more" case:
+  - **Banner title**: **"Nothing here."**
+  - **Banner body**: **"The link's wrong, or it's been deleted — either way, it's not in the
+    record."**
+  - Beneath it, a full-width `primary` `ButtonLink` — **"Back to games"** — so the way back is a
+    real button, not only the bar's small 44px back arrow.
+
+- **An unhandled error** (criterion 131). Next's global `error.tsx`. ⚠️ **No stack trace, no file
+  path, no library name — ever appears on screen.** The copy is entirely fixed and never reads
+  anything off the thrown error, so there is nothing a rendering bug could leak. Voice stays this
+  project's own: plain, dry, no apology — *"Sorry!"* is not a word this app uses anywhere else, and
+  this is not the screen to start. Reuses `AppBar` (title **"Five Crowns Ledger"** — the one screen
+  where a page-specific title would be a lie, since this boundary can be reached from anywhere —
+  back arrow labelled **"Back to games"**) and `Banner` `error`:
+  - **Banner title**: **"Something went wrong."**
+  - **Banner body**: **"Try again, or head back to the games list."**
+  - Two full-width buttons beneath: **"Try again"** (`primary`, calls Next's own `reset()`) — the
+    same non-destructive retry shape every other error banner in this app already uses, never a
+    re-photograph or a re-type — and **"Back to games"** (`ghost`).
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -588,6 +642,20 @@ verified, confirmed, correct, looks right* or *all good*.
 | Wrong-column warning | This looks like {sheet player}'s column, not {assigned player}'s. / The close-up's own reading of the name doesn't match — you can use the new numbers anyway. |
 | Typed-cell disagreement | You typed {typed}; the close-up reads {read}. |
 | Incomplete close-up, keeping-it note | Keeping this leaves {Player}'s column at {n} of 11 — Put it in the book stays blocked until it's filled in. |
+| Delete-game button (game view) | Delete game |
+| Delete confirmation heading | Delete the {date} game with {roster}? |
+| Delete confirmation body | This can't be undone. The game and its scores are gone for good, and its photos come out of the record with it. |
+| Delete confirmation, cancel button | Cancel |
+| Delete confirmation, commit button | Delete permanently |
+| 404 screen, `AppBar` title | Not found |
+| 404 screen, banner title | Nothing here. |
+| 404 screen, banner body | The link's wrong, or it's been deleted — either way, it's not in the record. |
+| 404 screen, button | Back to games |
+| Error screen, `AppBar` title | Five Crowns Ledger |
+| Error screen, banner title | Something went wrong. |
+| Error screen, banner body | Try again, or head back to the games list. |
+| Error screen, retry button | Try again |
+| Error screen, back button | Back to games |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

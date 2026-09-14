@@ -364,9 +364,16 @@ does a close-up beat the full-sheet read?"**, which is the evidence that will ju
 re-read path.
 
 **`draft`** — an in-progress review. `id`, `state_json`, `created_at`, `updated_at`,
-`saved_game_id` (nullable). Discussed in full below; ⚠️ it exists because **on iOS, opening the
-camera can evict the web page from memory**, and the whole re-photograph feature is "go and open
-the camera". Client-only review state would lose every correction the founder had made.
+`saved_game_id` (nullable), `editing_game_id` (nullable). Discussed in full below; ⚠️ it exists
+because **on iOS, opening the camera can evict the web page from memory**, and the whole
+re-photograph feature is "go and open the camera". Client-only review state would lose every
+correction the founder had made.
+- **`editing_game_id`** (M2 Stage 2) — the game this draft is an edit *of*, null for an ordinary
+  new-game draft. It is the only thing that tells the save to update a game in place; see § The edit.
+  ⚠️ **Not a foreign key, deliberately**: an edit draft has to outlive its target being deleted, so
+  that saving it can refuse cleanly (criterion 122) rather than block the delete or resurrect the
+  game. A partial unique index, `draft_one_open_edit_per_game`, allows at most one *open* edit per
+  game and any number of finished ones.
 
 **`usage_day`** — `day` (pk), `sheet_transcriptions`, `column_transcriptions`. The abuse cap; see
 Auth. ⚠️ The two are counted **separately** so that a legitimate session of re-shooting five
@@ -472,7 +479,10 @@ design changes because location exists.
 ⚠️ **Stage 2 adds three**, all used by `POST /api/games` and `PUT /api/drafts/{id}`: `invalid_grid`
 (422) — the grid fails a hard check, the response body carries the issues alongside `error` —
 `missing_photo` (409) — no `photo` row, or an S3 object is missing — and `conflict` (409) — a draft
-that has already been saved cannot be saved or edited again.
+that has already been saved cannot be saved or edited again, and a draft's `state.photoId` can never
+be changed. ⚠️ **M2 Stage 2 adds one more**, `game_deleted` (409): the game an edit draft was
+correcting no longer exists (§ The edit, criterion 122). It is a distinct code because the screen
+owes the founder a plain sentence there, not a generic failure.
 
 **What this protects against**: search engines, random visitors, anyone who stumbles on the URL.
 Nothing is readable without the password, photos included.
@@ -698,12 +708,13 @@ present (checked with `HeadObject`).
 |---|---|---|---|
 | `POST /api/uploads` | `{ kind: "sheet", rotation: 0 \| 90 \| 180 \| 270, width, height }` | `201 { photoId, original: { url, fields }, model: { url, fields } }` | Creates the `photo` row and two presigned **POSTs** (5 min) to `photos/{photoId}/original.jpg` and `photos/{photoId}/model.jpg`, policy-constrained to that exact key, 1–8,000,000 bytes and `Content-Type: image/jpeg` — a security-review fix (2026-09-12) for the open-ended presigned PUT this route used to issue. `fields` is a `Record<string, string>`, sent as `multipart/form-data`: every `fields` entry, then the file last as `file`. Capped at **40 sheet uploads/UTC day** (`usage_day.sheet_uploads`, counted separately from the vision-call caps); `429 rate_limited` beyond that. The browser has already rotated and downscaled both images. The same route also accepts `{ kind: "column", draftId, columnId, rotation, width, height }` for a targeted column re-shoot (§ Flow 2b), capped separately at **200 column uploads/UTC day** (`usage_day.column_uploads`, security review MEDIUM 1, Stage 5) |
 | `POST /api/drafts` | `{ photoId, state }` | `201 { draftId, updatedAt }` | Links the photo (`photo.draft_id`) and stores the initial state, which must have `state.photoId === photoId`. Rejects a photo already linked to another draft |
-| `GET /api/drafts/{id}` | — | `200 { draftId, state, updatedAt, savedGameId }` | A non-null `savedGameId` means it was saved, and the review screen redirects to `/games/{savedGameId}` |
-| `PUT /api/drafts/{id}` | `{ state }` | `200 { updatedAt }` | Whole-state replace, debounced ~1 s on the client (criterion 28). Schema-validated, **not** grid-validated, because a draft may be half-typed. `409` once saved |
+| `GET /api/drafts/{id}` | — | `200 { draftId, state, updatedAt, savedGameId, editingGameId }` | A non-null `savedGameId` means it was saved, and the review screen redirects to `/games/{savedGameId}`. A non-null `editingGameId` means this draft is an edit of that game (§ The edit) — the screen uses it for wording and for where to go after saving; nothing in the back end branches on the client's knowledge of it |
+| `PUT /api/drafts/{id}` | `{ state }` | `200 { updatedAt }` | Whole-state replace, debounced ~1 s on the client (criterion 28). Schema-validated, **not** grid-validated, because a draft may be half-typed. `409` once saved. ⚠️ **`state.photoId` may never change**: a state naming a different sheet photo is refused `409 conflict`, for every draft, not only edits (criterion 120, and the same trick would otherwise have shown the human one photo and filed another on the new-game path) |
 | `GET /api/photos/{id}/url?variant=original\|model` | — | `200 { url, expiresAt }` | Presigned GET, 5 min (criterion 12). The path has no image extension on purpose, so middleware sees it. It checks the session anyway |
 | `GET /api/players` | — | `200 { players: [{ id, displayName }] }` | Alphabetical |
 | `GET /api/locations` | — | `200 { locations: [{ id, name }], mostRecentLocationId }` | The location of the newest saved game, or null (criterion 59) |
-| `POST /api/games` | `{ draftId, state }` | `201 { gameId }`, or `200 { gameId }` if already saved | See **The save**, below. `422 invalid_grid` with the issues; `409 missing_photo` |
+| `POST /api/games` | `{ draftId, state }` | `201 { gameId }`, or `200 { gameId }` if already saved or if this was an edit | See **The save**, below, and § The edit for a draft with `editing_game_id`. `422 invalid_grid` with the issues; `409 missing_photo`; `409 game_deleted` |
+| `POST /api/games/{id}/edit` | — | `201 { draftId }`, or `200 { draftId }` resuming an open edit | M2 Stage 2. Builds an edit draft from the game's own rows and answers where the review screen is. See § The edit |
 
 **The save** (`POST /api/games`) persists `state` to the draft first. Then, in **one transaction**,
 it:
@@ -716,7 +727,9 @@ it:
 5. sets `photo.game_id` and `draft.saved_game_id`.
 
 A pending player name that resolves to a player already used in another column is a
-`duplicate_player` failure, caught **after** resolution.
+`duplicate_player` failure, caught **after** resolution. `lib/games/save.ts` is the executable
+version, commented with its own invariants; the shared resolvers it and § The edit both call live in
+`lib/games/resolve.ts`.
 
 **Pages:**
 - `/games/new`: add a game.
@@ -729,6 +742,92 @@ A pending player name that resolves to a player already used in another column i
 Winners are always derived (`determineWinners` over `game_player.final_score`), never stored. A
 roster's display name is `roster.name`, or `rosterDisplayName(memberNames)` in `lib/scoring/roster.ts`,
 in the format `docs/DESIGN-SYSTEM.md` specifies (criterion 68).
+
+### The edit — correcting a saved game
+
+*Milestone 2 Stage 2, PRD criteria 115–123. Written before the build, like § "The Stage 2 interface"
+above; `lib/games/save-edit.ts` is the executable half and wins if the two disagree. The reasoning,
+the alternatives traced against the M1 code, and the migration are in `docs/DECISIONS.md`,
+2026-09-14, "Editing a saved game".*
+
+⚠️ **This is the first path in the product that writes over history.** The design principle is that
+it reuses the import path rather than paralleling it: **an edit is an ordinary draft that carries its
+target**, `draft.editing_game_id`. There is no edit mode on the review screen, no second draft
+format and no second validation path — criterion 115 is satisfied by there being nothing different
+to satisfy it with.
+
+**Starting an edit.** "Edit this game" on `/games/{id}` posts to `POST /api/games/{id}/edit` (a POST,
+not a GET page, so a prefetch cannot mint drafts) and navigates to `/review/{draftId}`. The route:
+
+- **resumes** the open edit draft for that game if one exists — `editing_game_id = id AND
+  saved_game_id IS NULL` — which is what makes criterion 121 true in the strongest sense: press Edit
+  again after the tab was evicted and the half-finished corrections are still there;
+- otherwise **builds one from the game's own rows**: `played_on`, `location_id`, one column per
+  `game_player` in `column_order` (carrying its `player_id` and `sheet_name`), the eleven
+  `running_total`s written into that column's `manualEdits` so `effectiveValues` lays them over an
+  empty reading stack, and `photoId` = the game's existing `kind='sheet'` photo. Column ids are
+  fresh; `readings` is empty and `crop` is null, so the strip shows the whole photo until the founder
+  marks a column (criterion 15). Refused `409 missing_photo` if the game has no sheet photo row —
+  the review screen without its photo is not the screen criterion 115 asks for.
+
+⚠️ **The sheet photo is *named*, not re-linked.** `photo.draft_id` keeps pointing at the draft that
+first imported it. The review screen loads the photo from `state.photoId` through
+`GET /api/photos/{id}/url` and has never consulted `photo.draft_id`, so an edit draft needs no photo
+row rewritten at all — and the one piece of history that records which import a photo arrived in
+stays intact.
+
+**Saving the edit** (`POST /api/games`, same route, same body). `saveGame` dispatches to
+`saveEditedGame` when the draft has an `editing_game_id`. It persists `state` to the draft first,
+like the save. Then, **before** the transaction: it finds the sheet photo by `game_id` and
+`kind='sheet'` (⚠️ not by `draft_id` — the edit draft does not own it), checks both S3 objects are
+present, **refuses if `state.photoId` names anything else**, and re-validates and re-derives
+server-side exactly as the save does. Then, in **one transaction**:
+
+1. assert the game still exists (criterion 122);
+2. resolve or create the location and players, and **`upsertRoster` on the new exact set** — the same
+   function the save calls, so criterion 118's re-match is not a second implementation;
+3. `UPDATE game` — ⚠️ **exactly three columns**: `played_on`, `location_id`, `roster_id`. A
+   `rowsAffected` of 0 is the deleted-game case. The `id` never changes, which is criterion 117;
+4. `DELETE` this game's `round_score` and `game_player` rows and **re-insert both** from the resolved
+   columns. ⚠️ Delete-and-insert, not upsert: the primary keys are `(game_id, player_id, hand)` and
+   `(game_id, player_id)`, so a player removed from the game by criterion 118 has rows no UPDATE can
+   reach — they would silently stay in the game, in the winner calculation and in every stat. This is
+   what criterion 119's "replaces every round row" means concretely;
+5. attach any close-ups taken during this edit, with the save's two sweeps unchanged (the per-column
+   one and the criterion-71 orphan sweep for a column removed by a structural repair), scoped to this
+   draft and setting `game_id`;
+6. **null the `player_id` of any close-up already on the game whose player is no longer in it**, so a
+   reassigned column degrades to the fallback label the game view already renders rather than naming
+   somebody who is not in the game;
+7. `UPDATE draft SET saved_game_id = :gameId WHERE id = :draftId AND saved_game_id IS NULL` — a
+   `rowsAffected` of 0 is a concurrent save, handled exactly as the save's photo-link guard is.
+
+The route answers **200** (nothing was created), `409 game_deleted` for a game deleted meanwhile, and
+otherwise the same `422 invalid_grid` / `409 missing_photo` the import gets — the gate is identical
+(criterion 116).
+
+⚠️ **Nothing marks a game as edited** (criterion 123). `created_at` is deliberately not touched: it
+is the games list's tiebreaker, so writing it would reorder the list, which is a badge by another
+name. A changed `played_on` moving the game is the founder's own edit, not a marker.
+
+**What an edit cannot do, by construction:**
+
+| | |
+|---|---|
+| **Replace the sheet photo** (criterion 120) | The review screen has never had a control that swaps it — the upload happens in `AddGameFlow`, before a draft exists — so there is nothing to remove. Server-side, `PUT /api/drafts/{id}` refuses a `state` whose `photoId` differs from the stored one, and the save refuses again if they disagree. `POST /api/transcribe` already refuses a photo whose draft is saved, so no full-sheet re-read can reach a saved game's photo either |
+| **Resurrect a deleted game** (criterion 122) | Step 1 and step 3's conditional together. Nothing on that path inserts anything. The delete, for its part, removes drafts with `saved_game_id = :gameId` and **leaves open edit drafts alone**, so a save arriving afterwards lands on this check rather than on "that draft doesn't exist" |
+| **Touch the old roster** (criterion 118) | Nothing in the edit writes to a `roster` or `roster_member` row it did not create. A roster left with no games keeps its custom name and its members; the listings filter it out |
+| **Lose work when abandoned** (criterion 121) | `GET`/`PUT /api/drafts/{id}` are unchanged, so autosave, the offline banner, eviction and resume are M1's code, tested by M1's criteria |
+
+⚠️ **One honest limitation.** Close-ups shot during an *earlier* visit carry the player they were
+attributed to then. Step 6 clears an attribution that has become impossible; it cannot fix two
+players *swapped* between columns, where each old close-up is left attributed to the other and no
+stored link exists to correct it by. Column close-ups taken during the edit itself are attributed
+correctly, like any other.
+
+**Column close-ups still work during an edit** (criterion 120, second half): `POST /api/uploads`
+(`kind:'column'`) asks only that the draft exists and is unsaved, both true of an open edit draft,
+and `POST /api/transcribe/column` follows the same path it does for an import.
 
 ### Flow 2b — Targeted column re-read
 
@@ -827,6 +926,8 @@ downgraded to save money.
 | A column is re-read | New `photo` + `transcription` rows; the new reading is **pushed onto that column's version stack** in the draft — nothing is overwritten |
 | A reading is rejected | Nothing is deleted. The active version pointer moves back. The close-up photo stays forever |
 | Save succeeds | `game` (with date and location), `roster` and `location` if new, `game_player`, `round_score` × 11×N; **every** photo linked to the game, close-ups resolved to their player |
+| An edit is started | One `draft` row with `editing_game_id` set, built from the game's own rows. **Nothing on the game, and no photo row, changes** (§ The edit) |
+| An edit is saved | The same `game` row updated in place (`played_on`, `location_id`, `roster_id` only); its `game_player` and `round_score` rows deleted and re-inserted; close-ups shot during the edit linked; `draft.saved_game_id` set. ⚠️ The game's `id` and `created_at` are never touched |
 | User abandons review | Draft, photos and transcription rows remain as orphans. Harmless (a few MB), and they are the evidence for *why* a sheet failed |
 
 ### Failure modes

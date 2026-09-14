@@ -31,7 +31,9 @@ export type ErrorCode =
   /** Saving requires a `photo` row (kind='sheet') with both S3 objects present. */
   | "missing_photo"
   /** A draft that has already been saved cannot be edited or saved again. */
-  | "conflict";
+  | "conflict"
+  /** M2 Stage 2: saving an edit whose target game was deleted meanwhile. */
+  | "game_deleted";
 
 const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
@@ -46,6 +48,7 @@ const STATUS: Record<ErrorCode, number> = {
   invalid_grid: 422,
   missing_photo: 409,
   conflict: 409,
+  game_deleted: 409,
 };
 
 export interface ApiErrorBody {
