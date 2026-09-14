@@ -1845,6 +1845,15 @@ database, except where a criterion names production or the founder's own phone.*
      Revisit if a misread name ever actually lands in the record — it is a small, self-contained
      addition at any time.*
 
+**Reaching these pages**
+
+174. ⚠️ **Added 2026-09-14, founder-approved.** Nothing in 132–146 required these three page types to
+     be reachable without typing a URL. **Every player, roster and place page is reachable by tapping
+     through from the record**: a player's name on a game view links to their player page, the roster
+     name on the games list and on the game view links to the roster page, and all three index pages
+     are reachable from the games list. QA reaches every page type without typing a URL. Where the
+     links sit on screen is a design call, not a further product decision.
+
 **Suggested player match**
 
 148. Matching follows **exactly** decision 1's rule, and unit tests assert the table: normalise, then
@@ -2007,7 +2016,7 @@ later stage benefits — the merge refusal in Stage 4 literally points the found
 numbers; roster renaming; location renaming. ⚠️ **Not player renaming** — criterion 147 was struck on
 2026-09-14.
 
-*Acceptance criteria*: 132–146.
+*Acceptance criteria*: 132–146, **plus 174** (page reachability, added 2026-09-14).
 
 *What the founder sees*: the archive becomes browsable by person rather than only by night, and
 "Thursday crew" replaces "Player C, Sam & Jo" everywhere at once.
@@ -2015,6 +2024,19 @@ numbers; roster renaming; location renaming. ⚠️ **Not player renaming** — 
 *Why third*: ⚠️ **it builds the surfaces the merges need.** A player merge without a player page has
 nowhere to be invoked from, and a places merge without a places list is a screen built to be used
 once.
+
+⚠️ **Three criteria from earlier stages land their proof here** (verified 2026-09-14 against the
+shipped Stages 1 and 2 — restatements, not new scope):
+- **129** ("player, roster and place pages recompute after a delete, no cached totals") sits in
+  Stage 2's range but had no pages to be run against. **Stage 3's QA runs it.** It should fall out
+  by construction: winners are derived at read time by `determineWinners` from the denormalised
+  `game_player.final_score`, and nothing anywhere caches a total.
+- **118**'s second clause ("roster listings show only rosters with at least one game") is Stage 3
+  work, restated as **137**. Stage 2 could not show it.
+- **105** ("a roster with no custom name carries the same auto-name the app displays, so the file and
+  the screen never disagree") predates renaming. `lib/games/export.ts` already reads
+  `roster.name ?? rosterDisplayName(...)` and `location.name`, so a rename flows into the CSV with no
+  code change — **re-run 105 once 141 and 145 exist**, rather than assuming it.
 
 ---
 

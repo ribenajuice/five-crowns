@@ -20,6 +20,25 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — Milestone 2 Stage 3: player/roster/place pages must be reachable, not just addressable
+
+- **Context**: at the Stage 3 build checkpoint, the existing spec (criteria 132–146, written
+  2026-09-10) fully covers what the players, rosters and places pages show and how renaming works,
+  but no criterion required any of them to be reachable by tapping through the app. Built literally,
+  the three new page types would exist only at a URL nobody is ever shown — and Stage 4's player
+  merge (criterion 155) is specified as reached "from a player page," which has nowhere to start
+  from without this.
+- **Decision**: **add criterion 174**, requiring a player's name on a game view to link to their
+  player page, a roster's name on the games list and game view to link to its roster page, and all
+  three index pages to be reachable from the games list. Put to the founder as a yes/no rather than
+  decided by the team, since it is new scope, however small; approved the same day. Where exactly the
+  links sit on screen is left to the ui-designer's mockup, not reopened as a product question.
+- **Alternatives**: *leave it out of Stage 3 and add navigation later, once the pages exist to react
+  to* — rejected: cheap to build alongside the pages themselves, and Stage 4's merge flow already
+  assumes a player page exists to launch it from.
+- **Consequences**: no schema or scope change beyond this one criterion; the design pass for Stage 3
+  now includes deciding where these links live (game view, games list, and the three index pages).
+
 ## 2026-09-14 — In-panel password rotation: widen the web Lambda's SSM write grant to all seven app-owned parameters
 
 - **Context**: Milestone 2 Stage 1 (PRD open question 5, criteria 87–96) builds group- and
