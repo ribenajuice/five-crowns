@@ -953,9 +953,46 @@ describe("getBoard — the catastrophe (criterion 230)", () => {
     expect(catastrophe.value).toBe(60);
     expect(catastrophe.holders).toHaveLength(2);
     expect(catastrophe.holders.map((h) => h.hand).sort()).toEqual(["3s", "Jacks"]);
-    // Both instances are in the same one game — the drill-through's own
-    // games list is deduplicated by game, unlike `holders` (criterion 234).
-    expect(catastrophe.games).toHaveLength(1);
+    // ⚠️ Bug fix: both instances are in the same one game, but they're two
+    // genuinely different single-hand events — the drill-through's games
+    // list keeps both rows, one per hand, rather than silently collapsing
+    // them into one (the games list is still deduplicated by game *and*
+    // hand together, so a game with no hand at all — every other
+    // single-event record — still gets exactly one row, criterion 234).
+    expect(catastrophe.games).toHaveLength(2);
+    expect(catastrophe.games.map((g) => g.singleEventHand)).toEqual(["3s", "Jacks"]);
+    expect(catastrophe.games.every((g) => g.singleEventValue === 60)).toBe(true);
+  });
+
+  it("⚠️ bug regression: two hands, same game, same tied top score — the games list keeps both, deterministically, across repeated calls", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    // Two different players each post the archive's own top single-hand
+    // score in two different hands of the same game — a tie that used to
+    // collapse to one row (or the other) depending on unordered `round_score`
+    // rows, rather than showing both.
+    await seedGame({
+      playedOn: "2026-02-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 100, handScores: [100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+        { playerId: players["Bo"]!, finalScore: 100, handScores: [0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0] },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const board = await getBoard();
+      if (board.empty) throw new Error("unreachable");
+      const catastrophe = board.singleEventRecords.find((r) => r.key === "catastrophe")!;
+      expect(catastrophe.value).toBe(100);
+      expect(catastrophe.holders).toHaveLength(2);
+      // Both games rows survive, deterministically ordered the same way
+      // every time — never one dropped, never flip-flopping across calls.
+      expect(catastrophe.games).toHaveLength(2);
+      expect(catastrophe.games.map((g) => g.singleEventHand)).toEqual(["3s", "Jacks"]);
+      expect(catastrophe.games.every((g) => g.id === catastrophe.games[0]!.id)).toBe(true);
+    }
   });
 });
 

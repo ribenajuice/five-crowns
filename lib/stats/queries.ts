@@ -44,7 +44,7 @@ import {
   type HandLabel,
   type HandMean,
 } from "@/lib/scoring";
-import type { SingleEventHolder } from "@/lib/board/queries";
+import { toSingleEventHolder, type SingleEventHolder, type SingleEventHolderContext } from "@/lib/board/queries";
 
 /** Criterion 240's own named constant: the disasters list's length (ties at the cutoff run past it). */
 export const SINGLE_HAND_DISASTERS = 10;
@@ -173,14 +173,12 @@ export async function getStatsPage(): Promise<StatsPage> {
   const displayNameByPlayer = new Map<string, string>();
   for (const row of gamePlayerRows) displayNameByPlayer.set(row.playerId, row.displayName);
 
-  function toSingleEventHolder(playerId: string, gameId: string): SingleEventHolder {
-    return {
-      playerId,
-      displayName: displayNameByPlayer.get(playerId)!,
-      gameId,
-      playedOn: gamesById.get(gameId)!.playedOn,
-    };
-  }
+  // The same holder-formatting function `getBoard()` uses (`lib/board/queries.ts`)
+  // — bound once to this call's own maps — so the board and `/stats` can
+  // never silently disagree on how the same holder data is displayed.
+  const holderCtx: SingleEventHolderContext = { displayNameByPlayer, gamesById };
+  const holderFor = (playerId: string, gameId: string): SingleEventHolder =>
+    toSingleEventHolder(holderCtx, playerId, gameId);
 
   // ------------------------------------------------------ best/worst game ever
   const finalScoreInstances: FinalScoreInstance[] = gamePlayerRows.map((r) => ({
@@ -199,7 +197,7 @@ export async function getStatsPage(): Promise<StatsPage> {
     return {
       value: extreme.score,
       holders: extreme.instances
-        .map((i) => toSingleEventHolder(i.playerId, i.gameId))
+        .map((i) => holderFor(i.playerId, i.gameId))
         .sort((a, b) => compareDisplayNames(a.displayName, b.displayName)),
     };
   }

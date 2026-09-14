@@ -558,14 +558,16 @@ export interface Catastrophe {
 
 /**
  * The catastrophe (criterion 230): the highest single `round_score.score`
- * ever recorded — exactly `biggestSingleHandDisasters`'s own top entry
- * (including every tie for it), which is what "rests on the hand-by-hand
- * pass" (spec decision 1) means in code: one derivation, two records.
+ * ever recorded — `pickExtreme`'s O(n) pattern, the same the other four
+ * single-event records use, rather than `biggestSingleHandDisasters`'s own
+ * O(n log n) full sort (that function's top-N-with-ties shape is what the
+ * disasters list, criterion 240, actually needs; the catastrophe only ever
+ * needs the single extreme, so it finds it the cheap way — `getBoard()` runs
+ * this on every `/` page load).
  */
 export function catastrophe(instances: readonly SingleHandInstance[]): Catastrophe | null {
-  const top = biggestSingleHandDisasters(instances, 1);
-  if (top.length === 0) return null;
-  return { score: top[0]!.score, instances: top };
+  const picked = pickExtreme(instances, (i) => i.score, (candidate, best) => candidate > best);
+  return picked && { score: picked.value, instances: picked.items };
 }
 
 /** One (player, game)'s own zero-point hand count — cleanest sheet's own unit. */

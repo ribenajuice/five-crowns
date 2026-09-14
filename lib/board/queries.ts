@@ -58,7 +58,6 @@ import {
   roundsWon,
   rosterDisplayName,
   secondPlace,
-  winningMargin,
   winningScore,
   worstGameEver,
   zeroHandCountsByPlayerGame,
@@ -155,6 +154,36 @@ export type SingleEventRecordKey =
   | "catastrophe"
   | "cleanestSheet"
   | "biggestHammering";
+
+/** The two lookups `toSingleEventHolder` needs to resolve a raw (player, game) id pair — whatever `getBoard()` and `getStatsPage()` each already built their own copy of. */
+export interface SingleEventHolderContext {
+  displayNameByPlayer: ReadonlyMap<string, string>;
+  gamesById: ReadonlyMap<string, { playedOn: string }>;
+}
+
+/**
+ * One (player, game[, hand]) instance's holder details (criteria 228, 230,
+ * 231, 232, 233) — the **one** formatting function both the board
+ * (`getBoard()`, below) and `/stats` (`lib/stats/queries.ts`) call, so the
+ * two screens can never silently disagree on how the same holder data is
+ * displayed. Previously reimplemented near-verbatim in both places; exported
+ * from here since `lib/stats/queries.ts` already imports `SingleEventHolder`
+ * (the type) from this module.
+ */
+export function toSingleEventHolder(
+  ctx: SingleEventHolderContext,
+  playerId: string,
+  gameId: string,
+  hand?: number,
+): SingleEventHolder {
+  return {
+    playerId,
+    displayName: ctx.displayNameByPlayer.get(playerId)!,
+    gameId,
+    playedOn: ctx.gamesById.get(gameId)!.playedOn,
+    ...(hand !== undefined ? { hand: handLabel(hand) } : {}),
+  };
+}
 
 /**
  * One of Stage 3's five single-event records (criteria 228–232) — "a
@@ -280,7 +309,15 @@ export async function getBoard(): Promise<Board> {
         hand: roundScore.hand,
         score: roundScore.score,
       })
-      .from(roundScore),
+      .from(roundScore)
+      // Deterministic order (natural key, ascending — the same convention
+      // `lib/games/queries.ts` and `lib/games/export.ts` use for one game's
+      // own `round_score` rows, extended here with `gameId` first since this
+      // query spans the whole archive): without it, which of two hands tied
+      // for the catastrophe (criterion 230) is treated as "first" when
+      // `buildSingleEventRecord` below walks these rows can differ across
+      // reads with no data change at all.
+      .orderBy(roundScore.gameId, roundScore.hand, roundScore.playerId),
   ]);
 
   // ---------------------------------------------------------------------
@@ -300,8 +337,12 @@ export async function getBoard(): Promise<Board> {
   // Each game's winner(s), second place(s) (criterion 214) and effective
   // roster name, computed once and reused by every drill-through. Also
   // collects biggest hammering's own candidates (criterion 232) — one entry
-  // per game with a second place at all, `winningMargin` called exactly as
-  // Stage 2 defined it, never re-derived from `secondPlaceIdsByGame` above.
+  // per game with a second place at all. ⚠️ `secondPlace(scores)` is called
+  // exactly once per game here — `winningMargin` (Stage 2's own function)
+  // would recompute it internally (and `winningScore` a second time on top),
+  // so the margin is derived directly from this same `second` instead of
+  // calling `winningMargin` again, avoiding tripling the work `getBoard()`
+  // already does on every `/` page load.
   const winnerIdsByGame = new Map<string, string[]>();
   const secondPlaceIdsByGame = new Map<string, string[]>();
   const rosterNameByGame = new Map<string, string>();
@@ -310,8 +351,10 @@ export async function getBoard(): Promise<Board> {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
     const winners = determineWinners(scores);
     winnerIdsByGame.set(gameId, winners);
-    secondPlaceIdsByGame.set(gameId, secondPlace(scores)?.playerIds ?? []);
-    const margin = winningMargin(scores);
+    const second = secondPlace(scores);
+    secondPlaceIdsByGame.set(gameId, second?.playerIds ?? []);
+    const winning = winningScore(scores);
+    const margin = winning !== null && second !== null ? second.score - winning : null;
     if (margin !== null) hammeringInstances.push({ gameId, margin, winnerIds: winners });
     const g = gamesById.get(gameId)!;
     rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
@@ -530,15 +573,12 @@ export async function getBoard(): Promise<Board> {
   // exactly as `buildRecord` is for the other seven.
   // ================================================================
 
-  function toSingleEventHolder(playerId: string, gameId: string, hand?: number): SingleEventHolder {
-    return {
-      playerId,
-      displayName: displayNameByPlayer.get(playerId)!,
-      gameId,
-      playedOn: gamesById.get(gameId)!.playedOn,
-      ...(hand !== undefined ? { hand: handLabel(hand) } : {}),
-    };
-  }
+  // Bound once to this call's own `displayNameByPlayer`/`gamesById` — the
+  // shared `toSingleEventHolder` (this module's own export, above) is a
+  // context-free pure function, so every call site below just supplies it.
+  const holderCtx: SingleEventHolderContext = { displayNameByPlayer, gamesById };
+  const holderFor = (playerId: string, gameId: string, hand?: number): SingleEventHolder =>
+    toSingleEventHolder(holderCtx, playerId, gameId, hand);
 
   /**
    * One single-event record's whole assembly: `extreme` is already the
@@ -567,14 +607,32 @@ export async function getBoard(): Promise<Board> {
     // deliberately *not* deduplicated: two players tied in the same game are
     // two instances (criterion 228) sharing one row here, which is exactly
     // how a shared aggregate win already renders (one game, several names).
-    const seenGameIds = new Set<string>();
+    //
+    // ⚠️ The catastrophe (criterion 230) is the one record where two
+    // *different hands* of the same game can each independently tie for the
+    // extreme value — two genuinely different single-hand events that happen
+    // to share a game id. Deduping by game id alone would silently keep only
+    // whichever instance this loop reached first, which — before the
+    // `round_score` query above had a deterministic `ORDER BY` — could even
+    // change across reads with no data change. The key below folds in
+    // `singleEventHand` too, so those two hands survive as two rows; every
+    // other single-event record never sets `singleEventHand`, so its own
+    // dedup is unaffected — still exactly one row per game id.
+    const seenKeys = new Set<string>();
     const games: RecordGame[] = [];
     for (const instance of extreme.instances) {
       const g = gameFor(instance);
-      if (seenGameIds.has(g.id)) continue;
-      seenGameIds.add(g.id);
+      const key = g.singleEventHand === undefined ? g.id : `${g.id} ${g.singleEventHand}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
       games.push(g);
     }
+    // Newest game first; two rows sharing one game (the catastrophe's
+    // two-hand case) are equal under `sortNewestFirst` and so keep the order
+    // they were pushed in above — itself already deterministic, since that
+    // order follows `extreme.instances`, which in turn follows the
+    // `round_score` query's own `ORDER BY` (`Array.prototype.sort` is a
+    // stable sort).
     games.sort((a, b) => sortNewestFirst(a.id, b.id));
 
     return { key, value: extreme.value, holders, games };
@@ -591,7 +649,7 @@ export async function getBoard(): Promise<Board> {
   const bestGameEverRecord = buildSingleEventRecord(
     "bestGameEver",
     bestGameResult && { value: bestGameResult.score, instances: bestGameResult.instances },
-    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => [holderFor(i.playerId, i.gameId)],
     (i) => toRecordGame(i.gameId, { singleEventValue: i.score }),
   );
 
@@ -599,7 +657,7 @@ export async function getBoard(): Promise<Board> {
   const worstGameEverRecord = buildSingleEventRecord(
     "worstGameEver",
     worstGameResult && { value: worstGameResult.score, instances: worstGameResult.instances },
-    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => [holderFor(i.playerId, i.gameId)],
     (i) => toRecordGame(i.gameId, { singleEventValue: i.score }),
   );
 
@@ -610,7 +668,7 @@ export async function getBoard(): Promise<Board> {
   const catastropheRecord = buildSingleEventRecord(
     "catastrophe",
     catastropheResult && { value: catastropheResult.score, instances: catastropheResult.instances },
-    (i) => [toSingleEventHolder(i.playerId, i.gameId, i.hand)],
+    (i) => [holderFor(i.playerId, i.gameId, i.hand)],
     (i) => toRecordGame(i.gameId, { singleEventValue: i.score, singleEventHand: handLabel(i.hand) }),
   );
 
@@ -620,18 +678,19 @@ export async function getBoard(): Promise<Board> {
   const cleanestSheetRecord = buildSingleEventRecord(
     "cleanestSheet",
     cleanestSheetResult && { value: cleanestSheetResult.count, instances: cleanestSheetResult.instances },
-    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => [holderFor(i.playerId, i.gameId)],
     (i) => toRecordGame(i.gameId, { singleEventValue: i.count }),
   );
 
   // ---------------------------------------------------------- biggest hammering
   // `hammeringInstances` was built above, one per game with a second place at
-  // all (`winningMargin`, Stage 2's own function — never re-derived here).
+  // all — the margin derived from that same per-game `secondPlace` call, not
+  // `winningMargin` (Stage 2's own function, which would recompute it).
   const hammeringResult = biggestHammering(hammeringInstances);
   const biggestHammeringRecord = buildSingleEventRecord(
     "biggestHammering",
     hammeringResult && { value: hammeringResult.margin, instances: hammeringResult.instances },
-    (i) => i.winnerIds.map((playerId) => toSingleEventHolder(playerId, i.gameId)),
+    (i) => i.winnerIds.map((playerId) => holderFor(playerId, i.gameId)),
     (i) => toRecordGame(i.gameId, { singleEventValue: i.margin }),
   );
 
