@@ -7,10 +7,11 @@ the finished paper scoresheet, and the app turns it into a searchable history of
 acceptance criterion re-verified, including a real, paid reading key proven on real scoresheets in
 production. **Milestone 2, Stage 2 is merged and live** — you can edit or delete a saved game, and
 a broken or made-up link shows this app's own "not found" or error screen instead of a generic one.
-**Stage 1 is built and tested, on a branch, not yet merged or deployed** — it adds the score CSV
-download, the usage-and-spend summary, a written, tested way to recover a forgotten admin password,
-and two working password-change buttons in the admin panel. Next up after this stage is player
-identity matching and roster renaming. See `docs/STATUS.md`.
+**Milestone 2, Stage 1 is also merged and live** — from the admin panel you can now change the group
+password or the admin password, download every game's scores as one CSV, and see this month's
+automatic-reading usage and estimated cost. There's also a written, tested runbook for recovering a
+forgotten admin password without a developer. Next up after this stage is player identity matching
+and roster renaming. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
@@ -190,8 +191,10 @@ repository before, using AWS CloudShell.
    (swap in `group-session-epoch` for the group one.)
 
 **Locked out of both?** Run the CloudShell steps above twice — once for the admin password, once
-for the group password. (The panel has its own "Change group password" form, but see "Where it's
-at" above: it isn't safe to use in production yet, so this is the reliable path for now.)
+for the group password. (The panel's own "Change group password" and "Change admin password" forms
+work now, but they need you to already be signed in — the admin form even asks for your *current*
+admin password before it accepts a new one. If you can't get into the admin panel at all, this
+CloudShell path is the only way back in.)
 
 Nothing else changes. **No game, photo or score is touched, and nothing is redeployed** — this
 procedure is exactly the two `aws ssm put-parameter` calls above, and it's the same path used for

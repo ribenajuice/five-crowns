@@ -6,8 +6,9 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
-The first stage of Milestone 2: the rest of the admin panel. Built and tested, not yet merged or
-deployed.
+## [Stage 7] - 2026-09-14
+
+The first stage of Milestone 2: the rest of the admin panel. Live in production.
 
 ### Added
 
@@ -21,10 +22,10 @@ deployed.
 - **A written, step-by-step way to get back into the admin panel if you forget its password.**
   It needs no developer and no code change, and it's been run for real, start to finish, to make
   sure it actually works. It's linked from the admin login screen and from this project's README.
-- **Changing the group password or the admin password from the panel.** Both forms were built and
-  tested but held back pending a decision: the app needed a permission it was deliberately never
-  given. The founder decided to grant it (2026-09-14) rather than drop in-panel rotation — see
-  `docs/DECISIONS.md`. Both buttons now work on the real site.
+- **Changing the group password or the admin password from the panel.** Both buttons now work on
+  the real site. Building them needed a permission the app was deliberately never given; the
+  founder decided to grant it (2026-09-14) rather than drop in-panel rotation — see
+  `docs/DECISIONS.md`.
 
 ## [Stage 6] - 2026-09-14
 

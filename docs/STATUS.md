@@ -4,18 +4,16 @@
 
 - **Last updated**: 2026-09-14
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
-  merged 2026-09-13). **Milestone 2 is now in flight.** Its full delivery spec (86 criteria, 87–173, across four
-  stages) is written in `docs/PRD.md`. **Stage 1** (the admin panel finished — both password changes, the
-  forgotten-password runbook, the score CSV, usage and spend) is built, tested, and open as
-  [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **not yet merged**. PRD open question 5 (the
-  IAM grant blocking in-panel password rotation) is **answered**: the founder chose to widen the grant
-  (2026-09-14), the code change is made and an ADR recorded in `docs/DECISIONS.md`, and it now needs a
-  security-reviewer pass (an IAM-widening change) before merge. **Stage 2** (editing and deleting a saved game,
-  plus app-level 404/error screens)
-  is **merged and live in production** ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), merged and
-  deployed 2026-09-14). Its CHANGELOG/README wrap-up is a separate docs-only
-  [PR #23](https://github.com/ribenajuice/five-crowns/pull/23), CI green, **awaiting the founder's merge** — the
-  auto-merge attempt was correctly refused pending review.
+  merged 2026-09-13). **Milestone 2 is now in flight**, and both its built stages are **merged and live in
+  production**. Its full delivery spec (86 criteria, 87–173, across four stages) is written in `docs/PRD.md`.
+  **Stage 1** (the admin panel finished — both password changes, the forgotten-password runbook, the score CSV,
+  usage and spend) is merged and deployed ([PR #21](https://github.com/ribenajuice/five-crowns/pull/21),
+  2026-09-14). PRD open question 5 (the IAM grant blocking in-panel password rotation) is **resolved**: the
+  founder chose to widen the grant, re-accepting the risk a 2026-09-11 review had closed, in exchange for
+  in-panel rotation actually working — recorded as an ADR, and a security-reviewer pass scoped to the widening
+  found it implemented correctly with no blocking issues. **Stage 2** (editing and deleting a saved game, plus
+  app-level 404/error screens) is also merged and live
+  ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14).
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -23,16 +21,19 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**:
-  - [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **Milestone 2 Stage 1**, the admin panel
-    finished. Fully built, QA'd and security/code-reviewed; CI green. **PRD open question 5 is now answered**:
-    the founder decided (2026-09-14) to widen the web Lambda's SSM grant so the password-change routes can
-    actually write `{group,admin}-password-hash` and `{group,admin}-session-epoch`, re-accepting the risk the
-    2026-09-11 least-privilege review had closed. `sst.config.ts` and the affected docs (`docs/DECISIONS.md`,
-    `docs/ARCHITECTURE.md`, `docs/PRD.md`) are updated on the branch; the branch was also merged up to date
-    with `main` (picking up Stage 2). **Needs a security-reviewer pass** on the widened grant before merge —
-    IAM changes are security-sensitive by the project's own ground rules. Everything else in the PR (the
-    recovery runbook, the CSV download, usage/spend) is unaffected and already verified.
+- **Currently in flight**: nothing — both Milestone 2 stages built so far are merged and live.
+  - ✅ [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **Milestone 2 Stage 1**, the admin panel
+    finished. **Shipped 2026-09-14**: password rotation, the forgotten-password recovery runbook, the combined
+    score CSV download, and usage/spend reporting. PRD open question 5 (the password routes needed an SSM write
+    permission the app was deliberately never given) was resolved by the founder widening the grant to all seven
+    app-owned parameters, re-accepting the risk a 2026-09-11 review had closed — recorded as an ADR in
+    `docs/DECISIONS.md`. A security-reviewer pass scoped specifically to the widening found it implemented
+    correctly and minimally (exact seven-parameter resource list, no wildcard, no extra actions, no KMS
+    statement added, no parameter-name injection path in the route code) with no blocking issues. Merged,
+    deployed, and verified live: root and `/admin` still 307 to `/login`, and all four new admin API routes
+    (`/api/admin/export`, `/api/admin/usage`, `/api/admin/password/group`, `/api/admin/password/admin`) return
+    401 without a session. ⚠️ **Not yet verified**: actually exercising the password-change forms, the CSV
+    download and the usage panel live, since they sit behind the admin password, which only the founder holds.
   - ✅ [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **Milestone 2 Stage 2**, editing and deleting
     a saved game, plus app-level 404/error screens. **Shipped 2026-09-14**: QA and security review both passed
     after two rounds of real bugs found and fixed (see below); a subsequent `/code-review high` pass found three
@@ -136,9 +137,10 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: **Milestone 2** — identity, rosters, and the rest of the admin panel. Two founder decisions are
-  already recorded (`docs/DECISIONS.md`, 2026-09-14): player/location merges are permanent, like a game delete; the
-  score download is one combined CSV. Run `/feature Milestone 2` to start, or name a specific slice of it.
+- **Next up**: **Milestone 2 Stage 3 — People, sets and places** (criteria 132–146): players, rosters and
+  places index pages, the player page and roster page with their three headline numbers, roster renaming, and
+  location renaming. Builds the surfaces Stage 4's merges need — a player merge with no player page to invoke it
+  from is dead weight. Nothing is waiting on the founder. Run `/feature Milestone 2 Stage 3` to start.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
