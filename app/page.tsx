@@ -4,15 +4,13 @@ import { ArchiveLine } from "@/components/ArchiveLine";
 import { BoardNav } from "@/components/BoardNav";
 import { RecordCard } from "@/components/RecordCard";
 import { getBoard, type BoardRecord } from "@/lib/board/queries";
-import { rosterDisplayName } from "@/lib/scoring";
 import {
   BOARD_APPBAR_TITLE,
   BOARD_EMPTY_BODY,
   BOARD_EMPTY_TITLE,
   RECORD_TITLES,
   RECORD_UNITS,
-  formatRecordValue,
-  recordSampleLine,
+  recordDisplayFacts,
 } from "@/lib/ui/copy";
 
 /**
@@ -31,21 +29,20 @@ export const dynamic = "force-dynamic";
  *  documented exception (no sample line, its value already is the sample)
  *  lives here rather than inside `RecordCard` itself. */
 function toCardProps(record: BoardRecord) {
-  const title = RECORD_TITLES[record.key];
-  const unit = RECORD_UNITS[record.key];
+  const href = `/records/${record.key}`;
+  const facts = recordDisplayFacts(record);
 
-  if (record.value === null || record.holders.length === 0) {
-    return { title, holderNames: "", value: null, unit, sample: null, href: `/records/${record.key}`, claim: title };
+  if (!facts) {
+    const title = RECORD_TITLES[record.key];
+    return { title, holderNames: "", value: null, unit: RECORD_UNITS[record.key], sample: null, href, claim: title };
   }
 
-  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
-  const value = formatRecordValue(record.key, record.value);
-  const sample = record.key === "stalwart" ? null : recordSampleLine(record.holders);
+  const { title, unit, holderNames, value, sample } = facts;
   const claim = sample
     ? `${title}: ${holderNames}, ${value} ${unit}, ${sample}`
     : `${title}: ${holderNames}, ${value} ${unit}`;
 
-  return { title, holderNames, value, unit, sample, href: `/records/${record.key}`, claim };
+  return { title, holderNames, value, unit, sample, href, claim };
 }
 
 export default async function Home() {

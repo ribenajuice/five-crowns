@@ -8,8 +8,8 @@
  * these sentences renders it the same way.
  */
 
-import { HANDS_PER_GAME, handLabel, type GridValidation } from "@/lib/scoring";
-import type { BoardRecordKey } from "@/lib/board/queries";
+import { HANDS_PER_GAME, handLabel, rosterDisplayName, type GridValidation } from "@/lib/scoring";
+import type { BoardRecord, BoardRecordKey } from "@/lib/board/queries";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -850,6 +850,47 @@ export function recordSampleLine(
   return holders
     .map((h) => `${h.displayName} — from ${h.gamesPlayed} ${gamesNoun(h.gamesPlayed)}`)
     .join(" · ");
+}
+
+/**
+ * A `BoardRecord`'s display facts — title, unit, holder names, formatted
+ * value and per-holder sample — the one place `RecordCard` (`app/page.tsx`)
+ * and its drill-through (`app/records/[key]/page.tsx`) both read from, so the
+ * two screens can never independently drift on what a record's card and
+ * heading say. Includes the stalwart's documented exception (criterion 196:
+ * no sample line, its value already is the holder's own game count) so
+ * neither caller has to know that rule exists.
+ *
+ * `null` when the record has no holder (criterion 185) — a real, permanent
+ * possibility the shared `BoardRecord` shape defends against even though
+ * none of Stage 1's five records can reach it over a non-empty archive. What
+ * to do about a `null` is left to the caller: the board shows a plain
+ * sentence in `RecordCard`'s place, the drill-through 404s. That's a
+ * legitimate difference in what each page does with the facts, not something
+ * this function decides.
+ */
+export interface RecordDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical, joined with the same "A, B & C" grammar every joint list in this app uses. */
+  holderNames: string;
+  value: string;
+  /** `null` for the stalwart — its value already is the sample (criterion 196). */
+  sample: string | null;
+}
+
+export function recordDisplayFacts(
+  record: Pick<BoardRecord, "key" | "value" | "holders">,
+): RecordDisplayFacts | null {
+  if (record.value === null || record.holders.length === 0) return null;
+
+  return {
+    title: RECORD_TITLES[record.key],
+    unit: RECORD_UNITS[record.key],
+    holderNames: rosterDisplayName(record.holders.map((h) => h.displayName)),
+    value: formatRecordValue(record.key, record.value),
+    sample: record.key === "stalwart" ? null : recordSampleLine(record.holders),
+  };
 }
 
 /** `docs/DESIGN-SYSTEM.md` § "the records board" — verbatim, criteria 185, 193. */

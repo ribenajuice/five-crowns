@@ -13,6 +13,7 @@ export * from "./constants";
 export * from "./monotonicity";
 export * from "./hands";
 export * from "./winners";
+export * from "./names";
 export * from "./roster";
 export * from "./validate";
 export * from "./records";

@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, location } from "@/lib/db/schema";
+import { compareDisplayNames } from "@/lib/scoring";
 
 export interface PlaceListItem {
   id: string;
@@ -40,7 +41,7 @@ export async function listPlaces(): Promise<PlaceListItem[]> {
       name: l.name,
       gamesPlayed: gamesPlayedByLocation.get(l.id) ?? 0,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => compareDisplayNames(a.name, b.name));
 }
 
 /**

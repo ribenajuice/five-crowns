@@ -4,13 +4,10 @@ import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { GameRow } from "@/components/GameRow";
 import { getBoard, type BoardRecordKey } from "@/lib/board/queries";
-import { rosterDisplayName } from "@/lib/scoring";
 import {
   RECORD_TITLES,
-  RECORD_UNITS,
   drillThroughHeading,
-  formatRecordValue,
-  recordSampleLine,
+  recordDisplayFacts,
   roundsWonRowAnnotation,
   streakHolderRowAnnotation,
 } from "@/lib/ui/copy";
@@ -37,13 +34,14 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-const RECORD_KEYS: readonly BoardRecordKey[] = [
-  "mostWins",
-  "mostWinsInARow",
-  "lowestAverageScore",
-  "mostRoundsWon",
-  "stalwart",
-];
+/**
+ * Derived from `RECORD_TITLES` rather than hand-enumerated (code review,
+ * M3 Stage 1): `RECORD_TITLES` is typed `Record<BoardRecordKey, string>`, so
+ * TypeScript itself refuses to compile if a `BoardRecordKey` is ever added
+ * without a title for it — the same guarantee this derivation then hands to
+ * `RECORD_KEYS`, which otherwise couldn't miss an entry `RECORD_TITLES` has.
+ */
+const RECORD_KEYS: readonly BoardRecordKey[] = Object.keys(RECORD_TITLES) as BoardRecordKey[];
 
 function isRecordKey(value: string): value is BoardRecordKey {
   return (RECORD_KEYS as readonly string[]).includes(value);
@@ -62,19 +60,17 @@ export default async function RecordDrillThroughPage({
   if (board.empty) notFound();
 
   const record = board.records.find((r) => r.key === key);
-  if (!record || record.value === null || record.holders.length === 0) notFound();
+  if (!record) notFound();
 
-  const title = RECORD_TITLES[key];
-  const unit = RECORD_UNITS[key];
-  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
-  const value = formatRecordValue(key, record.value);
-  const sample = key === "stalwart" ? null : recordSampleLine(record.holders);
-  const context = sample ? `${value} ${unit}, ${sample}` : `${value} ${unit}`;
+  const facts = recordDisplayFacts(record);
+  if (!facts) notFound();
+
+  const context = facts.sample ? `${facts.value} ${facts.unit}, ${facts.sample}` : `${facts.value} ${facts.unit}`;
 
   return (
     <>
       <AppBar
-        title={drillThroughHeading(title, holderNames)}
+        title={drillThroughHeading(facts.title, facts.holderNames)}
         context={context}
         back={{ href: "/", label: "Back to the board" }}
       />

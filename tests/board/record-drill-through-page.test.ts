@@ -258,3 +258,41 @@ describe("/records/{key} — a real record", () => {
     expect(g2Index).toBeGreaterThan(g1Index);
   });
 });
+
+describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (code review, M3 Stage 1)", () => {
+  it("routes every key RECORD_TITLES knows about, rather than 404ing a real, addable record", async () => {
+    const { RECORD_TITLES } = await import("@/lib/ui/copy");
+    const { getBoard } = await import("@/lib/board/queries");
+
+    const boardWithEveryRecordHeld = {
+      empty: false as const,
+      archiveGameCount: 5,
+      earlyDays: true,
+      records: (Object.keys(RECORD_TITLES) as (keyof typeof RECORD_TITLES)[]).map((key) => ({
+        key,
+        value: 3,
+        holders: [holder("Player A", 5)],
+        games: [
+          {
+            id: "g1",
+            playedOn: "2026-01-01",
+            locationName: "The Deck",
+            rosterId: "r1",
+            rosterName: "Thursday crew",
+            winners: ["Player A"],
+            winningScore: 40,
+          },
+        ],
+      })),
+    };
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+
+    for (const key of Object.keys(RECORD_TITLES)) {
+      vi.mocked(getBoard).mockResolvedValueOnce(boardWithEveryRecordHeld);
+      await expect(
+        RecordPage({ params: Promise.resolve({ key }) }),
+      ).resolves.toBeDefined();
+    }
+  });
+});

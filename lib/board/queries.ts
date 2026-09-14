@@ -30,6 +30,7 @@ import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster, roundScore } from "@/lib/db/schema";
 import {
   averageFinalScore,
+  compareDisplayNames,
   determineWinners,
   longestStreak,
   roundsWon,
@@ -174,26 +175,29 @@ export async function getBoard(): Promise<Board> {
 
   if (gameRows.length === 0) return { empty: true };
 
-  // Query 2 of 3: every game_player row, with display names attached.
-  const gamePlayerRows: GamePlayerRow[] = await db
-    .select({
-      gameId: gamePlayer.gameId,
-      playerId: gamePlayer.playerId,
-      displayName: player.displayName,
-      finalScore: gamePlayer.finalScore,
-    })
-    .from(gamePlayer)
-    .innerJoin(player, eq(gamePlayer.playerId, player.id));
-
-  // Query 3 of 3: every round_score row in the archive, for "most rounds won".
-  const roundScoreRows: GameHandScoreRow[] = await db
-    .select({
-      gameId: roundScore.gameId,
-      playerId: roundScore.playerId,
-      hand: roundScore.hand,
-      score: roundScore.score,
-    })
-    .from(roundScore);
+  // Queries 2 and 3 of 3: every game_player row (with display names attached)
+  // and every round_score row in the archive. Neither depends on the other's
+  // result — only the early return above depends on query 1, and only on its
+  // emptiness — so they run concurrently.
+  const [gamePlayerRows, roundScoreRows]: [GamePlayerRow[], GameHandScoreRow[]] = await Promise.all([
+    db
+      .select({
+        gameId: gamePlayer.gameId,
+        playerId: gamePlayer.playerId,
+        displayName: player.displayName,
+        finalScore: gamePlayer.finalScore,
+      })
+      .from(gamePlayer)
+      .innerJoin(player, eq(gamePlayer.playerId, player.id)),
+    db
+      .select({
+        gameId: roundScore.gameId,
+        playerId: roundScore.playerId,
+        hand: roundScore.hand,
+        score: roundScore.score,
+      })
+      .from(roundScore),
+  ]);
 
   // ---------------------------------------------------------------------
   // Everything below is in-memory work over the three row sets above — no
@@ -276,9 +280,7 @@ export async function getBoard(): Promise<Board> {
   }
 
   function sortedHolders(ids: readonly string[]): RecordHolder[] {
-    return ids
-      .map(holder)
-      .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
+    return ids.map(holder).sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
   }
 
   /** Every player id tied for the best value in `values` — "best" per `better(candidate, currentBest)`. */
@@ -294,24 +296,50 @@ export async function getBoard(): Promise<Board> {
   const higherIsBetter = (candidate: number, best: number) => candidate > best;
   const lowerIsBetter = (candidate: number, best: number) => candidate < best;
 
+  /**
+   * One record's whole assembly: find the best value(s) in `valuesByPlayer`
+   * per `better`, collect every joint holder, and either report "nobody yet"
+   * (criterion 185) or assemble the full `BoardRecord` — the ~90-line shape
+   * every one of the five Stage 1 records (and Stage 2's upcoming two) was
+   * separately repeating. `gamesFor` is the one part that's genuinely
+   * different per record: the plain `unionGames(...).sort(sortNewestFirst)`
+   * tail for most of them, or a bespoke drill-through (the streak, most
+   * rounds won) for the rest.
+   */
+  function buildRecord(
+    key: BoardRecordKey,
+    valuesByPlayer: Map<string, number>,
+    better: (candidate: number, best: number) => boolean,
+    gamesFor: (holderIds: readonly string[]) => RecordGame[],
+  ): BoardRecord {
+    const holderIds = bestHolders(valuesByPlayer, better);
+    if (holderIds.length === 0) {
+      return { key, value: null, holders: [], games: [] };
+    }
+    return {
+      key,
+      value: valuesByPlayer.get(holderIds[0]!)!,
+      holders: sortedHolders(holderIds),
+      games: gamesFor(holderIds),
+    };
+  }
+
+  /** The plain "union of every holder's own qualifying games, newest first" tail three of the five records share. */
+  function unionGamesNewestFirst(
+    holderIds: readonly string[],
+    gamesFor: (playerId: string) => string[],
+  ): RecordGame[] {
+    return unionGames(holderIds, gamesFor).sort(sortNewestFirst).map((id) => toRecordGame(id));
+  }
+
   // ----------------------------------------------------------------- most wins
   const winsByPlayer = new Map<string, number>();
   for (const [playerId, games] of gamesByPlayer) {
     winsByPlayer.set(playerId, games.filter((g) => g.won).length);
   }
-  const mostWinsHolderIds = bestHolders(winsByPlayer, higherIsBetter);
-  const mostWins: BoardRecord =
-    mostWinsHolderIds.length === 0
-      ? { key: "mostWins", value: null, holders: [], games: [] }
-      : {
-          key: "mostWins",
-          value: winsByPlayer.get(mostWinsHolderIds[0]!)!,
-          holders: sortedHolders(mostWinsHolderIds),
-          games: unionGames(
-            mostWinsHolderIds,
-            (playerId) => gamesByPlayer.get(playerId)!.filter((g) => g.won).map((g) => g.gameId),
-          ).sort(sortNewestFirst).map((id) => toRecordGame(id)),
-        };
+  const mostWins = buildRecord("mostWins", winsByPlayer, higherIsBetter, (ids) =>
+    unionGamesNewestFirst(ids, (playerId) => gamesByPlayer.get(playerId)!.filter((g) => g.won).map((g) => g.gameId)),
+  );
 
   // --------------------------------------------------------- most wins in a row
   const streakByPlayer = new Map<string, { length: number; gameIds: string[] }>();
@@ -326,16 +354,9 @@ export async function getBoard(): Promise<Board> {
   }
   const streakLengthByPlayer = new Map<string, number>();
   for (const [playerId, s] of streakByPlayer) streakLengthByPlayer.set(playerId, s.length);
-  const mostWinsInARowHolderIds = bestHolders(streakLengthByPlayer, higherIsBetter);
-  const mostWinsInARow: BoardRecord =
-    mostWinsInARowHolderIds.length === 0
-      ? { key: "mostWinsInARow", value: null, holders: [], games: [] }
-      : {
-          key: "mostWinsInARow",
-          value: streakLengthByPlayer.get(mostWinsInARowHolderIds[0]!)!,
-          holders: sortedHolders(mostWinsInARowHolderIds),
-          games: streakDrillThrough(mostWinsInARowHolderIds, streakByPlayer, displayNameByPlayer, toRecordGame, sortNewestFirst),
-        };
+  const mostWinsInARow = buildRecord("mostWinsInARow", streakLengthByPlayer, higherIsBetter, (ids) =>
+    streakDrillThrough(ids, streakByPlayer, displayNameByPlayer, toRecordGame, sortNewestFirst),
+  );
 
   // ----------------------------------------------------------- lowest average
   const averageByPlayer = new Map<string, number>();
@@ -343,49 +364,22 @@ export async function getBoard(): Promise<Board> {
     const avg = averageFinalScore(games.map((g) => g.finalScore));
     if (avg) averageByPlayer.set(playerId, avg.average);
   }
-  const lowestAverageHolderIds = bestHolders(averageByPlayer, lowerIsBetter);
-  const lowestAverageScore: BoardRecord =
-    lowestAverageHolderIds.length === 0
-      ? { key: "lowestAverageScore", value: null, holders: [], games: [] }
-      : {
-          key: "lowestAverageScore",
-          value: averageByPlayer.get(lowestAverageHolderIds[0]!)!,
-          holders: sortedHolders(lowestAverageHolderIds),
-          games: unionGames(
-            lowestAverageHolderIds,
-            (playerId) => gamesByPlayer.get(playerId)!.map((g) => g.gameId),
-          ).sort(sortNewestFirst).map((id) => toRecordGame(id)),
-        };
+  const lowestAverageScore = buildRecord("lowestAverageScore", averageByPlayer, lowerIsBetter, (ids) =>
+    unionGamesNewestFirst(ids, (playerId) => gamesByPlayer.get(playerId)!.map((g) => g.gameId)),
+  );
 
   // ---------------------------------------------------------- most rounds won
   const { totalByPlayer: roundsWonByPlayer, byPlayerAndGame: roundsWonByPlayerAndGame } = roundsWon(roundScoreRows);
-  const mostRoundsWonHolderIds = bestHolders(roundsWonByPlayer, higherIsBetter);
-  const mostRoundsWon: BoardRecord =
-    mostRoundsWonHolderIds.length === 0
-      ? { key: "mostRoundsWon", value: null, holders: [], games: [] }
-      : {
-          key: "mostRoundsWon",
-          value: roundsWonByPlayer.get(mostRoundsWonHolderIds[0]!)!,
-          holders: sortedHolders(mostRoundsWonHolderIds),
-          games: roundsWonDrillThrough(mostRoundsWonHolderIds, roundsWonByPlayerAndGame, displayNameByPlayer, toRecordGame, sortNewestFirst),
-        };
+  const mostRoundsWon = buildRecord("mostRoundsWon", roundsWonByPlayer, higherIsBetter, (ids) =>
+    roundsWonDrillThrough(ids, roundsWonByPlayerAndGame, displayNameByPlayer, toRecordGame, sortNewestFirst),
+  );
 
   // ---------------------------------------------------------------- stalwart
   const gamesPlayedByPlayer = new Map<string, number>();
   for (const [playerId, games] of gamesByPlayer) gamesPlayedByPlayer.set(playerId, games.length);
-  const stalwartHolderIds = bestHolders(gamesPlayedByPlayer, higherIsBetter);
-  const stalwart: BoardRecord =
-    stalwartHolderIds.length === 0
-      ? { key: "stalwart", value: null, holders: [], games: [] }
-      : {
-          key: "stalwart",
-          value: gamesPlayedByPlayer.get(stalwartHolderIds[0]!)!,
-          holders: sortedHolders(stalwartHolderIds),
-          games: unionGames(
-            stalwartHolderIds,
-            (playerId) => gamesByPlayer.get(playerId)!.map((g) => g.gameId),
-          ).sort(sortNewestFirst).map((id) => toRecordGame(id)),
-        };
+  const stalwart = buildRecord("stalwart", gamesPlayedByPlayer, higherIsBetter, (ids) =>
+    unionGamesNewestFirst(ids, (playerId) => gamesByPlayer.get(playerId)!.map((g) => g.gameId)),
+  );
 
   return {
     empty: false,
@@ -418,12 +412,13 @@ function streakDrillThrough(
   toRecordGame: (gameId: string, extra?: Pick<RecordGame, "roundsWonByHolder" | "streakOwner">) => RecordGame,
   sortNewestFirst: (a: string, b: string) => number,
 ): RecordGame[] {
+  // Keyed by playerId, like every sibling map in this module — never by
+  // displayName, which two distinct players could share.
   const ownersByGame = new Map<string, Set<string>>();
   for (const playerId of holderIds) {
-    const displayName = displayNameByPlayer.get(playerId)!;
     for (const gameId of streakByPlayer.get(playerId)!.gameIds) {
       const owners = ownersByGame.get(gameId) ?? new Set<string>();
-      owners.add(displayName);
+      owners.add(playerId);
       ownersByGame.set(gameId, owners);
     }
   }
@@ -432,7 +427,11 @@ function streakDrillThrough(
 
   return gameIds.map((gameId) => {
     const owners = ownersByGame.get(gameId)!;
-    const streakOwner = holderIds.length > 1 && owners.size === 1 ? [...owners][0] : undefined;
+    // Resolve to a display name only at this final point of output.
+    const streakOwner =
+      holderIds.length > 1 && owners.size === 1
+        ? displayNameByPlayer.get([...owners][0]!)!
+        : undefined;
     return toRecordGame(gameId, streakOwner ? { streakOwner } : {});
   });
 }

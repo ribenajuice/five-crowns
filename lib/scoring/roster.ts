@@ -19,6 +19,7 @@
  */
 
 import { MIN_PLAYERS } from "./constants";
+import { compareDisplayNames } from "./names";
 
 /** The separator is part of the stored format. Changing it is a migration. */
 export const ROSTER_SIGNATURE_SEPARATOR = ":";
@@ -92,15 +93,11 @@ export function isPlayableRoster(playerIds: readonly string[]): boolean {
  * `roster.name` is null (PRD criterion 68). Format per `docs/DESIGN-SYSTEM.md`:
  * **alphabetical order, joined "A, B, C & D"**.
  *
- * ⚠️ The sort is case-insensitive (`sensitivity: "base"`): a raw code-point
- * sort puts every capital letter before every lower-case one, so "Player D"
- * would sort before "player c" — wrong alphabetically, and a roster whose
- * order looks like a bug the moment two names differ only in case.
+ * ⚠️ The sort is case-insensitive — see `compareDisplayNames` (`./names.ts`)
+ * for why a raw code-point sort would be wrong here.
  */
 export function rosterDisplayName(memberDisplayNames: readonly string[]): string {
-  const names = [...memberDisplayNames].sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" }),
-  );
+  const names = [...memberDisplayNames].sort(compareDisplayNames);
   if (names.length === 0) return "";
   if (names.length === 1) return names[0]!;
   if (names.length === 2) return `${names[0]} & ${names[1]}`;
