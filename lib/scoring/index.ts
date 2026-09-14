@@ -15,3 +15,4 @@ export * from "./hands";
 export * from "./winners";
 export * from "./roster";
 export * from "./validate";
+export * from "./records";
