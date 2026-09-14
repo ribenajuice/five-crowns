@@ -14,6 +14,11 @@
 > adds screens rather than a new direction — mockups at
 > `docs/mockups/stage-3-people-sets-places.html`, published at
 > <https://claude.ai/code/artifact/c56313a7-74e0-42be-ab7c-5a5f4ccd1b60>.
+>
+> **Milestone 2 Stage 4** ("Identity, repaired" — the suggested-match pre-selection, and merging
+> players and places) again adds screens and one behaviour change to an existing one, no new
+> direction — mockups at `docs/mockups/stage-4-identity-repaired.html`, published at
+> <https://claude.ai/code/artifact/42f4136c-e8c5-4930-afec-f8b977c0897c>.
 
 ## Direction
 
@@ -149,7 +154,13 @@ the digit; this is a correctness feature, not typography.
 | `IndexRow` (Stage 3) | players index, rosters index | The whole row is a `Link` (unlike `PlaceRow` below, which isn't one) — 52px+ tall, `PickList`-row shaped: a name in the display face, an optional muted second line (a roster's member list), and a right-aligned games-played count in the same uppercase-label-over-`--num`-value shape `StatBlock` uses. Players index: name only. Rosters index: name plus its members on a second line |
 | `StatBlock` (Stage 3) | player page, roster page | The admin usage panel's own label/value shape (`docs/DESIGN-SYSTEM.md` § "Admin panel — usage and spend"), formalised as a named, reusable unit now that a third screen needs it: uppercase `--text-xs` label, a `--num`-sized tabular value, and — wherever criterion 133 requires it — a muted one-line **sample-size caption** underneath (*"4 of 9 games"*). Three sit in a row (`grid-template-columns: repeat(3, 1fr)`) at the top of the player page; the roster page uses a single one for "Games played," since its per-member numbers get their own list, below |
 | `PlaceRow` (Stage 3) | places index | Unlike `IndexRow`, **not** a `Link` — there's no place page for it to lead to. Name, an optional muted caption on a never-used venue, a right-aligned games-played count (0 renders like any other number), and the row's `RenameControl` trigger |
-| `RenameControl` (Stage 3) | roster page (its own name); places index (per row) | A `ghost` **"Rename"** link that reveals a `Field` in place — no separate screen, same "reveal the form in place" convention `AdminKeyPanel`'s "Replace key" already established. Roster page: one control, above the stats, for the roster's own name. Places index: one per row, opened by a 44×44 pencil `IconButton` (`aria-label="Rename {place}"`) rather than a text link, because the row has no spare width for a label. Both share the same footer shape — `Cancel` (`ghost`) then **"Save name"** (`primary`) — and the same non-blocking-warning-vs-blocking-refusal split described under *Renaming* below |
+| `RenameControl` (Stage 3) | roster page (its own name); places index (per row) | A `ghost` **"Rename"** link that reveals a `Field` in place — no separate screen, same "reveal the form in place" convention `AdminKeyPanel`'s "Replace key" already established. Roster page: one control, above the stats, for the roster's own name. Places index: one per row, opened by a 44×44 pencil `IconButton` (**Stage 4: `aria-label="Edit {place}"`, changed from "Rename {place}"** — see `PlaceRowActions` below) rather than a text link, because the row has no spare width for a label. Both share the same footer shape — `Cancel` (`ghost`) then **"Save name"** (`primary`) — and the same non-blocking-warning-vs-blocking-refusal split described under *Renaming* below |
+| `SuggestedMatchPill` (Stage 4) | review screen, `ActiveColumnCard` header | The **only** new visual signal a pre-selected suggestion gets: a `Pill tone="neutral"` reading **"Suggested"**, shown beside the column's player name only while that column's assignment came from criterion 172's auto-match and has not yet been touched by the founder. Cleared the instant the founder opens that column's name control and picks anything — including re-picking the same player — same "their own action retires the model's doubt" reasoning `ReadHint` already established for cells. Never blocks anything, never requires a tap to dismiss: the column is already assigned for the save gate (criterion 172) whether or not this pill is showing |
+| `ReadAsCaption` (Stage 4) | review screen, `ActiveColumnCard` header | A small `text-muted` line directly under the column's player name — **"Read as {sheetName}."** — present on **every** column once a transcription exists (criterion 153), not only suggested or mismatched ones. An unassigned column doesn't get one: its heading already *is* the handwritten name, so there's nothing separate to echo |
+| `PlaceRowActions` (Stage 4) | places index, replacing `RenameControl`'s direct-to-`Field` behaviour | The pencil `IconButton` now opens a two-row chooser in the same in-place reveal slot, rather than jumping straight to the rename `Field`: **"Rename"** (pencil icon, sub-caption "Give this place a different name.") and **"Merge with another place…"** (a new converging-arrows icon, sub-caption "Combine it with a duplicate — the games move, one place goes away."), each a 52px row in the same shape `StructureMenu`'s equal-weight rows already use. Picking "Rename" swaps the slot to Stage 3's existing `Field` editor, unchanged. Picking "Merge…" opens `MergeTargetPicker` below. `PlaceRow` itself is pixel-identical to Stage 3 at rest — only its pencil's `aria-label` changes, from "Rename {place}" to **"Edit {place}"** |
+| `MergeTargetPicker` (Stage 4) | player page's "This is the same person as…"; `PlaceRowActions`' "Merge with another place…" | A `BottomSheet` holding a `PickList`-shaped list of every *other* player or place — no "add new" row and no "someone new" row, since neither concept applies to picking a merge target. Each row's games-played count is shown as secondary text (an existing duplicate is often the one with almost no games), same shape `IndexRow` already uses. Heading: **"Merge {name} with which player?"** / **"Merge {name} with which place?"** |
+| `MergeConfirmScreen` (Stage 4) | reached from `MergeTargetPicker` (players and places both) | A full screen, same two-deliberate-actions shape as "Deleting a game": arriving here is the first action, tapping **"Merge permanently"** is the second. Names both records via two `survivor-card` rows (radio-style, `aria-pressed`, same `--sunk`-highlight idiom `PickList` already uses for a selected row) each showing games-played; **neither is pre-selected** (criterion 156). Once one is picked, both cards immediately carry a `Pill` — **"Stays"** (`tone="ok"`) on the chosen one, **"Deleted"** (`tone="err"`) on the other — and two plain sentences appear beneath (not a `Banner`; same "plain text under the heading" precedent "Deleting a game" set): what moves, and the no-undo/no-record line. `Cancel` (`ghost`) then **"Merge permanently"** (the same documented `ghost` + `--error`-ink + icon destructive variant "Delete permanently" already established, disabled until a survivor is picked) |
+| `MergeConflictRefusal` (Stage 4) | `MergeConfirmScreen`, players only | Where the two players share a game, this **replaces** the entire survivor-picker — not a `Banner` sitting above a still-enabled one. A `Banner error` naming both players and that they share a game, then every offending game listed as an `EntityLink` plus an **"Edit this game"** link, then a single **"Back to {player}"** `ghost` button. Nothing resembling a choice renders while the conflict stands (criterion 160). Places have no equivalent state: a game has exactly one location, so two places can never both be "in the same game" |
 
 ## Screen rules
 
@@ -212,6 +223,29 @@ the digit; this is a correctness feature, not typography.
   game records a **pending** player the same way a pending venue works — the `new` `Pill` on the
   column header, resolved only at save (criterion 63). ⚠️ **An abandoned draft leaves nothing
   behind**: no pending player or venue becomes a real row unless the game is actually saved.
+
+- **Review screen — the suggested match (Stage 4, criteria 148–154, 172–173).** Matching now runs
+  before the screen first renders, and its result decides the column's *starting* state — nothing
+  about the pick-list itself, `PickList`, `CropFrame` or the save gate changes shape.
+  - **A confident suggestion (≥ 0.80, clear leader)**: the matched player is **already selected**
+    when the screen renders. The column counts as assigned for the save gate exactly as a
+    hand-picked one does (criterion 172) — ⚠️ **no new blocking state, no "unconfirmed" badge**. The
+    one visual difference is `SuggestedMatchPill` (component inventory, above) next to the player's
+    name, plus `ReadAsCaption` beneath it reading **"Read as {sheetName}."** — present on every
+    column once a transcription exists, suggested or not (criterion 153), so a wrong suggestion is
+    visible without opening the picker. Opening the column's name control and choosing anything —
+    even re-confirming the same player — clears the pill for good.
+  - **A near match, an ambiguous tie within 0.10, or nothing plausible (criterion 173)**: the column
+    renders **unassigned**, exactly as M1 — heading is the handwritten name itself in muted italic,
+    a `Pill tone="warn"` reading **"Needs a player"**, "Who is this column?" in place of "Not
+    {player}?". Its `PickList` sheet opens with a **"Closest matches"** section (up to the best two
+    or three, in the order criterion 173 ranks them) pinned above the ordinary alphabetical roster,
+    separated by the same divider rule the "add new" row already uses — an ordering change to the
+    existing sheet, not a new component. "Someone new", pre-filled with the handwritten name, stays
+    pinned last regardless.
+  - Wording throughout stays inside the same banned-word list as everywhere else on this screen: a
+    suggestion is never *checked, validated, verified, confirmed, correct* or *looks right*
+    (criterion 154) — "Suggested" and "Read as" are the only two new words this adds.
 
 - **Review screen — setting a column's crop.** Stage 2 has no transcription to supply where a
   column sits on the photo, so the founder shows it, once per column. This is **not a separate
@@ -533,6 +567,13 @@ the digit; this is a correctness feature, not typography.
     played" `StatBlock` alone (wins and win-rate blocks don't render — there is no sample to state
     a rate against), followed by a `Card`: **"No games on record."** / *"Nothing saved right now
     has {Player} at the table."* Not an error, not a blank page.
+  - **The merge entry point (Stage 4, criterion 155)**: a full-width `ghost` `Button` — **"This is
+    the same person as…"** — sits directly under the stat block, above the games list (or above the
+    zero-games `Card` on the empty layout). ⚠️ **Present on both layouts, not only the populated
+    one** — a zero-game player is exactly the duplicate most likely to need merging away, so the
+    empty state carries the button at the same relative position rather than omitting it because
+    there's "nothing here yet." Available to anyone holding the group password, same trust level as
+    deleting a game — **not** gated behind the admin panel (criterion 155).
 
 - **Rosters index** (Stage 3, criterion 137). `AppBar` (title **"Rosters"**, back arrow to games).
   Every roster **with at least one game** — never a zero-game roster, which is exactly the filter
@@ -581,23 +622,91 @@ the digit; this is a correctness feature, not typography.
     design consequence, since identity is the player-set key, never the display name; noted here so
     nobody "fixes" a rename into creating a new roster row.
 
+- **Merging two players** (Stage 4, criteria 155–162). Tapping "This is the same person as…"
+  opens `MergeTargetPicker`: a `BottomSheet` titled **"Merge {player} with which player?"**, listing
+  every other player with their games-played count as secondary text, no add-new row. Picking one
+  navigates to `MergeConfirmScreen` (`AppBar` title **"Merge two players?"**, back arrow to the
+  originating player).
+  - **The ordinary case** (no shared game): one caption — *"Pick which one stays. Nothing is chosen
+    for you."* — then two `survivor-card` rows, one per player, each showing that player's own games
+    played. **Neither is pre-selected** (criterion 156) — no card is highlighted, so age or
+    games-played can never read as a default. Tapping a card selects it (`aria-pressed`, `--sunk`
+    highlight, same idiom `PickList` already uses) and immediately labels both: the chosen card gets
+    a `Pill tone="ok"` reading **"Stays"**, the other a `Pill tone="err"` reading **"Deleted"**.
+    Two plain sentences (not a `Banner` — same "plain text under the heading" precedent "Deleting a
+    game" set) appear beneath the cards once one is picked:
+    - **"{Loser} is deleted for good. Every game, round, roster spot and photo of theirs moves to
+      {survivor}."** — names what criterion 158 actually repoints, in plain words.
+    - **"There's no undo, and no record that a merge happened."** — covers criterion 157's "no undo"
+      and criterion 162's "no merge history" in one sentence, directly above the button that does it.
+    - Footer: **"Cancel"** (`ghost`) then **"Merge permanently"** — the same documented `ghost` +
+      `--error`-ink + icon destructive variant "Delete permanently" already established (§ "Deleting
+      a game"), reused a second time rather than invented again. `disabled` until a survivor is
+      picked (criterion 156's "nothing is picked for them").
+  - **The same-game refusal** (Stage 4, criterion 160). Where the two players share a game, the
+    whole survivor-picker above **does not render at all** — refused before anything changes, not a
+    warning sitting above a still-usable one. Instead: a `Banner error` — **"{A} and {B} played the
+    same game."** / *"One person can't hold two seats at the same table. Fix these first, then try
+    the merge again:"* — then every offending game listed as a `Card` row, each an `EntityLink` to
+    the game (date · roster name) plus an **"Edit this game"** link to Stage 2's edit flow (which is
+    how one of the two players comes off that game), then a single **"Back to {player}"** `ghost`
+    button. QA constructs this and confirms no row anywhere was repointed.
+  - **After it runs** (criteria 161–162): redirect to the survivor's own player page with a
+    one-time `Banner ok` — **"Merged."** / *"{Loser} is now part of {survivor}'s record."* — same
+    ephemeral shape as roster rename's "Saved.": gone on reload, because nothing about the merge is
+    stored anywhere (criterion 162). ⚠️ **When the merge also folds two custom-named rosters into
+    one** (criterion 159, both had a custom name), a second sentence is appended naming which
+    survived: *"Two rosters folded into one — kept the name '{name}'."* The losing player's page and
+    URL now show the 404 screen (criterion 161); the players index is one row shorter.
+
 - **Places index, and renaming a location** (Stage 3, criteria 140, 145–146). `AppBar` (title
   **"Places"**, back arrow to games). **There is no place page** — nothing in the PRD gives a
   location anywhere else to link to yet (filtering by location is Milestone 3), so a places-index
   row is **not** a `Link`: a `PlaceRow` is name, an optional muted caption on a never-used venue
   (*"Never used yet — still pickable when you save a game."*), a right-aligned games-played count
   — **0 renders like any other number, never hidden or dashed** (criterion 140) — and a 44×44 pencil
-  `IconButton` opening that row's `RenameControl` in place. **Empty database**: *"No places yet."* /
-  *"Add one from the review screen next time you save a game."*
+  `IconButton`. **Empty database**: *"No places yet."* / *"Add one from the review screen next time
+  you save a game."*
   - **An ordinary rename** shows on every game that used it, the games list, the game view, the
     review screen's pick-list and this index (criterion 145) — five surfaces sharing the one
     underlying row, exactly the same "one row, everywhere inherits it" shape roster renaming uses.
+  - **Stage 4: the pencil now opens `PlaceRowActions`, not the rename `Field` directly** (component
+    inventory, above) — `PlaceRow` itself is pixel-identical to Stage 3 at rest, since the row had no
+    spare width for a second icon button and this stage adds a second action (merge) to it. The
+    pencil's `aria-label` changes from **"Rename {place}"** to **"Edit {place}"**, since it no longer
+    commits to one action on tap. Two 52px rows appear in the row's own reveal slot: **"Rename"**
+    (sub-caption *"Give this place a different name."*) swaps straight to the unchanged Stage 3
+    `Field` editor; **"Merge with another place…"** (sub-caption *"Combine it with a duplicate — the
+    games move, one place goes away."*) opens `MergeTargetPicker`, titled **"Merge {place} with which
+    place?"**, leading to `MergeConfirmScreen` exactly as a player merge does (see *Merging places*
+    below) — same mechanism, same "Merge permanently" confirmation, same permanence wording
+    (criterion 163).
   - **A `name_key` collision** (criterion 146) is **refused**, not warned — `Banner error` replacing
     the confirm row rather than sitting above an enabled one: **"{Existing place} already has that
-    name."** / *"Pick a different name for now — merging two places into one is coming in a later
-    update."* ⚠️ **No merge action is offered here** — decision recorded in `docs/DECISIONS.md`
-    (2026-09-14): the merge itself is Stage 4 scope, so this stage's refusal names the other place
-    plainly and stops there, rather than promising or half-building a control that doesn't work yet.
+    name."** / *"Pick a different name, or merge the two into one instead."* ⚠️ **Stage 4 copy
+    change**: this replaces Stage 3's "merging two places into one is coming in a later update" now
+    that the merge exists (criterion 163 explicitly fulfils criterion 146's promise). Directly below
+    the refusal, a **"Merge with {existing place}"** button (the same destructive `ghost` +
+    `--error`-ink + icon treatment as "Merge permanently") jumps straight to `MergeConfirmScreen`
+    with both places already filled in — **not** back through `MergeTargetPicker`'s "which place?"
+    sheet, since typing the colliding name already answered that question and re-asking would be
+    busywork.
+
+- **Merging two places** (Stage 4, criteria 163–166). Reached from the places index's
+  `PlaceRowActions` (above) or from the rename-collision refusal's "Merge with {existing place}"
+  button. `MergeConfirmScreen` (`AppBar` title **"Merge two places?"**, back arrow to the places
+  index) is the same component the player merge uses, generalised to locations: two `survivor-card`
+  rows (each place's own games-played count), neither pre-selected, "Stays"/"Deleted" `Pill`s once
+  one is picked, the two plain sentences —
+  **"{Loser} is deleted for good. Every game at {loser} moves to {survivor}."** and **"There's no
+  undo, and no record that a merge happened."** — then **"Cancel"** / **"Merge permanently"**.
+  ⚠️ **No same-game refusal applies here** — a game has exactly one location, so two places can
+  never both be "in the same game" the way two players can; places have no equivalent of
+  `MergeConflictRefusal`. **Games with no location are simply untouched** by any merge (criterion
+  165). After it runs: redirect to the places index with the same one-time `Banner ok` shape —
+  **"Merged."** / *"{Loser} is now part of {survivor}."* — the survivor's games-played count updated
+  in place, the loser's row gone. The review screen's venue pick-list collapses to one entry for the
+  pair, and "most recently used" resolves to the survivor (criterion 166).
 
 - **Reaching these pages** (Stage 3, criterion 174). Three decisions, all ours to make per the
   criterion's own wording ("where the links sit is a design call, not a further product decision"):
@@ -800,7 +909,7 @@ verified, confirmed, correct, looks right* or *all good*.
 | Roster page, stats sample line | Each member's wins and win rate across these {n} games. |
 | Roster page, games-list heading | {Roster}'s games |
 | `RenameControl` open link (roster) | Rename |
-| `RenameControl` open button (place, `aria-label`) | Rename {place} |
+| `RenameControl`/`PlaceRowActions` open button (place, `aria-label`) | Edit {place} *(Stage 4 — was "Rename {place}")* |
 | Rename field label — roster | Roster name |
 | Rename field label — place | Location name |
 | Rename length/blank helper (roster) | Up to 40 characters. Leave it blank to use the automatic name from its members. |
@@ -810,7 +919,33 @@ verified, confirmed, correct, looks right* or *all good*.
 | Rename, save button busy | Saving… |
 | Rename saved (roster) | Saved. / Showing everywhere this roster appears. |
 | Roster name, duplicate warning | {Name} is already a roster name. / {Other roster's members} answers to it too — nothing stops you saving it, rename either one later if it's confusing. |
-| Location rename, refused (collision) | {Existing place} already has that name. / Pick a different name for now — merging two places into one is coming in a later update. |
+| Location rename, refused (collision) | {Existing place} already has that name. / Pick a different name, or merge the two into one instead. *(Stage 4 — was "…coming in a later update.")* |
+| Location rename, refused — merge button | Merge with {existing place} |
+| Suggested-match `Pill` | Suggested |
+| Suggested-match, read-as caption | Read as {sheetName}. |
+| Unassigned column, `Pill` | Needs a player |
+| `PickList`, near-match section label | Closest matches |
+| `PlaceRowActions`, rename row | Rename · Give this place a different name. |
+| `PlaceRowActions`, merge row | Merge with another place… · Combine it with a duplicate — the games move, one place goes away. |
+| Merge entry point (player page) | This is the same person as… |
+| `MergeTargetPicker` heading — player | Merge {player} with which player? |
+| `MergeTargetPicker` heading — place | Merge {place} with which place? |
+| `MergeConfirmScreen` title — player | Merge two players? |
+| `MergeConfirmScreen` title — place | Merge two places? |
+| `MergeConfirmScreen` intro | Pick which one stays. Nothing is chosen for you. |
+| Survivor card `Pill`s | Stays · Deleted |
+| Merge detail sentence — player | {Loser} is deleted for good. Every game, round, roster spot and photo of theirs moves to {survivor}. |
+| Merge detail sentence — place | {Loser} is deleted for good. Every game at {loser} moves to {survivor}. |
+| Merge, no-undo sentence | There's no undo, and no record that a merge happened. |
+| Merge, cancel button | Cancel |
+| Merge, commit button | Merge permanently |
+| Same-game refusal, banner title | {A} and {B} played the same game. |
+| Same-game refusal, banner body | One person can't hold two seats at the same table. Fix these first, then try the merge again: |
+| Same-game refusal, edit-game link | Edit this game |
+| Same-game refusal, back button | Back to {player} |
+| Merge success — player | Merged. / {Loser} is now part of {survivor}'s record. |
+| Merge success, roster-folding note | Two rosters folded into one — kept the name "{name}". |
+| Merge success — place | Merged. / {Loser} is now part of {survivor}. |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

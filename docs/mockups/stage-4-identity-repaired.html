@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Identity, repaired</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF3E7; --surface:#FFFDF8; --sunk:#F2E9D8; --line:#E0D5C0;
+    --text:#23201B; --text-muted:#6B6257;
+    --brand:#17457A; --on-brand:#FFFDF8;
+    --accent:#C1462F; --accent-ink:#9C3520;
+    --success:#1F6B45; --warn:#8A5A00; --error:#B3261E;
+    --success-soft:#E2EFE7; --warn-soft:#F7EBD4; --error-soft:#FBE4E1;
+    --radius:14px;
+    --annot:#6D28D9; --annot-soft:#F3ECFC;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17140F; --surface:#211D17; --sunk:#2B251D; --line:#3A3328;
+      --text:#F3EADA; --text-muted:#B0A390;
+      --brand:#7FB3E8; --on-brand:#17140F;
+      --accent:#F0906E; --accent-ink:#F0906E;
+      --success:#7CCFA0; --warn:#E5B45C; --error:#FF8B7E;
+      --success-soft:#1D2C23; --warn-soft:#2E2515; --error-soft:#33191A;
+      --annot:#C4B5FD; --annot-soft:#2A2140;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140F; --surface:#211D17; --sunk:#2B251D; --line:#3A3328;
+    --text:#F3EADA; --text-muted:#B0A390;
+    --brand:#7FB3E8; --on-brand:#17140F;
+    --accent:#F0906E; --accent-ink:#F0906E;
+    --success:#7CCFA0; --warn:#E5B45C; --error:#FF8B7E;
+    --success-soft:#1D2C23; --warn-soft:#2E2515; --error-soft:#33191A;
+    --annot:#C4B5FD; --annot-soft:#2A2140;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px; line-height:1.5; padding-inline:16px; padding-block:24px 64px;
+  }
+  h1,h2,h3,.display{font-family:"Fraunces",Georgia,"Times New Roman",serif;}
+  .tabular{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-variant-numeric:tabular-nums;}
+  a{color:inherit;}
+  :focus-visible{outline:3px solid var(--brand); outline-offset:2px;}
+  button{font-family:inherit;}
+
+  /* ---- intro / doc chrome (not app UI) ---- */
+  .wrap{max-width:1200px; margin:0 auto;}
+  .intro{max-width:820px; margin:0 auto 40px;}
+  .intro h1{font-size:32px; margin:0 0 8px;}
+  .intro p{color:var(--text-muted);}
+  .decisions{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px; margin-top:16px;}
+  .decisions h2{font-size:16px; margin:0 0 8px;}
+  .decisions ol{margin:0; padding-left:20px;}
+  .decisions li{margin-bottom:8px;}
+  .topnav{position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--line);
+    margin:0 -16px 32px; padding:12px 16px; display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto;}
+  .topnav a{font-size:13px; font-weight:700; color:var(--brand); text-decoration:none; padding:6px 10px;
+    border:1px solid var(--line); border-radius:999px; white-space:nowrap;}
+  .topnav a:hover{border-color:var(--brand);}
+  section.spec{max-width:820px; margin:0 auto 12px;}
+  section.spec h2{font-size:22px; margin:48px 0 4px;}
+  section.spec .crit{color:var(--text-muted); font-size:13px; margin:0 0 6px;}
+  section.spec .decision{background:var(--annot-soft); border:1px dashed var(--annot); border-radius:10px;
+    color:var(--annot); font-size:13px; font-weight:600; padding:8px 12px; margin:8px 0 16px;}
+  .frames{display:flex; gap:24px; flex-wrap:wrap; justify-content:center; margin-bottom:16px;}
+  .frame-label{font-size:13px; font-weight:700; text-align:center; margin-bottom:8px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.07em;}
+  figure{margin:0;}
+  .sep{border:none; border-top:1px solid var(--line); margin:40px auto; max-width:820px;}
+
+  /* ---- phone frame ---- */
+  .phone{width:375px; max-width:100%; border:1px solid var(--line); border-radius:28px; background:var(--bg);
+    box-shadow:0 10px 30px rgba(0,0,0,.12); overflow:hidden;}
+  .phone .screen{min-height:200px; overflow-y:auto;}
+  .desktop{width:1000px; max-width:100%; border:1px solid var(--line); border-radius:16px; background:var(--bg);
+    box-shadow:0 10px 30px rgba(0,0,0,.12); overflow:hidden;}
+
+  /* ---- app chrome, matching components/*.tsx exactly ---- */
+  .appbar{border-bottom:1px solid var(--line); background:var(--surface); display:flex; align-items:center; gap:8px; padding:12px 16px;}
+  .back-btn{width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; color:var(--brand);
+    border-radius:var(--radius); flex-shrink:0; margin-left:-8px; text-decoration:none;}
+  .appbar h1{font-size:22px; font-weight:700; margin:0; line-height:1.2;}
+  .appbar .ctx{font-size:13px; color:var(--text-muted); margin:2px 0 0;}
+  main{padding:16px;}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+
+  .btn{height:48px; border-radius:var(--radius); font-weight:700; font-size:16px; display:inline-flex; align-items:center;
+    justify-content:center; width:100%; text-decoration:none; border:none; cursor:pointer; gap:8px;}
+  .btn-primary{background:var(--brand); color:var(--on-brand);}
+  .btn-ghost{background:transparent; border:1px solid var(--brand); color:var(--brand);}
+  .btn-accent{background:var(--accent); color:var(--on-brand);}
+  .btn-ghost-error{background:transparent; border:1px solid var(--error); color:var(--error);}
+  .btn:disabled{opacity:.55; cursor:not-allowed;}
+  .link-btn{background:none; border:none; color:var(--brand); font-weight:700; text-decoration:underline;
+    text-underline-offset:2px; cursor:pointer; padding:0; font-size:15px; min-height:44px; display:inline-flex; align-items:center;}
+
+  .pill{display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:999px; font-size:11px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.07em;}
+  .pill-neutral{background:var(--sunk); color:var(--text-muted);}
+  .pill-ok{background:var(--success-soft); color:var(--success);}
+  .pill-warn{background:var(--warn-soft); color:var(--warn);}
+  .pill-err{background:var(--error-soft); color:var(--error);}
+
+  .banner{display:flex; gap:8px; border:1px solid; border-radius:var(--radius); padding:12px; align-items:flex-start;}
+  .banner-error{border-color:var(--error); background:var(--error-soft); color:var(--error);}
+  .banner-warn{border-color:var(--warn); background:var(--warn-soft); color:var(--warn);}
+  .banner-ok{border-color:var(--success); background:var(--success-soft); color:var(--success);}
+  .banner p{margin:0;}
+  .banner .b-title{font-weight:700;}
+  .banner svg{margin-top:2px; flex-shrink:0;}
+
+  /* entity link: player/roster/game names appearing away from their own page */
+  a.entity-link{color:var(--brand); text-decoration:underline; text-underline-offset:2px; font-weight:700;}
+
+  /* stat block */
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:8px;}
+  .stat-row.single{grid-template-columns:1fr;}
+  .stat-block{background:var(--sunk); border-radius:var(--radius); padding:12px 10px; text-align:left;}
+  .stat-block .lbl{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); display:block;}
+  .stat-block .val{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:26px;
+    font-variant-numeric:tabular-nums; display:block; margin-top:2px;}
+  .stat-block .sample{font-size:12px; color:var(--text-muted); display:block; margin-top:2px;}
+
+  /* place row (Stage 3, unchanged at rest) */
+  .place-row{display:flex; align-items:center; gap:10px; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--surface); padding:10px 12px; min-height:52px;}
+  .place-row + .place-row{margin-top:8px;}
+  .place-row .name{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:16px;}
+  .place-row .meta{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .place-row .count{margin-left:auto; text-align:right; flex-shrink:0; margin-right:4px;}
+  .place-row .count .n{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:16px;}
+  .place-row .count .lbl{display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em;}
+  .icon-btn{width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    border-radius:var(--radius); border:1px solid var(--line); background:transparent; color:var(--brand);}
+
+  .field{display:block;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--text-muted); margin-bottom:6px;}
+  .field input{height:52px; width:100%; border-radius:var(--radius); border:1px solid var(--text-muted);
+    background:var(--surface); color:var(--text); padding:0 12px; font-size:16px;}
+  .hint{font-size:13px; color:var(--text-muted); margin:6px 0 0;}
+
+  .h2card{font-size:17px; font-weight:700; margin:0 0 4px;}
+  .stack{display:flex; flex-direction:column; gap:12px;}
+  .row2{display:flex; gap:8px;}
+  .row2 > *{flex:1;}
+  .muted{color:var(--text-muted);}
+  .small{font-size:13px;}
+
+  /* ---- bottom sheet ---- */
+  .sheet-scrim{position:relative;}
+  .sheet{background:var(--surface); border-top:1px solid var(--line); border-radius:20px 20px 0 0;
+    padding:16px; box-shadow:0 -8px 24px rgba(0,0,0,.12);}
+  .sheet .sheet-title{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:18px; margin:0 0 12px;}
+  .sheet-row{display:flex; align-items:center; min-height:52px; width:100%; border-radius:var(--radius);
+    padding:8px 12px; text-align:left; background:none; border:none; font-size:16px; color:var(--text); gap:10px;}
+  .sheet-row:hover{background:var(--sunk);}
+  .sheet-row.selected{background:var(--sunk); font-weight:700;}
+  .sheet-row .sub{display:block; font-size:12px; color:var(--text-muted); font-weight:400; margin-top:1px;}
+  .sheet-row .row-count{margin-left:auto; font-size:13px; color:var(--text-muted); flex-shrink:0;}
+  .sheet-section-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--text-muted); padding:6px 12px 2px;}
+  .sheet-divider{border:none; border-top:1px solid var(--line); margin:6px 0;}
+
+  /* ---- review screen: column card ---- */
+  .col-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px;}
+  .col-head{display:flex; align-items:center; gap:8px; margin-bottom:2px;}
+  .col-head h3{font-size:19px; font-weight:700; margin:0; min-width:0;}
+  .col-head h3.unassigned{color:var(--text-muted); font-style:italic; font-weight:600;}
+  .read-as{font-size:12px; color:var(--text-muted); margin:0 0 10px;}
+  .col-actions{display:flex; gap:8px; margin-bottom:10px;}
+  .col-actions .btn{width:auto; height:40px; padding:0 12px; font-size:13px;}
+  .grid-mini{display:flex; gap:10px;}
+  .photo-strip-mini{width:64px; flex-shrink:0; border-radius:10px; background:
+    repeating-linear-gradient(180deg, var(--sunk), var(--sunk) 20px, var(--line) 20px, var(--line) 21px);
+    height:180px;}
+  .rows-mini{flex:1; display:flex; flex-direction:column; gap:2px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;}
+  .rows-mini .r{display:flex; justify-content:space-between; padding:3px 4px; border-radius:6px;}
+  .rows-mini .r .h{color:var(--text-muted); width:44px; flex-shrink:0;}
+  .rows-mini .r .v{font-weight:700;}
+  .rows-mini .r .d{color:var(--text-muted); margin-left:auto;}
+
+  /* ---- radio-style survivor cards ---- */
+  .survivor-card{display:flex; align-items:center; gap:12px; width:100%; text-align:left; border-radius:var(--radius);
+    border:1.5px solid var(--line); background:var(--surface); padding:14px; cursor:pointer;}
+  .survivor-card.selected{border-color:var(--brand); background:var(--sunk);}
+  .survivor-card .radio{width:22px; height:22px; border-radius:50%; border:2px solid var(--text-muted); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;}
+  .survivor-card.selected .radio{border-color:var(--brand);}
+  .survivor-card.selected .radio::after{content:""; width:11px; height:11px; border-radius:50%; background:var(--brand);}
+  .survivor-card .info{flex:1; min-width:0;}
+  .survivor-card .info .name{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:17px;}
+  .survivor-card .info .games{font-size:13px; color:var(--text-muted); margin-top:2px;}
+
+  /* ---- place action chooser (replaces PlaceRow in place) ---- */
+  .action-row{display:flex; align-items:center; gap:10px; width:100%; min-height:52px; border-radius:var(--radius);
+    padding:8px 10px; text-align:left; background:none; border:none; font-size:16px; color:var(--text);}
+  .action-row:hover{background:var(--sunk);}
+  .action-row .a-icon{width:36px; height:36px; border-radius:10px; background:var(--sunk); display:flex; align-items:center;
+    justify-content:center; color:var(--brand); flex-shrink:0;}
+  .action-row .a-text .a-title{font-weight:700;}
+  .action-row .a-text .a-sub{display:block; font-size:12px; color:var(--text-muted); margin-top:1px;}
+
+  /* ---- annotation callouts (design notes, NOT app UI) ---- */
+  .note-caption{font-size:13px; color:var(--annot); margin:10px auto 0; font-weight:600; max-width:375px; text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>Identity, repaired</h1>
+    <p>Milestone 2 Stage 4 mockups — the suggested player match's pre-selected state, merging two
+    players, and merging two places (PRD criteria 148&ndash;166, 172&ndash;173). Matches
+    <code>docs/DESIGN-SYSTEM.md</code>'s existing Kitchen Table language exactly: same tokens, same
+    components, nothing reinvented. Purple dashed boxes are designer annotations, not app UI.</p>
+    <div class="decisions">
+      <h2>Design decisions to approve</h2>
+      <ol>
+        <li><strong>A pre-selected suggestion gets exactly one new signal</strong>: a small neutral
+        "Suggested" <code>Pill</code> beside the column's player name, cleared the instant the founder
+        touches that column's name control. No new pager-dot state, no colour change, no extra tap
+        anywhere &mdash; it's already accepted (criterion 172).</li>
+        <li><strong>The handwritten name now stays visible on every column</strong>, not only unmatched
+        ones &mdash; a small muted "Read as &hellip;" line under the player's name, always present once
+        a transcription exists (criterion 153). This is the one change that touches every column, not
+        just suggested ones.</li>
+        <li><strong>A near-match or ambiguous column stays unassigned</strong>, exactly like today's
+        M1 pick-list, except its <code>PickList</code> sheet now opens with a "Closest matches" section
+        pinned above the full roster (criterion 173) &mdash; no new component, an ordering change to
+        the existing one.</li>
+        <li><strong>Both merges are reached from where they're needed</strong>: player merge from
+        "This is the same person as&hellip;" on the player page (both the populated and the zero-game
+        layout), place merge from the places index. Both use one confirmation screen &mdash; arriving
+        there is the first deliberate action, tapping <strong>Merge permanently</strong> is the second
+        &mdash; the same two-step shape "Deleting a game" already established.</li>
+        <li><strong>The same-game refusal is a dead end by design</strong>: no survivor picker renders
+        at all when the two players share a game. Just the conflict, named games with edit links, and
+        the way back. Nothing is chosen until the conflict is gone.</li>
+        <li><strong>Place merge's hard problem &mdash; the entry point stays off <code>PlaceRow</code>'s
+        pencil button</strong>, not a second icon. Tapping the pencil now opens a two-row chooser
+        ("Rename" / "Merge with another place&hellip;") in the same "reveal in place" slot the row
+        already uses for renaming &mdash; the row itself is pixel-identical to Stage 3 at rest. The
+        rename-collision refusal gets a direct "Merge with {existing place}" button, since at that
+        point both places are already known and asking again would be busywork.</li>
+      </ol>
+    </div>
+  </div>
+
+  <nav class="topnav" aria-label="Jump to mockup">
+    <a href="#review-suggested">Review: suggested match</a>
+    <a href="#review-nomatch">Review: no confident match</a>
+    <a href="#player-page">Player page: entry point</a>
+    <a href="#merge-pick">Merge: pick a player</a>
+    <a href="#merge-confirm">Merge: confirmation</a>
+    <a href="#merge-conflict">Merge: same-game refusal</a>
+    <a href="#merge-done">Merge: after it runs</a>
+    <a href="#places-chooser">Places index: rename/merge chooser</a>
+    <a href="#places-merge">Merge places: confirmation</a>
+    <a href="#collision">Rename collision, now offering merge</a>
+  </nav>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="review-suggested">
+    <h2>Review screen &mdash; a confident suggestion</h2>
+    <p class="crit">Criteria 148, 150, 152&ndash;154, 172. &ge;0.80 similarity with a clear leader:
+    the player is already selected when the screen first renders. Zero taps to save.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; pre-selected, untouched</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Check the sheet</h1><p class="ctx">14 Sep 2026 &middot; Player C's House</p></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:0;">
+              <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:10px;">
+                <button class="btn" style="width:auto; height:40px; padding:0 14px; border-radius:999px; background:var(--brand); color:var(--on-brand); font-size:13px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--success);"></span>Sam</button>
+                <button class="btn" style="width:auto; height:40px; padding:0 14px; border-radius:999px; background:transparent; border:1.5px solid var(--line); color:var(--text); font-size:13px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--success);"></span>Jonny</button>
+                <button class="btn" style="width:auto; height:40px; padding:0 14px; border-radius:999px; background:transparent; border:1.5px solid var(--line); color:var(--text); font-size:13px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--success);"></span>Player C</button>
+                <button class="btn" style="width:auto; height:40px; padding:0 14px; border-radius:999px; background:transparent; border:1.5px solid var(--line); color:var(--text); font-size:13px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--warn);"></span>Player D</button>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+                <button class="link-btn" style="font-size:14px;">Fix something</button>
+              </div>
+
+              <div class="col-card">
+                <div class="col-head">
+                  <h3>Sam</h3>
+                  <span class="pill pill-neutral" title="Not yet touched &mdash; a suggestion, not a fact">Suggested</span>
+                </div>
+                <p class="read-as">Read as Sam.</p>
+                <div class="col-actions">
+                  <button class="btn btn-ghost">Not Sam?</button>
+                </div>
+                <div class="grid-mini">
+                  <div class="photo-strip-mini"></div>
+                  <div class="rows-mini">
+                    <div class="r"><span class="h">3s</span><span class="v">28</span><span class="d">28</span></div>
+                    <div class="r"><span class="h">4s</span><span class="v">32</span><span class="d">4</span></div>
+                    <div class="r"><span class="h">5s</span><span class="v">60</span><span class="d">28</span></div>
+                    <div class="r"><span class="h">6s</span><span class="v">71</span><span class="d">11</span></div>
+                    <div class="r"><span class="h">7s</span><span class="v">74</span><span class="d">3</span></div>
+                    <div class="r" style="opacity:.4;">&hellip; 6 more &hellip;</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">The only new signal is the "Suggested" pill and the "Read as&hellip;"
+      line &mdash; same card, same button, same photo strip as any other column. Tapping "Put it in
+      the book" right now saves Sam's column exactly as shown.</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; suggestion touched (pill clears)</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Check the sheet</h1><p class="ctx">14 Sep 2026 &middot; Player C's House</p></div>
+          </div>
+          <main>
+            <div class="col-card">
+              <div class="col-head">
+                <h3>Sam</h3>
+              </div>
+              <p class="read-as">Read as Sam.</p>
+              <div class="col-actions">
+                <button class="btn btn-ghost">Not Sam?</button>
+              </div>
+              <div class="grid-mini">
+                <div class="photo-strip-mini"></div>
+                <div class="rows-mini">
+                  <div class="r"><span class="h">3s</span><span class="v">28</span><span class="d">28</span></div>
+                  <div class="r"><span class="h">4s</span><span class="v">32</span><span class="d">4</span></div>
+                  <div class="r" style="opacity:.4;">&hellip; 9 more &hellip;</div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">The founder opened "Not Sam?" and either re-picked Sam or picked
+      someone else &mdash; either action is "the founder's own choice" now, so the pill retires. It
+      never comes back for this column, even if they reopen the picker again.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="review-nomatch">
+    <h2>Review screen &mdash; no confident match</h2>
+    <p class="crit">Criteria 149, 151, 173. A near match (0.55&ndash;0.80), an ambiguous tie within
+    0.10, or nothing plausible at all (&lt;0.55, or an empty player list) &mdash; all three render
+    identically: no player selected, save blocked on this column exactly as M1 already blocks an
+    unassigned one.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; column unassigned</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Check the sheet</h1><p class="ctx">14 Sep 2026 &middot; Player C's House</p></div>
+          </div>
+          <main>
+            <div class="col-card">
+              <div class="col-head">
+                <h3 class="unassigned">Janny</h3>
+                <span class="pill pill-warn">Needs a player</span>
+              </div>
+              <div class="col-actions">
+                <button class="btn btn-ghost">Who is this column?</button>
+              </div>
+              <div class="grid-mini">
+                <div class="photo-strip-mini"></div>
+                <div class="rows-mini">
+                  <div class="r"><span class="h">3s</span><span class="v">14</span><span class="d">14</span></div>
+                  <div class="r"><span class="h">4s</span><span class="v">14</span><span class="d">0</span></div>
+                  <div class="r" style="opacity:.4;">&hellip; 9 more &hellip;</div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">The heading itself is the handwritten name &mdash; there's no
+      matched player to show yet, so nothing needs a separate "Read as&hellip;" line here.</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; "Who is this column?" sheet open</p>
+      <div class="phone">
+        <div class="screen sheet-scrim" style="display:flex; flex-direction:column; justify-content:flex-end; min-height:520px; background:rgba(0,0,0,.25);">
+          <div class="sheet">
+            <p class="sheet-title">Who is this column?</p>
+            <p class="sheet-section-label">Closest matches</p>
+            <button class="sheet-row"><span>Jonny <span class="sub">3 games so far</span></span></button>
+            <button class="sheet-row"><span>Jenny <span class="sub">2 games so far</span></span></button>
+            <hr class="sheet-divider">
+            <button class="sheet-row">Player A</button>
+            <button class="sheet-row">Player D</button>
+            <button class="sheet-row">Player E</button>
+            <hr class="sheet-divider">
+            <button class="sheet-row" style="color:var(--brand); font-weight:700;">Someone new &mdash; "Janny"</button>
+          </div>
+        </div>
+      </div>
+      <p class="note-caption">"Janny" scored exactly 0.80 against both Jonny and Jenny &mdash; no
+      clear leader, so neither is suggested (criterion 149). Both are still promoted to the top of
+      the same pick-list, in order, ahead of the alphabetical roster. "Someone new" stays pinned
+      last, pre-filled with the handwritten name, same as always.</p>
+    </figure>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ============================================================ -->
+  <section class="spec" id="player-page">
+    <h2>Player page &mdash; the merge entry point</h2>
+    <p class="crit">Criterion 155. Reached from a player's own page, available to anyone with the
+    group password. Present on <strong>both</strong> layouts &mdash; a zero-game player is exactly
+    the duplicate most likely to need merging away, so the empty state carries the link too.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; populated player</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Sam</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="stat-row">
+                <div class="stat-block"><span class="lbl">Games played</span><span class="val">9</span></div>
+                <div class="stat-block"><span class="lbl">Wins</span><span class="val">4</span><span class="sample">4 of 9 games</span></div>
+                <div class="stat-block"><span class="lbl">Win rate</span><span class="val">44.4%</span><span class="sample">4 of 9 games</span></div>
+              </div>
+              <button class="btn btn-ghost">This is the same person as&hellip;</button>
+              <div>
+                <h2 style="font-size:17px; margin:0 0 10px;">Sam's games</h2>
+                <div class="card" style="padding:12px 16px; margin-bottom:8px;">
+                  <div class="tabular" style="font-weight:700;">14 Sep 2026</div>
+                  <div class="small muted">Player C's House &middot; <a class="entity-link" href="#">Thursday crew</a></div>
+                </div>
+                <div class="card" style="padding:12px 16px;">
+                  <div class="tabular" style="font-weight:700;">7 Sep 2026</div>
+                  <div class="small muted">No location &middot; <a class="entity-link" href="#">Sam, Player A, Player D &amp; Player E</a></div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">One extra <code>ghost</code> button under the stats, above the games
+      list &mdash; same weight as a secondary action anywhere else in this app, not hidden in a menu.</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; zero-game player (criterion 136)</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Samuel</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="stat-row single">
+                <div class="stat-block"><span class="lbl">Games played</span><span class="val">0</span></div>
+              </div>
+              <button class="btn btn-ghost">This is the same person as&hellip;</button>
+              <div class="card">
+                <p style="font-weight:700; margin:0 0 4px;">No games on record.</p>
+                <p class="muted" style="margin:0;">Nothing saved right now has Samuel at the table.</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">Same button, same position relative to the stat block, on the layout
+      that has no games list to push it down to. "Samuel" was very likely typed as "someone new" by
+      mistake on a night "Sam" already existed &mdash; this is exactly who needs merging away.</p>
+    </figure>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ============================================================ -->
+  <section class="spec" id="merge-pick">
+    <h2>Merge &mdash; pick who to merge with</h2>
+    <p class="crit">Tapping "This is the same person as&hellip;" opens a sheet in the same shape as
+    every other picker in this app &mdash; no "add new" row here, since there's no "someone new"
+    concept for a merge target.</p>
+    <div class="decision">Design call: reused <code>PickList</code>'s row shape rather than invent a
+    second list idiom, with each row's games-played count as secondary text (an existing duplicate is
+    often the one with almost no games) &mdash; and no add-new footer, since it doesn't apply.</div>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; "Merge Samuel with which player?"</p>
+      <div class="phone">
+        <div class="screen sheet-scrim" style="display:flex; flex-direction:column; justify-content:flex-end; min-height:460px; background:rgba(0,0,0,.25);">
+          <div class="sheet">
+            <p class="sheet-title">Merge Samuel with which player?</p>
+            <button class="sheet-row"><span>Sam <span class="row-count tabular">9 games</span></span></button>
+            <button class="sheet-row"><span>Player A <span class="row-count tabular">7 games</span></span></button>
+            <button class="sheet-row"><span>Player D <span class="row-count tabular">6 games</span></span></button>
+            <button class="sheet-row"><span>Player E <span class="row-count tabular">5 games</span></span></button>
+          </div>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="merge-confirm">
+    <h2>Merge &mdash; confirmation</h2>
+    <p class="crit">Criteria 156&ndash;157. Names both, shows each one's games played, and the
+    founder explicitly picks the survivor &mdash; nothing defaults by age or size. Arriving here is
+    the first deliberate action; tapping "Merge permanently" is the second, same shape as "Deleting a
+    game".</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; nothing picked yet</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to Samuel">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Merge two players?</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <p class="muted" style="margin:0;">Pick which one stays. Nothing is chosen for you.</p>
+              <button class="survivor-card">
+                <span class="radio"></span>
+                <span class="info"><span class="name">Samuel</span><span class="games">0 games played</span></span>
+              </button>
+              <button class="survivor-card">
+                <span class="radio"></span>
+                <span class="info"><span class="name">Sam</span><span class="games">9 games played</span></span>
+              </button>
+              <button class="btn" disabled style="background:transparent; border:1px solid var(--error); color:var(--error); opacity:.55;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 7M20 4l-7 7M12 11v9"/></svg>
+                Merge permanently
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">Both cards read identically until one is picked &mdash; no card is
+      pre-highlighted, so age or games-played can never look like the "default" choice. The button
+      stays disabled until one is.</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; Sam picked to stay</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to Samuel">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Merge two players?</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <p class="muted" style="margin:0;">Pick which one stays. Nothing is chosen for you.</p>
+              <button class="survivor-card">
+                <span class="radio"></span>
+                <span class="info"><span class="name">Samuel</span><span class="games">0 games played</span></span>
+                <span class="pill pill-err">Deleted</span>
+              </button>
+              <button class="survivor-card selected">
+                <span class="radio"></span>
+                <span class="info"><span class="name">Sam</span><span class="games">9 games played</span></span>
+                <span class="pill pill-ok">Stays</span>
+              </button>
+              <p style="margin:4px 0 0;">Samuel is deleted for good. Every game, round, roster spot
+              and photo of theirs moves to Sam.</p>
+              <p class="muted small" style="margin:0;">There's no undo, and no record that a merge
+              happened.</p>
+              <button class="btn" style="background:transparent; border:1px solid var(--error); color:var(--error);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 7M20 4l-7 7M12 11v9"/></svg>
+                Merge permanently
+              </button>
+              <button class="btn btn-ghost">Cancel</button>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">Picking a card immediately labels both &mdash; "Stays" / "Deleted" &mdash;
+      states plainly which one ceases to exist (criterion 156), names every table the merge touches
+      (criterion 158), and repeats the no-undo, no-record wording (criterion 157, 162) directly above
+      the button that does it.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="merge-conflict">
+    <h2>Merge &mdash; the same-game refusal</h2>
+    <p class="crit">Criterion 160. Where both players appear in the same game, the merge is refused
+    before anything changes &mdash; so there is nothing to pick a survivor for yet. Every offending
+    game is named with a link to edit it.</p>
+    <div class="decision">Design call: this replaces the whole survivor-picker &mdash; not a banner
+    sitting above a still-enabled one. There is genuinely nothing safe to offer until the conflict is
+    gone, so nothing resembling a choice renders at all.</div>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; refused, before any choice is shown</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to Sam">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Merge two players?</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="banner banner-error">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v6"/><path d="M12 16.75v.01"/></svg>
+                <div>
+                  <p class="b-title">Sam and Player A played the same game.</p>
+                  <p>One person can't hold two seats at the same table. Fix these first, then try the
+                  merge again:</p>
+                </div>
+              </div>
+              <div class="card" style="padding:12px 16px;">
+                <a class="entity-link" href="#">14 Sep 2026 &middot; Thursday crew</a>
+                <span class="small muted" style="display:block; margin-top:2px;">
+                  <a class="link-btn" style="font-size:13px;" href="#">Edit this game</a>
+                </span>
+              </div>
+              <button class="btn btn-ghost">Back to Sam</button>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">QA can construct this and confirm no row anywhere was repointed
+      (criterion 160). Editing the named game removes one of the two players from it (Stage 2's edit
+      flow), after which retrying the merge reaches the ordinary survivor picker.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="merge-done">
+    <h2>Merge &mdash; after it runs</h2>
+    <p class="crit">Criterion 161&ndash;162. Redirects to the survivor's own page; the losing
+    player's page and URL now 404. No screen anywhere mentions that a merge happened, beyond this
+    one-time banner.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; landing back on Sam's page</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Sam</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="banner banner-ok">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m7.5 12.5 3 3 6-6.5"/></svg>
+                <div>
+                  <p class="b-title">Merged.</p>
+                  <p>Samuel is now part of Sam's record.</p>
+                </div>
+              </div>
+              <div class="stat-row">
+                <div class="stat-block"><span class="lbl">Games played</span><span class="val">9</span></div>
+                <div class="stat-block"><span class="lbl">Wins</span><span class="val">4</span><span class="sample">4 of 9 games</span></div>
+                <div class="stat-block"><span class="lbl">Win rate</span><span class="val">44.4%</span><span class="sample">4 of 9 games</span></div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">A one-time banner, same ephemeral shape as roster rename's "Saved." &mdash;
+      reload this page and it's gone, because nothing about the merge is stored (criterion 162). When
+      the merge also folded two custom-named rosters into one, a second sentence names which name
+      survived (criterion 159): "Two rosters folded into one &mdash; kept the name 'Thursday crew'."</p>
+    </figure>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ============================================================ -->
+  <section class="spec" id="places-chooser">
+    <h2>Places index &mdash; rename or merge</h2>
+    <p class="crit">Criterion 163. <code>PlaceRow</code> is already fully-loaded at 375px: name, an
+    optional caption, a right-aligned count, and one 44&times;44 pencil button. The merge entry point
+    has to live somewhere on this row without crowding it.</p>
+    <div class="decision">Design call: no second icon button, no overflow menu. The pencil now opens
+    a small two-row chooser in the exact spot the row already reveals its rename field &mdash; the row
+    is pixel-identical to Stage 3 until it's tapped. Its <code>aria-label</code> changes from "Rename
+    {place}" to "Edit {place}", since the pencil no longer commits to one action.</div>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; resting (unchanged from Stage 3)</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="place-row">
+                <span><span class="name">Player C's House</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit Player C's House">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">The Deck</span></span>
+                <span class="count"><span class="n">2</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit The Deck">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">The Deck (typo)</span></span>
+                <span class="count"><span class="n">1</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit The Deck (typo)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; pencil tapped: the chooser</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="place-row">
+                <span><span class="name">Player C's House</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit Player C's House">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="card" style="padding:8px;">
+                <button class="action-row">
+                  <span class="a-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </span>
+                  <span class="a-text"><span class="a-title">Rename</span><span class="a-sub">Give this place a different name.</span></span>
+                </button>
+                <button class="action-row">
+                  <span class="a-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 7M20 4l-7 7M12 11v9"/></svg>
+                  </span>
+                  <span class="a-text"><span class="a-title">Merge with another place&hellip;</span><span class="a-sub">Combine it with a duplicate &mdash; the games move, one place goes away.</span></span>
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">The Deck (typo)</span></span>
+                <span class="count"><span class="n">1</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit The Deck (typo)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">"The Deck" tapped. Two 52px rows, same shape <code>StructureMenu</code>
+      already uses for its own equal-weight choices. Picking "Rename" swaps this same slot to the
+      existing <code>Field</code> editor, unchanged from Stage 3; picking "Merge&hellip;" opens the
+      picker sheet below.</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; "Merge The Deck with which place?"</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen sheet-scrim" style="display:flex; flex-direction:column; justify-content:flex-end; min-height:340px; background:rgba(0,0,0,.25);">
+          <div class="sheet">
+            <p class="sheet-title">Merge The Deck with which place?</p>
+            <button class="sheet-row"><span>The Deck (typo) <span class="row-count tabular">1 game</span></span></button>
+            <button class="sheet-row"><span>Player C's House <span class="row-count tabular">4 games</span></span></button>
+            <button class="sheet-row"><span>Riverside Pub <span class="row-count tabular">0 games</span></span></button>
+          </div>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="places-merge">
+    <h2>Merge places &mdash; confirmation</h2>
+    <p class="crit">Criteria 163&ndash;166. Same mechanism and permanence wording as a player merge.
+    No same-game refusal applies here &mdash; a game has exactly one location, so two places can never
+    both be "in the same game" the way two players can.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; The Deck (typo) picked to go</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to places">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Merge two places?</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <p class="muted" style="margin:0;">Pick which one stays. Nothing is chosen for you.</p>
+              <button class="survivor-card">
+                <span class="radio"></span>
+                <span class="info"><span class="name">The Deck (typo)</span><span class="games">1 game played there</span></span>
+                <span class="pill pill-err">Deleted</span>
+              </button>
+              <button class="survivor-card selected">
+                <span class="radio"></span>
+                <span class="info"><span class="name">The Deck</span><span class="games">2 games played there</span></span>
+                <span class="pill pill-ok">Stays</span>
+              </button>
+              <p style="margin:4px 0 0;">The Deck (typo) is deleted for good. Every game at The Deck
+              (typo) moves to The Deck.</p>
+              <p class="muted small" style="margin:0;">There's no undo, and no record that a merge
+              happened.</p>
+              <button class="btn" style="background:transparent; border:1px solid var(--error); color:var(--error);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 7M20 4l-7 7M12 11v9"/></svg>
+                Merge permanently
+              </button>
+              <button class="btn btn-ghost">Cancel</button>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">Identical shape to the player merge screen &mdash; same survivor cards,
+      same "Stays"/"Deleted" pills, same no-undo line, same button. Games with no location at all are
+      simply untouched by this (criterion 165).</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px &mdash; after it runs, on the places index</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="banner banner-ok">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m7.5 12.5 3 3 6-6.5"/></svg>
+                <div>
+                  <p class="b-title">Merged.</p>
+                  <p>The Deck (typo) is now part of The Deck.</p>
+                </div>
+              </div>
+              <div class="place-row">
+                <span><span class="name">Player C's House</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit Player C's House">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">The Deck</span></span>
+                <span class="count"><span class="n">3</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Edit The Deck">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">"The Deck" now reads 3 games (2 + 1); "The Deck (typo)" no longer lists
+      at all. Same one-time banner shape as the player merge.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="collision">
+    <h2>Rename collision &mdash; now offering the merge</h2>
+    <p class="crit">Criterion 163 fulfils criterion 146's promise: the refusal screen said "coming in
+    a later update" in Stage 3. This is that update.</p>
+    <div class="decision">Design call: a direct "Merge with {existing place}" button under the
+    refusal, not a trip back through the picker sheet &mdash; both places are already known at this
+    exact moment, so re-asking "which place?" would be busywork the founder just did by typing the
+    name.</div>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px &mdash; renaming "Riverside Pub" to "The Deck"</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="card" style="border-color:var(--error);">
+                <div class="field">
+                  <label for="ln2">Location name</label>
+                  <input id="ln2" type="text" value="The Deck" maxlength="40">
+                </div>
+                <div class="banner banner-error" style="margin-top:12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v6"/><path d="M12 16.75v.01"/></svg>
+                  <div>
+                    <p class="b-title">The Deck already has that name.</p>
+                    <p>Pick a different name, or merge the two into one instead.</p>
+                  </div>
+                </div>
+                <div class="row2" style="margin-top:12px;">
+                  <button class="btn btn-ghost">Cancel</button>
+                  <button class="btn btn-primary">Save name</button>
+                </div>
+                <button class="btn" style="margin-top:8px; background:transparent; border:1px solid var(--error); color:var(--error);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 7M20 4l-7 7M12 11v9"/></svg>
+                  Merge with The Deck
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">Player C's House</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption">"Merge with The Deck" jumps straight to the merge confirmation screen
+      above with both places already filled in &mdash; Riverside Pub and The Deck &mdash; skipping the
+      "which place?" picker entirely, since typing the colliding name already answered that question.</p>
+    </figure>
+  </div>
+
+</div>
+</body>
+</html>
