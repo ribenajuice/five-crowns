@@ -17,6 +17,7 @@ import { eq, ne } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { roster } from "@/lib/db/schema";
+import { nameKey } from "@/lib/draft/state";
 import { rosterDisplayName } from "@/lib/scoring";
 import { MAX_ROSTER_NAME_LENGTH } from "@/lib/ui/constants";
 
@@ -96,13 +97,13 @@ export async function renameRoster(
   // Small scale (a few hundred rosters at the real ceiling), so a full scan
   // is simplest and cheapest to keep correct.
   const others = await db.select().from(roster).where(ne(roster.id, id));
-  const target = displayName.trim().toLowerCase();
+  const target = nameKey(displayName);
 
   let duplicate: RosterNameDuplicate | null = null;
   for (const other of others) {
     const otherMembers = byRoster.get(other.id) ?? [];
     const otherDisplayName = effectiveRosterName(other, otherMembers);
-    if (otherDisplayName.trim().toLowerCase() === target) {
+    if (nameKey(otherDisplayName) === target) {
       const memberNames = otherMembers.map((m) => m.displayName);
       duplicate = {
         rosterId: other.id,

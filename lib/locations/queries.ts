@@ -8,8 +8,6 @@
 
 import "server-only";
 
-import { asc } from "drizzle-orm";
-
 import { getDb } from "@/lib/db";
 import { game, location } from "@/lib/db/schema";
 
@@ -23,10 +21,7 @@ export interface PlaceListItem {
 export async function listPlaces(): Promise<PlaceListItem[]> {
   const db = getDb();
 
-  const locations = await db
-    .select({ id: location.id, name: location.name })
-    .from(location)
-    .orderBy(asc(location.name));
+  const locations = await db.select({ id: location.id, name: location.name }).from(location);
 
   if (locations.length === 0) return [];
 
@@ -37,9 +32,11 @@ export async function listPlaces(): Promise<PlaceListItem[]> {
     gamesPlayedByLocation.set(row.locationId, (gamesPlayedByLocation.get(row.locationId) ?? 0) + 1);
   }
 
-  return locations.map((l) => ({
-    id: l.id,
-    name: l.name,
-    gamesPlayed: gamesPlayedByLocation.get(l.id) ?? 0,
-  }));
+  return locations
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      gamesPlayed: gamesPlayedByLocation.get(l.id) ?? 0,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }

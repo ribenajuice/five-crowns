@@ -7,6 +7,15 @@
  * the roster name is a second, independently tappable `EntityLink` layered
  * on top (criterion 174).
  *
+ * ⚠️ A `position: relative` sibling with no explicit `z-index` still shares
+ * the stretched link's stack level (0), and later DOM order wins ties — so
+ * without `pointer-events-none` these content wrappers would paint over, and
+ * intercept every tap on, the stretched link beneath them (code review, Stage
+ * 3 — see `components/GameRow.tsx` for the same fix and fuller explanation).
+ * `pointer-events-none` here makes each wrapper transparent to hit-testing
+ * regardless of stacking order; `pointer-events-auto` on the `EntityLink`'s
+ * own wrapper is the escape hatch that keeps *it* independently tappable.
+ *
  * The winner marker is crown-plus-label-plus-colour, the same treatment
  * `FinalRow` already uses (docs/DESIGN-SYSTEM.md § "Player page") — the crown
  * is decorative (`aria-hidden`), so the literal " · Winner" text is what
@@ -58,17 +67,17 @@ export function PlayerGameRow({
         aria-label={`Open game: ${formattedDate}`}
         className="absolute inset-0 z-0 rounded-[var(--radius)]"
       />
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1 pointer-events-none">
         <p className="font-display text-base font-bold">{formattedDate}</p>
         <p className="truncate text-sm text-text-muted">
           {locationName ?? NO_LOCATION_GAMES_LIST} ·{" "}
-          <span className="relative z-10">
+          <span className="relative z-10 pointer-events-auto">
             <EntityLink href={`/rosters/${rosterId}`}>{rosterName}</EntityLink>
           </span>
         </p>
       </div>
       <p
-        className={`tabular relative z-10 flex shrink-0 items-center gap-1 text-right font-bold ${
+        className={`tabular relative z-10 flex shrink-0 items-center gap-1 pointer-events-none text-right font-bold ${
           isWinner ? "text-success" : "text-text-muted"
         }`}
       >

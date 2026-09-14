@@ -2,7 +2,12 @@ import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { IndexRow } from "@/components/IndexRow";
 import { listPlayers } from "@/lib/players/queries";
-import { PLAYERS_INDEX_EMPTY_BODY, PLAYERS_INDEX_EMPTY_TITLE, PLAYERS_INDEX_TITLE } from "@/lib/ui/copy";
+import {
+  gamesNoun,
+  PLAYERS_INDEX_EMPTY_BODY,
+  PLAYERS_INDEX_EMPTY_TITLE,
+  PLAYERS_INDEX_TITLE,
+} from "@/lib/ui/copy";
 
 /**
  * The players index — PRD criterion 132: every player, games played, linking
@@ -32,7 +37,7 @@ export default async function PlayersIndexPage() {
                 href={`/players/${p.id}`}
                 name={p.displayName}
                 count={p.gamesPlayed}
-                countLabel="games"
+                countLabel={gamesNoun(p.gamesPlayed)}
               />
             ))}
           </div>

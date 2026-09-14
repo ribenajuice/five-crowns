@@ -27,6 +27,7 @@ import { PencilIcon } from "./icons";
 import { MAX_LOCATION_NAME_LENGTH } from "@/lib/ui/constants";
 import { requestLocationRename } from "@/lib/ui/rename-actions";
 import {
+  gamesNoun,
   LOCATION_COLLISION_BODY,
   PLACES_UNUSED_CAPTION,
   RENAME_CANCEL_BUTTON,
@@ -115,7 +116,7 @@ export function PlaceRow({ id, name, gamesPlayed }: PlaceRowProps) {
         <div className="mr-1 shrink-0 text-right">
           <span className="tabular block text-base font-black">{gamesPlayed}</span>
           <span className="block text-[10px] uppercase tracking-label text-text-muted">
-            games
+            {gamesNoun(gamesPlayed)}
           </span>
         </div>
         <button

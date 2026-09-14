@@ -92,6 +92,23 @@ describe("renameRoster", () => {
     expect((await getRosterPage(secondRosterId))!.name).toBe("thursday crew");
   });
 
+  it("⚠️ criterion 143: a duplicate differing only by doubled internal whitespace is still caught", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const firstRosterId = await saveRoster(SHEET_01, "2020-01-01");
+    const secondRosterId = await saveRoster(SHEET_02, "2021-01-01");
+
+    const { renameRoster } = await import("@/lib/rosters/rename");
+    await renameRoster(firstRosterId, "Thursday crew");
+
+    // Same name, but with a doubled internal space — `nameKey` collapses
+    // whitespace runs, so this must still register as a duplicate.
+    const result = await renameRoster(secondRosterId, "Thursday  crew");
+    expect(result.duplicate).not.toBeNull();
+    expect(result.duplicate!.rosterId).toBe(firstRosterId);
+  });
+
   it("dryRun reports the outcome (including any duplicate) without writing", async () => {
     await teardownTestDb();
     await setupTestDb();

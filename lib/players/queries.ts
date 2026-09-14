@@ -8,7 +8,7 @@
 
 import "server-only";
 
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster } from "@/lib/db/schema";
@@ -24,10 +24,7 @@ export interface PlayerListItem {
 export async function listPlayers(): Promise<PlayerListItem[]> {
   const db = getDb();
 
-  const players = await db
-    .select({ id: player.id, displayName: player.displayName })
-    .from(player)
-    .orderBy(asc(player.displayName));
+  const players = await db.select({ id: player.id, displayName: player.displayName }).from(player);
 
   if (players.length === 0) return [];
 
@@ -40,11 +37,13 @@ export async function listPlayers(): Promise<PlayerListItem[]> {
     gamesPlayedByPlayer.set(row.playerId, (gamesPlayedByPlayer.get(row.playerId) ?? 0) + 1);
   }
 
-  return players.map((p) => ({
-    id: p.id,
-    displayName: p.displayName,
-    gamesPlayed: gamesPlayedByPlayer.get(p.id) ?? 0,
-  }));
+  return players
+    .map((p) => ({
+      id: p.id,
+      displayName: p.displayName,
+      gamesPlayed: gamesPlayedByPlayer.get(p.id) ?? 0,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
 }
 
 export interface PlayerPageGame {

@@ -10,6 +10,15 @@
  * `aria-label`led anchor filling the row at a lower `z-index`, so today's
  * easy whole-row tap to open a game is unchanged (docs/DESIGN-SYSTEM.md §
  * "Reaching these pages", point 2).
+ *
+ * ⚠️ A `position: relative` sibling with no explicit `z-index` still shares
+ * the stretched link's stack level (0), and later DOM order wins ties — so
+ * without `pointer-events-none` these content wrappers would paint over, and
+ * intercept every tap on, the stretched link beneath them (the whole date/
+ * location/winner text would stop opening the game — code review, Stage 3).
+ * `pointer-events-none` here makes each wrapper transparent to hit-testing
+ * regardless of stacking order; `pointer-events-auto` on the `EntityLink`'s
+ * own wrapper is the escape hatch that keeps *it* independently tappable.
  */
 
 import Link from "next/link";
@@ -46,9 +55,10 @@ export function GameRow({
   winners,
 }: GameRowProps) {
   const formattedDate = formatDate(playedOn);
-  const openGameLabel = `Open game: ${formattedDate}, ${rosterName}${
-    winners.length > 1 ? ", shared win" : ""
-  }`;
+  const locationLabel = locationName ?? NO_LOCATION_GAMES_LIST;
+  const openGameLabel = `Open game: ${formattedDate}, ${locationLabel}, ${rosterName}, ${sharedWinGamesListLabel(
+    winners,
+  )}`;
 
   return (
     <div className="relative flex min-h-13 items-center gap-3 rounded-[var(--radius)] border border-line bg-surface px-4 py-3">
@@ -57,16 +67,16 @@ export function GameRow({
         aria-label={openGameLabel}
         className="absolute inset-0 z-0 rounded-[var(--radius)]"
       />
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1 pointer-events-none">
         <p className="font-display text-base font-bold">{formattedDate}</p>
         <p className="truncate text-sm text-text-muted">
-          {locationName ?? NO_LOCATION_GAMES_LIST} ·{" "}
-          <span className="relative z-10">
+          {locationLabel} ·{" "}
+          <span className="relative z-10 pointer-events-auto">
             <EntityLink href={`/rosters/${rosterId}`}>{rosterName}</EntityLink>
           </span>
         </p>
       </div>
-      <p className="relative z-10 shrink-0 text-right text-sm font-bold text-success">
+      <p className="relative z-10 shrink-0 pointer-events-none text-right text-sm font-bold text-success">
         {sharedWinGamesListLabel(winners)}
       </p>
     </div>

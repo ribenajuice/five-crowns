@@ -4,6 +4,7 @@ import { IndexRow } from "@/components/IndexRow";
 import { listRosters } from "@/lib/rosters/queries";
 import { rosterDisplayName } from "@/lib/scoring";
 import {
+  gamesNoun,
   ROSTERS_INDEX_EMPTY_BODY,
   ROSTERS_INDEX_EMPTY_TITLE,
   ROSTERS_INDEX_TITLE,
@@ -42,7 +43,7 @@ export default async function RostersIndexPage() {
                 // so repeating it would be a bare duplicate.
                 meta={r.name ? rosterDisplayName(r.members) : ROSTER_AUTO_NAMED_CAPTION}
                 count={r.gamesPlayed}
-                countLabel="games"
+                countLabel={gamesNoun(r.gamesPlayed)}
               />
             ))}
           </div>

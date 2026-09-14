@@ -35,6 +35,13 @@ describe("listPlayers — criterion 132", () => {
     expect(row!.gamesPlayed).toBe(0);
   });
 
+  it("⚠️ sorts case-insensitively — a lowercase name still lands alphabetically, not after every uppercase one", async () => {
+    await createPlayers(["Zoe", "abby"]);
+    const { listPlayers } = await import("@/lib/players/queries");
+    const names = (await listPlayers()).map((p) => p.displayName);
+    expect(names.indexOf("abby")).toBeLessThan(names.indexOf("Zoe"));
+  });
+
   it("counts games played after a save", async () => {
     const { saveGame } = await import("@/lib/games/save");
     const { draftId, state } = await setUpDraft(SHEET_01);

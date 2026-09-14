@@ -601,10 +601,21 @@ export const INDEX_NAV_ARIA_LABEL = "Browse the record";
 export const STAT_LABEL_GAMES_PLAYED = "Games played";
 export const STAT_LABEL_WINS = "Wins";
 export const STAT_LABEL_WIN_RATE = "Win rate";
+
+/**
+ * "game" or "games" — the one shared pluralization rule for every count of
+ * games stated anywhere in this feature (criterion 135: "1 game" reads like
+ * any other count, never "1 games"). Every call site that states a number of
+ * games reuses this rather than writing its own inline ternary, so a fourth
+ * one can never drift from the other three.
+ */
+export function gamesNoun(gamesPlayed: number): string {
+  return gamesPlayed === 1 ? "game" : "games";
+}
+
 /** "{wins} of {gamesPlayed} games" — the sample-size caption under Wins/Win rate. */
 export function statSampleCaption(sampleSize: number, gamesPlayed: number): string {
-  const noun = gamesPlayed === 1 ? "game" : "games";
-  return `${sampleSize} of ${gamesPlayed} ${noun}`;
+  return `${sampleSize} of ${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
 }
 /** One decimal place, always (criterion 133) — `0` games has no rate to state. */
 export function formatWinRatePercent(winRate: number): string {
@@ -623,8 +634,7 @@ export function playerZeroGamesBody(player: string): string {
 /** Roster page (criteria 138–139, 141–144). */
 export const ROSTER_STATS_HEADING = "Wins within this roster";
 export function rosterStatsSampleLine(gamesPlayed: number): string {
-  const noun = gamesPlayed === 1 ? "game" : "games";
-  return `Each member's wins and win rate across these ${gamesPlayed} ${noun}.`;
+  return `Each member's wins and win rate across these ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
 }
 export function rosterGamesHeading(roster: string): string {
   return `${roster}'s games`;
