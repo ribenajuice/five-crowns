@@ -18,3 +18,4 @@ export * from "./names";
 export * from "./roster";
 export * from "./validate";
 export * from "./records";
+export * from "./facts";
