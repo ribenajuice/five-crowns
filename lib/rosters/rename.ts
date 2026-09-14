@@ -18,11 +18,17 @@ import { eq, ne } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { roster } from "@/lib/db/schema";
 import { rosterDisplayName } from "@/lib/scoring";
+import { MAX_ROSTER_NAME_LENGTH } from "@/lib/ui/constants";
 
 import { effectiveRosterName, membersByRoster } from "./queries";
 
-/** The roster's own maximum, per criterion 141. */
-export const MAX_ROSTER_NAME_LENGTH = 40;
+/**
+ * The roster's own maximum, per criterion 141. Re-exported from
+ * `lib/ui/constants.ts` (not declared here) so the rename form — a client
+ * component — can use the identical number for its `maxlength` attribute
+ * without importing this `server-only` module.
+ */
+export { MAX_ROSTER_NAME_LENGTH };
 
 export class RosterNotFoundError extends Error {
   override name = "RosterNotFoundError";
