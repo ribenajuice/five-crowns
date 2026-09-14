@@ -6,6 +6,10 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 9] - 2026-09-14
+
+The fourth and final stage of Milestone 2: identity, repaired. Live in production.
+
 ### Added
 
 - **Transcribing a scoresheet now suggests who a handwritten name belongs to.** When a name is a

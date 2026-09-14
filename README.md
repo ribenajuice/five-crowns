@@ -5,19 +5,13 @@ the finished paper scoresheet, and the app turns it into a searchable history of
 
 **Where it's at:** **Milestone 1 is complete and live** at https://fivecrowns.ribenajuice.xyz — every
 acceptance criterion re-verified, including a real, paid reading key proven on real scoresheets in
-production. **Milestone 2, Stage 2 is merged and live** — you can edit or delete a saved game, and
-a broken or made-up link shows this app's own "not found" or error screen instead of a generic one.
-**Milestone 2, Stage 1 is also merged and live** — from the admin panel you can now change the group
-password or the admin password, download every game's scores as one CSV, and see this month's
-automatic-reading usage and estimated cost. There's also a written, tested runbook for recovering a
-forgotten admin password without a developer. **Milestone 2, Stage 3 is also merged and live** —
-every player and every roster now has its own page (games played, wins and win rate), there's a
-places list, and you can rename a roster or a place. Player and roster names are tappable links
-from the games list and a game's own page. **Milestone 2, Stage 4 is built and ready for review** —
-not yet merged or deployed. It suggests who a handwritten name belongs to while transcribing a
-scoresheet, and lets you merge two players or two places that turn out to be the same person or
-venue. That closes out Milestone 2. Next up is Milestone 3, the records board and the analytics.
-See `docs/STATUS.md`.
+production. **Milestone 2 is also complete and live**: the admin panel can change either password,
+recover a forgotten admin password without a developer, and download every game's scores as one
+CSV; a saved game can be edited or deleted; every player and roster has its own page (games played,
+wins, win rate), with a places list, renaming, and tappable links throughout; and transcribing a
+scoresheet now suggests who a handwritten name belongs to, with the option to merge two players or
+two places that turn out to be the same person or venue. Next up is Milestone 3, the records board
+and the analytics. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
