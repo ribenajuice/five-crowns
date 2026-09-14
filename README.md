@@ -10,8 +10,13 @@ recover a forgotten admin password without a developer, and download every game'
 CSV; a saved game can be edited or deleted; every player and roster has its own page (games played,
 wins, win rate), with a places list, renaming, and tappable links throughout; and transcribing a
 scoresheet now suggests who a handwritten name belongs to, with the option to merge two players or
-two places that turn out to be the same person or venue. Next up is Milestone 3, the records board
-and the analytics. See `docs/STATUS.md`.
+two places that turn out to be the same person or venue. **Milestone 3 is now underway. Stage 1 —
+the records board — is built and reviewed, on a branch, not yet merged or deployed**: it replaces
+the games list as the app's opening screen with five all-time records — most wins, longest winning
+streak, lowest average score, most rounds won, and the stalwart (most games played) — each one
+tappable through to the exact games it's based on. Every record shows from the very first saved
+game, with a small note at the top while the archive has fewer than 10 games. See
+`docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
