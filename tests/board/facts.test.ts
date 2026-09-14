@@ -6,7 +6,10 @@
  * own proof for criterion 190, applied here per criterion 293), that the pool
  * only ever contains facts that actually apply (never a null-padded array),
  * nothing cached against a delete (mirroring criterion 189's own test for the
- * records board), and `pickFunFact()`'s own trivial random-index behaviour.
+ * records board), `pickFunFact()`'s own trivial random-index behaviour, and
+ * (code review fix) that a board page load reusing one `getBoardData()` fetch
+ * across `getBoard()` and `getFunFacts()` issues exactly three queries total,
+ * not three each.
  *
  * The generators' own correctness (exact run lengths, exact thresholds,
  * chronological sequencing) is `tests/scoring/facts.test.ts`'s job — this
@@ -205,6 +208,73 @@ describe("getFunFacts — nothing is cached (criterion 281, echoing criterion 18
   });
 });
 
+describe("getFunFacts — the pool itself stays deterministic (criterion 281's own promise)", () => {
+  it("⚠️ regression: with 2+ games, repeated calls used to pick a different randomOldNight each time via an un-threaded Math.random default — the pool must be stable given the same injected random and unchanged data", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 50 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 55 },
+        { playerId: players["Bo"]!, finalScore: 95 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-15",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 60 },
+        { playerId: players["Bo"]!, finalScore: 99 },
+      ],
+    });
+
+    const { getFunFacts } = await import("@/lib/board/facts");
+
+    function nightDate(facts: Awaited<ReturnType<typeof getFunFacts>>): string | undefined {
+      const night = facts.find((f) => f.key === "randomOldNight");
+      return night?.key === "randomOldNight" ? night.playedOn : undefined;
+    }
+
+    // Same fixed `random` every call, same underlying data: the pool's own
+    // randomOldNight entry must land on the same game every time — proving
+    // `getFunFacts()` never reaches for the ambient `Math.random()` behind
+    // the caller's back.
+    const first = nightDate(await getFunFacts(undefined, () => 0));
+    const second = nightDate(await getFunFacts(undefined, () => 0));
+    const third = nightDate(await getFunFacts(undefined, () => 0));
+    expect(first).toBeDefined();
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+
+    // A different injected value picks a different game, proving the
+    // parameter is actually wired through to `randomOldNight`, not ignored.
+    const last = nightDate(await getFunFacts(undefined, () => 0.9999));
+    expect(last).not.toBe(first);
+  });
+
+  it("defaults to Math.random when no random is injected, preserving the feature's own behaviour", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 50 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getFunFacts } = await import("@/lib/board/facts");
+    const facts = await getFunFacts();
+    expect(facts.find((f) => f.key === "randomOldNight")).toBeDefined();
+  });
+});
+
 describe("getFunFacts — bounded query count (criterion 293)", () => {
   async function countQueriesAt(gameCount: number): Promise<number> {
     const players = await createPlayers(["Amy", "Bo", "Cy", "Dee"]);
@@ -243,6 +313,58 @@ describe("getFunFacts — bounded query count (criterion 293)", () => {
     expect(queriesAt10).toBeGreaterThan(0);
     expect(queriesAt10).toBe(3);
     expect(queriesAt60).toBe(queriesAt10);
+  });
+});
+
+describe("getFunFacts — reuses an already-fetched BoardData instead of re-querying (code review fix)", () => {
+  it("⚠️ regression: a board page load threading one getBoardData() fetch through both getBoard() and getFunFacts() issues exactly 3 queries total, not 3 + 3", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 50, handScores: [0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5] },
+        { playerId: players["Bo"]!, finalScore: 90 },
+        { playerId: players["Cy"]!, finalScore: 100 },
+      ],
+    });
+
+    const { getBoardData, getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+
+    selectCallCount = 0;
+    const data = await getBoardData();
+    expect(selectCallCount).toBe(3);
+
+    const [board, facts] = await Promise.all([getBoard(data), getFunFacts(data)]);
+
+    // Neither getBoard(data) nor getFunFacts(data) triggered a query of its
+    // own — the whole page load stays at the one fetch's 3 selects.
+    expect(selectCallCount).toBe(3);
+
+    expect(board.empty).toBe(false);
+    expect(facts.length).toBeGreaterThan(0);
+    expect(facts.map((f) => f.key)).toContain("collectiveTrivia");
+  });
+
+  it("without a data argument, getBoard() and getFunFacts() each fall back to their own fetch (6 total) — proving the shared path is opt-in, not a breaking change", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 50 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const { getFunFacts } = await import("@/lib/board/facts");
+
+    selectCallCount = 0;
+    await getBoard();
+    await getFunFacts();
+    expect(selectCallCount).toBe(6);
   });
 });
 

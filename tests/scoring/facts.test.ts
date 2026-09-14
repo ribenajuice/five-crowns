@@ -306,6 +306,44 @@ describe("comebackNobodyAskedFor — criterion 284", () => {
   it("an empty archive has no comeback", () => {
     expect(comebackNobodyAskedFor([])).toBeNull();
   });
+
+  it("⚠️ regression: two hands tied for worst within the SAME game deterministically report the lowest hand number, regardless of row order", () => {
+    // Hands 4 and 9 both score 51 in the same game — a real tie
+    // `compareOldestFirst` alone can't break, since both hands share the same
+    // `playedOn`/`createdAt` (they're the same game row). Hand 4 must win,
+    // every time, no matter which order the two hands appear in `hands`.
+    const gamesHand4First: PlayerGameSummary[] = [
+      summary({
+        gameId: "g1",
+        playerId: PLAYER_A,
+        playedOn: "2026-01-01",
+        won: false,
+        hands: [
+          { hand: 4, score: 51 },
+          { hand: 9, score: 51 },
+        ],
+      }),
+      summary({ gameId: "g2", playerId: PLAYER_A, playedOn: "2026-01-08", won: true }),
+    ];
+    const gamesHand9First: PlayerGameSummary[] = [
+      summary({
+        gameId: "g1",
+        playerId: PLAYER_A,
+        playedOn: "2026-01-01",
+        won: false,
+        hands: [
+          { hand: 9, score: 51 },
+          { hand: 4, score: 51 },
+        ],
+      }),
+      summary({ gameId: "g2", playerId: PLAYER_A, playedOn: "2026-01-08", won: true }),
+    ];
+
+    for (let i = 0; i < 5; i++) {
+      expect(comebackNobodyAskedFor(gamesHand4First)?.hand).toBe(4);
+      expect(comebackNobodyAskedFor(gamesHand9First)?.hand).toBe(4);
+    }
+  });
 });
 
 describe("slump — criterion 285", () => {

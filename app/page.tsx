@@ -6,7 +6,7 @@ import { FunFactCard } from "@/components/FunFactCard";
 import { RecordCard, type RecordCardProps } from "@/components/RecordCard";
 import { StatsNavLink } from "@/components/StatsNavLink";
 import { getFunFacts, pickFunFact } from "@/lib/board/facts";
-import { getBoard, type BoardRecord, type SingleEventBoardRecord } from "@/lib/board/queries";
+import { getBoard, getBoardData, type BoardRecord, type SingleEventBoardRecord } from "@/lib/board/queries";
 import {
   BOARD_APPBAR_TITLE,
   BOARD_EMPTY_BODY,
@@ -82,13 +82,20 @@ function toSingleEventCardProps(record: SingleEventBoardRecord): RecordCardProps
 
 export default async function Home() {
   await requireGroupSession();
-  const board = await getBoard();
+
+  // Code review fix: `getBoard()` and `getFunFacts()` both read the same
+  // three tables (`lib/board/queries.ts`'s `getBoardData()`) — fetched once
+  // here and threaded into each, rather than each independently re-querying,
+  // the same "fetch once, thread it through" shape `getPlayerGameFacts`
+  // establishes for the player page (`lib/players/rivalry.ts`).
+  const data = await getBoardData();
+  const board = await getBoard(data);
 
   // Milestone 4, first slice (criteria 281, 292): freshly computed and freshly
   // picked on every load, never cached — an empty archive already 404s the
   // pool's own first query, so this is skipped entirely on that path rather
   // than run only to be thrown away (criterion 293's bounded-query stance).
-  const fact = board.empty ? null : pickFunFact(await getFunFacts());
+  const fact = board.empty ? null : pickFunFact(await getFunFacts(data));
 
   return (
     <>

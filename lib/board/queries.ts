@@ -31,6 +31,18 @@
  * memory, never a fresh query. See `tests/board/queries.test.ts` for the
  * query-count assertion this claim is checked against.
  *
+ * ⚠️ **Shared with `lib/board/facts.ts`** (code review fix, Milestone 4):
+ * `getBoardData()` below is the module's actual three-query fetch, exposed
+ * publicly for exactly the reason `lib/players/rivalry.ts`'s
+ * `getPlayerGameFacts` is — so a caller needing more than one thing built
+ * from these same three tables (the board page now needs both the board
+ * itself and the fun-facts pool) fetches once and threads the result through,
+ * rather than each independently re-querying and re-grouping the identical
+ * rows. `getBoard()` accepts an already-fetched `BoardData` as an optional
+ * argument and only calls `getBoardData()` itself when one isn't given, so
+ * every existing standalone call site (tests included) keeps working
+ * unchanged.
+ *
  * ⚠️ **No withholding** (criteria 183–184, struck): every player with at
  * least one game is eligible for every record, from the first saved game.
  * `EARLY_DAYS_BELOW` is a caveat threshold for the board's own archive-size
@@ -62,7 +74,6 @@ import {
   worstGameEver,
   zeroHandCountsByPlayerGame,
   type FinalScoreInstance,
-  type GameHandScoreRow,
   type HammeringInstance,
   type HandLabel,
   type PlayerScore,
@@ -239,7 +250,7 @@ export type Board =
       singleEventRecords: SingleEventBoardRecord[];
     };
 
-interface GameRow {
+export interface BoardGameRow {
   id: string;
   playedOn: string;
   createdAt: string;
@@ -248,32 +259,63 @@ interface GameRow {
   rosterName: string | null;
 }
 
-interface GamePlayerRow {
+export interface BoardGamePlayerRow {
   gameId: string;
   playerId: string;
   displayName: string;
+  /** Seating order within the game — unused by the board itself, only by `lib/board/facts.ts`'s "a random old night". Fetched here anyway so that module never needs a query of its own for it. */
+  columnOrder: number;
   finalScore: number;
 }
 
-/** Every game a given player played, chronological facts only — the shape every per-player record is built from. */
-interface PlayerGameFact {
+export interface BoardRoundScoreRow {
   gameId: string;
-  playedOn: string;
-  createdAt: string;
-  finalScore: number;
-  won: boolean;
+  playerId: string;
+  hand: number;
+  score: number;
 }
 
 /**
- * The whole records board, computed fresh from stored rows — three queries,
- * everything else in memory. See the module doc comment above for the
- * criteria this satisfies.
+ * The three tables' raw rows, plus the groupings every one of `getBoard()`'s
+ * records and every one of `getFunFacts()`'s generators (`lib/board/facts.ts`)
+ * both need, computed exactly once. This **is** the module's actual
+ * three-query fetch — see the module doc comment above for why it's exposed.
  */
-export async function getBoard(): Promise<Board> {
+export interface BoardData {
+  gameRows: readonly BoardGameRow[];
+  gamePlayerRows: readonly BoardGamePlayerRow[];
+  roundScoreRows: readonly BoardRoundScoreRow[];
+  gamesById: ReadonlyMap<string, BoardGameRow>;
+  gamePlayersByGame: ReadonlyMap<string, readonly BoardGamePlayerRow[]>;
+  /** Each game's winner(s) — criterion 214's "second place" is `getBoard()`'s own further step, not shared, since only the board needs it. */
+  winnerIdsByGame: ReadonlyMap<string, readonly string[]>;
+  rosterNameByGame: ReadonlyMap<string, string>;
+}
+
+function emptyBoardData(): BoardData {
+  return {
+    gameRows: [],
+    gamePlayerRows: [],
+    roundScoreRows: [],
+    gamesById: new Map(),
+    gamePlayersByGame: new Map(),
+    winnerIdsByGame: new Map(),
+    rosterNameByGame: new Map(),
+  };
+}
+
+/**
+ * The three-query fetch shared by `getBoard()` and `lib/board/facts.ts`'s
+ * `getFunFacts()`. Callers needing both call this once and pass the result to
+ * each — `app/page.tsx`'s board page does exactly that — rather than each
+ * independently re-querying and re-grouping the identical `game` /
+ * `game_player` / `round_score` rows.
+ */
+export async function getBoardData(): Promise<BoardData> {
   const db = getDb();
 
   // Query 1 of 3: every game, with its location and roster names attached.
-  const gameRows: GameRow[] = await db
+  const gameRows: BoardGameRow[] = await db
     .select({
       id: game.id,
       playedOn: game.playedOn,
@@ -286,18 +328,19 @@ export async function getBoard(): Promise<Board> {
     .leftJoin(location, eq(game.locationId, location.id))
     .innerJoin(roster, eq(game.rosterId, roster.id));
 
-  if (gameRows.length === 0) return { empty: true };
+  if (gameRows.length === 0) return emptyBoardData();
 
-  // Queries 2 and 3 of 3: every game_player row (with display names attached)
-  // and every round_score row in the archive. Neither depends on the other's
-  // result — only the early return above depends on query 1, and only on its
-  // emptiness — so they run concurrently.
-  const [gamePlayerRows, roundScoreRows]: [GamePlayerRow[], GameHandScoreRow[]] = await Promise.all([
+  // Queries 2 and 3 of 3: every game_player row (with display names and
+  // column order attached) and every round_score row in the archive. Neither
+  // depends on the other's result — only the early return above depends on
+  // query 1, and only on its emptiness — so they run concurrently.
+  const [gamePlayerRows, roundScoreRows]: [BoardGamePlayerRow[], BoardRoundScoreRow[]] = await Promise.all([
     db
       .select({
         gameId: gamePlayer.gameId,
         playerId: gamePlayer.playerId,
         displayName: player.displayName,
+        columnOrder: gamePlayer.columnOrder,
         finalScore: gamePlayer.finalScore,
       })
       .from(gamePlayer)
@@ -320,44 +363,78 @@ export async function getBoard(): Promise<Board> {
       .orderBy(roundScore.gameId, roundScore.hand, roundScore.playerId),
   ]);
 
-  // ---------------------------------------------------------------------
-  // Everything below is in-memory work over the three row sets above — no
-  // further database access, and none of it re-runs per player or per game.
-  // ---------------------------------------------------------------------
-
   const gamesById = new Map(gameRows.map((g) => [g.id, g]));
 
-  const gamePlayersByGame = new Map<string, GamePlayerRow[]>();
+  const gamePlayersByGame = new Map<string, BoardGamePlayerRow[]>();
   for (const row of gamePlayerRows) {
     const arr = gamePlayersByGame.get(row.gameId) ?? [];
     arr.push(row);
     gamePlayersByGame.set(row.gameId, arr);
   }
 
-  // Each game's winner(s), second place(s) (criterion 214) and effective
-  // roster name, computed once and reused by every drill-through. Also
-  // collects biggest hammering's own candidates (criterion 232) — one entry
-  // per game with a second place at all. ⚠️ `secondPlace(scores)` is called
-  // exactly once per game here — `winningMargin` (Stage 2's own function)
-  // would recompute it internally (and `winningScore` a second time on top),
-  // so the margin is derived directly from this same `second` instead of
-  // calling `winningMargin` again, avoiding tripling the work `getBoard()`
-  // already does on every `/` page load.
+  // Each game's winner(s) and effective roster name, computed once and
+  // reused by both this module and `lib/board/facts.ts`.
   const winnerIdsByGame = new Map<string, string[]>();
-  const secondPlaceIdsByGame = new Map<string, string[]>();
   const rosterNameByGame = new Map<string, string>();
+  for (const [gameId, rows] of gamePlayersByGame) {
+    const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
+    winnerIdsByGame.set(gameId, determineWinners(scores));
+    const g = gamesById.get(gameId)!;
+    rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
+  }
+
+  return { gameRows, gamePlayerRows, roundScoreRows, gamesById, gamePlayersByGame, winnerIdsByGame, rosterNameByGame };
+}
+
+/** Every game a given player played, chronological facts only — the shape every per-player record is built from. */
+interface PlayerGameFact {
+  gameId: string;
+  playedOn: string;
+  createdAt: string;
+  finalScore: number;
+  won: boolean;
+}
+
+/**
+ * The whole records board, computed fresh from stored rows — three queries,
+ * everything else in memory. See the module doc comment above for the
+ * criteria this satisfies.
+ *
+ * `data` is `getBoardData()`'s own result — pass it in when the caller
+ * already has it (the board page does, to avoid fetching it twice over, once
+ * here and once for `getFunFacts()`); left out, this fetches it itself, so
+ * every existing standalone call site keeps working unchanged.
+ */
+export async function getBoard(data?: BoardData): Promise<Board> {
+  const { gameRows, gamePlayerRows, gamePlayersByGame, winnerIdsByGame, rosterNameByGame, roundScoreRows, gamesById } =
+    data ?? (await getBoardData());
+
+  if (gameRows.length === 0) return { empty: true };
+
+  // ---------------------------------------------------------------------
+  // Everything below is in-memory work over the rows above — no further
+  // database access, and none of it re-runs per player or per game.
+  // ---------------------------------------------------------------------
+
+  // Second place(s) (criterion 214) and biggest hammering's own candidates
+  // (criterion 232) — the two groupings `getBoard()` needs beyond what's
+  // already shared with `getFunFacts()` via `data` (winners, roster names),
+  // since only the board itself has a "nearly man" record and a biggest
+  // hammering. ⚠️ `secondPlace(scores)` is called exactly once per game here
+  // — `winningMargin` (Stage 2's own function) would recompute it internally
+  // (and `winningScore` a second time on top), so the margin is derived
+  // directly from this same `second` instead of calling `winningMargin`
+  // again, avoiding tripling the work `getBoard()` already does on every `/`
+  // page load.
+  const secondPlaceIdsByGame = new Map<string, string[]>();
   const hammeringInstances: HammeringInstance[] = [];
   for (const [gameId, rows] of gamePlayersByGame) {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
-    const winners = determineWinners(scores);
-    winnerIdsByGame.set(gameId, winners);
     const second = secondPlace(scores);
     secondPlaceIdsByGame.set(gameId, second?.playerIds ?? []);
     const winning = winningScore(scores);
     const margin = winning !== null && second !== null ? second.score - winning : null;
-    if (margin !== null) hammeringInstances.push({ gameId, margin, winnerIds: winners });
-    const g = gamesById.get(gameId)!;
-    rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
+    if (margin !== null) hammeringInstances.push({ gameId, margin, winnerIds: [...(winnerIdsByGame.get(gameId) ?? [])] });
   }
 
   // Every player's own games, chronological facts — the single pass every per-player record reads from.

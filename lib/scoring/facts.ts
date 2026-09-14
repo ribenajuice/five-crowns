@@ -250,6 +250,13 @@ interface WorstHand {
  * game after it was a win, since that's a property of the tied hand's own
  * position in the sequence either way only if both tie the same value at
  * different games; picking the earliest is simply a stable, arbitrary choice.
+ * ⚠️ **Two hands tied for worst within the very same game** are a further,
+ * un-ordered case `compareOldestFirst` alone can't break (same `playedOn` /
+ * `createdAt` on both sides) — the lowest hand number wins, the same
+ * deterministic convention `longestZeroRun` above already uses, so a re-run
+ * over the same stored rows can never report a different hand for the same
+ * game just because `round_score` rows happened to come back in a different
+ * order.
  *
  * Among every player whose worst hand happens to precede a win, the single
  * highest-scoring disaster is reported (the most dramatic story). `null` if
@@ -264,12 +271,14 @@ export function comebackNobodyAskedFor(games: readonly PlayerGameSummary[]): Com
     let worst: (WorstHand & { displayName: string }) | null = null;
     for (const game of sorted) {
       for (const h of game.hands) {
-        if (
+        const chronology = worst === null ? 0 : compareOldestFirst(game, worst);
+        const better =
           worst === null ||
           h.score > worst.score ||
           (h.score === worst.score &&
-            compareOldestFirst(game, worst) < 0)
-        ) {
+            (chronology < 0 || (chronology === 0 && h.hand < worst.hand)));
+
+        if (better) {
           worst = {
             gameId: game.gameId,
             playedOn: game.playedOn,

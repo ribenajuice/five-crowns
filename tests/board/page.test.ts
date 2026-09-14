@@ -8,15 +8,22 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { HandLabel } from "@/lib/scoring";
 
-import type { Board } from "@/lib/board/queries";
+import type { Board, BoardData } from "@/lib/board/queries";
 
 vi.mock("@/lib/auth/session", () => ({
   requireGroupSession: vi.fn(async () => ({ s: "group", v: 1 })),
 }));
 
+// `getBoardData` is stubbed alongside `getBoard`, not left real: it's now
+// `app/page.tsx`'s own shared fetch (code review fix — `getBoard()` and
+// `getFunFacts()` both read from it), and this file's whole point is a real
+// `db.select(...)` never runs here (see the `getFunFacts` comment below,
+// which predates this and makes the same point about that call).
+const STUB_BOARD_DATA = {} as BoardData;
+
 vi.mock("@/lib/board/queries", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/board/queries")>();
-  return { ...actual, getBoard: vi.fn() };
+  return { ...actual, getBoard: vi.fn(), getBoardData: vi.fn(async () => STUB_BOARD_DATA) };
 });
 
 // Milestone 4, first slice: every existing test in this file predates fun
@@ -60,6 +67,7 @@ function minimalBoard(): Board {
       { key: "mostRoundsWon", value: 5, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
       { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
     ],
+    singleEventRecords: [],
   };
 }
 

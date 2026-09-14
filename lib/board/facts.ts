@@ -1,19 +1,26 @@
 /**
  * The fun facts pool — PRD criteria 281–293 (Milestone 4, first slice).
  *
- * `getFunFacts()` is this feature's one entry point into the database:
- * **exactly three `db.select(...)` calls**, mirroring `getBoard()`'s own
- * bounded-query proof (`lib/board/queries.ts`) — the same `game` /
- * `game_player` / `round_score` rows that screen already reads, since this
- * feature computes over the identical data (criterion 281's own instruction:
- * "reuse the same underlying row shapes"). Everything else — the eight
- * generators in `lib/scoring/facts.ts` — runs in memory over those three row
- * sets, never a per-player or per-pair query.
+ * `getFunFacts()` computes over the same `game` / `game_player` /
+ * `round_score` rows the records board already reads (criterion 281's own
+ * instruction: "reuse the same underlying row shapes"), by reusing
+ * `lib/board/queries.ts`'s `getBoardData()` — the module's actual
+ * three-query fetch — rather than re-querying those tables itself.
+ *
+ * ⚠️ **Shared fetch, not a second one** (code review fix, Milestone 4): this
+ * used to run its own independent copy of `getBoardData()`'s three queries
+ * and its own copy of the same in-memory groupings, doubling the board page's
+ * query count on every load. `getFunFacts()` now takes `getBoardData()`'s own
+ * result as its argument — `app/page.tsx` fetches it once and passes it to
+ * both this and `getBoard()` — the same "fetch once, thread it through" shape
+ * `lib/players/rivalry.ts`'s `getPlayerGameFacts` already established.
+ * Everything below the fetch — the eight generators in `lib/scoring/facts.ts`
+ * — still runs in memory, never a per-player or per-pair query.
  *
  * ⚠️ **Nothing is cached or precomputed** (criterion 281, echoing M3's own
- * stance): every call re-fetches and re-derives from scratch, so a delete, an
- * edit or a merge is reflected on the very next call, and a random pick over
- * data that's already recomputed every load costs nothing extra.
+ * stance): every call re-derives from whatever rows it's given, so a delete,
+ * an edit or a merge is reflected on the very next call, and a random pick
+ * over data that's already recomputed every load costs nothing extra.
  *
  * ⚠️ **Where "pick one at random" lives**: deliberately **not** in this
  * function. `getFunFacts()` returns every currently-true fact — a small,
@@ -29,20 +36,15 @@
 
 import "server-only";
 
-import { eq } from "drizzle-orm";
-
-import { getDb } from "@/lib/db";
-import { game, gamePlayer, location, player, roster, roundScore } from "@/lib/db/schema";
+import { getBoardData, type BoardData } from "@/lib/board/queries";
 import {
   collectiveTrivia,
   comebackNobodyAskedFor,
   currentDrought,
-  determineWinners,
   flatliner,
   overdue,
   randomOldNight,
   rivalryNeedle,
-  rosterDisplayName,
   slump,
   winningScore,
   type ArchiveGame,
@@ -54,93 +56,40 @@ import {
   type PlayerScore,
 } from "@/lib/scoring";
 
-interface GameRow {
-  id: string;
-  playedOn: string;
-  createdAt: string;
-  locationName: string | null;
-  rosterId: string;
-  rosterName: string | null;
-}
-
-interface GamePlayerRow {
-  gameId: string;
-  playerId: string;
-  displayName: string;
-  columnOrder: number;
-  finalScore: number;
-}
-
-interface RoundScoreRow {
-  gameId: string;
-  playerId: string;
-  hand: number;
-  score: number;
-}
-
 /**
  * Every currently-true fun fact, freshly computed. `[]` for an empty archive
  * — the board shows no fact slot at all in that case (criterion 292), not an
  * empty one.
+ *
+ * `data` is `getBoardData()`'s own result (`lib/board/queries.ts`) — pass it
+ * in when the caller already has it (the board page does, since it also
+ * calls `getBoard(data)` with the same fetch); left out, this fetches it
+ * itself, so every existing standalone call site (tests included) keeps
+ * working unchanged, still at exactly three `db.select(...)` calls.
+ *
+ * ⚠️ `random` is threaded through to `randomOldNight` below purely so this
+ * function keeps its own documented promise: **the pool itself is
+ * deterministic**. Left at its default (`Math.random`), nothing about runtime
+ * behaviour changes — `randomOldNight`'s own pick of *which* past game
+ * anchors that one pool entry is exactly as random as criterion 288 asks for,
+ * on top of `pickFunFact`'s separate random pick of *which fact* to show. But
+ * without this parameter, `getFunFacts()` would silently touch `Math.random()`
+ * on every call once the archive holds more than one game — undermining the
+ * "assert the pool contains X" testing style this module's own doc comment
+ * promises, not merely a style nit: it would make the pool's own contents
+ * flaky across repeated calls with unchanged data, the exact failure mode
+ * `pickFunFact` was split out to avoid.
  */
-export async function getFunFacts(): Promise<FunFact[]> {
-  const db = getDb();
-
-  // Query 1 of 3: every game, with its location and roster names attached —
-  // identical shape to `getBoard()`'s own first query.
-  const gameRows: GameRow[] = await db
-    .select({
-      id: game.id,
-      playedOn: game.playedOn,
-      createdAt: game.createdAt,
-      locationName: location.name,
-      rosterId: game.rosterId,
-      rosterName: roster.name,
-    })
-    .from(game)
-    .leftJoin(location, eq(game.locationId, location.id))
-    .innerJoin(roster, eq(game.rosterId, roster.id));
+export async function getFunFacts(data?: BoardData, random: () => number = Math.random): Promise<FunFact[]> {
+  const { gameRows, roundScoreRows, gamesById, gamePlayersByGame, winnerIdsByGame, rosterNameByGame } =
+    data ?? (await getBoardData());
 
   if (gameRows.length === 0) return [];
 
-  // Queries 2 and 3 of 3: every game_player row (with display names and
-  // column order attached) and every round_score row in the archive. Neither
-  // depends on the other's result, so they run concurrently — same pattern
-  // `getBoard()` uses for its own two independent queries.
-  const [gamePlayerRows, roundScoreRows]: [GamePlayerRow[], RoundScoreRow[]] = await Promise.all([
-    db
-      .select({
-        gameId: gamePlayer.gameId,
-        playerId: gamePlayer.playerId,
-        displayName: player.displayName,
-        columnOrder: gamePlayer.columnOrder,
-        finalScore: gamePlayer.finalScore,
-      })
-      .from(gamePlayer)
-      .innerJoin(player, eq(gamePlayer.playerId, player.id)),
-    db
-      .select({
-        gameId: roundScore.gameId,
-        playerId: roundScore.playerId,
-        hand: roundScore.hand,
-        score: roundScore.score,
-      })
-      .from(roundScore),
-  ]);
-
   // ---------------------------------------------------------------------
-  // Everything below is in-memory work over the three row sets above — no
-  // further database access.
+  // Everything below is in-memory work over the rows above — no further
+  // database access.
   // ---------------------------------------------------------------------
-
-  const gamesById = new Map(gameRows.map((g) => [g.id, g]));
-
-  const gamePlayersByGame = new Map<string, GamePlayerRow[]>();
-  for (const row of gamePlayerRows) {
-    const arr = gamePlayersByGame.get(row.gameId) ?? [];
-    arr.push(row);
-    gamePlayersByGame.set(row.gameId, arr);
-  }
 
   const handsByGamePlayer = new Map<string, HandScoreEntry[]>();
   for (const row of roundScoreRows) {
@@ -150,17 +99,13 @@ export async function getFunFacts(): Promise<FunFact[]> {
     handsByGamePlayer.set(key, arr);
   }
 
-  // Each game's winner(s), winning score and effective roster name, computed
-  // once and reused by every generator that needs them.
-  const winnerIdsByGame = new Map<string, string[]>();
+  // This generator's own extra grouping — winning score per game — isn't
+  // shared with `getBoard()`, which derives it fresh per record instead
+  // (`toRecordGame`), so it's computed here rather than in `getBoardData()`.
   const winningScoreByGame = new Map<string, number>();
-  const rosterNameByGame = new Map<string, string>();
   for (const [gameId, rows] of gamePlayersByGame) {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
-    winnerIdsByGame.set(gameId, determineWinners(scores));
     winningScoreByGame.set(gameId, winningScore(scores) ?? 0);
-    const g = gamesById.get(gameId)!;
-    rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
   }
 
   // ---- lib/scoring/facts.ts's one shared row shape, built once, reused by
@@ -256,7 +201,7 @@ export async function getFunFacts(): Promise<FunFact[]> {
     slump(playerGameSummaries),
     rivalryNeedle([...pairsByKey.values()]),
     overdue(archiveGames),
-    randomOldNight(nightStories),
+    randomOldNight(nightStories, random),
     collectiveTrivia(gameRows.length),
   ];
 
