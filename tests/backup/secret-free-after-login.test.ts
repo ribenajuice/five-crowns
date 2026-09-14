@@ -37,13 +37,24 @@ const minted: string[] = [];
  * admin prompt), so the browser presents one, as a real device would.
  */
 let groupSessionCookie: string | undefined;
+/**
+ * ⚠️ M2 addition: the two password-change routes need a full admin session
+ * (group **and** admin), so this dump exercises them too — criterion 94 is
+ * "restated for M2's new writes", not assumed to still hold.
+ */
+let adminSessionCookie: string | undefined;
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: (name: string) =>
-      name === "fc_session" && groupSessionCookie
-        ? { name, value: groupSessionCookie }
-        : undefined,
+    get: (name: string) => {
+      if (name === "fc_session" && groupSessionCookie) {
+        return { name, value: groupSessionCookie };
+      }
+      if (name === "fc_admin" && adminSessionCookie) {
+        return { name, value: adminSessionCookie };
+      }
+      return undefined;
+    },
     set: (_name: string, value: string) => {
       minted.push(value);
     },
@@ -56,12 +67,16 @@ const MIGRATION = fileURLToPath(
 
 const GROUP_PASSWORD = "qa-group-plaintext-7f3a";
 const ADMIN_PASSWORD = "qa-admin-plaintext-91c2";
+const NEW_GROUP_PASSWORD = "qa-new-group-plaintext-55aa11";
+const NEW_ADMIN_PASSWORD = "qa-new-admin-plaintext-66bb22";
 const SESSION_SECRET = "qa-session-secret-d41d8cd98f00b204e980";
 
 let directory: string;
 let client: Client;
 let groupHash: string;
 let adminHash: string;
+let newGroupHash: string;
+let newAdminHash: string;
 let dump: string;
 
 function post(path: string, password: string, address: string): Request {
@@ -69,6 +84,14 @@ function post(path: string, password: string, address: string): Request {
     method: "POST",
     headers: { "content-type": "application/json", "x-forwarded-for": address },
     body: JSON.stringify({ password }),
+  });
+}
+
+function postJson(path: string, body: unknown, address: string): Request {
+  return new Request(`https://fivecrowns.example.test${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": address },
+    body: JSON.stringify(body),
   });
 }
 
@@ -89,6 +112,7 @@ beforeAll(async () => {
   process.env.FIVE_CROWNS_ADMIN_PASSWORD_HASH = adminHash;
   const { signSession } = await import("@/lib/auth/token");
   groupSessionCookie = await signSession({ s: "group", v: 0 }, SESSION_SECRET);
+  adminSessionCookie = await signSession({ s: "admin", v: 0 }, SESSION_SECRET);
 
   client = createClient({ url });
   for (const statement of readFileSync(MIGRATION, "utf8")
@@ -109,6 +133,79 @@ beforeAll(async () => {
   expect((await admin(post("/api/admin/login", ADMIN_PASSWORD, "203.0.113.2"))).status).toBe(200);
   expect(minted).toHaveLength(2);
 
+  // ⚠️ M2's new writes: both password-change routes, under a full admin
+  // session (`adminSessionCookie`, minted directly above — independent of the
+  // routes just exercised). Wrong-then-right on the admin route too, so a
+  // rejected guess is in the mix exactly like the login routes above.
+  const changeGroupPassword = (
+    await import("@/app/api/admin/password/group/route")
+  ).POST;
+  const changeAdminPassword = (
+    await import("@/app/api/admin/password/admin/route")
+  ).POST;
+
+  // Group first: it does not touch the admin epoch, so the admin session
+  // minted above (`adminSessionCookie`, epoch 0) is still good for the admin
+  // change that follows. Doing it the other way round would invalidate that
+  // very session (criterion 93) before the group route ever got to use it.
+  expect(
+    (
+      await changeGroupPassword(
+        postJson(
+          "/api/admin/password/group",
+          { password: NEW_GROUP_PASSWORD },
+          "203.0.113.3",
+        ),
+      )
+    ).status,
+  ).toBe(200);
+
+  // ⚠️ The group route just bumped `group-session-epoch`, which invalidates
+  // the very group cookie both password routes check first — including this
+  // process's own session, exactly as criterion 89 says it should. A real
+  // browser would be sent back to `/login`; this harness re-mints the cookie
+  // with the post-bump epoch to keep driving the admin route that follows.
+  const { sessionEpoch } = await import("@/lib/config");
+  groupSessionCookie = await signSession(
+    { s: "group", v: await sessionEpoch("group") },
+    SESSION_SECRET,
+  );
+
+  expect(
+    (
+      await changeAdminPassword(
+        postJson(
+          "/api/admin/password/admin",
+          {
+            currentPassword: "wrong-current-password",
+            newPassword: NEW_ADMIN_PASSWORD,
+            confirmPassword: NEW_ADMIN_PASSWORD,
+          },
+          "203.0.113.4",
+        ),
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (
+      await changeAdminPassword(
+        postJson(
+          "/api/admin/password/admin",
+          {
+            currentPassword: ADMIN_PASSWORD,
+            newPassword: NEW_ADMIN_PASSWORD,
+            confirmPassword: NEW_ADMIN_PASSWORD,
+          },
+          "203.0.113.5",
+        ),
+      )
+    ).status,
+  ).toBe(200);
+
+  const { passwordHash } = await import("@/lib/config");
+  newAdminHash = await passwordHash("admin");
+  newGroupHash = await passwordHash("group");
+
   const { dumpDatabase } = await import("@/lib/backup/dump");
   dump = (await dumpDatabase(client, new Date("2026-09-11T14:15:00Z"))).sql;
 });
@@ -126,8 +223,8 @@ describe("⚠️ criterion 79 — the dump after both gates have been used", () 
     expect(dump).toMatch(/INSERT INTO "login_attempt"/);
   });
 
-  it("contains neither password hash, whole or in pieces", () => {
-    for (const hash of [groupHash, adminHash]) {
+  it("contains neither password hash, whole or in pieces — before or after M2's password changes", () => {
+    for (const hash of [groupHash, adminHash, newGroupHash, newAdminHash]) {
       expect(dump).not.toContain(hash);
       // salt and derived key separately, in case anything ever stores a part
       for (const part of hash.split(":").filter((p) => p.length >= 16)) {
@@ -137,9 +234,11 @@ describe("⚠️ criterion 79 — the dump after both gates have been used", () 
     expect(dump).not.toContain("scrypt:");
   });
 
-  it("contains neither plaintext password", () => {
+  it("contains none of the four plaintext passwords in play — old or new, group or admin", () => {
     expect(dump).not.toContain(GROUP_PASSWORD);
     expect(dump).not.toContain(ADMIN_PASSWORD);
+    expect(dump).not.toContain(NEW_GROUP_PASSWORD);
+    expect(dump).not.toContain(NEW_ADMIN_PASSWORD);
   });
 
   it("contains no session secret and no minted session token", () => {

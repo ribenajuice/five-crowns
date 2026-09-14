@@ -17,7 +17,7 @@ import "server-only";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
-import { hasSession } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/require-admin-session";
 import { apiError, serverError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 import {
@@ -33,17 +33,6 @@ export const dynamic = "force-dynamic";
 const setKeySchema = z.object({
   apiKey: z.string().min(API_KEY_MIN_LENGTH).max(API_KEY_MAX_LENGTH),
 });
-
-/** Both checks, in order — mirrors `app/admin/page.tsx` and the admin login route. */
-async function requireAdminSession() {
-  if (!(await hasSession("group"))) {
-    return apiError("unauthorised", "You need the password for this.");
-  }
-  if (!(await hasSession("admin"))) {
-    return apiError("unauthorised", "You need the admin password for this.");
-  }
-  return null;
-}
 
 export async function GET() {
   const denied = await requireAdminSession();

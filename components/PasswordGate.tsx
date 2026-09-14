@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 
 import { Banner, type BannerTone } from "@/components/Banner";
 import { buttonClasses, ButtonLink } from "@/components/Button";
+import { errorCodeOf } from "@/lib/ui/api-error";
 
 interface PasswordGateProps {
   title: string;
@@ -26,6 +27,14 @@ interface PasswordGateProps {
   label: string;
   /** An optional ghost button under the submit button. */
   back?: { href: string; label: string };
+  /**
+   * A second, additional ghost link beneath `back` — currently only the admin
+   * prompt's "Forgotten the admin password?" (docs/DESIGN-SYSTEM.md § Screen
+   * rules, "Password gates"; PRD criterion 97). Deliberately its own prop
+   * rather than an array: the group `/login` gate never gets one, so a single
+   * optional slot says that at the call site instead of an empty array.
+   */
+  secondaryLink?: { href: string; label: string };
 }
 
 interface GateError {
@@ -87,14 +96,6 @@ const OFFLINE: GateError = {
   invalid: false,
 };
 
-function codeOf(body: unknown): string | null {
-  if (typeof body !== "object" || body === null || !("error" in body)) {
-    return null;
-  }
-  const code = (body as { error: { code?: unknown } }).error?.code;
-  return typeof code === "string" ? code : null;
-}
-
 export function PasswordGate({
   title,
   hint,
@@ -102,6 +103,7 @@ export function PasswordGate({
   next,
   label,
   back,
+  secondaryLink,
 }: PasswordGateProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -140,7 +142,7 @@ export function PasswordGate({
       }
 
       const body: unknown = await response.json().catch(() => null);
-      const code = codeOf(body);
+      const code = errorCodeOf(body);
 
       if (code === "bad_request") {
         setEmpty(true);
@@ -241,6 +243,17 @@ export function PasswordGate({
             <ButtonLink href={back.href} variant="ghost" fullWidth>
               {back.label}
             </ButtonLink>
+          </div>
+        ) : null}
+
+        {secondaryLink ? (
+          <div className="mt-3">
+            <a
+              href={secondaryLink.href}
+              className={buttonClasses("ghost", { fullWidth: true })}
+            >
+              {secondaryLink.label}
+            </a>
           </div>
         ) : null}
       </form>

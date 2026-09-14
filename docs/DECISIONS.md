@@ -20,6 +20,41 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — In-panel password rotation: widen the web Lambda's SSM write grant to all seven app-owned parameters
+
+- **Context**: Milestone 2 Stage 1 (PRD open question 5, criteria 87–96) builds group- and
+  admin-password-change forms in the admin panel. Both routes write four SSM parameters —
+  `group-password-hash`, `admin-password-hash`, `group-session-epoch`, `admin-session-epoch` — but
+  the web Lambda's IAM role could write only three unrelated ones (`anthropic-api-key`,
+  `anthropic-api-key-last4`, `anthropic-api-key-set-at`), narrowed on 2026-09-11 specifically so a
+  bug in the internet-facing app could never overwrite either password hash (see that ADR below).
+  As built, both routes would have gotten `AccessDeniedException` from SSM and surfaced as a plain
+  500 in production — QA and security review independently found the same gap before the PR opened.
+  Two ways forward, put to the founder rather than decided by the team (PR #21's description):
+  widen the grant to the four new parameters, or drop in-panel rotation and keep both passwords
+  changing only through the SSM runbook this same stage wrote for the forgotten-password case.
+- **Decision**: **widen the grant.** `sst.config.ts`'s `writableAppParameterArns` is now simply
+  `appParameterArns` — every parameter the app may read, it may now also write. The founder chose
+  in-panel rotation actually working over keeping the narrower, 2026-09-11 write scope.
+  ⚠️ **This supersedes the write-scope half of the 2026-09-11 least-privilege ADR.** That entry's
+  read/write split is no longer accurate; this entry is the current state for that grant.
+- **Alternatives**: *keep the narrower grant, drop in-panel rotation* — both passwords would still
+  be changeable, only exclusively through the AWS-console runbook (criteria 97–101), never from the
+  panel a non-technical admin actually uses day to day. Rejected: the founder judged the actual
+  convenience of in-panel rotation worth re-accepting the risk, given the admin panel is already
+  gated by its own password and already trusted with the API key.
+- **Consequences**:
+  - The exact escalation the 2026-09-11 narrowing existed to prevent is back: a future bug in this
+    internet-facing Lambda (a deserialisation flaw, a compromised dependency) could now overwrite
+    `admin-password-hash` or `group-password-hash`, not just the API key. Nothing else about the
+    Lambda's blast radius changes — still no S3 delete, no KMS statement, no other IAM action.
+  - Criteria 87–96 (the panel's password forms) now ship for real rather than being cut from Stage 1.
+  - No new AWS resource and no change to running cost — this widens an existing grant's resource
+    list, nothing else.
+  - **Revisit-if**: a future security review wants defence in depth here (e.g. a second, harder gate
+    in front of the password-change routes themselves, independent of IAM) — not proposed now,
+    since the founder's own admin password already gates these routes.
+
 ## 2026-09-14 — Editing a saved game: an ordinary draft that carries its target, saved by a separate in-place transaction
 
 - **Context**: Milestone 2 Stage 2, criteria **115–123** — the first code in this project that writes
@@ -663,7 +698,12 @@ Format:
   - **SSM**: reads and writes are limited to exactly the five app-owned parameters
     (`group-password-hash`, `admin-password-hash`, `group-session-epoch`,
     `admin-session-epoch`, `anthropic-api-key`). The session secret is injected at deploy. The
-    domain and budget parameters are read only by `scripts/deploy.sh`.
+    domain and budget parameters are read only by `scripts/deploy.sh`. ⚠️ **Superseded twice since.**
+    A Stage 3 security review found the write grant was still wider than the app's actual writes and
+    narrowed it to exactly the three `anthropic-api-key*` parameters. The 2026-09-14 ADR above then
+    widened it back to all seven, by founder decision, so the panel's password-change routes could
+    write the two password hashes and two session epochs. That 2026-09-14 entry is the current
+    state of this grant.
   - **KMS: no statement at all.** The AWS-managed `aws/ssm` key's own policy already allows any
     principal in the account to use it *through Parameter Store only* (`kms:ViaService =
     ssm.ap-southeast-2.amazonaws.com` plus `kms:CallerAccount`). This was read from the live key

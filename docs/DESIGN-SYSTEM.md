@@ -143,7 +143,10 @@ the digit; this is a correctness feature, not typography.
 ## Screen rules
 
 - **Password gates** (`/login`, admin prompt): no `AppBar`; the `h1` in the display face is the
-  wordmark. The admin prompt adds a `ghost` **"Back to games"** button under the submit button.
+  wordmark. The admin prompt adds a `ghost` **"Back to games"** button under the submit button, and
+  (Stage 1) a second `ghost` link beneath it, **"Forgotten the admin password?"**, to the recovery
+  procedure documented in the README — no new control, same slot the "Back to games" link
+  established.
 - **Games list, empty**: a `Card` saying so, plus a `primary` **"Add a game"** button linking to the
   add-a-game route. Until that flow ships, the route renders a plain holding page; the button is
   never hidden, because an empty list must always offer the way in.
@@ -342,6 +345,43 @@ the digit; this is a correctness feature, not typography.
     standing at the table with a sheet to photograph.
   - The key is **never rendered back** in any state (criterion 76) — every card above shows only
     last-four, a date, and a status `Pill`.
+
+- **Admin panel — changing the group password** (Stage 1). Reuses the API-key screen's shape
+  exactly: one `Field` (masked, `type="password"`, show/hide toggle in its existing `trailing`
+  slot), one primary `Button`. ⚠️ **No current-password field** — `docs/PRD.md`'s Milestone 2
+  user stories say why: the reason to rotate this password is often that you've lost control of it,
+  and demanding proof of the old one would be the one place the product locks you out on purpose.
+  Only the length
+  rule is new (12 characters minimum, reveal control, same `Field`). Above the field, a `Banner warn`
+  is shown **before** the button is even usable — this is a warning about what submitting will do,
+  not a result of having submitted — reading the fixed copy below. Busy and success states follow
+  the existing `Button`/`Banner` rules (`disabled` + `aria-busy` + present-tense ellipsis; a plain
+  confirmation banner once it's done). No new component anywhere on this screen.
+
+- **Admin panel — changing the admin password** (Stage 1). Three `Field`s stacked (current, new,
+  confirm — masked, same show/hide slot), a length helper line, one primary `Button`. The one line
+  of reasoning for why this form alone asks for the current password sits directly beneath the
+  current-password field as ordinary helper text (`--text-sm`, `--text-muted`) — not a `Banner`,
+  because nothing risky is about to happen and a banner would overstate it. A wrong current password
+  is a normal form error: the field gets the standard invalid state, no new pattern. On success, every
+  admin session dies including this one, so the redirect to the admin login **is** the confirmation —
+  no toast, matching the save-area rule already in force for the review screen.
+
+- **Admin panel — downloading the scores** (Stage 1). A `Card` in the same bold-first-line /
+  second-line shape the API-key screen already uses for its resting states, holding the fixed copy
+  below, plus one primary `Button`. ⚠️ **The word "backup" appears only to deny it** — the card's job
+  is to say plainly what the file is and isn't before anyone taps the button, not after. No `Banner`
+  needed here: nothing has gone right or wrong yet, it's a standing fact, which is exactly what
+  `Card` is for elsewhere in this panel (compare the API key's resting-state card).
+
+- **Admin panel — usage and spend** (Stage 1). A `Card` holding three label/value pairs in the same
+  uppercase `--text-xs` label over `--num` value shape `RecordCard` already uses on the records board
+  (no holder, no sample size — this isn't a record, just three numbers, so it borrows the type
+  treatment, not the component), plus one line for the A$ estimate and its disclosure, plus today's
+  two cap lines. ⚠️ **A month with nothing transcribed still renders every value** — zeroes and
+  `A$0.00`, never a blank, a dash, or an error state; there is nothing to be empty about, a month
+  with no reads is a fact like any other. No `Banner`, no `Pill`: this section is read-only
+  arithmetic, not a status.
 
 - **Reordering columns** (Stage 4, criterion 32). Opened from `StructureMenu`. ⚠️ **Decision: 44px
   up/down move buttons on a vertical list, not drag-and-drop, and not left/right chips.** Drag is
@@ -547,6 +587,30 @@ verified, confirmed, correct, looks right* or *all good*.
 | Admin, key rejected | That key didn't work. / Check it and try again — the key you had before is untouched. |
 | Admin, status `Pill` | Working · Not working |
 | Admin, replace button | Replace key |
+| Admin, group password field label | New group password |
+| Admin, group password length helper | At least 12 characters. |
+| Admin, group password warning banner | This logs out every device — including this one. / Send everyone the new password yourself; nobody gets back in without it. |
+| Admin, group password save button | Change group password |
+| Admin, group password save button, busy | Changing… |
+| Admin, admin password current-field label | Current admin password |
+| Admin, admin password new-field label | New admin password |
+| Admin, admin password confirm-field label | Confirm new admin password |
+| Admin, admin password length helper | At least 12 characters. |
+| Admin, admin password asymmetry line | This one checks your current password because it's the one password that can lock you out for good — the group password doesn't, because losing control of it is usually why you're changing it. |
+| Admin, admin password save button | Change admin password |
+| Admin, admin password save button, busy | Changing… |
+| Admin login, recovery link | Forgotten the admin password? |
+| Admin, download card | The numbers, not a backup. / The photos aren't in this file — copy them yourself: `aws s3 sync s3://five-crowns-photos ./photos` |
+| Admin, download button | Download scores |
+| Admin, download filename | five-crowns-scores-YYYY-MM-DD.csv |
+| Admin, usage heading | This month |
+| Admin, usage label — sheet reads | Sheet reads |
+| Admin, usage label — column re-reads | Column re-reads |
+| Admin, usage label — total | Total |
+| Admin, usage estimate label | Estimated cost this month |
+| Admin, usage estimate disclosure | An estimate — converted at US$1 ≈ A$1.55, prices checked against the Anthropic console on {date}. |
+| Admin, usage today — sheet reads | {n} of {sheetCap} sheet reads today |
+| Admin, usage today — column re-reads | {n} of {columnCap} column re-reads today |
 | Fix-something link (`StructureMenu`) | Fix something |
 | Structure menu, reorder row | Reorder columns · Match the order they're written in on the photo. |
 | Structure menu, insert/delete row | Insert or delete a value · Fixes a row that's shifted by one. |

@@ -6,6 +6,26 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+The first stage of Milestone 2: the rest of the admin panel. Built and tested, not yet merged or
+deployed.
+
+### Added
+
+- **A single button downloads every game's scores as one spreadsheet file.** It's one CSV with a
+  row for every player in every game — everyone's running totals and per-hand scores, all in one
+  place, openable on a phone or a computer. To be clear about what it isn't: **this is not a
+  backup**, and **the photos aren't in it** — just the numbers. The button says so.
+- **The panel now shows what this month's automatic reading has cost**, alongside how many reads
+  you've used today against the daily limits — in Australian dollars, clearly marked as an
+  estimate.
+- **A written, step-by-step way to get back into the admin panel if you forget its password.**
+  It needs no developer and no code change, and it's been run for real, start to finish, to make
+  sure it actually works. It's linked from the admin login screen and from this project's README.
+- **Changing the group password or the admin password from the panel.** Both forms were built and
+  tested but held back pending a decision: the app needed a permission it was deliberately never
+  given. The founder decided to grant it (2026-09-14) rather than drop in-panel rotation — see
+  `docs/DECISIONS.md`. Both buttons now work on the real site.
+
 ## [Stage 6] - 2026-09-14
 
 The second stage of Milestone 2: correcting the record. Live in production.

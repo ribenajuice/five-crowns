@@ -233,4 +233,55 @@ export async function passwordHash(scope: "group" | "admin"): Promise<string> {
   );
 }
 
+/**
+ * Bump a scope's session epoch by one, logging out every device holding a
+ * cookie for that scope — including whichever one just made the change
+ * (docs/ARCHITECTURE.md § Passwords and sessions). This is the entire
+ * revocation mechanism for a stateless, signed session cookie: the epoch is
+ * inside the signed payload, and verification rejects anything that does not
+ * match the current value.
+ *
+ * A plain `String` parameter, not a `SecureString` — an epoch is a counter,
+ * not a secret (see the parameter layout table).
+ *
+ * ⚠️ Reads the *live* value, bypassing the 60-second cache, before
+ * incrementing it — not {@link sessionEpoch}. A cached read-then-write here
+ * would let two rotations inside the same TTL window (two containers, or a
+ * double-submitted request) both read the same stale value and both compute
+ * the same `next`, so the second write would not actually advance the epoch
+ * past what the first one set — up to 60 seconds during which a session that
+ * should have been revoked by the second rotation stays valid. Bypassing the
+ * cache here closes that window down to the time between the read and the
+ * write.
+ *
+ * A true simultaneous-millisecond race is a separate, narrower, and accepted
+ * risk: a plain SSM `String` parameter has no compare-and-swap, so two reads
+ * landing in that same instant could still both see the same value and both
+ * write the same `next`. Not worth distributed locking for a single-operator
+ * admin tool — see `docs/DECISIONS.md` if this changes.
+ */
+export async function bumpSessionEpoch(scope: "group" | "admin"): Promise<number> {
+  const name =
+    scope === "group" ? PARAM.groupSessionEpoch : PARAM.adminSessionEpoch;
+  const raw = await getParameterFresh(name);
+  const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
+  const current = Number.isFinite(parsed) ? parsed : 0;
+  const next = current + 1;
+  await putParameter(name, String(next), { secure: false });
+  return next;
+}
+
+/**
+ * Same as {@link getOptionalParameter}, but bypasses the read cache — the
+ * cache entry is invalidated first, so the value comes straight from SSM (or,
+ * in `env` mode, from `localOverrides`/`process.env`, which were never
+ * cached in the first place). Used only by {@link bumpSessionEpoch}: every
+ * other reader is fine with up to {@link CONFIG_TTL_MS} of staleness, but a
+ * rotation is not.
+ */
+async function getParameterFresh(name: ParameterName): Promise<string | null> {
+  invalidateParameter(name);
+  return getOptionalParameter(name);
+}
+
 export { STAGE };

@@ -17,6 +17,8 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 
+export { NEW_PASSWORD_MIN_LENGTH } from "./password-policy";
+
 /**
  * `promisify` picks the three-argument overload, which loses the cost
  * parameters. Narrowed here rather than at each call site.

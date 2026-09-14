@@ -1107,18 +1107,17 @@ in the README of the download itself, because it is precisely the kind of thing 
 discovered at the moment it matters most. The photos are separately protected by bucket versioning
 and no delete lifecycle; the database by this download and the manual `npm run db:backup` dump.
 
-**Format: a ZIP of CSVs** — `players.csv`, `games.csv`, `rosters.csv`, `roster_members.csv`,
-`round_scores.csv`, plus a denormalised `games-wide.csv` (one row per player per game, the eleven
-running totals and eleven derived hands as columns) that a human can actually read, plus
-`schema.sql` and a short `README.txt`. CSV is chosen over a raw SQLite file or a SQL dump for one
-reason: **it opens in a spreadsheet on a phone with no software, and it still restores into any
-database on earth** — whereas a `.db` file needs tools the founder does not have, which would make
-the escape hatch depend on finding a developer.
+**Format: one combined CSV** (`docs/DECISIONS.md`, 2026-09-14 — supersedes an earlier "ZIP of CSVs
+plus `schema.sql` and `README.txt`" plan written before that decision) — `five-crowns-scores-
+YYYY-MM-DD.csv`, one row per player per game (`game_id`, `played_on`, `location`, `roster_name`,
+`roster_size`, `player_name`, `column_order`, `sheet_name`, `final_score`, `is_winner`, `rt_1`…
+`rt_11`, `hand_1`…`hand_11`). A decade is ~1,400 rows, not ~15,000 — skimmable on a phone in one
+tab, and lossless for the score data. With no `README.txt` to carry it, the "this is not a backup,
+the photos are not in it" disclosure lives on the panel screen and in the repo README instead; the
+file itself carries no prose, since a comment row breaks every spreadsheet that opens it.
 
 **Delivery: generated in the Lambda and streamed straight back**, no S3 round trip and no presigned
-URL. A decade of play is roughly 15,000 round rows — well under 1 MB zipped, against a 6 MB
-buffered Lambda response limit. Revisit at around 4 MB, which on this trajectory is somewhere past
-the year 2100.
+URL. Well under 1 MB at this scale, against a 6 MB buffered Lambda response limit.
 
 ### Footprint and IAM
 
@@ -1128,11 +1127,16 @@ the year 2100.
   requests are $0.03 per 10,000; with a 60-second cache and this traffic, under a cent a month.
 - The **web Lambda's role** (`sst.config.ts`, written out by hand, never granted through SST
   `link`) may:
-  - `ssm:GetParameter`/`ssm:GetParameters` and `ssm:PutParameter` on exactly the five app-owned
-    parameters under `/five-crowns/prod/`: `group-password-hash`, `admin-password-hash`,
-    `group-session-epoch`, `admin-session-epoch` and `anthropic-api-key`. Nothing else under the
-    prefix. The session secret is injected at deploy. The domain and budget parameters are read
-    only by `scripts/deploy.sh`.
+  - `ssm:GetParameter`/`ssm:GetParameters` **and** `ssm:PutParameter` on all seven app-owned
+    parameters under `/five-crowns/prod/`, including `group-password-hash`, `admin-password-hash`,
+    `group-session-epoch` and `admin-session-epoch`. ⚠️ **This was narrower between 2026-09-11 and
+    2026-09-14**: the write grant covered only `anthropic-api-key`, `anthropic-api-key-last4` and
+    `anthropic-api-key-set-at`, deliberately, so a bug in the internet-facing app could not overwrite
+    either password hash. Milestone 2 Stage 1's in-panel password-change routes need to write those
+    four parameters and would have got `AccessDeniedException` (surfacing as a 500) against that
+    narrower grant. The founder chose in-panel rotation working over keeping the grant narrower
+    (2026-09-14) — see `docs/DECISIONS.md` for the trade this re-accepts. The session secret is
+    injected at deploy. The domain and budget parameters are read only by `scripts/deploy.sh`.
   - `s3:GetObject`/`s3:PutObject` on `five-crowns-photos/*`. ⚠️ **Never `s3:DeleteObject*` and
     no bucket-level action** (`PutBucket*`, `PutLifecycle*`, `PutEncryption*`, versioning,
     public-access block). The internet-facing code cannot undo the versioning that makes a deletion
