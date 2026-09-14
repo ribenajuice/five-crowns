@@ -15,7 +15,10 @@
   app-level 404/error screens) is also merged and live
   ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14). **Stage 3** (player, roster and
   place pages, plus renaming and in-app navigation to reach them) is also merged and live
-  ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14).
+  ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14). **Stage 4** (suggested player-name
+  matching, and permanent player/place merging) — the closing stage of Milestone 2 — is built, QA'd,
+  code-reviewed and security-reviewed on branch `feat/m2-stage4`, ready to open as a PR — not yet merged or
+  deployed.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -23,7 +26,26 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: nothing — all three Milestone 2 stages built so far are merged and live.
+- **Currently in flight**:
+  - **Milestone 2 Stage 4** — suggested player-name matching, and permanent player/place merging (criteria
+    148–166, 172–173). Built on `feat/m2-stage4`; not yet a PR. The spec was already written 2026-09-10 (with
+    172–173 added 2026-09-14); product-manager found it ready to build as-is with **six team-level consistency
+    fixes** applied before build (a contradictory worked example, unstated boundary inclusivity, a missing
+    `photo.playerId` repoint on merge, wiring the merge action into Stage 3's location-rename-collision refusal
+    as promised, excluding already-assigned columns from re-matching, and a left-to-right tie-break) — no founder
+    input needed for any of them. QA drove the real running app end-to-end (not just reading code) against all
+    17 criteria, with particular rigor on the two irreversible merge paths (roster folding in both directions,
+    the same-game refusal, a forced mid-transaction failure) and the matching boundary/ambiguity math using
+    real constructed name pairs — found and this stage fixed one real bug (tapping "someone new" didn't
+    pre-fill the handwritten name, contradicting an explicit, four-times-stated criterion). A security review
+    scoped to the three new merge/matching endpoints found the auth, CSRF, injection-surface and transactional
+    atomicity all correct (verified against the actual libSQL driver, not just code comments) — one low-likelihood
+    but permanent-consequence gap was closed anyway (the player merge didn't re-check both players still existed
+    inside its own transaction, unlike its location-merge sibling). `/code-review high` then found and fixed a
+    real matcher bug (a pending "someone new" name wasn't excluded from later suggestions, risking a confusing
+    save-time error) and a latent error-handling landmine (two same-named but incompatible error classes). Three
+    small things deliberately deferred as non-blocking (below). 1263 tests passing, lint and typecheck clean.
+    **Next**: open the PR.
   - ✅ [PR #25](https://github.com/ribenajuice/five-crowns/pull/25) — **Milestone 2 Stage 3**, player, roster and
     place pages, renaming, and in-app navigation to reach them (criteria 132–146, 174). **Shipped 2026-09-14.**
     The spec was already written 2026-09-10; product-manager confirmed it unaffected by Stages 1–2 and ready to
@@ -220,6 +242,16 @@
     and `PlaceRow` each hand-roll the same "reveal a rename form in place" state machine instead of sharing one
     component — already drifting (only one of the two calls `router.refresh()`), worth collapsing into a shared
     `RenameControl` next time either needs a real change.
+  - **Milestone 2 Stage 4** (identity, repaired), flagged by `/code-review high` and deliberately deferred as
+    non-blocking: the review screen's column picker calls its own "closest matches" lookup helper three times
+    per render (a length check, a filter, and the list itself), each rebuilding a lookup map from scratch —
+    fine at a friend group's scale, worth a `useMemo` if the player list ever grows large. `previewPlayerMerge`
+    fetches every one of a player's `game_player` rows just to count them, instead of a SQL `count(*)` the way
+    a sibling roster-games-count function already does — same "fine at this scale" reasoning. `PickList`'s
+    "someone new" field only seeds its pre-filled name from React state set once on mount, so if a future change
+    ever kept one `PickList` instance mounted across a change of which column it's editing (nothing today does
+    this — each column's picker fully unmounts the previous one), the field could show a stale name; not live,
+    just worth remembering if that assumption ever changes.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original
