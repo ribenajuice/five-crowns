@@ -9,6 +9,7 @@
  */
 
 import { HANDS_PER_GAME, handLabel, type GridValidation } from "@/lib/scoring";
+import type { BoardRecordKey } from "@/lib/board/queries";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -786,3 +787,88 @@ export const PLACE_CHOOSER_CANCEL_BUTTON = "Cancel";
 export function locationCollisionMergeButtonLabel(existingPlace: string): string {
   return `Merge with ${existingPlace}`;
 }
+
+/* ------------------------------------------- Milestone 3 Stage 1: the board */
+
+/** `docs/DESIGN-SYSTEM.md` § "The records board" — the board's `AppBar` carries
+ *  the wordmark, no context line, no back arrow (criterion 179). */
+export const BOARD_APPBAR_TITLE = "Five Crowns Ledger";
+
+/** `ArchiveLine`, verbatim, criterion 183 — under `EARLY_DAYS_BELOW` games. */
+export function earlyDaysLine(archiveGameCount: number): string {
+  return `Early days — ${archiveGameCount} games in the record. A single game can still change any of these.`;
+}
+/** `ArchiveLine` at `EARLY_DAYS_BELOW` games and above — a different sentence,
+ *  not the early-days line reworded (criterion 183: "absent, not reworded"). */
+export function archiveCountLine(archiveGameCount: number): string {
+  return `${archiveGameCount} games in the record.`;
+}
+
+/** `BoardNav` — two fixed buttons, always reachable (criteria 179, 191). */
+export const BOARD_NAV_GAMES_LABEL = "Games";
+export const BOARD_NAV_ADD_GAME_LABEL = "Add a game";
+
+/** Record titles, verbatim (`docs/DESIGN-SYSTEM.md`'s fixed-strings table). */
+export const RECORD_TITLES: Record<BoardRecordKey, string> = {
+  mostWins: "Most wins",
+  mostWinsInARow: "Most wins in a row",
+  lowestAverageScore: "Lowest average score",
+  mostRoundsWon: "Most rounds won",
+  stalwart: "The stalwart",
+};
+/** Record units, verbatim — plain-English, beside the number in `--num-lg`. */
+export const RECORD_UNITS: Record<BoardRecordKey, string> = {
+  mostWins: "wins",
+  mostWinsInARow: "games in a row",
+  lowestAverageScore: "avg. score",
+  mostRoundsWon: "rounds",
+  stalwart: "games played",
+};
+
+/** Lowest average score to one decimal place (criterion 178); every other
+ *  record's value is a plain integer count. */
+export function formatRecordValue(key: BoardRecordKey, value: number): string {
+  return key === "lowestAverageScore" ? value.toFixed(1) : String(value);
+}
+
+/**
+ * `RecordCard`'s sample line (criterion 182): a single holder reads "from {n}
+ * games"; joint holders read each one's own count, joined by " · ", because
+ * each holder's own sample can differ — a player who joined last month can
+ * hold a record beside one who's played for years.
+ *
+ * The stalwart's card never calls this (docs/DESIGN-SYSTEM.md's documented
+ * exception): its headline number already *is* the holder's own game count.
+ */
+export function recordSampleLine(
+  holders: readonly { displayName: string; gamesPlayed: number }[],
+): string {
+  if (holders.length === 1) {
+    const holder = holders[0]!;
+    return `from ${holder.gamesPlayed} ${gamesNoun(holder.gamesPlayed)}`;
+  }
+  return holders
+    .map((h) => `${h.displayName} — from ${h.gamesPlayed} ${gamesNoun(h.gamesPlayed)}`)
+    .join(" · ");
+}
+
+/** `docs/DESIGN-SYSTEM.md` § "the records board" — verbatim, criteria 185, 193. */
+export const BOARD_NO_HOLDER_SENTENCE = "Nobody's done this yet.";
+
+/** Drill-through `AppBar` heading, verbatim template — criterion 186. */
+export function drillThroughHeading(recordTitle: string, holderNames: string): string {
+  return `${recordTitle} — ${holderNames}`;
+}
+
+/** "Most rounds won" drill-through row annotation, verbatim template. */
+export function roundsWonRowAnnotation(player: string, rounds: number): string {
+  return `${player} took ${rounds} of ${HANDS_PER_GAME} rounds`;
+}
+/** Joint-streak drill-through row annotation, verbatim template. */
+export function streakHolderRowAnnotation(player: string): string {
+  return `${player}'s streak game`;
+}
+
+/** `docs/DESIGN-SYSTEM.md` § "Empty archive" — criterion 191. */
+export const BOARD_EMPTY_TITLE = "No games yet.";
+export const BOARD_EMPTY_BODY = "Once you save one, the board will show who's who.";

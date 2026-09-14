@@ -84,6 +84,15 @@ import {
   sameGameRefusalTitle,
   survivorGamesPlayedLabel,
   survivorGamesPlayedThereLabel,
+  RECORD_TITLES,
+  RECORD_UNITS,
+  archiveCountLine,
+  drillThroughHeading,
+  earlyDaysLine,
+  formatRecordValue,
+  recordSampleLine,
+  roundsWonRowAnnotation,
+  streakHolderRowAnnotation,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -598,5 +607,72 @@ describe("Stage 4: identity, repaired — merging players and places (criteria 1
     assertNoBannedWords(mergeSuccessBodyPlayer("Samuel", "Sam"));
     assertNoBannedWords(mergeSuccessBodyPlace("A", "B"));
     assertNoBannedWords(rosterFoldNote("Thursday crew"));
+  });
+});
+
+describe("Milestone 3 Stage 1: the records board (PRD criteria 179–196)", () => {
+  it("⚠️ earlyDaysLine is criterion 183's fixed sentence, verbatim, with the archive count interpolated", () => {
+    expect(earlyDaysLine(3)).toBe(
+      "Early days — 3 games in the record. A single game can still change any of these.",
+    );
+    expect(earlyDaysLine(9)).toContain("9 games in the record");
+    assertNoBannedWords(earlyDaysLine(1));
+  });
+
+  it("⚠️ archiveCountLine is a different sentence at EARLY_DAYS_BELOW and above — never the early-days line reworded", () => {
+    expect(archiveCountLine(10)).toBe("10 games in the record.");
+    expect(archiveCountLine(23)).toBe("23 games in the record.");
+    expect(archiveCountLine(10).toLowerCase()).not.toContain("early days");
+    expect(archiveCountLine(10).toLowerCase()).not.toContain("can still change");
+  });
+
+  it("record titles and units match the design system's fixed-strings table verbatim", () => {
+    expect(RECORD_TITLES.mostWins).toBe("Most wins");
+    expect(RECORD_TITLES.mostWinsInARow).toBe("Most wins in a row");
+    expect(RECORD_TITLES.lowestAverageScore).toBe("Lowest average score");
+    expect(RECORD_TITLES.mostRoundsWon).toBe("Most rounds won");
+    expect(RECORD_TITLES.stalwart).toBe("The stalwart");
+
+    expect(RECORD_UNITS.mostWins).toBe("wins");
+    expect(RECORD_UNITS.mostWinsInARow).toBe("games in a row");
+    expect(RECORD_UNITS.lowestAverageScore).toBe("avg. score");
+    expect(RECORD_UNITS.mostRoundsWon).toBe("rounds");
+    expect(RECORD_UNITS.stalwart).toBe("games played");
+  });
+
+  it("formatRecordValue renders lowest average score to one decimal place, every other record as a plain integer", () => {
+    expect(formatRecordValue("lowestAverageScore", 41)).toBe("41.0");
+    expect(formatRecordValue("lowestAverageScore", 68.44)).toBe("68.4");
+    expect(formatRecordValue("mostWins", 3)).toBe("3");
+    expect(formatRecordValue("mostRoundsWon", 47)).toBe("47");
+    expect(formatRecordValue("stalwart", 23)).toBe("23");
+  });
+
+  it("recordSampleLine: a single holder reads 'from {n} games', singular for exactly one", () => {
+    expect(recordSampleLine([{ displayName: "Sam", gamesPlayed: 1 }])).toBe("from 1 game");
+    expect(recordSampleLine([{ displayName: "Sam", gamesPlayed: 4 }])).toBe("from 4 games");
+  });
+
+  it("⚠️ criterion 182: joint holders each state their own count, joined by ' · '", () => {
+    expect(
+      recordSampleLine([
+        { displayName: "Player A", gamesPlayed: 23 },
+        { displayName: "Player E", gamesPlayed: 14 },
+      ]),
+    ).toBe("Player A — from 23 games · Player E — from 14 games");
+  });
+
+  it("drillThroughHeading is the verbatim '{Record title} — {Holder(s)}' template", () => {
+    expect(drillThroughHeading("Most wins", "Player A")).toBe("Most wins — Player A");
+    expect(drillThroughHeading("The stalwart", "Player A, Player C & Player D")).toBe(
+      "The stalwart — Player A, Player C & Player D",
+    );
+  });
+
+  it("roundsWonRowAnnotation / streakHolderRowAnnotation are the verbatim templates", () => {
+    expect(roundsWonRowAnnotation("Player C", 4)).toBe("Player C took 4 of 11 rounds");
+    expect(streakHolderRowAnnotation("Player A")).toBe("Player A's streak game");
+    assertNoBannedWords(roundsWonRowAnnotation("Player C", 4));
+    assertNoBannedWords(streakHolderRowAnnotation("Player A"));
   });
 });

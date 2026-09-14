@@ -206,6 +206,32 @@ export function PlacesIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * `RecordCard`'s tap affordance (docs/DESIGN-SYSTEM.md § "the records board"):
+ * "a small chevron is the only visual affordance" — the card's own
+ * `aria-label` is what actually tells a screen reader it's tappable, so this
+ * glyph is purely decorative (`aria-hidden`).
+ */
+export function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function CameraIcon({ className }: { className?: string }) {
   return (
     <svg
