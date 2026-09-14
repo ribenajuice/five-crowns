@@ -14,6 +14,7 @@
  */
 
 import { compareOldestFirst } from "./chronology";
+import { handLabel, type HandLabel } from "./constants";
 import { compareDisplayNames } from "./names";
 import { determineWinners, winningScore, type PlayerScore } from "./winners";
 
@@ -400,4 +401,239 @@ export function nemesis(candidates: readonly NemesisCandidate[]): NemesisResult 
     .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
 
   return { holders, aboveRatePercent: best };
+}
+
+/* --------------------------------------------------------- per-hand mean (225) */
+
+/** One player's score in one hand — `HandScoreRow` in every field that matters here; kept separate so a caller need not carry a `playerId` it doesn't have. */
+export interface HandScoreCell {
+  hand: number;
+  score: number;
+}
+
+export interface HandMean {
+  /** 1 = the 3s hand … 11 = Kings. */
+  hand: number;
+  /** `HAND_LABELS[hand - 1]` — presentation, never a second source of truth for the hand number. */
+  label: HandLabel;
+  /** Mean `score` for this hand across every row supplied, to one decimal. */
+  mean: number;
+}
+
+/**
+ * Per-hand mean (criterion 225) — groups whatever `round_score` rows the
+ * caller supplies by hand and averages each group. The same function serves
+ * both scopes the PRD asks for: the whole archive's eleven-hand trend
+ * (criterion 237, pass every row) and one player's own hand profile
+ * (criterion 226, pass just their rows) — the grouping neither knows nor
+ * cares whose rows they are.
+ *
+ * Only hands actually present in `rows` appear in the result, same convention
+ * as `roundWinners`. A real saved game always has all eleven, so a player or
+ * an archive with at least one game always gets all eleven back; this stays
+ * correct for the defensive "no round_score rows at all" case tested
+ * elsewhere in this stage's suite.
+ */
+export function perHandMeans(rows: readonly HandScoreCell[]): HandMean[] {
+  const byHand = new Map<number, number[]>();
+  for (const row of rows) {
+    const scores = byHand.get(row.hand) ?? [];
+    scores.push(row.score);
+    byHand.set(row.hand, scores);
+  }
+
+  return [...byHand.entries()]
+    .map(([hand, scores]) => ({
+      hand,
+      label: handLabel(hand)!,
+      mean: Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10,
+    }))
+    .sort((a, b) => a.hand - b.hand);
+}
+
+/* ------------------------------------------------------- the hand they bleed on (226) */
+
+export interface HandsBledOn {
+  /** Every hand tied for the highest mean — "Jo bleeds on 9s and Kings" is ordinary, not a tie-break failure. */
+  hands: HandLabel[];
+  mean: number;
+}
+
+/**
+ * The hand(s) a player bleeds on (criterion 226): the highest mean(s) in
+ * `means` (their own `perHandMeans` result). `null` for a player with no
+ * hand data at all — never reachable for a real saved game, only for the
+ * same defensive "no round_score rows" case Stage 1's most-rounds-won
+ * already has to tolerate.
+ */
+export function handsBledOn(means: readonly HandMean[]): HandsBledOn | null {
+  if (means.length === 0) return null;
+  let best = means[0]!.mean;
+  for (const m of means) if (m.mean > best) best = m.mean;
+  return { mean: best, hands: means.filter((m) => m.mean === best).map((m) => m.label) };
+}
+
+/* ---------------------------------------------- single-event records (228-232, 240) */
+
+/**
+ * The extremum in `items`, keyed by `value`, with **every** item tied for it
+ * — never deduplicated by any field of `T`, which is exactly what a
+ * single-event record needs (criterion 228: the same player can hold two
+ * separate instances, one per game). The one assembly mechanism the five
+ * records below and `biggestSingleHandDisasters` all share, so "find the
+ * best and keep every tied item" is written once rather than five times —
+ * the single-event counterpart to this module's own `bestHolders`-shaped
+ * logic in `lib/board/queries.ts`, which is keyed by player instead.
+ */
+function pickExtreme<T>(
+  items: readonly T[],
+  value: (item: T) => number,
+  better: (candidate: number, best: number) => boolean,
+): { value: number; items: T[] } | null {
+  if (items.length === 0) return null;
+  let best = value(items[0]!);
+  for (const item of items) {
+    const v = value(item);
+    if (better(v, best)) best = v;
+  }
+  return { value: best, items: items.filter((item) => value(item) === best) };
+}
+
+/** One (player, game) instance of a final score — best/worst game ever's own unit. */
+export interface FinalScoreInstance {
+  playerId: string;
+  gameId: string;
+  score: number;
+}
+
+export interface ExtremeFinalScore {
+  score: number;
+  /** Every (player, game) pair at that score — the same player can appear twice, once per game (criterion 228). */
+  instances: FinalScoreInstance[];
+}
+
+/** Best game ever (criterion 228): the lowest `final_score` ever posted, every (player, game) pair that hit it. */
+export function bestGameEver(instances: readonly FinalScoreInstance[]): ExtremeFinalScore | null {
+  const picked = pickExtreme(instances, (i) => i.score, (candidate, best) => candidate < best);
+  return picked && { score: picked.value, instances: picked.items };
+}
+
+/** Worst game ever (criterion 229): same shape, the highest. */
+export function worstGameEver(instances: readonly FinalScoreInstance[]): ExtremeFinalScore | null {
+  const picked = pickExtreme(instances, (i) => i.score, (candidate, best) => candidate > best);
+  return picked && { score: picked.value, instances: picked.items };
+}
+
+/** One (player, game, hand) instance of a single `round_score.score` — the catastrophe's and the disasters list's own unit. */
+export interface SingleHandInstance {
+  playerId: string;
+  gameId: string;
+  hand: number;
+  score: number;
+}
+
+/**
+ * The ten (or however many exist) biggest single-hand scores in the archive
+ * (criterion 240, `SINGLE_HAND_DISASTERS`'s own definition lives with its
+ * caller). ⚠️ **Ties at the cutoff are all kept** — the list runs past
+ * `limit` rather than cutting a tied score, and an archive with fewer than
+ * `limit` hands in it returns what exists. Sorted highest first.
+ */
+export function biggestSingleHandDisasters(
+  instances: readonly SingleHandInstance[],
+  limit: number,
+): SingleHandInstance[] {
+  if (instances.length === 0) return [];
+  const sorted = [...instances].sort((a, b) => b.score - a.score);
+  if (sorted.length <= limit) return sorted;
+  const cutoff = sorted[limit - 1]!.score;
+  return sorted.filter((i) => i.score >= cutoff);
+}
+
+export interface Catastrophe {
+  score: number;
+  /** Every (player, game, hand) triple at that score — the same player twice, once per hand, is two instances (criterion 230). */
+  instances: SingleHandInstance[];
+}
+
+/**
+ * The catastrophe (criterion 230): the highest single `round_score.score`
+ * ever recorded — exactly `biggestSingleHandDisasters`'s own top entry
+ * (including every tie for it), which is what "rests on the hand-by-hand
+ * pass" (spec decision 1) means in code: one derivation, two records.
+ */
+export function catastrophe(instances: readonly SingleHandInstance[]): Catastrophe | null {
+  const top = biggestSingleHandDisasters(instances, 1);
+  if (top.length === 0) return null;
+  return { score: top[0]!.score, instances: top };
+}
+
+/** One (player, game)'s own zero-point hand count — cleanest sheet's own unit. */
+export interface ZeroHandCount {
+  playerId: string;
+  gameId: string;
+  count: number;
+}
+
+/**
+ * Every (player, game)'s own zero-point hand count (criterion 227: a stored
+ * `round_score.score` of exactly 0, read as-is — never re-derived from
+ * running totals). Feeds `cleanestSheet` below; the one place this stage
+ * counts zeros, so nothing downstream can reinterpret a repeat differently.
+ */
+export function zeroHandCountsByPlayerGame(rows: readonly SingleHandInstance[]): ZeroHandCount[] {
+  const counts = new Map<string, ZeroHandCount>();
+  for (const row of rows) {
+    if (row.score !== 0) continue;
+    const key = `${row.playerId} ${row.gameId}`;
+    const existing = counts.get(key);
+    if (existing) existing.count += 1;
+    else counts.set(key, { playerId: row.playerId, gameId: row.gameId, count: 1 });
+  }
+  return [...counts.values()];
+}
+
+export interface CleanestSheet {
+  count: number;
+  /** Every (player, game) pair at that count (criterion 231). Not a career total (decision 18) — `counts` is already one row per (player, game). */
+  instances: ZeroHandCount[];
+}
+
+/**
+ * Cleanest sheet (criterion 231): the most zero-point hands one player
+ * scored in one game, out of eleven. Takes `zeroHandCountsByPlayerGame`'s
+ * own output — never a career total, because that function already counts
+ * per game, not per player.
+ */
+export function cleanestSheet(counts: readonly ZeroHandCount[]): CleanestSheet | null {
+  const picked = pickExtreme(counts, (c) => c.count, (candidate, best) => candidate > best);
+  return picked && { count: picked.value, instances: picked.items };
+}
+
+/** One game's own winning margin — biggest hammering's own unit. */
+export interface HammeringInstance {
+  gameId: string;
+  /** `winningMargin`'s own result for this game — never re-derived here. */
+  margin: number;
+  /** Every co-winner of this game — a shared win names all of them against the one margin (criterion 232). */
+  winnerIds: string[];
+}
+
+export interface BiggestHammering {
+  margin: number;
+  /** Every game tied on the margin, each with its own winner(s) (criterion 232). */
+  instances: HammeringInstance[];
+}
+
+/**
+ * Biggest hammering (criterion 232): the largest winning margin in any one
+ * game. ⚠️ **Defines nothing of its own** — `instances` is built by the
+ * caller from `winningMargin` (this module, criterion 215) applied per game,
+ * so a game with no second place (an all-level game) is simply never in
+ * `instances` at all, exactly as criterion 215 already guarantees. This
+ * function only finds the largest margin among games that have one.
+ */
+export function biggestHammering(instances: readonly HammeringInstance[]): BiggestHammering | null {
+  const picked = pickExtreme(instances, (i) => i.margin, (candidate, best) => candidate > best);
+  return picked && { margin: picked.value, instances: picked.items };
 }

@@ -43,10 +43,11 @@ describe("/rosters/{id}", () => {
       name: "Thursday crew",
       displayName: "Thursday crew",
       members: [
-        { playerId: "p1", displayName: "Player A", wins: 1, winRate: 0.25 },
-        { playerId: "p2", displayName: "Player B", wins: 1, winRate: 0.25 },
+        { playerId: "p1", displayName: "Player A", wins: 1, winRate: 0.25, average: null },
+        { playerId: "p2", displayName: "Player B", wins: 1, winRate: 0.25, average: null },
       ],
       gamesPlayed: 4,
+      tableAverage: null,
       games: [
         { gameId: "g1", playedOn: "2026-09-12", locationName: "Player C's House", winners: ["Player A"] },
       ],
@@ -65,12 +66,13 @@ describe("/rosters/{id}", () => {
       name: null,
       displayName: "Player B, Player D & Player E",
       members: [
-        { playerId: "p1", displayName: "Player B", wins: 1, winRate: 0.25 },
-        { playerId: "p2", displayName: "Player D", wins: 1, winRate: 0.25 },
-        { playerId: "p3", displayName: "Player E", wins: 2, winRate: 0.5 },
-        { playerId: "p4", displayName: "Player C", wins: 1, winRate: 0.25 },
+        { playerId: "p1", displayName: "Player B", wins: 1, winRate: 0.25, average: null },
+        { playerId: "p2", displayName: "Player D", wins: 1, winRate: 0.25, average: null },
+        { playerId: "p3", displayName: "Player E", wins: 2, winRate: 0.5, average: null },
+        { playerId: "p4", displayName: "Player C", wins: 1, winRate: 0.25, average: null },
       ],
       gamesPlayed: 4,
+      tableAverage: null,
       games: [
         {
           gameId: "g1",

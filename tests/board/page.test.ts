@@ -56,6 +56,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         {
@@ -124,6 +125,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         {
@@ -153,6 +155,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 2,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
@@ -177,6 +180,7 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 10,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         {
@@ -210,6 +214,7 @@ describe("/ — every card links to its own drill-through", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         { key: "mostWins", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },

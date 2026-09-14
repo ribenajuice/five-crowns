@@ -6,20 +6,60 @@ import { describe, expect, it } from "vitest";
 
 import {
   averageFinalScore,
+  bestGameEver,
+  biggestHammering,
+  biggestSingleHandDisasters,
+  catastrophe,
+  cleanestSheet,
+  handsBledOn,
   headToHead,
   longestDrought,
   longestStreak,
   nemesis,
+  perHandMeans,
   roundsWon,
   roundWinners,
   secondPlace,
   winningMargin,
+  worstGameEver,
+  zeroHandCountsByPlayerGame,
+  type FinalScoreInstance,
   type GameHandScoreRow,
+  type HammeringInstance,
   type HeadToHeadGame,
   type NemesisCandidate,
+  type SingleHandInstance,
   type StreakGame,
 } from "@/lib/scoring";
-import { PLAYER_A, PLAYER_B, PLAYER_C, PLAYER_D, SHEET_01, SHEET_02 } from "../fixtures/sheets";
+import {
+  PLAYER_A,
+  PLAYER_B,
+  PLAYER_C,
+  PLAYER_D,
+  SHEET_01,
+  SHEET_02,
+  type FixtureSheet,
+} from "../fixtures/sheets";
+
+/** Every `round_score`-shaped row for one fixture sheet, tagged with a `gameId`. */
+function singleHandInstancesFor(sheet: FixtureSheet, gameId: string): SingleHandInstance[] {
+  const rows: SingleHandInstance[] = [];
+  for (const column of sheet.columns) {
+    column.handScores.forEach((score, index) => {
+      rows.push({ playerId: column.player, gameId, hand: index + 1, score });
+    });
+  }
+  return rows;
+}
+
+/** Every player's final score for one fixture sheet, tagged with a `gameId`. */
+function finalScoreInstancesFor(sheet: FixtureSheet, gameId: string): FinalScoreInstance[] {
+  return sheet.columns.map((column) => ({
+    playerId: column.player,
+    gameId,
+    score: column.runningTotals[column.runningTotals.length - 1]!,
+  }));
+}
 
 /** Expand one fixture sheet's `handScores` columns into `round_score`-shaped rows. */
 function handRowsFor(sheet: typeof SHEET_01): { playerId: string; hand: number; score: number }[] {
@@ -537,5 +577,283 @@ describe("nemesis — criteria 199–201", () => {
     // because on screen both read "19.4%".
     expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zed"]);
     expect(result.aboveRatePercent).toBeCloseTo(19.4, 1);
+  });
+});
+
+describe("perHandMeans — criterion 225", () => {
+  it("SHEET_01 hand 1: the mean across all four players", () => {
+    // Hand 1 running totals equal the handScores themselves: 28, 0, 23, 29.
+    const means = perHandMeans(singleHandInstancesFor(SHEET_01, "g1"));
+    const hand1 = means.find((m) => m.hand === 1)!;
+    expect(hand1.label).toBe("3s");
+    expect(hand1.mean).toBe((28 + 0 + 23 + 29) / 4); // 20.0, exact
+  });
+
+  it("SHEET_01 hand 2: a mean that needs rounding to one decimal", () => {
+    // Hand 2: A=4, B=3, C=0, D=0 → 7/4 = 1.75 → 1.8.
+    const means = perHandMeans(singleHandInstancesFor(SHEET_01, "g1"));
+    expect(means.find((m) => m.hand === 2)!.mean).toBe(1.8);
+  });
+
+  it("only hands actually present appear, same convention as roundWinners", () => {
+    const means = perHandMeans([{ hand: 5, score: 10 }]);
+    expect(means).toEqual([{ hand: 5, label: "7s", mean: 10 }]);
+  });
+
+  it("an empty input returns no hands and does not crash", () => {
+    expect(perHandMeans([])).toEqual([]);
+  });
+
+  it("serves both scopes the PRD asks for: one player's rows, or every row in the archive", () => {
+    // One player's own hand profile: Player D's SHEET_01 rows only. With one
+    // game, each hand's "mean" is simply that hand's own score.
+    const playerDRows = singleHandInstancesFor(SHEET_01, "g1").filter((r) => r.playerId === PLAYER_D);
+    const profile = perHandMeans(playerDRows);
+    expect(profile.find((m) => m.hand === 11)!.mean).toBe(44);
+
+    // The whole archive: every row from both fixture games.
+    const archiveRows = [...singleHandInstancesFor(SHEET_01, "g1"), ...singleHandInstancesFor(SHEET_02, "g2")];
+    const trend = perHandMeans(archiveRows);
+    expect(trend).toHaveLength(11);
+  });
+});
+
+describe("handsBledOn — criterion 226", () => {
+  it("Player D's own worst hand, over their one recorded game, is Kings", () => {
+    const playerDRows = singleHandInstancesFor(SHEET_01, "g1").filter((r) => r.playerId === PLAYER_D);
+    const profile = perHandMeans(playerDRows);
+    const bled = handsBledOn(profile);
+    expect(bled).toEqual({ mean: 44, hands: ["Kings"] });
+  });
+
+  it("⚠️ ties are joint and every tied hand is named", () => {
+    const means = [
+      { hand: 9, label: "Jacks" as const, mean: 50 },
+      { hand: 10, label: "Queens" as const, mean: 30 },
+      { hand: 11, label: "Kings" as const, mean: 50 },
+    ];
+    const bled = handsBledOn(means);
+    expect(bled).toEqual({ mean: 50, hands: ["Jacks", "Kings"] });
+  });
+
+  it("a player with no hand data at all has no worst hand (the defensive no-rows case)", () => {
+    expect(handsBledOn([])).toBeNull();
+  });
+});
+
+describe("bestGameEver / worstGameEver — criteria 228–229, verified against fixtures/sheets/GROUND-TRUTH.md", () => {
+  const archive = [...finalScoreInstancesFor(SHEET_01, "g1"), ...finalScoreInstancesFor(SHEET_02, "g2")];
+
+  it("best game ever: the lowest final score across both fixture games is Player B's 71 (SHEET_02)", () => {
+    const best = bestGameEver(archive);
+    expect(best).toEqual({
+      score: 71,
+      instances: [{ playerId: PLAYER_B, gameId: "g2", score: 71 }],
+    });
+  });
+
+  it("worst game ever: the highest final score across both fixture games is Player D's 240 (SHEET_02)", () => {
+    const worst = worstGameEver(archive);
+    expect(worst).toEqual({
+      score: 240,
+      instances: [{ playerId: PLAYER_D, gameId: "g2", score: 240 }],
+    });
+  });
+
+  it("⚠️ the same player posting the record in two different games is listed as two instances", () => {
+    const instances: FinalScoreInstance[] = [
+      { playerId: PLAYER_A, gameId: "g1", score: 50 },
+      { playerId: PLAYER_A, gameId: "g2", score: 50 },
+      { playerId: PLAYER_B, gameId: "g3", score: 90 },
+    ];
+    const best = bestGameEver(instances);
+    expect(best!.score).toBe(50);
+    expect(best!.instances).toHaveLength(2);
+    expect(best!.instances.map((i) => i.gameId).sort()).toEqual(["g1", "g2"]);
+  });
+
+  it("two different players tied in the same game are both instances of that one game", () => {
+    const instances: FinalScoreInstance[] = [
+      { playerId: PLAYER_A, gameId: "g1", score: 40 },
+      { playerId: PLAYER_B, gameId: "g1", score: 40 },
+      { playerId: PLAYER_C, gameId: "g1", score: 90 },
+    ];
+    const best = bestGameEver(instances);
+    expect(best!.instances.map((i) => i.playerId).sort()).toEqual([PLAYER_A, PLAYER_B]);
+  });
+
+  it("an empty archive has no best or worst game", () => {
+    expect(bestGameEver([])).toBeNull();
+    expect(worstGameEver([])).toBeNull();
+  });
+});
+
+describe("catastrophe — criterion 230, verified against fixtures/sheets/GROUND-TRUTH.md", () => {
+  it("the single biggest round_score in either fixture game is Player D's 55 (SHEET_02, 8s)", () => {
+    const archive = [...singleHandInstancesFor(SHEET_01, "g1"), ...singleHandInstancesFor(SHEET_02, "g2")];
+    const result = catastrophe(archive);
+    expect(result).toEqual({
+      score: 55,
+      instances: [{ playerId: PLAYER_D, gameId: "g2", hand: 6, score: 55 }],
+    });
+  });
+
+  it("⚠️ the same player twice, once per hand, is two instances", () => {
+    const instances: SingleHandInstance[] = [
+      { playerId: PLAYER_A, gameId: "g1", hand: 4, score: 60 },
+      { playerId: PLAYER_A, gameId: "g1", hand: 9, score: 60 },
+      { playerId: PLAYER_B, gameId: "g1", hand: 2, score: 30 },
+    ];
+    const result = catastrophe(instances);
+    expect(result!.score).toBe(60);
+    expect(result!.instances).toHaveLength(2);
+    expect(result!.instances.map((i) => i.hand).sort()).toEqual([4, 9]);
+  });
+
+  it("an empty archive has no catastrophe", () => {
+    expect(catastrophe([])).toBeNull();
+  });
+});
+
+describe("biggestSingleHandDisasters — criterion 240", () => {
+  it("returns the top N, sorted highest first", () => {
+    const instances: SingleHandInstance[] = [10, 40, 25, 5].map((score, i) => ({
+      playerId: PLAYER_A,
+      gameId: "g1",
+      hand: i + 1,
+      score,
+    }));
+    const top = biggestSingleHandDisasters(instances, 2);
+    expect(top.map((i) => i.score)).toEqual([40, 25]);
+  });
+
+  it("⚠️ ties at the cutoff are all kept — the list runs past `limit`", () => {
+    const instances: SingleHandInstance[] = [10, 9, 9, 9, 5].map((score, i) => ({
+      playerId: PLAYER_A,
+      gameId: "g1",
+      hand: i + 1,
+      score,
+    }));
+    const top = biggestSingleHandDisasters(instances, 3);
+    // sorted: 10, 9, 9, 9, 5 — the cutoff score (3rd place) is 9, and every 9 stays.
+    expect(top.map((i) => i.score)).toEqual([10, 9, 9, 9]);
+  });
+
+  it("an archive with fewer hands than the limit returns what exists, not padded", () => {
+    const instances: SingleHandInstance[] = [{ playerId: PLAYER_A, gameId: "g1", hand: 1, score: 10 }];
+    expect(biggestSingleHandDisasters(instances, 10)).toHaveLength(1);
+  });
+
+  it("an empty archive returns an empty list", () => {
+    expect(biggestSingleHandDisasters([], 10)).toEqual([]);
+  });
+});
+
+describe("zeroHandCountsByPlayerGame / cleanestSheet — criterion 231, verified against fixtures/sheets/GROUND-TRUTH.md", () => {
+  it("Player D's SHEET_01 sheet — six consecutive 64s — reads as 7 zero-point hands in that one game", () => {
+    // Hand 2 (29→29) is also a zero, on top of the five inside the run of
+    // 64s (hands 4–8) and hand 10 (67→67) — 7 in total, hand-counted against
+    // GROUND-TRUTH.md's own derived-scores table.
+    const counts = zeroHandCountsByPlayerGame(singleHandInstancesFor(SHEET_01, "g1"));
+    const playerD = counts.find((c) => c.playerId === PLAYER_D)!;
+    expect(playerD.count).toBe(7);
+  });
+
+  it("cleanest sheet crowns Player D's 7-zero SHEET_01 game across the whole archive", () => {
+    const archive = [...singleHandInstancesFor(SHEET_01, "g1"), ...singleHandInstancesFor(SHEET_02, "g2")];
+    const counts = zeroHandCountsByPlayerGame(archive);
+    const result = cleanestSheet(counts);
+    expect(result).toEqual({
+      count: 7,
+      instances: [{ playerId: PLAYER_D, gameId: "g1", count: 7 }],
+    });
+  });
+
+  it("⚠️ not a career total (decision 18): the same player's zeros in two different games never sum", () => {
+    const instances: SingleHandInstance[] = [
+      // Player A: 4 zeros in g1, 4 zeros in g2 — 8 combined, but never in the
+      // same game, so neither game reaches Player B's single-game 5.
+      ...[1, 2, 3, 4].map((hand) => ({ playerId: PLAYER_A, gameId: "g1", hand, score: 0 })),
+      ...[5, 6, 7, 8].map((hand) => ({ playerId: PLAYER_A, gameId: "g2", hand, score: 0 })),
+      ...[1, 2, 3, 4, 5].map((hand) => ({ playerId: PLAYER_B, gameId: "g3", hand, score: 0 })),
+    ];
+    const counts = zeroHandCountsByPlayerGame(instances);
+    expect(counts.find((c) => c.playerId === PLAYER_A && c.gameId === "g1")!.count).toBe(4);
+    expect(counts.find((c) => c.playerId === PLAYER_A && c.gameId === "g2")!.count).toBe(4);
+    const result = cleanestSheet(counts);
+    expect(result).toEqual({ count: 5, instances: [{ playerId: PLAYER_B, gameId: "g3", count: 5 }] });
+  });
+
+  it("a score of exactly 0 counts; anything else doesn't", () => {
+    const counts = zeroHandCountsByPlayerGame([
+      { playerId: PLAYER_A, gameId: "g1", hand: 1, score: 0 },
+      { playerId: PLAYER_A, gameId: "g1", hand: 2, score: 1 },
+    ]);
+    expect(counts).toEqual([{ playerId: PLAYER_A, gameId: "g1", count: 1 }]);
+  });
+
+  it("an empty archive has no cleanest sheet", () => {
+    expect(cleanestSheet([])).toBeNull();
+  });
+});
+
+describe("biggestHammering — criterion 232, imports Stage 2's winningMargin/secondPlace verbatim", () => {
+  it("SHEET_01 vs SHEET_02's own margins: SHEET_02's 73 beats SHEET_01's 31", () => {
+    // SHEET_01: winner Player C (78), second place Player B (109) → margin 31.
+    // SHEET_02: winner Player B (71), second place Player C (144) → margin 73.
+    const sheet1Scores = SHEET_01.columns.map((c) => ({
+      playerId: c.player,
+      score: c.runningTotals[c.runningTotals.length - 1]!,
+    }));
+    const sheet2Scores = SHEET_02.columns.map((c) => ({
+      playerId: c.player,
+      score: c.runningTotals[c.runningTotals.length - 1]!,
+    }));
+    expect(winningMargin(sheet1Scores)).toBe(31);
+    expect(winningMargin(sheet2Scores)).toBe(73);
+
+    const instances: HammeringInstance[] = [
+      { gameId: "g1", margin: winningMargin(sheet1Scores)!, winnerIds: ["Player C"] },
+      { gameId: "g2", margin: winningMargin(sheet2Scores)!, winnerIds: ["Player B"] },
+    ];
+    const result = biggestHammering(instances);
+    expect(result).toEqual({
+      margin: 73,
+      instances: [{ gameId: "g2", margin: 73, winnerIds: ["Player B"] }],
+    });
+  });
+
+  it("⚠️ a shared win's instance names every co-winner against the one margin", () => {
+    const instances: HammeringInstance[] = [
+      { gameId: "g1", margin: 20, winnerIds: [PLAYER_A, PLAYER_B] },
+      { gameId: "g2", margin: 10, winnerIds: [PLAYER_C] },
+    ];
+    const result = biggestHammering(instances);
+    expect(result!.margin).toBe(20);
+    expect(result!.instances[0]!.winnerIds).toEqual([PLAYER_A, PLAYER_B]);
+  });
+
+  it("two games tied on the margin are both instances, each with its own winner(s)", () => {
+    const instances: HammeringInstance[] = [
+      { gameId: "g1", margin: 30, winnerIds: [PLAYER_A] },
+      { gameId: "g2", margin: 30, winnerIds: [PLAYER_B] },
+    ];
+    const result = biggestHammering(instances);
+    expect(result!.instances.map((i) => i.gameId).sort()).toEqual(["g1", "g2"]);
+  });
+
+  it("⚠️ defines nothing of its own: a game with no second place is simply never in `instances`", () => {
+    // An all-level game's `winningMargin` is `null` (Stage 2, criterion 215) —
+    // this module's caller (`lib/board/queries.ts`) never pushes it into
+    // `instances` at all, which this test asserts by construction: an empty
+    // `instances` array (the all-level game's own contribution) contributes
+    // nothing, exactly like an archive with no games.
+    const allLevelScores = [
+      { playerId: PLAYER_A, score: 75 },
+      { playerId: PLAYER_B, score: 75 },
+      { playerId: PLAYER_C, score: 75 },
+    ];
+    expect(winningMargin(allLevelScores)).toBeNull();
+    expect(biggestHammering([])).toBeNull();
   });
 });

@@ -112,6 +112,99 @@ describe("getRosterPage", () => {
     expect(cInFive.winRate).toBe(0);
   });
 
+  it("⚠️ criterion 224: the table average is the mean of every final score in the roster's games, stated with both the games and the scores behind it", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const { saveGame } = await import("@/lib/games/save");
+    const players = await createPlayers(["Player A", "Player B", "Player C", "Player D"]);
+    const only = await setUpDraft(SHEET_01, {
+      playedOn: "2026-01-01",
+      playerIds: {
+        "Player A": players["Player A"]!,
+        "Player B": players["Player B"]!,
+        "Player C": players["Player C"]!,
+        "Player D": players["Player D"]!,
+      },
+    });
+    await saveGame(only.draftId, only.state);
+
+    const { listRosters, getRosterPage } = await import("@/lib/rosters/queries");
+    const rosterId = (await listRosters())[0]!.id;
+    const page = await getRosterPage(rosterId);
+
+    // SHEET_01 finals: A=137, B=109, C=78, D=111 → mean 108.75 → 108.8.
+    expect(page!.tableAverage).toEqual({ average: 108.8, gamesPlayed: 1, scoresCount: 4 });
+  });
+
+  it("⚠️ criterion 244: each member's own average is restricted to this roster's games only, and neither roster's numbers move the other's (criterion 139's own invariant, restated for this new number)", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const players = await createPlayers(["Player A", "Player B", "Player C", "Player D", "Player E"]);
+    const { saveGame } = await import("@/lib/games/save");
+
+    const four = await setUpDraft(SHEET_01, {
+      playedOn: "2020-01-01",
+      playerIds: {
+        "Player A": players["Player A"]!,
+        "Player B": players["Player B"]!,
+        "Player C": players["Player C"]!,
+        "Player D": players["Player D"]!,
+      },
+    });
+    await saveGame(four.draftId, four.state);
+
+    const five = await setUpDraft(SHEET_02, {
+      playedOn: "2021-01-01",
+      playerIds: {
+        "Player A": players["Player A"]!,
+        "Player B": players["Player B"]!,
+        "Player E": players["Player E"]!,
+        "Player D": players["Player D"]!,
+        "Player C": players["Player C"]!,
+      },
+    });
+    await saveGame(five.draftId, five.state);
+
+    const { listRosters, getRosterPage } = await import("@/lib/rosters/queries");
+    const rosters = await listRosters();
+    const fourRoster = rosters.find((r) => r.members.length === 4)!;
+    const fiveRoster = rosters.find((r) => r.members.length === 5)!;
+
+    const fourPage = await getRosterPage(fourRoster.id);
+    const fivePage = await getRosterPage(fiveRoster.id);
+
+    // Player C's SHEET_01 score (78) and SHEET_02 score (144) belong to two
+    // different rosters — neither page's average for "Player C" reflects the
+    // other roster's game.
+    const cInFour = fourPage!.members.find((m) => m.displayName === "Player C")!;
+    expect(cInFour.average).toEqual({ average: 78, gamesPlayed: 1 });
+
+    const cInFive = fivePage!.members.find((m) => m.displayName === "Player C")!;
+    expect(cInFive.average).toEqual({ average: 144, gamesPlayed: 1 });
+
+    // Every member's own `gamesPlayed` within a roster equals that roster's
+    // own `gamesPlayed` — an exact-set roster's members always share it.
+    for (const member of fourPage!.members) expect(member.average!.gamesPlayed).toBe(fourPage!.gamesPlayed);
+    for (const member of fivePage!.members) expect(member.average!.gamesPlayed).toBe(fivePage!.gamesPlayed);
+  });
+
+  it("a roster with no games (a made-up id's own case is `null`, not covered here) still returns a table average once it has one game", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+
+    const { saveGame } = await import("@/lib/games/save");
+    const older = await setUpDraft(SHEET_01, { playedOn: "2020-01-01" });
+    await saveGame(older.draftId, older.state);
+
+    const { listRosters, getRosterPage } = await import("@/lib/rosters/queries");
+    const rosterId = (await listRosters())[0]!.id;
+    const page = await getRosterPage(rosterId);
+    expect(page!.tableAverage).not.toBeNull();
+    expect(page!.tableAverage!.gamesPlayed).toBe(1);
+  });
+
   it("games are newest first, with winner names and 'No location' handling left to the caller", async () => {
     await teardownTestDb();
     await setupTestDb();

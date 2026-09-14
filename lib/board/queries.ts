@@ -1,13 +1,25 @@
 /**
  * The records board — PRD criteria 179–191, 196, extended by Stage 2 with
- * two more rows: the drought (213) and the nearly man (216).
+ * two more rows (the drought, 213, and the nearly man, 216) and by Stage 3
+ * with five single-event records (criteria 228–235): best/worst game ever,
+ * the catastrophe, cleanest sheet and biggest hammering.
  *
  * `getBoard()` is the board's one entry point: **still exactly three bounded
  * queries** (every game, every `game_player` row, every `round_score` row) —
- * Stage 2 adds no query of its own (criterion 219) — then everything else —
- * winners, second places, streaks, droughts, averages, rounds won, who holds
- * what — is worked out from those same rows in memory using `lib/scoring`'s
- * pure definitions.
+ * neither Stage 2 nor Stage 3 adds a query of its own (criteria 219, 248) —
+ * then everything else — winners, second places, streaks, droughts,
+ * averages, rounds won, single-event extremes, who holds what — is worked
+ * out from those same rows in memory using `lib/scoring`'s pure definitions.
+ *
+ * ⚠️ **Stage 3's five records are a different animal from the other seven**
+ * (spec decision 17) and are returned separately, on `singleEventRecords`,
+ * rather than folded into `records`: their holders are (player, game)
+ * instances — the same player can appear twice, once per game — not unique
+ * players with a career game count, so `RecordHolder`'s shape (which a
+ * single-event holder would either lie about or leave blank) never applies
+ * to them. A caller building the twelve-card board concatenates both arrays
+ * in `docs/DESIGN-SYSTEM.md`'s fixed order (criterion 235); this module
+ * doesn't impose an order across the two collections itself.
  *
  * ⚠️ **Nothing here is cached, precomputed or summarised** (criterion 189): a
  * delete, an edit or a merge (both M2 features) is reflected on the very next
@@ -33,16 +45,27 @@ import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster, roundScore } from "@/lib/db/schema";
 import {
   averageFinalScore,
+  bestGameEver,
+  biggestHammering,
+  catastrophe,
+  cleanestSheet,
   compareDisplayNames,
   compareNewestFirst,
   determineWinners,
+  handLabel,
   longestDrought,
   longestStreak,
   roundsWon,
   rosterDisplayName,
   secondPlace,
+  winningMargin,
   winningScore,
+  worstGameEver,
+  zeroHandCountsByPlayerGame,
+  type FinalScoreInstance,
   type GameHandScoreRow,
+  type HammeringInstance,
+  type HandLabel,
   type PlayerScore,
   type StreakGame,
 } from "@/lib/scoring";
@@ -93,6 +116,16 @@ export interface RecordGame {
    * board", streak-holder annotation).
    */
   streakOwner?: string;
+  /**
+   * A single-event drill-through only (criterion 234): that instance's own
+   * number — the score, the zero count or the margin. Rendered beside the
+   * row rather than relying on the record's shared `value`, because two
+   * instances of the same record can legitimately carry different numbers
+   * (two games tied on the winning margin, each with its own).
+   */
+  singleEventValue?: number;
+  /** The catastrophe's drill-through only: which hand this instance's score came from. */
+  singleEventHand?: HandLabel;
 }
 
 export type BoardRecordKey =
@@ -103,6 +136,47 @@ export type BoardRecordKey =
   | "stalwart"
   | "drought"
   | "nearlyMan";
+
+/** One (player, game) instance a single-event record is held by — criteria 228, 230, 231, 232. */
+export interface SingleEventHolder {
+  playerId: string;
+  displayName: string;
+  /** The one game this instance came from. */
+  gameId: string;
+  /** What criterion 233 states instead of a game count — this instance's own date, not the holder's history. */
+  playedOn: string;
+  /** The catastrophe only: which hand this instance's score came from. */
+  hand?: HandLabel;
+}
+
+export type SingleEventRecordKey =
+  | "bestGameEver"
+  | "worstGameEver"
+  | "catastrophe"
+  | "cleanestSheet"
+  | "biggestHammering";
+
+/**
+ * One of Stage 3's five single-event records (criteria 228–232) — "a
+ * different animal from an aggregate one" (spec decision 17): one
+ * observation, not a summary of anybody's history. `holders` is one row per
+ * (player, game[, hand]) **instance**, never deduplicated by player — the
+ * same player can hold it twice, once per game or hand (criteria 228, 230).
+ * `games` is the **games** behind those instances, deduplicated by game id
+ * (two instances sharing one game — a tie between two players in the same
+ * night — render as one row there, exactly like a shared aggregate win
+ * already does), newest first (criterion 234); a one-row list is correct
+ * (decision 24), not padded.
+ */
+export interface SingleEventBoardRecord {
+  key: SingleEventRecordKey;
+  /** `null` only if the archive were empty — unreachable here, since `getBoard` already returns the empty state first. Kept for symmetry with `BoardRecord.value`. */
+  value: number | null;
+  /** Every instance tied for the extreme value, alphabetical by display name (criterion 228). */
+  holders: SingleEventHolder[];
+  /** Deduplicated by game id, newest first — see this interface's own doc comment. */
+  games: RecordGame[];
+}
 
 export interface BoardRecord {
   key: BoardRecordKey;
@@ -132,6 +206,8 @@ export type Board =
       /** `archiveGameCount < EARLY_DAYS_BELOW` — the board's one early-days line (criterion 183). */
       earlyDays: boolean;
       records: BoardRecord[];
+      /** Stage 3's five single-event records (criteria 228–232) — see this module's doc comment for why they're a separate array. */
+      singleEventRecords: SingleEventBoardRecord[];
     };
 
 interface GameRow {
@@ -222,14 +298,21 @@ export async function getBoard(): Promise<Board> {
   }
 
   // Each game's winner(s), second place(s) (criterion 214) and effective
-  // roster name, computed once and reused by every drill-through.
+  // roster name, computed once and reused by every drill-through. Also
+  // collects biggest hammering's own candidates (criterion 232) — one entry
+  // per game with a second place at all, `winningMargin` called exactly as
+  // Stage 2 defined it, never re-derived from `secondPlaceIdsByGame` above.
   const winnerIdsByGame = new Map<string, string[]>();
   const secondPlaceIdsByGame = new Map<string, string[]>();
   const rosterNameByGame = new Map<string, string>();
+  const hammeringInstances: HammeringInstance[] = [];
   for (const [gameId, rows] of gamePlayersByGame) {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
-    winnerIdsByGame.set(gameId, determineWinners(scores));
+    const winners = determineWinners(scores);
+    winnerIdsByGame.set(gameId, winners);
     secondPlaceIdsByGame.set(gameId, secondPlace(scores)?.playerIds ?? []);
+    const margin = winningMargin(scores);
+    if (margin !== null) hammeringInstances.push({ gameId, margin, winnerIds: winners });
     const g = gamesById.get(gameId)!;
     rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
   }
@@ -274,7 +357,10 @@ export async function getBoard(): Promise<Board> {
 
   function toRecordGame(
     gameId: string,
-    extra: Pick<RecordGame, "roundsWonByHolder" | "streakOwner"> = {},
+    extra: Pick<
+      RecordGame,
+      "roundsWonByHolder" | "streakOwner" | "singleEventValue" | "singleEventHand"
+    > = {},
   ): RecordGame {
     const g = gamesById.get(gameId)!;
     const rows = gamePlayersByGame.get(gameId) ?? [];
@@ -435,11 +521,132 @@ export async function getBoard(): Promise<Board> {
     unionGamesNewestFirst(ids, (playerId) => secondPlaceGamesByPlayer.get(playerId) ?? []),
   );
 
+  // ================================================================
+  // Stage 3's five single-event records (criteria 228–232) — a different
+  // assembly path from the seven above by design (spec decision 17): each
+  // holder is a (player, game[, hand]) instance, not a unique player with a
+  // career game count, so `buildRecord`'s player-keyed `Map` doesn't fit.
+  // `buildSingleEventRecord` is the one shared mechanism for all five,
+  // exactly as `buildRecord` is for the other seven.
+  // ================================================================
+
+  function toSingleEventHolder(playerId: string, gameId: string, hand?: number): SingleEventHolder {
+    return {
+      playerId,
+      displayName: displayNameByPlayer.get(playerId)!,
+      gameId,
+      playedOn: gamesById.get(gameId)!.playedOn,
+      ...(hand !== undefined ? { hand: handLabel(hand) } : {}),
+    };
+  }
+
+  /**
+   * One single-event record's whole assembly: `extreme` is already the
+   * winning value and every tied instance (`bestGameEver` et al.'s own
+   * result, normalised to `{ value, instances }` at the call site below).
+   * `holdersFor` expands one instance into its holder(s) — one, except a
+   * shared-win hammering instance, which names every co-winner against the
+   * one game. Mirrors `buildRecord`'s "find the best, collect every tied
+   * holder, assemble the card" shape, for this stage's different holder unit.
+   */
+  function buildSingleEventRecord<T>(
+    key: SingleEventRecordKey,
+    extreme: { value: number; instances: readonly T[] } | null,
+    holdersFor: (instance: T) => SingleEventHolder[],
+    gameFor: (instance: T) => RecordGame,
+  ): SingleEventBoardRecord {
+    if (extreme === null) return { key, value: null, holders: [], games: [] };
+
+    const holders = extreme.instances
+      .flatMap(holdersFor)
+      .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
+
+    // `games` is deduplicated by game id, newest first — the same convention
+    // `unionGamesNewestFirst` uses for the other seven records (criterion
+    // 234's "the games list's own row format"). `holders` above is
+    // deliberately *not* deduplicated: two players tied in the same game are
+    // two instances (criterion 228) sharing one row here, which is exactly
+    // how a shared aggregate win already renders (one game, several names).
+    const seenGameIds = new Set<string>();
+    const games: RecordGame[] = [];
+    for (const instance of extreme.instances) {
+      const g = gameFor(instance);
+      if (seenGameIds.has(g.id)) continue;
+      seenGameIds.add(g.id);
+      games.push(g);
+    }
+    games.sort((a, b) => sortNewestFirst(a.id, b.id));
+
+    return { key, value: extreme.value, holders, games };
+  }
+
+  // ----------------------------------------------------- best/worst game ever
+  const finalScoreInstances: FinalScoreInstance[] = gamePlayerRows.map((r) => ({
+    playerId: r.playerId,
+    gameId: r.gameId,
+    score: r.finalScore,
+  }));
+
+  const bestGameResult = bestGameEver(finalScoreInstances);
+  const bestGameEverRecord = buildSingleEventRecord(
+    "bestGameEver",
+    bestGameResult && { value: bestGameResult.score, instances: bestGameResult.instances },
+    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.score }),
+  );
+
+  const worstGameResult = worstGameEver(finalScoreInstances);
+  const worstGameEverRecord = buildSingleEventRecord(
+    "worstGameEver",
+    worstGameResult && { value: worstGameResult.score, instances: worstGameResult.instances },
+    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.score }),
+  );
+
+  // -------------------------------------------------------------- catastrophe
+  // `roundScoreRows` already has exactly `SingleHandInstance`'s shape
+  // (playerId, gameId, hand, score) — passed straight through, no remapping.
+  const catastropheResult = catastrophe(roundScoreRows);
+  const catastropheRecord = buildSingleEventRecord(
+    "catastrophe",
+    catastropheResult && { value: catastropheResult.score, instances: catastropheResult.instances },
+    (i) => [toSingleEventHolder(i.playerId, i.gameId, i.hand)],
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.score, singleEventHand: handLabel(i.hand) }),
+  );
+
+  // ------------------------------------------------------------ cleanest sheet
+  const zeroCounts = zeroHandCountsByPlayerGame(roundScoreRows);
+  const cleanestSheetResult = cleanestSheet(zeroCounts);
+  const cleanestSheetRecord = buildSingleEventRecord(
+    "cleanestSheet",
+    cleanestSheetResult && { value: cleanestSheetResult.count, instances: cleanestSheetResult.instances },
+    (i) => [toSingleEventHolder(i.playerId, i.gameId)],
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.count }),
+  );
+
+  // ---------------------------------------------------------- biggest hammering
+  // `hammeringInstances` was built above, one per game with a second place at
+  // all (`winningMargin`, Stage 2's own function — never re-derived here).
+  const hammeringResult = biggestHammering(hammeringInstances);
+  const biggestHammeringRecord = buildSingleEventRecord(
+    "biggestHammering",
+    hammeringResult && { value: hammeringResult.margin, instances: hammeringResult.instances },
+    (i) => i.winnerIds.map((playerId) => toSingleEventHolder(playerId, i.gameId)),
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.margin }),
+  );
+
   return {
     empty: false,
     archiveGameCount: gameRows.length,
     earlyDays: gameRows.length < EARLY_DAYS_BELOW,
     records: [mostWins, mostWinsInARow, lowestAverageScore, mostRoundsWon, stalwart, droughtRecord, nearlyMan],
+    singleEventRecords: [
+      bestGameEverRecord,
+      worstGameEverRecord,
+      catastropheRecord,
+      cleanestSheetRecord,
+      biggestHammeringRecord,
+    ],
   };
 }
 

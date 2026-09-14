@@ -33,6 +33,7 @@ function holder(displayName: string, gamesPlayed: number) {
 const BOARD_WITH_MOST_WINS = {
   empty: false as const,
   archiveGameCount: 5,
+  singleEventRecords: [],
   earlyDays: true,
   records: [
     {
@@ -130,6 +131,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -169,6 +171,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 6,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -207,6 +210,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 4,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -267,6 +271,7 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
     const boardWithEveryRecordHeld = {
       empty: false as const,
       archiveGameCount: 5,
+      singleEventRecords: [],
       earlyDays: true,
       records: (Object.keys(RECORD_TITLES) as (keyof typeof RECORD_TITLES)[]).map((key) => ({
         key,
