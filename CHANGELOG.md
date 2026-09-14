@@ -6,6 +6,21 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+### Added
+
+- **The app now opens on a records board instead of the games list.** Five all-time records sit
+  there: most wins, the longest winning streak, the lowest average score, most rounds won, and "the
+  stalwart" — whoever's played the most games. Each one shows who holds it and the number, straight
+  away, with no tapping needed.
+- **Tap any record to see exactly the games it's based on** — newest first, in the same list format
+  as the games list, under a heading naming the record and who holds it.
+- **Nothing is hidden for having too few games.** Every record shows from your very first saved
+  game — even one held by someone on a single game shows plainly, with their own game count stated
+  right next to it, so nobody's misled about how thin a number is. While the archive has fewer than
+  10 games, a small note at the top of the board says so: "Early days — {n} games in the record. A
+  single game can still change any of these." It disappears once the archive reaches 10 games.
+- **The games list and "add a game" are still one tap away** from the board.
+
 ## [Stage 9] - 2026-09-14
 
 The fourth and final stage of Milestone 2: identity, repaired. Live in production.

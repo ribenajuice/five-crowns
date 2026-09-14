@@ -12,7 +12,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster } from "@/lib/db/schema";
-import { determineWinners, rosterDisplayName, type PlayerScore } from "@/lib/scoring";
+import { compareDisplayNames, determineWinners, rosterDisplayName, type PlayerScore } from "@/lib/scoring";
 
 export interface PlayerListItem {
   id: string;
@@ -43,7 +43,7 @@ export async function listPlayers(): Promise<PlayerListItem[]> {
       displayName: p.displayName,
       gamesPlayed: gamesPlayedByPlayer.get(p.id) ?? 0,
     }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
+    .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
 }
 
 export interface PlayerPageGame {

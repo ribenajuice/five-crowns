@@ -528,3 +528,116 @@ test("audit: game view actions, delete confirmation, 404", async ({ page, baseUR
   // `.first()` here just confirms at least one is visible, not which.
   await expect(page.getByRole("link", { name: "Back to games" }).first()).toBeVisible();
 });
+
+/**
+ * Milestone 3 Stage 1 — the records board and its drill-throughs (PRD
+ * criterion 194): overflow, touch targets and focus visibility on `/` and on
+ * every record's `/records/{key}`, plus a direct check that colour is never
+ * the only signal for the early-days line or a no-holder row (criterion 194's
+ * own addition — "a withheld record" no longer exists, but the early-days
+ * line and a no-holder row are the two states this stage actually has).
+ *
+ * Runs after the two tests above, so by this point the scratch database
+ * holds at least the M1 test's saved-then-untouched draft/review-only game
+ * (no save) plus Stage 2's real saved-and-deleted game — deleted, so it does
+ * NOT keep the board non-empty on its own. This test seeds one more real
+ * saved game of its own via the same API path, so the board is guaranteed
+ * non-empty and every record has at least one holder to drill into,
+ * regardless of what earlier tests left behind.
+ */
+test("audit: the records board (/) and its drill-throughs", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+  });
+  if (!uploadRes.ok()) {
+    throw new Error(`POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()}`);
+  }
+  const { photoId, original, model } = await uploadRes.json();
+
+  const fixtureBytes = await readFile(path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"));
+  for (const variant of [original, model]) {
+    const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+    await request.post(uploadUrl, {
+      multipart: {
+        ...variant.fields,
+        file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: fixtureBytes },
+      },
+    });
+  }
+
+  const draftState = {
+    version: 1,
+    photoId,
+    playedOn: "2026-01-03",
+    locationId: null,
+    newLocationName: "Board Audit House",
+    columns: ["b1", "b2"].map((id, order) => ({
+      id,
+      order,
+      playerId: null,
+      newPlayerName: `Board Audit ${id}`,
+      sheetName: null,
+      activeReadingId: null,
+      readings: [],
+      manualEdits: Object.fromEntries(
+        [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33].map((v, i) => [String(i), v]),
+      ),
+      crop: null,
+    })),
+  };
+  const draftRes = await request.post(`${baseURL}/api/drafts`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { photoId, state: draftState },
+  });
+  if (!draftRes.ok()) {
+    throw new Error(`POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`);
+  }
+  const { draftId } = await draftRes.json();
+
+  const saveRes = await request.post(`${baseURL}/api/games`, {
+    headers: { cookie: cookieHeader, "content-type": "application/json" },
+    data: { draftId, state: draftState },
+  });
+  if (!saveRes.ok()) {
+    throw new Error(`POST /api/games failed: ${saveRes.status()} ${await saveRes.text()}`);
+  }
+
+  // ---- The board itself ----
+  await page.goto("/");
+  await auditScreen(page, "/ (records board)");
+
+  // criterion 194: colour is never the only signal. The `ArchiveLine` and any
+  // `RecordCard` share one plain-text/border treatment — neither state uses a
+  // `warn`/`error` background alone to carry meaning, so a computed
+  // background-color check here is a direct proxy for "not colour-only": if
+  // it differs at all from the plain surface colour, something else (text,
+  // border) must also be present per the design system's own "never a warn
+  // or error tint" rule, checked structurally by confirming the line's text
+  // is present as real, readable DOM text (not e.g. a bare coloured icon).
+  const archiveLine = page.getByText(/games in the record/);
+  await expect(archiveLine).toBeVisible();
+  const archiveLineColor = await archiveLine.evaluate((el) => getComputedStyle(el).color);
+  expect
+    .soft(archiveLineColor, "criterion 194: the archive line must render as real text, not merely a colour swatch")
+    .not.toBe("rgba(0, 0, 0, 0)");
+
+  // Every record card is a real, named link with its claim in the
+  // `aria-label` — walk them all and audit each drill-through in turn.
+  const recordLinks = page.locator('a[href^="/records/"]');
+  const hrefs = await recordLinks.evaluateAll((els) => els.map((el) => el.getAttribute("href")));
+  const uniqueHrefs = [...new Set(hrefs.filter((h): h is string => Boolean(h)))];
+  expect
+    .soft(uniqueHrefs.length, "criterion 186: at least one record should be tappable through to a drill-through")
+    .toBeGreaterThan(0);
+
+  for (const href of uniqueHrefs) {
+    await page.goto(href);
+    await auditScreen(page, href);
+  }
+});

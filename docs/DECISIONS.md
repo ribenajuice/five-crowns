@@ -20,6 +20,178 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — The board shows records from game one: an early-days line replaces withholding
+
+- **Context**: the PRD has said since kickoff that the records board **withholds** — nothing crowned
+  under **10 games in the archive**, no player counted in a per-player record under **5 games of
+  their own** — on the reasoning that *"a board over four games crowns someone on nonsense and does
+  it with a straight face"*. The Milestone 3 stage-breakdown ADR (below) turned that into a shared
+  module and raised it as **PRD open question 6**, because the record holds **two real games** and
+  grows at about a sheet a week: kept as written, the landing screen would show no name and no
+  number until about November. The team recommended **keeping 10 and 5** and explicitly pushed back
+  on showing the board early, arguing that **a caveat nobody reads is not a defence**.
+- **Decision** (founder, 2026-09-14, **overruling the team's recommendation**): **the board shows
+  every record, with its holder and its number, from the first saved game.** Nothing is withheld and
+  no player is set aside.
+  1. **The 5-game per-player floor is deleted outright**, not lowered. A player on one game is
+     eligible for every per-player record.
+  2. **The 10-game constant survives as a caveat threshold, not a gate.** Under 10 games the board
+     carries **one fixed line, once, at the top**: **"Early days — {n} games in the record. A single
+     game can still change any of these."** At 10 it is absent, not reworded. Named constant
+     `EARLY_DAYS_BELOW`.
+  3. ⚠️ **The honesty burden moves onto the sample statement**, which every record carried anyway
+     (PRD criterion 182): a per-player record now also states **the holder's own game count** —
+     "lowest average score — Sam, 41.5, from 1 game". **This is the part that makes the founder's
+     choice defensible rather than merely cheerful**, and it is why the statement is a shared
+     component rather than each record's own business.
+  4. **Degenerate values are shown plainly and not apologised for.** *Most wins in a row — Sam, 1* is
+     a true statement over a two-game archive and is rendered as one: no per-record caveat, no
+     suppression at any value. A second layer of hedging would be the caveat-nobody-reads problem
+     twice.
+  5. **A record with no holder still says so in its own row** (criterion 185) rather than vanishing —
+     unchanged as a requirement, but now reachable only when nobody has done the thing, never by
+     withholding.
+  ⚠️ **The founder chose the shape; points 2–5 are the team's mechanics**, written to it.
+  **The reason, stated plainly and not dressed up**: this board is the landing screen of a hobby app
+  for one group of about six friends, and **the months when the archive is small are exactly the
+  months the founder most wants something on it**. The PRD's hazard — crowning someone on nonsense
+  with a straight face — assumes an audience that can be misled by it. The audience here is the
+  people who played the two games and know it. A screen that answers "waiting for eight more games"
+  is not a safeguard for them; it is two months of a landing screen with nothing on it, on a product
+  whose stated purpose is *the reason to open the app on a night nobody is uploading a sheet*.
+- **Alternatives**: (a) *Keep 10 and 5* — the team's recommendation, and it is recorded here as
+  having lost on a judgement the founder was better placed to make than we were. Its argument is not
+  wrong, only outweighed: a board over four games really does overstate, and the mitigation now is a
+  line of text rather than an absence. (b) *Lower the board gate to 6 and keep the per-player 5* —
+  the compromise, rejected with (a): it buys six weeks of delay and still leaves a threshold whose
+  only visible effect is a screen that refuses to say anything. (c) *A caveat on every record rather
+  than one on the board* — rejected: thirteen apologies on a screen whose whole requirement is to be
+  readable in five seconds, and repetition is how a caveat stops being read. (d) *Keep a tiny floor
+  — say 2 games — so a single-game player cannot hold a record* — rejected as the worst of both: it
+  reintroduces the "set aside" sentence and the module that computes it, to exclude a case the
+  founder explicitly asked to see, and "from 1 game" beside the number already says the same thing
+  more honestly than hiding it would.
+- **Consequences**:
+  - ⚠️ **Supersedes point 2 of the Milestone 3 stage-breakdown ADR below.** The shared module no
+    longer answers *"is the board eligible?"* or *"is this player eligible?"* — **there is nothing
+    left to withhold.** It keeps the other half of that entry's reasoning intact and the module with
+    it: the sample statement stays structural, because thirteen records asked to remember a rule will
+    eventually include one that forgets. One constant remains where there were two.
+  - **PRD criteria 183 and 184 are struck in place and rewritten; 182 and 185 are amended; no
+    criterion number moved.** 179–181 and 186–191 are untouched. The early-days line and the
+    no-holder sentence join the fixed-strings table (criterion 193) and sit **inside** the wording
+    ban (criterion 192) — the line says a record can change, never that a small sample is fine.
+  - **Also settled the same day**: **the stalwart is adopted** (open question 7), so PRD criterion
+    196 is unconditional and the stage-breakdown ADR's "196 is conditional, struck-and-retired like
+    147 if trimmed" no longer applies; and **the personality stats stay in Milestone 4** (open
+    question 8), confirming the team's reading with nothing built either way. **Nothing in Milestone
+    3 Stage 1 is waiting on the founder.**
+  - **Less code, not more**: one threshold, one fixed line, no waiting-room state to build or test.
+    QA gains a four-count sweep of the board (1, 2, 9, 10 games) and loses the withheld-board case.
+  - ⚠️ **The case this leaves live, named so nobody is surprised by it**: past 10 games the
+    early-days line is gone, but a player who joins the group later can hold a per-player record on
+    one or two games of their own. **Criterion 182's holder count is the only thing saying so**, which
+    is why it is a criterion and not a design preference.
+  - **Revisit if**: a record held on a joke sample is actually quoted at the table as though it were
+    not one — that is the evidence the team's argument needed and never had — or the archive grows
+    past the point where the founder still wants the line at all (it is a constant; setting it to 0
+    removes the line and changes nothing else).
+
+## 2026-09-14 — Milestone 3: the board grows stage by stage, and withholding is one mechanism
+
+- **Context**: Milestone 3 ("the records board and the analytics") existed only as a bullet sketch
+  and needed a delivery spec. Two structural questions had to be settled before any criteria could
+  be written. **First, what is a stage here?** M3 is a records board of up to thirteen records plus a
+  catalogue of a dozen aggregates, and the obvious split — "build the board, then build the
+  catalogue" — double-counts: nine of the thirteen records *are* a catalogue number with a title on
+  it (best/worst game ever is the distributions; the catastrophe and cleanest sheet are the
+  hand-by-hand pass; the drought is the streak code backwards; home advantage is the venue slice).
+  **Second, where does the withholding live?** The PRD's rules (10 games before the board crowns
+  anyone, 5 before a player is counted in a per-player record, every stat states its sample) apply to
+  every record including ones not yet imagined, and a rule re-implemented per record is a rule some
+  future record will forget.
+- **Decision**: four stages, ordered **board first, then the catalogue in the order that fills the
+  board**.
+  1. ⚠️ **Each extra record ships in the stage that computes its number**, as one row on a screen
+     that already exists — there is no "records board part 2". Stage 1 is the board plus the four
+     records the founder named (most wins, most wins in a row, lowest average score, most rounds
+     won); Stage 2 (rivalry) adds the drought and the nearly man; Stage 3 (distributions and
+     villains) adds best/worst game ever, the catastrophe, cleanest sheet and biggest hammering;
+     Stage 4 (place and time) adds home advantage. The board is visibly fuller after every stage and
+     no number is computed in two places.
+  2. ⚠️ **SUPERSEDED the same day by the entry above** — the founder answered open question 6 and
+     there is no withholding left; the module keeps only the sample statement and one constant. The
+     original, for the record: **withholding is a single shared module** answering two questions —
+     *is the board eligible at all?* and *is this player eligible to hold a record?* — with the two
+     thresholds as named constants. Every record is built through it, so a record cannot forget the rule because it never
+     implements it. The **sample statement is a shared presentation component** for the same reason:
+     "every stat states its sample" becomes structural rather than a review-time catch.
+  3. **The definitions live in `lib/scoring`** beside `determineWinners` and the hand derivation, as
+     pure unit-tested functions: round winner (lowest score in a hand, **ties shared, and shared is
+     the common case**), streak (**consecutive games that player was in**, in the games list's own
+     order — a game they missed neither extends nor breaks it; a shared win extends it; the record is
+     the longest ever, not the current run), and average (mean of `game_player.final_score`, one
+     decimal place). No analytics service layer.
+  4. ⚠️ **Nothing is cached, precomputed or summarised**, re-affirming the 2026-09-10 database ADR.
+     This is what makes an M2 delete, edit or merge show up on the board on the next page load with
+     no invalidation logic to get wrong.
+  5. ⚠️ **M3 adds no schema at all** — no table, no column, no migration, no backfill. Criterion 195
+     makes that testable.
+  6. **The catalogue attaches to pages that already exist** (player, roster, venue) plus one
+     catalogue index for the slices that belong to nobody; **the board stays separate from the
+     catalogue**, per the PRD — the board answers before you ask, the catalogue is where you go with
+     a question. M2's three numbers on the player and roster pages do not move or change meaning, and
+     the withholding rules still do not apply to them (M2 spec decision 6).
+  7. **Playwright moves into PR CI during this milestone** — the 2026-09-13 ADR's own revisit-if was
+     "when M3's analytics screens land". An engineering call folded into a stage, carrying no product
+     criterion.
+  ⚠️ **Four things were deliberately *not* decided here and are open questions 3, 6, 7 and 9 in
+  `docs/PRD.md`**: whether the 10/5 thresholds still feel right now that the record holds two real
+  games, which of the proposed extra records the founder actually wants (a board of thirteen is not
+  readable in five seconds — the reason to trim is legibility, not cost), whether the final row
+  should cost more than a glance now that averages and best/worst are built on it, and what "location
+  as a filter" means on screen given M2 shipped a places index but no per-venue page. Each has a
+  stated default so the build is not blocked; **open question 8** additionally asks the founder to
+  confirm the team's reading that the personality stats stay in Milestone 4 (the PRD's catalogue
+  section says "all of these are in v1" while its milestone list puts those four in M4 — the
+  milestone list is being read as the plan of record).
+  ✅ **Three of those five were answered by the founder the same day** — 6 in full (see the entry
+  above), 8 in full (the personality stats stay in M4), and the only part of 7 Stage 1 needed (the
+  stalwart is in). **3 and 9 remain open and still block nothing.**
+- **Alternatives**:
+  - *Two stages: the whole board, then the whole catalogue* — rejected as the double-count above.
+    Building all thirteen records first means computing per-hand bleed, margins and venue splits
+    inside the board's stage and then building the screens that show the same numbers in the next
+    one.
+  - *Catalogue first, board last* — defensible on dependency grounds (the board is mostly titles over
+    catalogue numbers), and rejected on product grounds: the board is the landing screen and the
+    reason to open the app on a night nobody is uploading, so it would be the last thing delivered
+    despite being the first thing seen. The four named records need nothing the catalogue provides.
+  - *Per-record withholding logic* — rejected: it is the same rule thirteen times, and the failure
+    mode is silent (a record that crowns someone on four games, with a straight face, which is the
+    exact hazard the PRD names).
+  - *Precompute stats into summary tables for speed* — rejected again, for the reason the 2026-09-10
+    ADR gave: it trades the retroactivity that makes this data model valuable for performance nobody
+    needs at ~15,000 round rows.
+  - *Fully specifying all four stages at criterion level now* — rejected as the same mistake M2
+    avoided: Stages 2–4 will be written against screens that exist, and open questions 7 and 9
+    change what two of them contain.
+- **Consequences**:
+  - Stage 1 carries **22 criteria, 175–196**, of which ~~**196 (the stalwart) is conditional on open
+    question 7** and will be struck-and-retired like 147 rather than renumbered if the founder trims
+    it~~ ⚠️ **— the founder said yes on 2026-09-14, so 196 is unconditional and nothing is struck.**
+    Stages 2–4 number from 197.
+  - ⚠️ **The exposed-number set from the row-11 ADR lands in this milestone.** Winners, most wins and
+    head-to-head stay safe *by margin, not by construction*; **average score, best/worst game ever
+    and biggest hammering read a final score as a number**, and a misread one is permanent and
+    quotable. Criterion 192 bans *safe*, *protected* and *self-cancelling* from every screen here, on
+    top of M1's existing banned set.
+  - No AWS resource, no external service, no new running cost — M3 is queries and screens over data
+    already stored.
+  - **Revisit if**: the founder trims the extras hard enough that a stage loses its board payload
+    (Stage 2 in particular would then be catalogue-only), or open question 9 comes back as "(a), a
+    filter only", which shrinks Stage 4's screen work but not its numbers.
+
 ## 2026-09-14 — Milestone 2 Stage 3: player/roster/place pages must be reachable, not just addressable
 
 - **Context**: at the Stage 3 build checkpoint, the existing spec (criteria 132–146, written

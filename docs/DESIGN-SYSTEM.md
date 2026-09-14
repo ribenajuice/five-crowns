@@ -19,6 +19,11 @@
 > players and places) again adds screens and one behaviour change to an existing one, no new
 > direction — mockups at `docs/mockups/stage-4-identity-repaired.html`, published at
 > <https://claude.ai/code/artifact/42f4136c-e8c5-4930-afec-f8b977c0897c>.
+>
+> **Milestone 3 Stage 1** ("The board, and the engine under it" — the records board becomes the
+> landing screen at `/`) again adds screens rather than a new direction — mockups at
+> `docs/mockups/m3-stage-1-the-board.html`, published at
+> <https://claude.ai/code/artifact/ef904f9d-c560-43e7-b2d0-36f8fbfb18ed>.
 
 ## Direction
 
@@ -126,8 +131,12 @@ the digit; this is a correctness feature, not typography.
 | `ReadingCompare` | review | Old reading vs new, differing lines highlighted, keep/reject |
 | `StructureMenu` | review | The five structural repairs + "type it in by hand" |
 | `FinalRow` | review, game view | The last line of every column on its own, winner(s) marked |
-| `RecordCard` | records board | Label · value · holder · sample size. Sealed variant for withheld records |
-| `Countdown` | records board | "N more nights and the board opens" |
+| `RecordCard` (M3 Stage 1) | records board | Flat, equal-weight — title, holder(s), value, per-holder sample. No ranking styling (no crowns, no medal colour, no 1st/2nd/3rd). Whole card is the tap target to its drill-through; a small chevron is the only affordance. Joint holders alphabetical, one line, each with their own sample (criteria 180–182, 186). A `no-holder` variant drops the value and chevron for a plain italic sentence (criterion 185) — never styled as a warning. The stalwart's card omits the sample line: its value *is* the holder's own game count, so a second "from N games" would repeat the same number — a literal reading of criterion 182 flagged for sign-off, see *Screen rules* below |
+| ~~`Countdown`~~ — **retired, M3 Stage 1** | — | Was "N more nights and the board opens," for the board's old withheld state. PRD open question 6 (2026-09-14) removed all withholding; there is no waiting-room state left for this component to render, and nothing replaces it |
+| `ArchiveLine` (M3 Stage 1) | records board | One line, top of the board, above everything else. Two states sharing one neutral `--sunk` box — never `warn`/`error`, it's a fact, not a problem: **under `EARLY_DAYS_BELOW` (10) games**, criterion 183's line verbatim, which also satisfies criterion 182's archive-size statement while it's showing; **at 10+ games**, a plain count (fixed strings, below) — a different sentence, not the same one reworded (criterion 183: "absent, not reworded") |
+| `BoardNav` (M3 Stage 1) | records board | Two fixed buttons side by side — `ghost` **"Games"**, `primary` **"Add a game"** — directly under `ArchiveLine`, rendered on every board state including the empty one (criteria 179, 191), the same "always reachable" precedent `IndexNav` set on the games list |
+| `GameRow`, rounds-won annotation (M3 Stage 1) | records board drill-through | The existing `GameRow` unchanged, plus one small brand-coloured line under the meta — **"{Player} took {n} of 11 rounds"** — only on the "most rounds won" drill-through, where the claim is a per-game count rather than a single fact each game either carries or doesn't (criterion 186) |
+| `GameRow`, streak-holder annotation (M3 Stage 1) | records board drill-through, joint streak only | When "most wins in a row" is jointly held by players whose qualifying games differ, each row gets a small line naming whose run it belongs to — **"{Player}'s streak game"** — otherwise a list of games with nothing else in common would read as one continuous run it isn't |
 | `GameRow` | games list | Date · venue · roster · winner(s) |
 | `ScoreTable` | game view | Running totals as written, toggle for derived hands |
 | `PhotoCapture` | add-a-game | `<input type="file" accept="image/*" capture="environment">`, opens the phone camera directly; a paired "Choose a photo" button reaches the system picker. Either way produces a local preview — **nothing uploads yet** |
@@ -732,6 +741,73 @@ the digit; this is a correctness feature, not typography.
      destination `FinalRow` already offers cleanly two sections up; one clear way to reach a player
      page beats two redundant ones on the same screen.
 
+- **The records board** (M3 Stage 1, criteria 175–196). `/` now renders the board for a group
+  session instead of redirecting to `/games` (criterion 179); `/games` is unchanged and still works
+  directly. The board's `AppBar` carries the wordmark **"Five Crowns Ledger"** as its title, no
+  context line and no back arrow — the one in-session screen with nowhere to go back to, the same
+  reasoning the global error screen already uses for showing the full app name.
+  - **`ArchiveLine` sits once, at the very top of the body** (criteria 182–183). Under
+    `EARLY_DAYS_BELOW` (10) games it is criterion 183's fixed sentence, verbatim, and that sentence
+    also *is* criterion 182's archive-size statement for as long as it's showing — the count is
+    never printed twice on one screen. At 10 games and above the line is **absent, not reworded**: a
+    separate, plain sentence (fixed strings, below) takes over criterion 182's job on its own. Both
+    states share one neutral `--sunk` box, never a `warn` or `error` tint — neither sentence is a
+    problem being flagged, it's a standing fact. ⚠️ **Inside the wording ban, not an exception to
+    it** (criterion 192): the line says a record *can* change, never that a small sample is fine,
+    and it never gains a second, softer sentence underneath.
+  - **`BoardNav` sits directly under `ArchiveLine`**: `ghost` **"Games"** and `primary`
+    **"Add a game"**, side by side, both reachable in one tap from the board in every state — early
+    days, past 10, and empty (criteria 179, 191) — the same "always rendered, even against nothing"
+    precedent `IndexNav` set on the games list.
+  - **`RecordCard` is flat by design** (criterion 180). No crown, no medal colour, no 1st/2nd/3rd —
+    this is five independent facts, not a ranking of them against each other. Each card: an
+    uppercase label (the record's fixed title), the holder(s) in the display face, the number in
+    `--num-lg` tabular type with a plain-English unit beside it, and — except the stalwart, below —
+    a muted sample line underneath. The whole card is the link to its drill-through; a small chevron
+    is the only visual affordance, and the link's own `aria-label` states the claim so a screen
+    reader doesn't need the chevron to know it's tappable.
+  - **Joint holders** (criterion 181): every holder's name, alphabetically, on one line, joined with
+    "&" for two or a comma-then-"&" for more — the same list grammar `GameRow`'s shared-win label
+    and an auto-named roster already use. Never a tie-break, never truncated, never "and N others."
+  - **The sample line** (criterion 182): a single holder reads **"from {n} games"**; two or more
+    holders read each one's own count, joined by " · " — **"{Holder A} — from {n} games ·
+    {Holder B} — from {n} games"** — because criterion 182 requires each holder's *own* count, and
+    joint holders can have very different ones (a player who joined the group last month can hold a
+    per-player record on a handful of games, sitting right beside one who's played for years).
+  - ⚠️ **The stalwart's card is the one exception, and it needs the founder's sign-off**
+    (criterion 196): its number *is* the holder's own game count, so the sample sentence would
+    repeat the headline figure verbatim — *"3 games played … from 3 games."* The card instead shows
+    one number captioned **"games played"** and stops there. This still satisfies criterion 182's
+    substance — the number on screen and the sample behind it aren't merely stated together, they
+    are *identical* — but it's a literal reading of a criterion written with the other four records
+    in mind, so it's flagged rather than assumed.
+  - **A degenerate value is shown exactly like any other** (criterion 184): no footnote, no
+    suppression, no second hedge beyond `ArchiveLine` and the sample line. *"Most wins in a
+    row — Player A & Player B — 1"* over a three-game archive renders in the same `RecordCard` as
+    every other value, at every other count.
+  - **A record with no holder** (criteria 185, 193) is the same card shape with the value and
+    chevron dropped: an italic muted sentence, **"Nobody's done this yet,"** sits where the number
+    would be. Never the `warn` or `error` treatment — nobody having done a thing yet is not a
+    problem. None of Stage 1's five records can actually reach this state over a non-empty archive
+    (every game has a winner, so most-wins, the streak, the average and the stalwart always have at
+    least one holder, and every hand has a round winner) — the mockups show it against a Stage 2
+    record ("the drought") instead, so the component exists and is agreed ahead of the stage that
+    needs it for real.
+  - **Drill-through** (criterion 186): a heading stating the claim — **"{Record title} —
+    {Holder(s)}"** — as the `AppBar`'s `h1`, the value and sample as its context line, over the
+    plain, unmodified `GameRow` list, newest first, in the games list's own row format. "Most rounds
+    won" adds one small brand-coloured line per row, **"{Player} took {n} of 11 rounds,"** because
+    that claim is a running count rather than a single fact each game either carries or doesn't.
+    ⚠️ **Streak drill-throughs are ordered oldest → newest — the one deliberate exception to "newest
+    first," and it needs sign-off**: a run reads as a run in the order it was played, and criterion
+    186's own wording for this record is "the games of that streak, **in order**," distinct from the
+    "newest first" language used for the other three. When a streak is jointly held by players whose
+    qualifying games differ, each row also carries **"{Player}'s streak game"** so the list doesn't
+    read as one continuous run it isn't.
+  - **Empty archive** (criterion 191): `BoardNav` renders exactly as it does on every other state;
+    below it, a plain `Card` — **"No games yet."** / *"Once you save one, the board will show who's
+    who."* — never an error, never a board of zeroes.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -946,6 +1022,28 @@ verified, confirmed, correct, looks right* or *all good*.
 | Merge success — player | Merged. / {Loser} is now part of {survivor}'s record. |
 | Merge success, roster-folding note | Two rosters folded into one — kept the name "{name}". |
 | Merge success — place | Merged. / {Loser} is now part of {survivor}. |
+| Board, `AppBar` title | Five Crowns Ledger |
+| Board, early-days line — **verbatim, criterion 183** | Early days — {n} games in the record. A single game can still change any of these. |
+| Board, archive count at 10+ games | {n} games in the record. |
+| `BoardNav`, games button | Games |
+| `BoardNav`, add-a-game button | Add a game |
+| Record title — most wins | Most wins |
+| Record title — most wins in a row | Most wins in a row |
+| Record title — lowest average score | Lowest average score |
+| Record title — most rounds won | Most rounds won |
+| Record title — the stalwart | The stalwart |
+| Record unit — most wins | wins |
+| Record unit — most wins in a row | games in a row |
+| Record unit — lowest average score | avg. score |
+| Record unit — most rounds won | rounds |
+| Record unit — the stalwart | games played |
+| Sample line, single holder | from {n} games |
+| Sample line, joint holders | {Holder} — from {n} games · {Holder} — from {n} games |
+| Board, no-holder sentence — **verbatim, criterion 193** | Nobody's done this yet. |
+| Drill-through heading | {Record title} — {Holder(s)} |
+| Drill-through, rounds-won row annotation | {Player} took {n} of 11 rounds |
+| Drill-through, streak-holder row annotation | {Player}'s streak game |
+| Board, empty archive | No games yet. / Once you save one, the board will show who's who. |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

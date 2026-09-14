@@ -12,7 +12,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster, rosterMember } from "@/lib/db/schema";
-import { determineWinners, rosterDisplayName, type PlayerScore } from "@/lib/scoring";
+import { compareDisplayNames, determineWinners, rosterDisplayName, type PlayerScore } from "@/lib/scoring";
 
 export interface RosterMemberRow {
   playerId: string;
@@ -92,7 +92,7 @@ export async function listRosters(): Promise<RosterListItem[]> {
     };
   });
 
-  return items.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
+  return items.sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
 }
 
 export interface RosterPageMember {

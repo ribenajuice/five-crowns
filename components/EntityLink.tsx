@@ -17,9 +17,14 @@
  *   is the winner" stay two separate signals on the same text, never
  *   collapsed into one.
  *
- * Every `EntityLink` gets a real 44px-tall tap target via padding (not by
- * resizing the visible text) — `py-3`/`-my-3` add invisible hit-slop above
- * and below the line without growing the row's own layout.
+ * Every `EntityLink` gets a real ≥44px-tall tap target via padding (not by
+ * resizing the visible text) — `py-3.5`/`-my-3.5` add invisible hit-slop
+ * above and below the line without growing the row's own layout. `py-3.5`
+ * (14px top + 14px bottom = 28px) is deliberately more than the 20px a naive
+ * "44px minus a `text-base` line" calculation would suggest: the tightest
+ * real call site wraps this in `text-sm` (13px / 1.45 line-height ≈ 18.85px
+ * computed), where 28px of padding is what actually clears 44px (46.85px) —
+ * `py-3` (24px) measured 42.85px there and failed the touch-target audit.
  */
 
 import Link from "next/link";
@@ -43,7 +48,7 @@ export function EntityLink({ href, variant = "brand", className, children }: Ent
   return (
     <Link
       href={href}
-      className={`-my-3 -mx-1 inline-block px-1 py-3 font-bold underline underline-offset-2 ${VARIANT_CLASSES[variant]} ${className ?? ""}`}
+      className={`-my-3.5 -mx-1 inline-block px-1 py-3.5 font-bold underline underline-offset-2 ${VARIANT_CLASSES[variant]} ${className ?? ""}`}
     >
       {children}
     </Link>

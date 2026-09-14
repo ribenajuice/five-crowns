@@ -35,6 +35,18 @@ they change how the last stage is run, not what gets built. A third opened on 20
 blocker on **Milestone 2 Stage 4**; the founder answered it the same day, so **nothing in Milestone
 2 is waiting on the founder either** and Stage 1 can start.
 
+**Milestone 3, opened 2026-09-14**, un-parks question 3 (it is now Milestone 3's turn) and adds
+questions **6–9**. ⚠️ **None of them blocks Stage 1 from being built** — 6 is two constants, 7
+decides whether Stage 1's last criterion survives, and 8 and 9 are needed before Stages 2 and 4 are
+specced, not before the first line of code. They are product opinions, not team calls, which is why
+they are asked rather than assumed.
+
+⚠️ **Updated 2026-09-14, same day: the founder answered 6, 8, and the part of 7 Stage 1 needed.**
+**The board now shows records from game one under an early-days line** instead of withholding them
+(question 6 — criteria 182–185 rewritten), **the stalwart is adopted permanently** (question 7 —
+criterion 196 is no longer conditional), and **the personality stats stay in Milestone 4**
+(question 8 — no change anywhere). **Nothing in Milestone 3 Stage 1 is waiting on the founder.**
+
 ## Open questions
 
 *Opened 2026-09-13 for Milestone 1 Stage 5. Both are the founder's to answer; neither blocks the
@@ -51,7 +63,11 @@ scratch-environment work starting.*
    five-minute cell-by-cell pass to close it — the run itself doesn't need repeating.
 
 *Opened 2026-09-14 by the real-API re-run. Does not block Milestone 1 — nothing changes in M1
-either way.*
+either way.* ⚠️ **Un-parked 2026-09-14 by the Milestone 3 spec: it is now live.** M3 Stage 1 builds
+**lowest average score** directly on those final scores, and Stage 3 builds **best and worst game
+ever** on them. **Default if unanswered: nothing changes** — the final row keeps the call-out it has
+today and the board is built on it, so this does not block Stage 1. It is here because the moment
+those numbers become records is the moment a wrong one becomes permanent and quotable.
 
 3. **Should the final row cost you more than a glance?** The re-run showed a final score can be
    read wrong, repeatably, with nothing on screen hinting at it (risk 1). Today the final row is
@@ -96,6 +112,91 @@ house rule on preserving decision history. Full reasoning in `docs/DECISIONS.md`
    the four new parameters, or **(b) keep the narrower grant** and drop in-panel password rotation
    entirely, rotating both passwords only through the SSM runbook already written for the
    forgotten-password case (criteria 97–101). Criteria 87–96 (the panel forms) now ship for real.
+
+*Opened 2026-09-14 by the Milestone 3 delivery spec. All four are the founder's. ⚠️ **None blocks
+the build starting** — each has a stated default, and the default is always "what the PRD already
+says".* ✅ **Three were answered by the founder the same day**: 6 in full, 8 in full, and the only
+part of 7 that Stage 1 needed. Kept here with their answers rather than deleted, per the house rule
+on preserving decision history; full reasoning in `docs/DECISIONS.md`. **3 and 9 are still open and
+still do not block anything.**
+
+6. ✅ **Answered 2026-09-14: option (c) — the board shows records from game one, under an early-days
+   line.** ⚠️ **The founder overruled the team's push-back**, and the thing the team's argument
+   missed is plain enough once said: this board is the landing screen, and **the months when the
+   archive is small are exactly the months the founder most wants something on it**. A screen that
+   says "waiting for eight more games" until November is a screen nobody opens until November.
+   **What the founder chose is the shape, not the wording** — the mechanics below are the team's,
+   specified against it:
+   - **Nothing is withheld and nobody is set aside.** Every record shows its holder and its number
+     from the first saved game. **The 5-game per-player threshold is dropped outright**: a player on
+     one game can hold a per-player record.
+   - **The 10-game constant survives, as a caveat threshold rather than a gate.** While the archive
+     holds fewer than 10 games the board carries **one fixed line at the top** — *"Early days — 2
+     games in the record. A single game can still change any of these."* — and at 10 games it is
+     gone. One line, one place, not thirteen apologies.
+   - ⚠️ **The honesty burden moves onto the sample statement**, which every record carried anyway:
+     a per-player record now states **the holder's own game count** beside the number, so "lowest
+     average score — Sam, 41.5, from 1 game" is self-evidently thin without the board having to say
+     so twice.
+   - **Rewritten as criteria 182–185**, dated inline. The board gate and the per-player floor are
+     struck there rather than deleted.
+
+   *The original question, for the record:* **do the withholding thresholds still feel right now that
+   real games exist?** The agreed rule was
+   **10 games before the board crowns anyone**, and **5 games before a player is counted in a
+   per-player record**. ⚠️ **The record currently holds two games.** At roughly a sheet a week, the
+   board's landing screen would say *"2 of 10 games"* until about November, and the first crowning
+   would be over a sample of ten. Three ways to go: **(a) keep 10 and 5** as agreed — the board is a
+   waiting room for a couple of months and then means something; **(b) lower the board gate** (6 is
+   the obvious alternative — every player in a four-handed group can already be on 5) and keep the
+   per-player 5; **(c) keep both numbers, but show the board from game one under a prominent
+   "it's early days" line** rather than withholding it. ⚠️ **(c) is the one we'd push back on**: the
+   PRD's own reasoning is that a board over four games "crowns someone on nonsense and does it with
+   a straight face", and a caveat nobody reads is not a defence. **Default if unanswered: (a),
+   unchanged.** Either number is a constant — changing your mind later costs minutes, not a rebuild.
+7. ✅ **Partly answered 2026-09-14: the stalwart is in, permanently.** Criterion 196 stops being
+   conditional and is adopted as an ordinary Stage 1 criterion — **Stage 1 is fully unblocked.** The
+   other eight extras are **still open and still not blocking**: each is decided when the stage that
+   computes its number is specced (Stage 2 for the drought and the nearly man, Stage 3 for
+   best/worst/catastrophe/cleanest sheet/biggest hammering, Stage 4 for home advantage), and the
+   default there remains "build it". ⚠️ **The legibility question stands** — if the board reads as
+   cluttered once Stage 2 lands, that is the moment to cut, and cutting one is deleting a row.
+   *The original question, for the record:* **which of the proposed extra records do you actually
+   want?** The four you named — most wins,
+   most wins in a row, lowest average score, most rounds won — are committed. The **"etc." eight**
+   were our proposal, not your request: *the stalwart* (most games played), *best game ever*, *worst
+   game ever*, *the catastrophe* (biggest single hand), *cleanest sheet* (most zero-point hands),
+   *the drought* (longest run without a win), *the nearly man* (most second places), *biggest
+   hammering* (widest winner-to-runner-up margin), *home advantage*. ⚠️ **Cost is not the reason to
+   cut any of them** — each rides on a number the analytics stage is computing anyway, so a record
+   is a row on a screen. **The reason to cut is that a board of thirteen records is not readable in
+   five seconds**, which was the whole point of it. Keep, cut or reorder freely.
+   **Default if unanswered: build all of them**, each in the stage that computes its number.
+   **Only one is needed now**: *the stalwart* is the sole extra that Stage 1 would carry (criterion
+   196) — a yes/no on that one unblocks Stage 1 completely, and the rest can wait for Stage 2.
+8. ✅ **Answered 2026-09-14: yes — the personality stats stay in Milestone 4.** The milestone list is
+   confirmed as the plan of record, the catalogue section's *"all of these are in v1"* is read as
+   the older wording, and **nothing was built either way**, so this closes with no change anywhere.
+   ⚠️ **Their wording stays the founder's** whenever M4 is specced. *The original question, for the
+   record:* **do the personality stats stay in Milestone 4?** ⚠️ **The PRD disagrees with itself here.** The
+   analytics catalogue says *"All of these are in v1"* and then lists **"the player who looks like
+   they are cheating"**, **"the player getting absolutely wrecked"**, *most clutch comeback* and
+   *most consistent*; the milestone list puts exactly those four in **Milestone 4 — Personality and
+   polish**. **We are reading the milestone list as the plan of record and treating them as M4**,
+   which is why they appear nowhere in the M3 spec below. Say if you want any of them pulled
+   forward. ⚠️ **Their wording is yours whenever they are built** — "the player who looks like they
+   are cheating" is a joke about a named friend on a screen that friend will read, and the team
+   should not be inventing that tone on your behalf. **Default if unanswered: they stay in M4.**
+9. **What does "location as a filter" mean on screen?** Milestone 2 shipped a **places index** —
+   every venue with its games-played count — but **no per-venue page**. M3 has to put the venue
+   numbers somewhere, and there are three honest shapes: **(a) a filter on the games list**
+   ("show me Player E's nights"), with the venue stats living on the analytics screens; **(b) a
+   per-venue page** at `/places/{id}`, mirroring the player and roster pages you already have —
+   win rates and averages at that venue, then that venue's games; **(c) both**, the filter being
+   what the venue page's game list *is*. ⚠️ **We lean (c)**, because it is barely more work than (b)
+   and it is how the player and roster pages already behave — but where a filter lives is something
+   you will use weekly and we will not, so it is yours. **Needed before Stage 4 is specced, not
+   before Stage 1.** **Default if unanswered: (c).**
 
 ---
 
@@ -451,10 +552,16 @@ for two compounding reasons worth stating:
 - Each record shows **the holder's name and the number** — readable at a glance on a phone, no
   drilling required.
 - A record with **more than one holder shows all of them**, jointly. This is normal, not an error.
-- Every record states **how many games it's drawn from**.
-- ⚠️ **Records with too little behind them are withheld, not shown small.** Until the archive has
+- Every record states **how many games it's drawn from**, and a per-player record states **how many
+  games its holder has played**.
+- ⚠️ ~~**Records with too little behind them are withheld, not shown small.** Until the archive has
   at least **10 games**, the board shows what it's waiting for rather than crowning anyone. A
-  per-player record ignores players with fewer than **5 games**, and says how many were set aside.
+  per-player record ignores players with fewer than **5 games**, and says how many were set
+  aside.~~ ⚠️ **REPLACED 2026-09-14 by the founder's answer to open question 6 — records are shown
+  from game one.** Nothing is withheld and no player is set aside; the archive being small is
+  exactly when the founder most wants something on the board. **Under 10 games the board carries one
+  fixed early-days line at the top**, and the sample statement above carries the rest of the
+  honesty. *Kept struck rather than deleted, per the house rule on preserving decision history.*
 - Tapping a record leads to the games behind it, so a claim can always be checked.
 
 > As a player, I want stats for myself and for a roster, so that the record is fun and not just
@@ -575,15 +682,19 @@ nobody is uploading a sheet.
 - **The nearly man** — most second places.
 - **Biggest hammering** — the widest margin between winner and runner-up in one game.
 - **Home advantage** — the player with the biggest gap between their win rate at one venue and
-  everywhere else. Needs enough games at that venue to mean anything, so it obeys the same
-  withholding rules as everything else here.
+  everywhere else. Needs enough games at that venue to mean anything, so ⚠️ *(amended 2026-09-14)*
+  it **states the venue's own game count** beside the number, like every other record here.
 
 Overlap with the analytics catalogue (best/worst game, biggest single-hand disaster) is
 deliberate: the board is where they read as records, the catalogue is where they read as data.
 
-⚠️ **Sample size governs this screen more than any other.** A board over four games crowns
+⚠️ **Sample size governs this screen more than any other.** ~~A board over four games crowns
 someone on nonsense and does it with a straight face — see the acceptance criteria above for how
-records are withheld rather than shown small.
+records are withheld rather than shown small.~~ ⚠️ **REPLACED 2026-09-14 (open question 6).** The
+founder's call is that **a board over four games is still worth looking at, as long as it says it
+is a board over four games.** So nothing is withheld: every record is shown from game one, every
+record states its sample, a per-player record states its holder's game count, and **under 10 games
+one fixed early-days line sits at the top of the screen**. See criteria 182–185.
 
 ## The analytics catalogue
 
@@ -2129,7 +2240,9 @@ live-and-prove-it the way M1 did, because it is already live; each stage deploys
   each with holder(s), number, and the games behind it.
 - **Round winners** derived from the per-hand scores, which are themselves derived from the
   running totals — definitions all the way down, no new data and no migration.
-- Withholding rules honoured: nothing crowned under 10 games, no player ranked under 5.
+- ~~Withholding rules honoured: nothing crowned under 10 games, no player ranked under 5.~~
+  ⚠️ **REPLACED 2026-09-14 (open question 6): records are shown from game one**, every one stating
+  its sample, with a single early-days line at the top of the board under 10 games.
 - Rivalry: head-to-head, win rates, streaks, nemesis.
 - **Shared wins handled throughout**: a tie on the lowest total is a win for each player, keeps
   both streaks alive, and counts in both head-to-head records. Win rates across a group can
@@ -2142,11 +2255,408 @@ live-and-prove-it the way M1 did, because it is already live; each stage deploys
 
 **Should any of it come earlier?** I considered pulling the records board into M1 as the landing
 screen, since M1 needs *something* to land on. **No** — with one game in the archive every record
-is the same person and the board is a joke at its own expense; the withholding rules would hide
-all of it anyway. **M1 lands on the games list instead**, which is honest at one game and still
+is the same person and the board is a joke at its own expense ~~; the withholding rules would hide
+all of it anyway~~ *(that second clause stopped being true on 2026-09-14 — see open question 6; the
+first is why this call still stands)*. **M1 lands on the games list instead**, which is honest at one game and still
 useful at fifty. The one thing worth pulling early is cheap and invisible: **M1 already records the
 winner of each game** (lowest total, ties shared), so by the time the board is built the history
 it needs is complete rather than backfilled.
+
+### Milestone 3 — delivery spec
+
+*Written 2026-09-14, the day Milestone 2 finished. Same job as M1's and M2's delivery specs: the
+build contract, not the decision document. Everything above it still governs — the wording
+constraint, the "no second read" prohibition, the no-accounts stance, and the rule that heuristics
+warn and humans decide. **Four founder questions frame it** (open questions 3, 6, 7, 9 above); each
+has a stated default, so **nothing here waits on an answer to start**.*
+
+⚠️ **M1's risk was a bad read. M2's was a change nobody can take back. M3's is different again: a
+number that is wrong, confident, and quoted at the table.** Every screen in this milestone turns
+stored rows into a claim about a person — *"you have never beaten him"*, *"your worst night ever"* —
+and nothing on the screen can tell a right number from a plausible wrong one. Two consequences run
+through every criterion below:
+
+1. ⚠️ **The exposed numbers are named, and they are not the obvious ones.** The 2026-09-14 ADR
+   ("Row 11 is not self-cancelling") found the **final score misread in 3 of 6 real reads**, always
+   the same way. Winners survive **by margin, not by construction** — so *most wins*, *most wins in
+   a row* and every head-to-head record are as safe as they have ever been. **Average score, best
+   and worst game ever, and biggest hammering read a final score as a number**, and a wrong one
+   there is permanent and invisible. Hand-by-hand stats are exposed to every interior cell too.
+   ⚠️ **No wording anywhere in this milestone may describe any of these as safe, protected,
+   verified or checked.** The mitigation is unchanged and already shipped: the photo is kept
+   forever, the final row is called out on the review screen, and every claim on the board links
+   back to the games it came from.
+2. ⚠️ **Sample size is a feature of this milestone, not a caption.** A stat without its sample is a
+   lie told confidently. Every number states what it is drawn from, through a shared mechanism
+   rather than a habit each new record has to remember. ⚠️ **Amended 2026-09-14**: this sentence
+   used to end "and the withholding rules are a shared mechanism". **There is no withholding** — the
+   founder chose to show records from game one (open question 6), which makes the sample statement
+   the only thing doing this job, and therefore makes it matter more, not less.
+
+⚠️ **This milestone captures nothing and stores nothing new.** No table, no column, no migration, no
+backfill — every number is a definition over rows M1 and M2 already store, which is exactly the
+property the "capture dimensions early, build reports whenever" principle was banked for. A stat
+invented in Stage 4 applies to the two games saved in September the moment it exists.
+
+#### Decisions taken in this spec
+
+*Ours and the architect's to make, per `CLAUDE.md`. Recorded here so a future session doesn't
+re-derive them. **None of these is a founder question** — those are open questions 3, 6, 7 and 9.*
+
+1. ⚠️ **The board grows stage by stage, and the extras are not a stage of their own.** Each proposed
+   extra record rests on a number some catalogue screen computes anyway — *best/worst game ever* on
+   the distributions, *the catastrophe* and *cleanest sheet* on the hand-by-hand pass, *the drought*
+   on the streak machinery, *home advantage* on the venue slice. So each record ships **in the stage
+   that computes its number**, as one row on a screen that already exists, instead of a "records
+   board part 2" that recomputes half the catalogue. The board is therefore visibly fuller after
+   every stage, and no number is computed twice in two places.
+2. **The definitions live in `lib/scoring`**, beside `determineWinners` and the hand derivation, as
+   pure functions with unit tests over the fixture grids — no analytics service layer, no new
+   module hierarchy. Reading them is how a future session learns what "a streak" means here.
+3. ⚠️ **Nothing is cached, precomputed or summarised.** No summary table, no materialised total, no
+   scheduled recompute — the 2026-09-10 ADR rejected exactly that trade, and it is what makes a
+   delete, an edit or a merge in M2 show up on the board on the next page load with no invalidation
+   logic to get wrong. At a decade's size (~300 games, ~15,000 round rows) this is a page load.
+4. ⚠️ **Withholding is one shared mechanism, not per-record logic.** A single module answers two
+   questions — *is the board eligible at all?* and *is this player eligible to hold a record?* —
+   and every record is built through it. A record cannot forget the rule, because it never
+   implements it. The two thresholds are named constants (open question 6 changes them in a line).
+   ⚠️ **Amended 2026-09-14 by the founder's answer to question 6, and the shape of the decision is
+   what survives, not the rule.** There is no withholding left to do: **the module answers neither
+   question, and instead owns the one thing every record still needs — its sample statement, and
+   whether the board is in its early days.** One named constant remains (`EARLY_DAYS_BELOW = 10`);
+   the per-player threshold is deleted, not set to 1. ⚠️ **The structural argument is unchanged and
+   is the reason this stays a module**: a record that renders its number through the shared
+   component cannot forget to state its sample, and thirteen records will each forget eventually if
+   asked to remember. Decision 5 below is now the whole of it.
+5. **The sample statement is a shared presentation component**, for the same reason: a record that
+   renders its own number renders it through the thing that states the sample, so "every stat states
+   its sample" is structural rather than a review-time catch.
+6. **Joint holders are listed alphabetically**, all of them, against one number. There is no
+   tie-break and no "and 2 others" — the PRD is explicit that more than one holder is normal.
+7. **A drill-through is a filtered games list**, reusing the games list's existing row component and
+   its ordering, under a heading that states the claim. It is not a new list format and not a
+   report; the point is that the claim lands you in the record you already know how to read.
+8. ⚠️ **The catalogue attaches to the pages that already exist.** Player pages gain their own
+   sections, roster pages gain theirs, venue numbers land per open question 9 — plus **one catalogue
+   index** for the slices that belong to nobody in particular (hand-by-hand villains, day-of-week,
+   best and worst ever). **The board stays separate from the catalogue**, per the PRD: the board
+   answers before you ask, the catalogue is where you go with a question.
+9. **M2's three numbers on the player and roster pages do not move or change meaning.** The
+   catalogue is added around them. ⚠️ ~~**The board's withholding rules still do not apply to those
+   pages** (M2 spec decision 6): withholding governs a ranking, not a statement of fact about one
+   person.~~ *(Moot from 2026-09-14 — there are no withholding rules to not apply. M2 criteria 135
+   and the player-page reasoning around criterion 133 refer to a rule that no longer exists; their
+   own requirement — a one-game player's page shows "1 game" and a 0% or 100% rate — is unchanged
+   and now simply matches the board.)*
+10. **Playwright moves into PR CI during this milestone.** The 2026-09-13 ADR set its own
+    revisit-if as *"when M3's analytics screens land"*, and this is that moment — a dozen new
+    number-dense screens is exactly when a layout regression stops being visible by eye. An
+    engineering call, folded into a stage by the team; it carries no product criterion beyond the
+    per-stage a11y ones.
+
+#### User stories
+
+**The board**
+
+> As a player, I want one board of all-time records, so that I can see who is actually best in five
+> seconds and start an argument about it.
+
+- One screen, all-time, the first thing past the password gate. The games list and "add a game" are
+  one tap away from it.
+- Each record: a title, a name, a number. ⚠️ **No drilling required to read it** — drilling is for
+  disputing it.
+- More than one holder is normal, and all of them are named.
+- ⚠️ **Every record says what it is drawn from**, and a board drawn from a handful of games says so
+  at the top *(amended 2026-09-14, open question 6 — it used to withhold the records instead)*.
+
+> As a player, I want to tap a record and see the games behind it, so that I can dispute it properly.
+
+- Tapping a record lands on **exactly the games that number was computed from**, newest first.
+- ⚠️ **This is the same guarantee the review screen makes about a number**: the app's job is to be
+  checkable, not to be right. A record I cannot trace is a record I cannot argue with.
+
+> As a player, I want a game I took the most hands in but still lost to show up as exactly that, so
+> that the board exposes the argument rather than smoothing it over.
+
+- Round winners are derived from the per-hand scores; a hand's lowest score takes it, and **ties are
+  shared, which is the common case** in the early hands.
+- ⚠️ **"Most rounds won" is allowed to disagree with "most wins", and nothing on screen reconciles
+  the two.** Taking the most hands all night and losing on Kings is the point, not an inconsistency.
+
+**Sample size and honesty**
+
+> As a player, I want to know how much is behind a number, so that one lucky night is visibly one
+> lucky night.
+
+- Every stat on every screen states its sample, and a per-player record states its holder's own
+  game count.
+- ~~Nothing is crowned until the archive has enough games; a player with too few games is set aside,
+  and the screen says how many were.~~ *(struck 2026-09-14, open question 6)* **Everything is shown
+  from game one; under 10 games the board says once, at the top, that it is early days.**
+- ⚠️ **Nothing claims a number is checked, verified or safe.** Final scores can be misread and the
+  product knows it.
+
+**The rest of the catalogue** *(detailed when their stages are specced — Stages 2–4)*
+
+> As a player, I want to know who my nemesis is, so that I know who to avoid inviting.
+
+> As a player, I want to know which hand I bleed on, so that I have something to blame.
+
+> As a player, I want to know whether we really do play differently at a particular house, so that
+> the venue argument has a number attached to it.
+
+#### Acceptance criteria
+
+*Numbering continues from Milestone 2's 174, so a criterion number means one thing across the whole
+project. Executable by QA on a scratch environment with a seeded archive, except where a criterion
+names production or the founder's own phone. **Stage 1's criteria are 175–196**; Stages 2–4 are
+numbered from 197 as each is specced, the way M2 wrote its stages' criteria before the stage ran.
+⚠️ **M2's closing criteria 167–171** (wording audit, the a11y pass, real unit tests in CI, the
+permanent secret-free check, running cost unchanged) **are re-run over every screen this milestone
+adds**, and are restated with their own M3 numbers when the last stage is specced — no number is
+reserved for them now.*
+
+**The definitions everything else is built on**
+
+175. **Round winner, derived.** A pure function in `lib/scoring` takes one game's stored `round_score`
+     rows and returns, for each of the eleven hands, **every player holding the lowest score in that
+     hand**. ⚠️ **Ties are shared and are the common case** — several players go out clean in the
+     early hands, so a hand with three holders is ordinary and any code path assuming one holder per
+     hand is wrong. Unit tests assert it over both fixture games, including at least one hand with
+     three zero-score holders. **No new data**: it reads the `score` column M1 already derives and
+     stores.
+176. **Most rounds won** is the count of hands a player held across every game they played, a shared
+     hand counting **in full for each holder**. QA hand-counts one fixture game against
+     `fixtures/sheets/GROUND-TRUTH.md` and matches the number on screen. ⚠️ **It may disagree with
+     "most wins", and nothing on the board reconciles, footnotes or apologises for that.**
+177. **A streak is consecutive games that player was in**, taken in the games list's own order
+     (`played_on`, `created_at` as tie-break). ⚠️ **A game they did not play neither extends nor
+     breaks it**, and **a shared win extends a streak exactly as a solo win does.** The record is
+     the **longest ever recorded**, not the current run, and the screen says which it is. QA
+     constructs a five-game archive where one player wins games 1, 2, 4 and 5 and misses game 3
+     entirely (streak = 4), and a second where they played game 3 and lost it (streak = 2).
+178. **Lowest average score** is the mean of that player's own `final_score`s over the games they
+     played, shown to **one decimal place**, lower being better, **stated with the number of games it
+     averages**. It reads `game_player.final_score` — the same number the game view, the player page
+     and the CSV already use, so no two screens can disagree.
+
+**The board**
+
+⚠️ **Criteria 182–185 were rewritten 2026-09-14** by the founder's answer to open question 6 — the
+board shows records **from game one** under an early-days line, rather than withholding them until
+the archive reaches 10 games. **179, 180, 181 and 186–191 are unchanged**, and **no number moved**:
+what was withholding in 183 and 184 is struck in place. The shape was the founder's call; the
+mechanics below are the team's.
+
+179. **`/` renders the records board** for a group session, replacing today's redirect to `/games`.
+     The games list and "add a game" are each reachable from it **in one tap**; `/games` keeps
+     working unchanged; and an unauthenticated request to `/` still 307s to `/login` with no
+     fragment of the record in the response (M1 criterion 1 still passes).
+180. Every record shows **its title, its holder or holders by name, and the number**, readable at
+     375px **without tapping anything**.
+181. A record with **more than one holder lists all of them**, jointly, alphabetically, against the
+     one number. ⚠️ Nothing on screen treats this as a tie-break failure, an error, or an
+     "and others" overflow.
+182. ⚠️ **Every record states the sample it is drawn from**, and the board states the size of the
+     whole archive once, at the top. QA finds no number anywhere on the screen without a sample
+     beside it. ⚠️ **Amended 2026-09-14 (open question 6): a per-player record additionally states
+     the holder's own game count** — "lowest average score — Sam, 41.5, from 1 game" — because with
+     nothing withheld this sentence is now the only thing carrying the thinness of a sample.
+     A jointly-held record states each holder's count. QA seeds a one-game player who holds a record
+     and finds "from 1 game" beside it without tapping anything.
+183. ~~⚠️ **Under 10 games the board crowns nobody.** With 9 games seeded, **no holder name and no
+     record number appears anywhere on the screen**; it states how many games the archive has and
+     how many it is waiting for, and points at the games list and "add a game". With the 10th game
+     saved, the board appears in full. QA runs both.~~ ⚠️ **REWRITTEN 2026-09-14 — the founder chose
+     the caveat over the gate (open question 6).** **Every record is shown in full, with its holder
+     and its number, from the first saved game**; nothing on the board is ever hidden on grounds of
+     sample size. **While the archive holds fewer than 10 games the board shows one fixed line as the
+     first thing on the screen**:
+     **"Early days — {n} games in the record. A single game can still change any of these."**
+     At 10 games and above that line is **absent**, not reworded. QA runs the board at **1, 2, 9 and
+     10 games**: records present and named at every count, the line present at 1, 2 and 9 with the
+     right number in it, gone at 10. ⚠️ **The line is the board's, not a record's** — it appears once
+     however many records are on screen, and no record carries a caveat of its own. **Under 10 games
+     this line *is* criterion 182's archive statement** — the count is not printed twice on one
+     screen. *(10 remains a named constant, `EARLY_DAYS_BELOW`; it is now a caveat threshold and not
+     a gate.)*
+184. ~~⚠️ **A per-player record ignores players with fewer than 5 games and says how many it set
+     aside** — e.g. "2 players aren't counted yet — fewer than 5 games each". QA seeds a player with
+     4 games who would otherwise hold **lowest average score**, and confirms they are absent from
+     the record **and** counted in that sentence.~~ ⚠️ **REWRITTEN 2026-09-14 — the 5-game floor is
+     deleted, not lowered (open question 6).** **Every player with at least one game is eligible for
+     every per-player record**, and no sentence anywhere counts players who were "set aside", because
+     none are. QA re-runs the old seed — a player on 4 games with the lowest average — and confirms
+     they now **hold** the record, with "from 4 games" beside their name per criterion 182.
+     ⚠️ **A degenerate-looking number is shown as it is and not apologised for**: with two games in
+     the archive, *most wins in a row — Sam, 1* is a true statement about the record and is rendered
+     plainly. **No special case, no footnote, no suppression at any value** — the early-days line and
+     the sample statement are the whole of the disclosure, and QA fails the build on any per-record
+     hedging added beyond them.
+185. A record with **no holder at all** — nobody has yet done the thing it measures, which a
+     non-empty archive can still produce (the drought over a group where everyone has won; any
+     later record whose event has not happened) — **says so in its own row** rather than silently
+     vanishing from the board, using the fixed string from criterion 193. ⚠️ **Amended 2026-09-14:
+     this case is no longer reachable by withholding** (183 and 184 are struck), so it is now purely
+     about a record nobody holds; **the criterion itself is unchanged — a record never disappears**.
+186. ⚠️ **Every record is checkable.** Tapping one lands on **exactly the games the number was
+     computed from**, newest first, in the games list's row format, under a heading stating the claim
+     and its sample. QA counts the rows against the number for all four: **most wins** → that
+     player's winning games; **most wins in a row** → the games of that streak, in order; **lowest
+     average** → every game they played; **most rounds won** → the games in which they took at least
+     one hand, each row showing how many they took there.
+187. ⚠️ **Shared wins survive everything.** Using M1 criterion 66's constructed tie: both players'
+     win totals rise, **both streaks stay alive**, both games appear in each player's drill-through,
+     and no total, rate or streak on the board is broken by it. Win-based numbers across a group may
+     sum past 100% and nothing on screen treats that as an error.
+188. **Every game counts towards every number.** A game with no location, a four-player game and a
+     five-player game all count alike, and there is no exclusion, asterisk or comparability caveat
+     anywhere on the board.
+189. ⚠️ **Nothing is cached.** Every number is computed from stored rows at read time — no summary
+     table, no stored total, no scheduled recompute. QA **deletes a game** and **merges two players**
+     (M2's own features), reloads the board, and finds every affected record has moved.
+190. **The query count does not grow with the archive.** QA compares the board's database queries at
+     10 games and at 60 and finds the **same bounded number**, with no per-player or per-game query
+     in a loop.
+191. **An empty archive renders an empty state** pointing at "add a game" — not an error, not a board
+     of zeros, and not a record crowned on nobody.
+192. ⚠️ **The wording rule, again, and one addition.** Nothing on the board or its drill-throughs
+     describes a number as *checked, validated, verified, confirmed* or *correct* — **and nothing
+     describes a final score, an average or a record as *safe*, *protected* or *self-cancelling***,
+     which the 2026-09-14 ADR forbids by name. QA reads every string on the screen, including the
+     empty state, no-holder rows, and the early-days line itself. ⚠️ **The early-days line is inside
+     this rule, not an exception to it**: it says a record can change, never that a small sample is
+     fine, and it may not acquire a reassuring second sentence.
+193. Record titles, **the early-days line** and **the no-holder sentence** are rendered **verbatim
+     from the fixed-strings table** in `docs/DESIGN-SYSTEM.md`, which gains a Milestone 3 section.
+     ⚠️ **A paraphrase is a fail even where it uses no banned word** — the same contract Stage 5
+     established. *(Amended 2026-09-14: "the withholding sentences" became these two; the early-days
+     line's wording is fixed in criterion 183 and the ui-designer may not restyle it into
+     reassurance.)*
+194. `npm run audit:a11y` covers the board and its drill-throughs at **375px and 1280px**: no
+     horizontal overflow, ≥44px targets, visible focus, and ⚠️ **colour is never the only signal**
+     for a holder marker, the early-days line, a no-holder row or a winner row *(amended
+     2026-09-14 — "a withheld record" no longer exists)*.
+195. ⚠️ **No schema change.** Stage 1 adds no table, no column and no migration — QA confirms
+     `lib/db/migrations/` is untouched and every number traces to rows M1 and M2 already store.
+196. **The stalwart** — most games played — appears on the board with the same sample statement and
+     drill-through as the other four: holder or holders by name, the number of games, and a tap
+     landing on exactly those games. ✅ **ADOPTED 2026-09-14 — the founder said yes to open question
+     7, so this is an ordinary criterion of Stage 1**, no longer conditional and no longer at risk of
+     being struck. *(It was written as conditional on 2026-09-14 and would have been struck like 147
+     rather than renumbered; that never happened, and its number was never in doubt either way.)*
+
+**22 criteria for Stage 1, numbered 175–196.** ⚠️ **None of them is conditional any more** —
+196 was adopted and 182–185 were rewritten on 2026-09-14, both on the founder's answers, and no
+number moved in either change. Stages 2–4 continue from 197.
+
+#### The stages
+
+*Four PRs, each reviewed as it lands. The order is **the board first, then the catalogue in the
+order that fills the board** — because the board is the landing screen, it is what the founder looks
+at on a night nobody is uploading, and per decision 1 every later stage makes it fuller. Stage 1 is
+the only one with a real dependency on nothing: the three stages after it each need its
+sample-statement, early-days and drill-through machinery.*
+
+---
+
+**Stage 1 — The board, and the engine under it**
+
+*Scope*: the definitions in `lib/scoring` (round winners, streaks, averages) with unit tests over the
+fixture grids; the shared sample statement and the early-days line behind its one constant; the
+records board screen with **the four records the founder named** plus the stalwart; the
+drill-through from every record to the games behind it; `/` becoming the board. *(Scope amended
+2026-09-14: "the shared withholding mechanism and its two constants" — there is no withholding and
+one constant.)*
+
+*Acceptance criteria*: **175–196**.
+
+*What the founder sees*: **the app has a front page at last, with real names and real numbers on it
+from the first game.** It opens on a board rather than a list — and with two games in the record
+today, it says so in one line at the top and then shows the records anyway. ⚠️ **This is still the
+stage to review hardest**: it is the screen everyone sees every time they open the app, and the
+early-days line is the only thing standing between a two-game archive and a straight-faced claim.
+If that line reads as either too loud or too quiet on a phone, this is the cheapest moment to say
+so.
+
+---
+
+**Stage 2 — Rivalry** *(sketch — full criteria written when the stage starts)*
+
+*Scope*: head-to-head records between any two players (who beats who, and by how much); win rates
+overall and per roster; longest winning streaks in context; **nemesis** — the player who most
+reliably finishes above you. Shared wins count for both players in every one of these, and the
+screens do not hide win rates summing past 100%.
+
+*The board gains*: **the drought** (longest run without a win — the streak machinery run backwards)
+and **the nearly man** (most second places). ⚠️ **Second place needs a definition where wins are
+shared**, and that is a team call to be written down when this stage is specced, not guessed at now.
+
+*Why second*: it is the half of the catalogue the founder's own framing leads with, it needs nothing
+but games and winners, and it reuses Stage 1's streak code rather than inventing a second one.
+
+---
+
+**Stage 3 — Distributions and villains** *(sketch — full criteria written when the stage starts)*
+
+*Scope*: average final score per player and per roster; **best and worst game ever**, named and
+dated; how scores trend across the eleven hands — where games are actually decided; **which hand
+each player bleeds most on** (3s through Kings); biggest single-hand disasters all-time.
+
+*The board gains*: **best game ever**, **worst game ever**, **the catastrophe** (biggest single
+hand), **cleanest sheet** (most zero-point hands — a repeat in a column *is* a zero) and **biggest
+hammering** (widest winner-to-runner-up margin).
+
+⚠️ **This is the stage most exposed to a misread**, and its spec has to say so plainly: every number
+here reads a score as a number rather than as a comparison, so a wrong cell is quotable forever. It
+is also the stage open question 3 is really about.
+
+*Why third*: it is the largest single block of new computation, and it wants Stage 1's
+sample-statement and early-days machinery to already be boring.
+
+---
+
+**Stage 4 — Place, time, and the filters** *(sketch — full criteria written when the stage starts)*
+
+*Scope*: win rates and average scores **by venue**; per-player performance by venue; **day-of-week
+and time-of-year** slices, free from the date already stored; **location and roster as filters** on
+the games list and across the analytics — shape per **open question 9**.
+
+*The board gains*: **home advantage** — the biggest gap between a player's win rate at one venue and
+everywhere else, **with the venue's own game count stated beside it** — the same sample rule as
+every other record, since there is no withholding to obey *(amended 2026-09-14)*.
+
+*Then, closing the milestone*: the wording audit, the a11y pass extended to every new screen, CI with
+real unit tests over the new definitions, the permanent secret-free check and a confirmation that the
+AWS footprint did not grow — M2's 167–171, restated with M3 numbers. ⚠️ **No separate stage**: M3 is
+already live, and each stage deploys as it merges.
+
+*Why last*: it is the only part of the catalogue with a real unanswered product question in front of
+it, and the only board record that needs another screen's numbers to exist first.
+
+#### Explicitly out of scope for Milestone 3
+
+*Restated so nobody widens it mid-build. Each is a decision, not an oversight.*
+
+- **The personality stats** — "the player who looks like they are cheating", "the player getting
+  absolutely wrecked", most clutch comeback, most consistent. **Milestone 4**, per the milestone
+  list, pending open question 8. ⚠️ Their wording is the founder's, not the team's, whenever they
+  are built.
+- **Any new dimension.** M3 captures nothing. The dimension set is closed at the founder's word, and
+  a report invented later is retroactive anyway — that is the whole bargain.
+- **Any summary table, cached total, materialised view or scheduled recompute.** Decision 3 above,
+  and the 2026-09-10 database ADR before it.
+- **Time windows on the board** — no "this year", no season toggle, no form guide. ⚠️ *"One screen.
+  All-time."* If a year view is ever wanted it is a founder decision and a new screen, not a filter
+  bolted onto the honours board.
+- **Exporting, printing or sharing a record or a stat.** v2, unchanged.
+- **Any stat that can be edited, pinned, annotated or overridden.** A record is a consequence of the
+  archive, not a thing anyone sets.
+- **Predictions, ratings, Elo, handicaps, or anything that models skill** rather than counting what
+  happened. The app does not know the rules of Five Crowns and does not acquire opinions in M3.
+- **Any second read for confirmation.** ⚠️ Still prohibited, not deferred. Errors repeat.
+- **Player renaming.** Criterion 147 stays struck.
 
 ### Milestone 4 — Personality and polish
 

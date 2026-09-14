@@ -11,6 +11,13 @@
  * easy whole-row tap to open a game is unchanged (docs/DESIGN-SYSTEM.md §
  * "Reaching these pages", point 2).
  *
+ * M3 Stage 1: an optional `annotation` slot renders one small brand-coloured
+ * line under the meta — docs/DESIGN-SYSTEM.md § "the records board", the
+ * "most rounds won" and joint-streak drill-through row annotations
+ * ("{Player} took {n} of 11 rounds", "{Player}'s streak game"). `undefined`
+ * everywhere else (the games list itself never sets it), so this row is
+ * pixel-for-pixel unchanged there.
+ *
  * ⚠️ A `position: relative` sibling with no explicit `z-index` still shares
  * the stretched link's stack level (0), and later DOM order wins ties — so
  * without `pointer-events-none` these content wrappers would paint over, and
@@ -33,6 +40,7 @@ export interface GameRowProps {
   rosterId: string;
   rosterName: string;
   winners: string[];
+  annotation?: string;
 }
 
 function formatDate(iso: string): string {
@@ -53,6 +61,7 @@ export function GameRow({
   rosterId,
   rosterName,
   winners,
+  annotation,
 }: GameRowProps) {
   const formattedDate = formatDate(playedOn);
   const locationLabel = locationName ?? NO_LOCATION_GAMES_LIST;
@@ -75,6 +84,11 @@ export function GameRow({
             <EntityLink href={`/rosters/${rosterId}`}>{rosterName}</EntityLink>
           </span>
         </p>
+        {annotation ? (
+          <p className="relative z-10 mt-0.5 pointer-events-none text-xs font-bold text-brand">
+            {annotation}
+          </p>
+        ) : null}
       </div>
       <p className="relative z-10 shrink-0 pointer-events-none text-right text-sm font-bold text-success">
         {sharedWinGamesListLabel(winners)}
