@@ -874,11 +874,13 @@ the digit; this is a correctness feature, not typography.
     **Bogeyman**, and **Frequent flyer** — ordered driest to most playful. Full copy and the
     one-line rationale for each sits in the mockup itself, not duplicated here, so there is exactly
     one place this wording can drift out of sync.
-  - ⚠️ **This document does not pick one.** The fixed-strings table below has no row for the
-    nemesis card's title or detail sentence — deliberately, so nobody builds against a string this
-    doc never actually settled. The frontend-developer blocks on the founder's pick (or redirect)
-    before writing `NemesisCard`'s copy; every other string this stage adds is settled and listed
-    below.
+  - ✅ **Decided 2026-09-14 — the founder picked candidate 1, the flat "Nemesis."** No banter
+    layered on top of the title itself: the card's label and display-face line are just the
+    opponent's name under the plain word **Nemesis**, and the detail sentence is candidate 1's own
+    wording from the mockup, verbatim — **"Finishes above you in {n} of your {total} games together
+    ({rate}%)."** — never repeating the opponent's name a second time, since it's already the line
+    above. Now fixed in the table below (`NEMESIS_CARD_TITLE`, `nemesisDetailSentence` in
+    `lib/ui/copy.ts`), superseding the "not fixed" row this section used to point at.
 
 ## Review screen law
 
@@ -1134,7 +1136,8 @@ verified, confirmed, correct, looks right* or *all good*.
 | Record unit — the drought (board) | games |
 | Record unit — the nearly man (board) | second places |
 | Nemesis, no-nemesis state | Nobody's done this yet. *(reuses `BOARD_NO_HOLDER_SENTENCE` verbatim — not a new string)* |
-| Nemesis, title and detail sentence | **Not fixed.** Five candidates pending the founder's pick — `docs/mockups/m3-stage-2-rivalry.html` § "Nemesis: five candidates, side by side." Default if unanswered (criterion 202): the flat "Nemesis" candidate. |
+| Nemesis, title | Nemesis *(founder's pick, 2026-09-14 — candidate 1 of 5, `docs/mockups/m3-stage-2-rivalry.html` § "Nemesis: five candidates, side by side," kept flat, no banter on the title itself)* |
+| Nemesis, detail sentence | Finishes above you in {n} of your {total} games together ({rate}%). |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

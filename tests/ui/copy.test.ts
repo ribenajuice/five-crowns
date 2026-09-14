@@ -93,6 +93,20 @@ import {
   recordSampleLine,
   roundsWonRowAnnotation,
   streakHolderRowAnnotation,
+  NEMESIS_CARD_TITLE,
+  PERSONAL_RECORD_DROUGHT_TITLE,
+  PERSONAL_RECORD_DROUGHT_UNIT,
+  PERSONAL_RECORD_STREAK_TITLE,
+  PERSONAL_RECORD_STREAK_UNIT,
+  PLAYER_BY_ROSTER_HEADING,
+  PLAYER_BY_ROSTER_SAMPLE_LINE,
+  PLAYER_HEAD_TO_HEAD_HEADING,
+  PLAYER_HEAD_TO_HEAD_SAMPLE_LINE,
+  PLAYER_STREAK_SECTION_HEADING,
+  byRosterGamesCaption,
+  headToHeadDrillThroughHeading,
+  headToHeadTogetherCaption,
+  nemesisDetailSentence,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -674,5 +688,75 @@ describe("Milestone 3 Stage 1: the records board (PRD criteria 179–196)", () =
     expect(streakHolderRowAnnotation("Player A")).toBe("Player A's streak game");
     assertNoBannedWords(roundsWonRowAnnotation("Player C", 4));
     assertNoBannedWords(streakHolderRowAnnotation("Player A"));
+  });
+});
+
+describe("Milestone 3 Stage 2 (rivalry) — fixed strings", () => {
+  it("headToHeadTogetherCaption keeps '1 game together' honest, same pluralisation rule as everywhere else", () => {
+    expect(headToHeadTogetherCaption(9)).toBe("9 games together");
+    expect(headToHeadTogetherCaption(1)).toBe("1 game together");
+  });
+
+  it("headToHeadDrillThroughHeading names both players with the project's own '&' grammar", () => {
+    expect(headToHeadDrillThroughHeading("Sam", "Player B")).toBe("Sam & Player B");
+  });
+
+  it("byRosterGamesCaption keeps '1 game' honest", () => {
+    expect(byRosterGamesCaption(5)).toBe("5 games");
+    expect(byRosterGamesCaption(1)).toBe("1 game");
+  });
+
+  it("⚠️ the fixed heading and sample-line strings match docs/DESIGN-SYSTEM.md's table verbatim", () => {
+    expect(PLAYER_HEAD_TO_HEAD_HEADING).toBe("Head-to-head");
+    expect(PLAYER_HEAD_TO_HEAD_SAMPLE_LINE).toBe(
+      "Every player you've shared a game with, most games together first.",
+    );
+    expect(PLAYER_BY_ROSTER_HEADING).toBe("By roster");
+    expect(PLAYER_BY_ROSTER_SAMPLE_LINE).toBe(
+      "This player's wins and win rate within each exact roster they've played in.",
+    );
+    expect(PLAYER_STREAK_SECTION_HEADING).toBe("Streak, in context");
+    expect(PERSONAL_RECORD_STREAK_TITLE).toBe("Longest winning streak");
+    expect(PERSONAL_RECORD_DROUGHT_TITLE).toBe("The drought");
+    expect(PERSONAL_RECORD_STREAK_UNIT).toBe("games in a row");
+    expect(PERSONAL_RECORD_DROUGHT_UNIT).toBe("games without a win");
+  });
+
+  describe("the nemesis card — the founder's pick (open question 10, PRD criterion 202): the flat 'Nemesis' candidate", () => {
+    it("the title is exactly 'Nemesis', flat, no banter layered on top", () => {
+      expect(NEMESIS_CARD_TITLE).toBe("Nemesis");
+    });
+
+    it("⚠️ nemesisDetailSentence matches candidate 1's exact wording from docs/mockups/m3-stage-2-rivalry.html, verbatim", () => {
+      // "Player E finishes above Player C in 6 of their 9 shared games (66.7%)" —
+      // the mockup's own worked example for every candidate, candidate 1's card reading:
+      // "Finishes above you in 6 of your 9 games together (66.7%)."
+      expect(nemesisDetailSentence(6, 9, 66.7)).toBe(
+        "Finishes above you in 6 of your 9 games together (66.7%).",
+      );
+    });
+
+    it("keeps '1 game together' honest and always states one decimal place, even a whole-number rate", () => {
+      expect(nemesisDetailSentence(1, 1, 100)).toBe(
+        "Finishes above you in 1 of your 1 game together (100.0%).",
+      );
+    });
+
+    it("⚠️ criterion 202: passes the mechanical test — printable with both named players reading it over one shoulder each", () => {
+      const sentence = nemesisDetailSentence(6, 9, 66.7);
+      assertNoBannedWords(sentence);
+      for (const word of [
+        "weak",
+        "hopeless",
+        "dominated",
+        "owned",
+        "victim",
+        "walkover",
+        "can't",
+        "never will",
+      ]) {
+        expect(sentence.toLowerCase()).not.toContain(word);
+      }
+    });
   });
 });
