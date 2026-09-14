@@ -18,13 +18,11 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, location } from "@/lib/db/schema";
+import { LocationNotFoundError } from "@/lib/locations/rename";
 
-export class LocationNotFoundError extends Error {
-  override name = "LocationNotFoundError";
-  constructor(public readonly locationId: string) {
-    super("That place doesn't exist.");
-  }
-}
+// Re-exported so existing callers (this module's own tests, route handlers)
+// can keep importing it from here — one class, defined once in `rename.ts`.
+export { LocationNotFoundError };
 
 export class SameLocationError extends Error {
   override name = "SameLocationError";

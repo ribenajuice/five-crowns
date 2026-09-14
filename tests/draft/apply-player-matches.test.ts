@@ -24,7 +24,12 @@ beforeEach(async () => {
 });
 
 function stateWithColumns(
-  columns: Array<{ id: string; sheetName: string | null; playerId?: string | null }>,
+  columns: Array<{
+    id: string;
+    sheetName: string | null;
+    playerId?: string | null;
+    newPlayerName?: string | null;
+  }>,
 ) {
   const state = emptyDraftState({
     photoId: "ph_1",
@@ -34,6 +39,7 @@ function stateWithColumns(
   state.columns.forEach((column, i) => {
     column.sheetName = columns[i]!.sheetName;
     column.playerId = columns[i]!.playerId ?? null;
+    column.newPlayerName = columns[i]!.newPlayerName ?? null;
   });
   return state;
 }
@@ -108,6 +114,48 @@ describe("applySuggestedPlayerMatches", () => {
     const unassigned = result.columns.find((c) => c.id === "unassigned")!;
     expect(unassigned.playerId).toBeNull();
     expect(unassigned.nameCandidates ?? []).toEqual([]);
+  });
+
+  it("⚠️ a pending newPlayerName that resolves (by nameKey) to an existing player is never suggested to another column (criterion 150)", async () => {
+    // Column A is a "someone new" pending name that will fold onto the
+    // existing player "Steve" via nameKey resolution at save time
+    // (lib/games/resolve.ts's resolvePlayers) — playerId is still null here.
+    // Its own sheetName is left null (e.g. typed by hand, or a re-shoot
+    // cleared it) precisely so this test can't pass by the pending column
+    // coincidentally self-matching "Steve" and consuming it from the pool
+    // that way — the exclusion has to come from `newPlayerName` resolution,
+    // which is the thing under test.
+    await createPlayers(["Steve"]);
+    const state = stateWithColumns([
+      { id: "pending", sheetName: null, newPlayerName: "Steve" },
+      { id: "unassigned", sheetName: "Steve" },
+    ]);
+
+    const { applySuggestedPlayerMatches } = await import("@/lib/draft/apply-player-matches");
+    const result = await applySuggestedPlayerMatches(state);
+
+    const unassigned = result.columns.find((c) => c.id === "unassigned")!;
+    expect(unassigned.playerId).toBeNull();
+    expect(unassigned.nameCandidates ?? []).toEqual([]);
+
+    // The pending column itself is untouched — it already has an owner.
+    const pending = result.columns.find((c) => c.id === "pending")!;
+    expect(pending.playerId).toBeNull();
+    expect(pending.newPlayerName).toBe("Steve");
+  });
+
+  it("a newPlayerName that doesn't resolve to any existing player excludes nothing (a genuinely new person)", async () => {
+    const ids = await createPlayers(["Cody"]);
+    const state = stateWithColumns([
+      { id: "pending", sheetName: "Brand New Person", newPlayerName: "Brand New Person" },
+      { id: "unassigned", sheetName: "Cody" },
+    ]);
+
+    const { applySuggestedPlayerMatches } = await import("@/lib/draft/apply-player-matches");
+    const result = await applySuggestedPlayerMatches(state);
+
+    const unassigned = result.columns.find((c) => c.id === "unassigned")!;
+    expect(unassigned.playerId).toBe(ids["Cody"]);
   });
 
   it("the handwritten sheetName is untouched regardless of what gets matched (criterion 153)", async () => {

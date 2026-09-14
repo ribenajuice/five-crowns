@@ -17,8 +17,17 @@ import { location } from "@/lib/db/schema";
 import { nameKey } from "@/lib/draft/state";
 import { MAX_LOCATION_NAME_LENGTH } from "@/lib/ui/constants";
 
+/**
+ * Shared with `lib/locations/merge.ts`, which re-exports it rather than
+ * defining its own — a single class so `instanceof` checks agree no matter
+ * which module threw it (a merge/rename consolidation once had two distinct
+ * classes with the same name, a landmine for any shared catch block).
+ */
 export class LocationNotFoundError extends Error {
   override name = "LocationNotFoundError";
+  constructor(public readonly locationId: string) {
+    super("That place doesn't exist.");
+  }
 }
 
 /** Unlike a roster, a location always needs a real name — there is no auto-name to fall back to. */
@@ -61,7 +70,7 @@ export async function renameLocation(id: string, rawName: string): Promise<Locat
   if (trimmed.length === 0) throw new EmptyLocationNameError();
 
   const existing = (await db.select().from(location).where(eq(location.id, id)))[0];
-  if (!existing) throw new LocationNotFoundError();
+  if (!existing) throw new LocationNotFoundError(id);
 
   const key = nameKey(trimmed);
   const collision = (

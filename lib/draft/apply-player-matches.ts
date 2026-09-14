@@ -24,6 +24,7 @@ import { getDb } from "@/lib/db";
 import { player } from "@/lib/db/schema";
 import { matchColumnsToPlayers, type ColumnToMatch } from "@/lib/players/match";
 
+import { nameKey } from "./state";
 import type { DraftColumn, DraftState } from "./state";
 
 /**
@@ -46,17 +47,30 @@ export async function applySuggestedPlayerMatches(state: DraftState): Promise<Dr
   if (!hasWorkToDo) return state;
 
   const players = await getDb()
-    .select({ id: player.id, displayName: player.displayName })
+    .select({ id: player.id, displayName: player.displayName, nameKey: player.nameKey })
     .from(player);
 
-  const toMatch: ColumnToMatch[] = orderedColumns.map((column) => ({
-    columnId: column.id,
-    sheetName: column.sheetName,
-    // A pending "someone new" name also takes the column out of play for
-    // matching (it already has an owner, just not an existing one yet) —
-    // treated the same as an existing playerId for "already assigned".
-    assignedPlayerId: column.playerId,
-  }));
+  // A pending "someone new" name resolves against an existing player by
+  // `nameKey` at save time (`lib/games/resolve.ts`'s `resolvePlayers`) —
+  // exactly the same rule applied here, so a column that will fold onto an
+  // existing player at save is excluded from the pool just as if it already
+  // held that player's id. A name that resolves to nobody is a genuinely new
+  // person and excludes nothing.
+  const playerIdByNameKey = new Map(players.map((p) => [p.nameKey, p.id]));
+
+  const toMatch: ColumnToMatch[] = orderedColumns.map((column) => {
+    const resolvedNewPlayerId = column.newPlayerName
+      ? playerIdByNameKey.get(nameKey(column.newPlayerName))
+      : undefined;
+    return {
+      columnId: column.id,
+      sheetName: column.sheetName,
+      // A pending "someone new" name also takes the column out of play for
+      // matching (it already has an owner, just not an existing one yet) —
+      // treated the same as an existing playerId for "already assigned".
+      assignedPlayerId: column.playerId ?? resolvedNewPlayerId ?? null,
+    };
+  });
 
   const results = matchColumnsToPlayers(toMatch, players);
   const byColumnId = new Map(results.map((r) => [r.columnId, r]));

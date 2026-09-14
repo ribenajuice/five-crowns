@@ -122,18 +122,24 @@ async function gamesPlayedByPlayer(
 
 /**
  * Every game both players appear in — empty when there is none. Exported so
- * the preview endpoint and the merge transaction's up-front refusal share one
- * implementation and can never disagree about what counts as a conflict.
+ * the preview endpoint and the merge transaction's up-front refusal *and* its
+ * in-transaction recheck share one implementation and can never disagree
+ * about what counts as a conflict.
+ *
+ * Pass `tx` to run the same query against an open transaction (the
+ * in-transaction recheck in `mergePlayers`); omit it to run against the plain
+ * `db` handle (the preview endpoint, and the up-front refusal).
  */
 export async function findSharedGames(
   survivorId: string,
   otherId: string,
+  tx?: Tx,
 ): Promise<ConflictingGame[]> {
-  const db = getDb();
+  const runner = tx ?? getDb();
 
   const [survivorGames, otherGames] = await Promise.all([
-    db.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, survivorId)),
-    db.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, otherId)),
+    runner.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, survivorId)),
+    runner.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, otherId)),
   ]);
 
   const otherGameIds = new Set(otherGames.map((g) => g.gameId));
@@ -142,7 +148,7 @@ export async function findSharedGames(
   );
   if (sharedGameIds.length === 0) return [];
 
-  const rows = await db
+  const rows = await runner
     .select({ id: game.id, playedOn: game.playedOn, locationName: location.name })
     .from(game)
     .leftJoin(location, eq(game.locationId, location.id))
@@ -350,14 +356,14 @@ export async function mergePlayers(
     // above is best-effort against a concurrent save landing in between
     // (docs/ARCHITECTURE.md § "Concurrency, deliberately not solved" — this
     // app assumes one editor, but refusing loudly here is cheap insurance
-    // against the rare double-tap).
-    const [survivorGames, loserGames] = await Promise.all([
-      tx.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, survivorId)),
-      tx.select({ gameId: gamePlayer.gameId }).from(gamePlayer).where(eq(gamePlayer.playerId, loserId)),
-    ]);
-    const loserGameIds = new Set(loserGames.map((g) => g.gameId));
-    if (survivorGames.some((g) => loserGameIds.has(g.gameId))) {
-      throw new SameGameConflictError(await findSharedGames(survivorId, loserId));
+    // against the rare double-tap). Calls the same `findSharedGames` the
+    // up-front refusal and the preview endpoint use, against this open
+    // transaction, so the recheck can never drift out of sync with what
+    // counts as a conflict — and reuses its result directly rather than
+    // computing the conflict list a second time.
+    const conflictsInTx = await findSharedGames(survivorId, loserId, tx);
+    if (conflictsInTx.length > 0) {
+      throw new SameGameConflictError(conflictsInTx);
     }
 
     // criterion 158: game_player, round_score, photo. Safe as blanket
