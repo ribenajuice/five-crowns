@@ -32,7 +32,11 @@ import { newId } from "@/lib/ui/ids";
 import { exportPhoto, loadPhoto, rotateCanvas, type LoadedPhoto } from "@/lib/ui/image-pipeline";
 import { localCalendarDay } from "@/lib/ui/local-date";
 import { consumeNdjsonStream } from "@/lib/ui/ndjson";
-import { parseTranscribeEvent, type TranscribeColumnDiagnostic } from "@/lib/ui/transcribe-events";
+import {
+  extractSuggestedColumnIds,
+  parseTranscribeEvent,
+  type TranscribeColumnDiagnostic,
+} from "@/lib/ui/transcribe-events";
 import {
   DAILY_TRANSCRIBE_CAP_MESSAGE,
   DAILY_TRANSCRIBE_CAP_TITLE,
@@ -310,6 +314,7 @@ export function AddGameFlow() {
 
       let draftId: string | null = null;
       let columns: TranscribeColumnDiagnostic[] = [];
+      let suggestedColumnIds: string[] = [];
       let sawError = false;
 
       await consumeNdjsonStream(response.body, (raw) => {
@@ -318,6 +323,7 @@ export function AddGameFlow() {
         if (event.type === "result") {
           draftId = event.draftId;
           columns = event.columns;
+          suggestedColumnIds = extractSuggestedColumnIds(event.state);
         } else if (event.type === "error") {
           sawError = true;
         }
@@ -336,6 +342,15 @@ export function AddGameFlow() {
       // than `sessionStorage` and is removed the moment the review screen
       // reads it.
       window.sessionStorage.setItem(`transcribe-hints:${draftId}`, JSON.stringify(columns));
+      // Stage 4 (criterion 172): same one-shot handoff, for which columns
+      // arrived pre-selected by a confident suggestion — the
+      // `SuggestedMatchPill` is a UI-only signal, never persisted on the
+      // draft, so it doesn't survive (and doesn't need to survive) a reload
+      // of the review screen either.
+      window.sessionStorage.setItem(
+        `suggested-columns:${draftId}`,
+        JSON.stringify(suggestedColumnIds),
+      );
       router.push(`/review/${draftId}`);
     } catch {
       setPhase("transcribe-error");

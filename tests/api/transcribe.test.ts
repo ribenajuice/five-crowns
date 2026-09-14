@@ -287,6 +287,33 @@ describe("POST /api/transcribe", () => {
     expect(JSON.parse(draftRow.stateJson).playedOn).toBe("2026-09-11");
   });
 
+  it("Stage 4: pre-selects a confident player match on a fresh column (criterion 172)", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const ids = await createPlayers(["Player C"]);
+
+    await createSheetPhoto("ph_matched");
+    nextAttempt = {
+      status: "ok",
+      columns: [okColumn({ name: "Player C" })],
+      rawJson: JSON.stringify({ columns: [okColumn({ name: "Player C" })] }),
+      inputTokens: 100,
+      outputTokens: 50,
+      latencyMs: 1234,
+      error: null,
+    };
+
+    const { POST } = await import("@/app/api/transcribe/route");
+    const response = await POST(post({ photoId: "ph_matched" }));
+    const events = await readNdjson(response);
+    const result = events.find((e) => e.type === "result")!;
+
+    const state = result.state as {
+      columns: { id: string; sheetName: string; playerId: string | null }[];
+    };
+    expect(state.columns[0]!.sheetName).toBe("Player C");
+    expect(state.columns[0]!.playerId).toBe(ids["Player C"]);
+  });
+
   it("reuses the existing draft on retry rather than creating a second one", async () => {
     const state = draftStateFromSheet(SHEET_01, { photoId: "ph_retry" });
     await createSheetPhoto("ph_retry");

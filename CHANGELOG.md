@@ -6,6 +6,25 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+### Added
+
+- **Transcribing a scoresheet now suggests who a handwritten name belongs to.** When a name is a
+  clear match for an existing player, that player is picked for you automatically — no tap needed.
+  When it's a near-match, or could be one of two or more people, the app puts the most likely few
+  names at the top of the list instead of guessing for you. Either way, the name exactly as
+  handwritten stays on screen next to whoever's picked, so you can always see and correct a wrong
+  guess. Tapping "someone new" now starts you off with the handwritten name already typed in,
+  instead of a blank field. None of this changes a game you're editing after the fact — suggestions
+  only ever kick in for a name nobody has matched yet.
+- **You can merge two players who turn out to be the same person.** From a player's own page,
+  "This is the same person as…" lets you pick which of the two to keep — nothing is chosen for you.
+  If they've ever played in the same game together, the merge is refused and that game is named, so
+  you can fix it first. Otherwise, one tap to review and a second, deliberate tap to confirm merges
+  them for good — every game, round, roster and photo the other player was part of now belongs to
+  the one you kept. There's no undo and no record that a merge happened.
+- **You can merge two places that are the same venue**, the same way. Renaming a place to match one
+  that already exists now offers to merge them on the spot, instead of just refusing.
+
 ## [Stage 8] - 2026-09-14
 
 The third stage of Milestone 2: people, sets and places. Live in production.

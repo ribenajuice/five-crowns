@@ -13,8 +13,11 @@ automatic-reading usage and estimated cost. There's also a written, tested runbo
 forgotten admin password without a developer. **Milestone 2, Stage 3 is also merged and live** —
 every player and every roster now has its own page (games played, wins and win rate), there's a
 places list, and you can rename a roster or a place. Player and roster names are tappable links
-from the games list and a game's own page. Next up is suggested player matching and merging
-duplicate players or places. See `docs/STATUS.md`.
+from the games list and a game's own page. **Milestone 2, Stage 4 is built and ready for review** —
+not yet merged or deployed. It suggests who a handwritten name belongs to while transcribing a
+scoresheet, and lets you merge two players or two places that turn out to be the same person or
+venue. That closes out Milestone 2. Next up is Milestone 3, the records board and the analytics.
+See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app

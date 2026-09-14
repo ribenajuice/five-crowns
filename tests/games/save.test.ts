@@ -558,16 +558,17 @@ describe("⚠️ security review MEDIUM 2 — the save doesn't trust client ids"
   });
 
   it("refuses a playerId belonging to a player who has been merged away", async () => {
+    // Milestone 2: a merge hard-deletes the losing player row outright
+    // (`lib/players/merge.ts`) — there is no `merged_into_id` tombstone to
+    // check any more, so "merged away" and "never existed" are the same
+    // failure here.
     const { saveGame, InvalidReferenceError } = await import("@/lib/games/save");
     const { getDb } = await import("@/lib/db");
     const { player } = await import("@/lib/db/schema");
 
     const playerIds = await createPlayers(SHEET_01.columns.map((c) => c.player));
     const mergedId = playerIds[SHEET_01.columns[0]!.player]!;
-    await getDb()
-      .update(player)
-      .set({ mergedIntoId: playerIds[SHEET_01.columns[1]!.player]! })
-      .where(eq(player.id, mergedId));
+    await getDb().delete(player).where(eq(player.id, mergedId));
 
     const { draftId, state } = await setUpDraft(SHEET_01, { playerIds });
     await expect(saveGame(draftId, state)).rejects.toBeInstanceOf(InvalidReferenceError);

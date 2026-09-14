@@ -67,7 +67,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return apiError("bad_request", "A place needs a name.");
     }
     if (error instanceof LocationNameConflictError) {
-      return apiError("conflict", error.message);
+      // Stage 4 (criterion 163 fulfils criterion 146's promise): the
+      // existing place's own id, alongside `error`, so `PlaceRow` can offer a
+      // direct "Merge with {existing place}" button without a second request
+      // — the same "conflicts sit outside `error`" shape
+      // `POST /api/players/merge`'s 409 already uses.
+      return NextResponse.json(
+        {
+          error: { code: "conflict", message: error.message },
+          existingLocation: error.other,
+        },
+        { status: 409 },
+      );
     }
     return serverError("locations.rename_failed", error, { locationId: id });
   }

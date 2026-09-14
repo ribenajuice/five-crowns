@@ -70,3 +70,24 @@ describe("listPlaces", () => {
     expect(venue!.gamesPlayed).toBe(1);
   });
 });
+
+describe("getPlace (Stage 4, criteria 163–166)", () => {
+  it("returns null for a made-up id", async () => {
+    const { getPlace } = await import("@/lib/locations/queries");
+    expect(await getPlace("00000000-0000-0000-0000-000000000000")).toBeNull();
+  });
+
+  it("returns the place's own name and games-played count", async () => {
+    const { getDb } = await import("@/lib/db");
+    const { location } = await import("@/lib/db/schema");
+    const { randomUUID } = await import("node:crypto");
+    const id = randomUUID();
+    await getDb()
+      .insert(location)
+      .values({ id, name: "getPlace test venue", slug: `getplace-${id.slice(-8)}`, nameKey: "getplace test venue" });
+
+    const { getPlace } = await import("@/lib/locations/queries");
+    const place = await getPlace(id);
+    expect(place).toEqual({ id, name: "getPlace test venue", gamesPlayed: 0 });
+  });
+});

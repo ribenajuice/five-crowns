@@ -114,6 +114,32 @@ export function PencilIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Merge (player/place) — docs/DESIGN-SYSTEM.md § "Merging two players":
+ * reused for `PlaceRowActions`' merge row and every "Merge permanently"
+ * destructive button, the same converging-arrows-then-down glyph the mockup
+ * uses in both places.
+ */
+export function MergeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M4 4l7 7M20 4l-7 7M12 11v9" />
+    </svg>
+  );
+}
+
 /** `IndexNav` — criterion 174, one glyph per tile. */
 export function PlayersIcon({ className }: { className?: string }) {
   return (

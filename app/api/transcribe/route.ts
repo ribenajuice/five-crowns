@@ -56,6 +56,7 @@ import {
   type DraftState,
 } from "@/lib/draft/state";
 import { mergeSheetTranscriptionIntoDraft } from "@/lib/draft/merge-sheet";
+import { applySuggestedPlayerMatches } from "@/lib/draft/apply-player-matches";
 import { apiError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 import { describeError, log } from "@/lib/log";
@@ -316,13 +317,20 @@ export async function POST(request: Request) {
         }
 
         const now = new Date().toISOString();
-        const { state: mergedState, diagnostics } = mergeSheetTranscriptionIntoDraft({
+        const { state: rawMergedState, diagnostics } = mergeSheetTranscriptionIntoDraft({
           state,
           columns: attempt.columns,
           photoId,
           transcriptionId,
           now,
         });
+
+        // Stage 4 (PRD criteria 148–154, 172–173): every unassigned column
+        // that just got a `sheetName` is matched against the known players.
+        // A confident match is pre-selected; a near match surfaces candidates
+        // for the pick-list; an assigned column (an edit, or already
+        // hand-picked) is never touched.
+        const mergedState = await applySuggestedPlayerMatches(rawMergedState);
 
         // ⚠️ Security review, belt and braces: `mergeSheetTranscriptionIntoDraft`
         // already clamps everything vision output can affect (column count,

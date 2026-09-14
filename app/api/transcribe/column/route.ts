@@ -65,6 +65,7 @@ import {
   type DraftState,
 } from "@/lib/draft/state";
 import { ColumnNotFoundError, mergeColumnTranscriptionIntoDraft } from "@/lib/draft/merge-column";
+import { applySuggestedPlayerMatches } from "@/lib/draft/apply-player-matches";
 import { apiError } from "@/lib/http/errors";
 import { rejectCrossSitePost } from "@/lib/http/same-origin";
 import { describeError, log } from "@/lib/log";
@@ -333,7 +334,7 @@ export async function POST(request: Request) {
           now = new Date().toISOString();
 
           try {
-            ({ state: mergedState, diagnostics } = mergeColumnTranscriptionIntoDraft({
+            const merged = mergeColumnTranscriptionIntoDraft({
               state: currentState,
               columnId,
               reading: attempt.reading,
@@ -341,7 +342,16 @@ export async function POST(request: Request) {
               transcriptionId,
               expectedPlayerName,
               now,
-            }));
+            });
+            diagnostics = merged.diagnostics;
+            // Stage 4 (PRD criteria 148–154, 172–173): same wiring as the
+            // sheet path. Ordinarily a no-op here — the column this route
+            // targets is almost always already assigned — but a close-up shot
+            // before the column has a player at all is matched exactly like a
+            // fresh sheet read would be, and every other still-unassigned
+            // column is re-scored too (idempotent unless something about the
+            // player pool or the taken set changed since the last pass).
+            mergedState = await applySuggestedPlayerMatches(merged.state);
           } catch (error) {
             if (error instanceof ColumnNotFoundError) {
               send({

@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { Pill } from "./Pill";
 import { buttonClasses } from "./Button";
+import { PICKLIST_CLOSEST_MATCHES_LABEL } from "@/lib/ui/copy";
 
 export interface PickListItem {
   id: string;
@@ -29,9 +30,35 @@ interface PickListProps {
   emptyMessage?: string;
   /** The venue field's explicit "No location" row (criterion 61). */
   clearRowLabel?: string;
+  /**
+   * Stage 4 (criterion 173): the best two or three near-matches for a column
+   * still unassigned, pinned above the ordinary roster, in the order the
+   * matcher ranked them — an ordering change to this same sheet, not a new
+   * component. `items` below is expected to already exclude these ids so
+   * nobody appears twice.
+   */
+  closestMatches?: PickListItem[];
+  /**
+   * The handwritten name as read from the sheet, if this pick-list belongs to
+   * a column (criteria 148, 173): seeds the "add new" input so a founder who
+   * taps "someone new" sees that name pre-filled rather than a blank field,
+   * on a near-match, no-match, or wrong-suggestion column alike. Free to
+   * edit or clear from there — this only seeds the initial value.
+   */
+  newNameSeed?: string | null;
   onSelect: (id: string) => void;
   onAddNew: (name: string) => void;
   onClear?: () => void;
+}
+
+/**
+ * The "add new" input's initial value (criteria 148, 173): the handwritten
+ * name as read, or empty when there isn't one. Exported so it's directly
+ * testable — there's no jsdom harness in this project to simulate opening
+ * the add-new row and reading its rendered value back.
+ */
+export function seedNewName(newNameSeed?: string | null): string {
+  return newNameSeed ?? "";
 }
 
 export function PickList({
@@ -41,12 +68,14 @@ export function PickList({
   addNewLabel,
   emptyMessage,
   clearRowLabel,
+  closestMatches,
+  newNameSeed,
   onSelect,
   onAddNew,
   onClear,
 }: PickListProps) {
   const [adding, setAdding] = useState(false);
-  const [draftName, setDraftName] = useState("");
+  const [draftName, setDraftName] = useState(seedNewName(newNameSeed));
 
   function confirmAdd() {
     const trimmed = draftName.trim();
@@ -74,6 +103,27 @@ export function PickList({
               {clearRowLabel}
             </button>
           </li>
+        ) : null}
+
+        {closestMatches && closestMatches.length > 0 ? (
+          <>
+            <li className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-label text-text-muted">
+              {PICKLIST_CLOSEST_MATCHES_LABEL}
+            </li>
+            {closestMatches.map((item) => (
+              <li key={`closest-${item.id}`}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.id)}
+                  aria-pressed={selectedId === item.id}
+                  className="flex min-h-13 w-full items-center rounded-[var(--radius)] px-3 text-left text-base aria-pressed:bg-sunk aria-pressed:font-bold"
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+            <li aria-hidden="true" className="my-1 border-t border-line" />
+          </>
         ) : null}
 
         {items.map((item) => (
