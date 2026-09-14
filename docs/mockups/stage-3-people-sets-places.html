@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>People, sets and places</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF3E7; --surface:#FFFDF8; --sunk:#F2E9D8; --line:#E0D5C0;
+    --text:#23201B; --text-muted:#6B6257;
+    --brand:#17457A; --on-brand:#FFFDF8;
+    --accent:#C1462F; --accent-ink:#9C3520;
+    --success:#1F6B45; --warn:#8A5A00; --error:#B3261E;
+    --success-soft:#E2EFE7; --warn-soft:#F7EBD4; --error-soft:#FBE4E1;
+    --radius:14px;
+    --annot:#6D28D9; --annot-soft:#F3ECFC;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17140F; --surface:#211D17; --sunk:#2B251D; --line:#3A3328;
+      --text:#F3EADA; --text-muted:#B0A390;
+      --brand:#7FB3E8; --on-brand:#17140F;
+      --accent:#F0906E; --accent-ink:#F0906E;
+      --success:#7CCFA0; --warn:#E5B45C; --error:#FF8B7E;
+      --success-soft:#1D2C23; --warn-soft:#2E2515; --error-soft:#33191A;
+      --annot:#C4B5FD; --annot-soft:#2A2140;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140F; --surface:#211D17; --sunk:#2B251D; --line:#3A3328;
+    --text:#F3EADA; --text-muted:#B0A390;
+    --brand:#7FB3E8; --on-brand:#17140F;
+    --accent:#F0906E; --accent-ink:#F0906E;
+    --success:#7CCFA0; --warn:#E5B45C; --error:#FF8B7E;
+    --success-soft:#1D2C23; --warn-soft:#2E2515; --error-soft:#33191A;
+    --annot:#C4B5FD; --annot-soft:#2A2140;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px; line-height:1.5; padding-inline:16px; padding-block:24px 64px;
+  }
+  h1,h2,h3,.display{font-family:"Fraunces",Georgia,"Times New Roman",serif;}
+  .tabular{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-variant-numeric:tabular-nums;}
+  a{color:inherit;}
+  :focus-visible{outline:3px solid var(--brand); outline-offset:2px;}
+
+  /* ---- intro / doc chrome (not app UI) ---- */
+  .wrap{max-width:1200px; margin:0 auto;}
+  .intro{max-width:760px; margin:0 auto 40px;}
+  .intro h1{font-size:32px; margin:0 0 8px;}
+  .intro p{color:var(--text-muted);}
+  .decisions{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px; margin-top:16px;}
+  .decisions h2{font-size:16px; margin:0 0 8px;}
+  .decisions ol{margin:0; padding-left:20px;}
+  .decisions li{margin-bottom:6px;}
+  .topnav{position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--line);
+    margin:0 -16px 32px; padding:12px 16px; display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto;}
+  .topnav a{font-size:13px; font-weight:700; color:var(--brand); text-decoration:none; padding:6px 10px;
+    border:1px solid var(--line); border-radius:999px; white-space:nowrap;}
+  .topnav a:hover{border-color:var(--brand);}
+  section.spec{max-width:760px; margin:0 auto 12px;}
+  section.spec h2{font-size:22px; margin:40px 0 4px;}
+  section.spec .crit{color:var(--text-muted); font-size:13px; margin:0 0 16px;}
+  .frames{display:flex; gap:24px; flex-wrap:wrap; justify-content:center; margin-bottom:48px;}
+  .frame-label{font-size:13px; font-weight:700; text-align:center; margin-bottom:8px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.07em;}
+  figure{margin:0;}
+
+  /* ---- annotation callouts (design notes, NOT app UI) ---- */
+  .note{outline:2px dashed var(--annot); outline-offset:3px; position:relative; border-radius:8px;}
+  .note-tag{position:absolute; top:-13px; left:8px; background:var(--annot); color:#fff; font-size:10px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; line-height:1.6;}
+  .note-caption{font-size:13px; color:var(--annot); margin:6px 0 0; font-weight:600;}
+
+  /* ---- phone frame ---- */
+  .phone{width:375px; max-width:100%; border:1px solid var(--line); border-radius:28px; background:var(--bg);
+    box-shadow:0 10px 30px rgba(0,0,0,.12); overflow:hidden;}
+  .phone .screen{min-height:200px; overflow-y:auto;}
+
+  /* ---- app chrome, matching components/*.tsx exactly ---- */
+  .appbar{border-bottom:1px solid var(--line); background:var(--surface); display:flex; align-items:center; gap:8px; padding:12px 16px;}
+  .back-btn{width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; color:var(--brand);
+    border-radius:var(--radius); flex-shrink:0; margin-left:-8px; text-decoration:none;}
+  .appbar h1{font-size:22px; font-weight:700; margin:0; line-height:1.2;}
+  .appbar .ctx{font-size:13px; color:var(--text-muted); margin:2px 0 0;}
+  main{padding:16px;}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+
+  .btn{height:48px; border-radius:var(--radius); font-weight:700; font-size:16px; display:inline-flex; align-items:center;
+    justify-content:center; width:100%; text-decoration:none; border:none; cursor:pointer; gap:8px;}
+  .btn-primary{background:var(--brand); color:var(--on-brand);}
+  .btn-ghost{background:transparent; border:1px solid var(--brand); color:var(--brand);}
+  .btn-accent{background:var(--accent); color:var(--on-brand);}
+  .btn-ghost-error{background:transparent; border:1px solid var(--error); color:var(--error);}
+
+  .pill{display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:999px; font-size:11px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.07em;}
+  .pill-neutral{background:var(--sunk); color:var(--text-muted);}
+  .pill-ok{background:var(--success-soft); color:var(--success);}
+  .pill-warn{background:var(--warn-soft); color:var(--warn);}
+
+  .banner{display:flex; gap:8px; border:1px solid; border-radius:var(--radius); padding:12px; align-items:flex-start;}
+  .banner-error{border-color:var(--error); background:var(--error-soft); color:var(--error);}
+  .banner-warn{border-color:var(--warn); background:var(--warn-soft); color:var(--warn);}
+  .banner-ok{border-color:var(--success); background:var(--success-soft); color:var(--success);}
+  .banner p{margin:0;}
+  .banner .b-title{font-weight:700;}
+  .banner svg{margin-top:2px; flex-shrink:0;}
+
+  /* entity link: player/roster names appearing away from their own page */
+  a.entity-link{color:var(--brand); text-decoration:underline; text-underline-offset:2px; font-weight:700;}
+  a.entity-link.on-success{color:var(--success);}
+
+  /* index rows (players / rosters index) */
+  .index-row{display:flex; align-items:center; gap:12px; min-height:52px; border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--surface); padding:10px 16px; text-decoration:none; color:inherit;}
+  .index-row + .index-row{margin-top:8px;}
+  .index-row .name{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:16px;}
+  .index-row .meta{font-size:13px; color:var(--text-muted); margin-top:2px;}
+  .index-row .count{margin-left:auto; text-align:right; flex-shrink:0;}
+  .index-row .count .n{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:18px;
+    font-variant-numeric:tabular-nums;}
+  .index-row .count .lbl{display:block; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em;}
+
+  /* index nav (games list -> players/rosters/places) */
+  .index-nav{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px;}
+  .index-nav a{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    min-height:56px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface);
+    color:var(--brand); text-decoration:none; font-size:13px; font-weight:700; padding:8px 4px;}
+  .index-nav svg{color:var(--brand);}
+
+  /* game row (games list) */
+  .game-row{position:relative; display:flex; align-items:center; gap:12px; border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--surface); padding:12px 16px; min-height:52px;}
+  .game-row .stretch{position:absolute; inset:0; z-index:0;}
+  .game-row .main{flex:1; min-width:0; position:relative;}
+  .game-row .date{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:16px;}
+  .game-row .meta{font-size:13px; color:var(--text-muted); margin-top:2px;}
+  .game-row .meta a{position:relative; z-index:1;}
+  .game-row .win{flex-shrink:0; font-weight:700; font-size:13px; color:var(--success); text-align:right; position:relative;}
+
+  /* stat block (player/roster headline numbers) */
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:8px;}
+  .stat-block{background:var(--sunk); border-radius:var(--radius); padding:12px 10px; text-align:left;}
+  .stat-block .lbl{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); display:block;}
+  .stat-block .val{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:26px;
+    font-variant-numeric:tabular-nums; display:block; margin-top:2px;}
+  .stat-block .sample{font-size:12px; color:var(--text-muted); display:block; margin-top:2px;}
+
+  /* per-member roster stats */
+  .member-row{display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .member-row:last-child{border-bottom:none;}
+  .member-row .m-name{flex:1; font-weight:700;}
+  .member-row .m-stat{text-align:right; font-size:13px;}
+  .member-row .m-stat .rate{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:16px;}
+
+  /* place row */
+  .place-row{display:flex; align-items:center; gap:10px; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--surface); padding:10px 12px; min-height:52px;}
+  .place-row + .place-row{margin-top:8px;}
+  .place-row .name{font-family:"Fraunces",Georgia,serif; font-weight:700; font-size:16px;}
+  .place-row .meta{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .place-row .count{margin-left:auto; text-align:right; flex-shrink:0; margin-right:4px;}
+  .place-row .count .n{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; font-size:16px;}
+  .place-row .count .lbl{display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em;}
+  .icon-btn{width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    border-radius:var(--radius); border:1px solid var(--line); background:transparent; color:var(--brand);}
+
+  .field{display:block;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--text-muted); margin-bottom:6px;}
+  .field input{height:52px; width:100%; border-radius:var(--radius); border:1px solid var(--text-muted);
+    background:var(--surface); color:var(--text); padding:0 12px; font-size:16px;}
+  .hint{font-size:13px; color:var(--text-muted); margin:6px 0 0;}
+
+  .h2card{font-size:17px; font-weight:700; margin:0 0 4px;}
+  .stack{display:flex; flex-direction:column; gap:12px;}
+  .row2{display:flex; gap:8px;}
+  .row2 > *{flex:1;}
+  .muted{color:var(--text-muted);}
+  .small{font-size:13px;}
+  hr.sep{border:none; border-top:1px solid var(--line); margin:16px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>People, sets and places</h1>
+    <p>Milestone 2 Stage 3 mockups — players, rosters and places, renaming, and the new navigation
+    that ties them into the record (PRD criteria 132–146, 174). Matches <code>docs/DESIGN-SYSTEM.md</code>'s
+    existing Kitchen Table language exactly: same tokens, same components, nothing reinvented. Purple
+    dashed boxes are designer annotations, not app UI.</p>
+    <div class="decisions">
+      <h2>Design decisions to approve</h2>
+      <ol>
+        <li><strong>Where the three index pages hang off the games list</strong> — a new <code>IndexNav</code> row
+        (Players / Rosters / Places) directly under the games list's "Add a game" button, always visible.</li>
+        <li><strong>Roster names become links wherever they appear</strong> outside their own page — games list
+        rows, game view, and player pages — styled as underlined brand-coloured text (an <code>EntityLink</code>),
+        never colour alone.</li>
+        <li><strong>Player names become links only on the game view's "How it finished" list</strong> (not
+        also in the score table's column headers), to keep the dense score grid's tab order simple.</li>
+        <li><strong>A game-list row stays one large tap target</strong> to open the game, with the roster name
+        as a second, independently-tappable link layered on top (a "stretched link" pattern) — nobody loses the
+        big, easy row they have today.</li>
+        <li><strong>Roster renaming lives inline on the roster page itself</strong>, behind a "Rename" link that
+        reveals a field — no separate screen. <strong>Location renaming lives inline on the places index</strong>,
+        per-row, the same shape.</li>
+        <li><strong>No "place page."</strong> The PRD only asks for a places index; there's nowhere else for a
+        location to link to yet, so places-index rows aren't links at all, just name + count + a rename control.</li>
+      </ol>
+    </div>
+  </div>
+
+  <nav class="topnav" aria-label="Jump to mockup">
+    <a href="#games-list">Games list</a>
+    <a href="#game-view">Game view</a>
+    <a href="#players-index">Players index</a>
+    <a href="#player-page">Player page</a>
+    <a href="#player-empty">Player, empty state</a>
+    <a href="#rosters-index">Rosters index</a>
+    <a href="#roster-page">Roster page + rename</a>
+    <a href="#places-index">Places index + rename</a>
+  </nav>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="games-list">
+    <h2>Games list — new entry points</h2>
+    <p class="crit">Criterion 174: all three index pages reachable from the games list; roster name links to
+    its roster page.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <div>
+              <h1>Games</h1>
+              <p class="ctx">Five Crowns Ledger</p>
+            </div>
+          </div>
+          <main>
+            <div class="stack">
+              <a class="btn btn-primary" href="#">Add a game</a>
+
+              <div class="note" style="padding:8px;">
+                <span class="note-tag">criterion 174</span>
+                <nav class="index-nav" aria-label="Browse the record">
+                  <a href="#players-index">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="9" r="2.4"/><path d="M17 13.2c2.7.3 5 2.5 5 5.3"/></svg>
+                    Players
+                  </a>
+                  <a href="#rosters-index">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="13" height="9" rx="2"/><rect x="7" y="11" width="13" height="9" rx="2"/></svg>
+                    Rosters
+                  </a>
+                  <a href="#places-index">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.6 7-11.5A7 7 0 0 0 5 9.5C5 14.4 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+                    Places
+                  </a>
+                </nav>
+              </div>
+
+              <div class="stack" style="gap:8px; margin-top:4px;">
+                <div class="game-row">
+                  <a class="stretch" href="#game-view" aria-label="Open game: 12 Sep 2026, Thursday crew"></a>
+                  <div class="main">
+                    <p class="date">Sat, 12 Sep 2026</p>
+                    <p class="meta">Player C's House ·
+                      <span class="note" style="outline-offset:1px; padding:0 2px;">
+                        <a class="entity-link" href="#roster-page">Thursday crew</a>
+                      </span>
+                    </p>
+                  </div>
+                  <p class="win">Player C</p>
+                </div>
+
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 5 Sep 2026, Thursday crew"></a>
+                  <div class="main">
+                    <p class="date">Sat, 5 Sep 2026</p>
+                    <p class="meta">The Deck · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win">Player A</p>
+                </div>
+
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 29 Aug 2026, Thursday crew, shared win"></a>
+                  <div class="main">
+                    <p class="date">Sat, 29 Aug 2026</p>
+                    <p class="meta">Player C's House · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win">Player B &amp; Player D — shared</p>
+                </div>
+
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 22 Aug 2026"></a>
+                  <div class="main">
+                    <p class="date">Sat, 22 Aug 2026</p>
+                    <p class="meta">The Deck · <a class="entity-link" href="#">Player A, Player B, Player D &amp; Player E</a></p>
+                  </div>
+                  <p class="win">Player D</p>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption" style="text-align:center; max-width:375px;">Purple box: the new <code>IndexNav</code>
+      row. Roster names are separately underlined and tappable within each row — the row itself still opens the
+      game everywhere else you tap it.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="game-view">
+    <h2>Game view — player &amp; roster links</h2>
+    <p class="crit">Criterion 174: a player's name on a game view links to their player page; the roster name
+    links to its roster page.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div class="note" style="padding:2px 6px;">
+              <span class="note-tag" style="top:-11px;">title links out</span>
+              <h1><a class="entity-link" href="#roster-page" style="color:inherit;">Thursday crew</a></h1>
+              <p class="ctx">Sat, 12 Sep 2026 · Player C's House</p>
+            </div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="card">
+                <p class="h2card">How it finished</p>
+                <p class="small muted" style="margin:0 0 12px;">The line that decides who won. Check it hardest.</p>
+                <div class="stack" style="gap:2px;">
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; background:var(--success-soft);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--success)"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5L3 6Z"/></svg>
+                    <a class="entity-link on-success" href="#player-page" style="flex:1;">Player C</a>
+                    <span class="tabular" style="font-weight:800; color:var(--success);">78</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+                    <span style="width:18px;"></span>
+                    <a class="entity-link" href="#" style="flex:1; color:var(--text); text-decoration-color:var(--brand);">Player A</a>
+                    <span class="tabular" style="font-weight:700;">91</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+                    <span style="width:18px;"></span>
+                    <a class="entity-link" href="#" style="flex:1; color:var(--text); text-decoration-color:var(--brand);">Player B</a>
+                    <span class="tabular" style="font-weight:700;">104</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+                    <span style="width:18px;"></span>
+                    <a class="entity-link" href="#" style="flex:1; color:var(--text); text-decoration-color:var(--brand);">Player D</a>
+                    <span class="tabular" style="font-weight:700;">112</span>
+                  </div>
+                </div>
+              </div>
+              <p class="small muted">Score table and sheet photo unchanged from Stage 2 — omitted here for space.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption" style="text-align:center; max-width:375px;">The page title is now a link (rare, but
+      it's the one place the roster name always appears). Every name in "How it finished" is underlined and links
+      to that player's page — the winner's link additionally carries the existing crown/bold/success treatment,
+      so "this is a link" and "this is the winner" are never the same single signal.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="players-index">
+    <h2>Players index</h2>
+    <p class="crit">Criterion 132: every player, games played, linking to their page.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Players</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <a class="index-row" href="#player-page">
+                <span>
+                  <span class="name">Player A</span>
+                </span>
+                <span class="count"><span class="n">6</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#player-page">
+                <span><span class="name">Player B</span></span>
+                <span class="count"><span class="n">6</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#player-page">
+                <span><span class="name">Player C</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#player-page">
+                <span><span class="name">Player D</span></span>
+                <span class="count"><span class="n">6</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#player-page">
+                <span><span class="name">Player E</span></span>
+                <span class="count"><span class="n">2</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#player-empty">
+                <span><span class="name">Player F</span></span>
+                <span class="count"><span class="n">0</span><span class="lbl">games</span></span>
+              </a>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px — empty database</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Players</h1></div>
+          </div>
+          <main>
+            <div class="card">
+              <p style="font-weight:700; margin:0 0 4px;">Nobody's in the book yet.</p>
+              <p class="muted" style="margin:0;">Add a game and its players will show up here.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="player-page">
+    <h2>Player page</h2>
+    <p class="crit">Criterion 133–135: name, games played / wins / win rate (1 decimal, each with its sample),
+    games newest first.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#players-index" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Player C</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="stat-row">
+                <div class="stat-block">
+                  <span class="lbl">Games played</span>
+                  <span class="val">4</span>
+                </div>
+                <div class="stat-block">
+                  <span class="lbl">Wins</span>
+                  <span class="val">2</span>
+                  <span class="sample">of 4 games</span>
+                </div>
+                <div class="stat-block">
+                  <span class="lbl">Win rate</span>
+                  <span class="val">50.0%</span>
+                  <span class="sample">2 of 4 games</span>
+                </div>
+              </div>
+
+              <p class="h2card" style="margin-top:8px;">Player C's games</p>
+              <div class="stack" style="gap:8px;">
+                <div class="game-row">
+                  <a class="stretch" href="#game-view" aria-label="Open game: 12 Sep 2026"></a>
+                  <div class="main">
+                    <p class="date">Sat, 12 Sep 2026</p>
+                    <p class="meta">Player C's House · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win tabular" style="display:flex; align-items:center; gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5L3 6Z"/></svg>
+                    78
+                  </p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 5 Sep 2026"></a>
+                  <div class="main">
+                    <p class="date">Sat, 5 Sep 2026</p>
+                    <p class="meta">The Deck · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win tabular" style="color:var(--text-muted); font-weight:700;">108</p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 29 Aug 2026, shared win"></a>
+                  <div class="main">
+                    <p class="date">Sat, 29 Aug 2026</p>
+                    <p class="meta">Player C's House · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win tabular" style="color:var(--text-muted); font-weight:700;">97</p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 15 Aug 2026"></a>
+                  <div class="main">
+                    <p class="date">Sat, 15 Aug 2026</p>
+                    <p class="meta">No location · <a class="entity-link" href="#roster-page">Thursday crew</a></p>
+                  </div>
+                  <p class="win tabular" style="display:flex; align-items:center; gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6l4.5 4L12 4l4.5 6L21 6l-2 12H5L3 6Z"/></svg>
+                    102
+                  </p>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+
+    <figure>
+      <p class="frame-label">One game (criterion 135)</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#players-index" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Player E</h1></div>
+          </div>
+          <main>
+            <div class="stat-row">
+              <div class="stat-block">
+                <span class="lbl">Games played</span>
+                <span class="val">1</span>
+              </div>
+              <div class="stat-block">
+                <span class="lbl">Wins</span>
+                <span class="val">1</span>
+                <span class="sample">of 1 game</span>
+              </div>
+              <div class="stat-block">
+                <span class="lbl">Win rate</span>
+                <span class="val">100.0%</span>
+                <span class="sample">1 of 1 game</span>
+              </div>
+            </div>
+            <p class="small muted" style="margin-top:8px;">No withholding here — that's the M3 records board's job.
+            A single game states its rate plainly, sample included.</p>
+          </main>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="player-empty">
+    <h2>Player page — zero games (empty state)</h2>
+    <p class="crit">Criterion 136: created, then edited out of their only game — an empty state, not an error.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#players-index" aria-label="Back to players">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Player F</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="stat-row" style="grid-template-columns:1fr;">
+                <div class="stat-block">
+                  <span class="lbl">Games played</span>
+                  <span class="val">0</span>
+                </div>
+              </div>
+              <div class="card">
+                <p style="font-weight:700; margin:0 0 4px;">No games on record.</p>
+                <p class="muted" style="margin:0;">Nothing saved right now has Player F at the table.</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="rosters-index">
+    <h2>Rosters index</h2>
+    <p class="crit">Criterion 137: rosters with ≥1 game — name, members, games played.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">375px</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Rosters</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <a class="index-row" href="#roster-page">
+                <span>
+                  <span class="name">Thursday crew</span>
+                  <span class="meta" style="display:block;">Player A, Player B, Player C &amp; Player D</span>
+                </span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+              </a>
+              <a class="index-row" href="#roster-page">
+                <span>
+                  <span class="name">Player A, Player B, Player D &amp; Player E</span>
+                  <span class="meta" style="display:block;">auto-named</span>
+                </span>
+                <span class="count"><span class="n">2</span><span class="lbl">games</span></span>
+              </a>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="roster-page">
+    <h2>Roster page, and renaming</h2>
+    <p class="crit">Criteria 138–139, 141–144: members, games played, per-member wins/win-rate within this
+    roster, games newest first, inline rename with a non-blocking duplicate warning.</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">Resting</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#rosters-index" aria-label="Back to rosters">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div>
+              <h1>Thursday crew</h1>
+              <p class="ctx">Player A, Player B, Player C &amp; Player D</p>
+            </div>
+          </div>
+          <main>
+            <div class="stack">
+              <button class="btn btn-ghost" style="width:auto; height:36px; padding:0 14px; align-self:flex-start;">Rename</button>
+
+              <div class="stat-row" style="grid-template-columns:1fr;">
+                <div class="stat-block">
+                  <span class="lbl">Games played</span>
+                  <span class="val">4</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <p class="h2card">Wins within this roster</p>
+                <p class="small muted" style="margin:0 0 4px;">Each member's wins and win rate across these 4
+                games. Rates can add up to more than 100% when a win was shared.</p>
+                <div>
+                  <div class="member-row">
+                    <a class="entity-link m-name" href="#player-page" style="color:var(--text); text-decoration-color:var(--brand);">Player A</a>
+                    <span class="m-stat"><span class="rate tabular">25.0%</span><br><span class="muted">1 of 4</span></span>
+                  </div>
+                  <div class="member-row">
+                    <a class="entity-link m-name" href="#" style="color:var(--text); text-decoration-color:var(--brand);">Player B</a>
+                    <span class="m-stat"><span class="rate tabular">25.0%</span><br><span class="muted">1 of 4</span></span>
+                  </div>
+                  <div class="member-row">
+                    <a class="entity-link m-name" href="#player-page" style="color:var(--text); text-decoration-color:var(--brand);">Player C</a>
+                    <span class="m-stat"><span class="rate tabular">50.0%</span><br><span class="muted">2 of 4</span></span>
+                  </div>
+                  <div class="member-row">
+                    <a class="entity-link m-name" href="#" style="color:var(--text); text-decoration-color:var(--brand);">Player D</a>
+                    <span class="m-stat"><span class="rate tabular">25.0%</span><br><span class="muted">1 of 4</span></span>
+                  </div>
+                </div>
+                <p class="small" style="margin:8px 0 0; color:var(--text-muted); font-style:italic;">125% total — Player B and
+                Player D shared a win on 29 Aug, so this is correct, not a bug.</p>
+              </div>
+
+              <p class="h2card">Thursday crew's games</p>
+              <div class="stack" style="gap:8px;">
+                <div class="game-row">
+                  <a class="stretch" href="#game-view" aria-label="Open game: 12 Sep 2026"></a>
+                  <div class="main"><p class="date">Sat, 12 Sep 2026</p><p class="meta">Player C's House</p></div>
+                  <p class="win">Player C</p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 5 Sep 2026"></a>
+                  <div class="main"><p class="date">Sat, 5 Sep 2026</p><p class="meta">The Deck</p></div>
+                  <p class="win">Player A</p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 29 Aug 2026, shared win"></a>
+                  <div class="main"><p class="date">Sat, 29 Aug 2026</p><p class="meta">Player C's House</p></div>
+                  <p class="win">Player B &amp; Player D — shared</p>
+                </div>
+                <div class="game-row">
+                  <a class="stretch" href="#" aria-label="Open game: 15 Aug 2026"></a>
+                  <div class="main"><p class="date">Sat, 15 Aug 2026</p><p class="meta">No location</p></div>
+                  <p class="win">Player C</p>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+
+    <figure>
+      <p class="frame-label">Rename open, duplicate warning</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#rosters-index" aria-label="Back to rosters">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Thursday crew</h1></div>
+          </div>
+          <main>
+            <div class="stack">
+              <div class="card">
+                <div class="field">
+                  <label for="rn">Roster name</label>
+                  <input id="rn" type="text" value="Sunday crew" maxlength="40">
+                </div>
+                <p class="hint">Up to 40 characters. Leave it blank to use the automatic name from its members.</p>
+
+                <div class="banner banner-warn" style="margin-top:12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v5l3.5 2"/></svg>
+                  <div>
+                    <p class="b-title">"Sunday crew" is already a roster name.</p>
+                    <p>Player B, Player D &amp; Player E answers to it too — nothing stops you saving it, rename
+                    either one later if it's confusing.</p>
+                  </div>
+                </div>
+
+                <div class="row2" style="margin-top:12px;">
+                  <button class="btn btn-ghost">Cancel</button>
+                  <button class="btn btn-primary">Save name</button>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption" style="text-align:center; max-width:375px;">Non-blocking, per criterion 143 — "Save
+      name" stays enabled under the warning.</p>
+    </figure>
+  </div>
+
+  <!-- ============================================================ -->
+  <section class="spec" id="places-index">
+    <h2>Places index, and renaming</h2>
+    <p class="crit">Criteria 140, 145–146: every location including 0-game ones, still pickable; rename inline;
+    a name collision is refused, naming the other place (merge itself is Stage 4).</p>
+  </section>
+  <div class="frames">
+    <figure>
+      <p class="frame-label">Resting</p>
+      <div class="phone">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="place-row">
+                <span>
+                  <span class="name">Player C's House</span>
+                </span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Rename Player C's House">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="place-row">
+                <span><span class="name">The Deck</span></span>
+                <span class="count"><span class="n">2</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Rename The Deck">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <div class="place-row">
+                <span>
+                  <span class="name">Riverside Pub</span>
+                  <span class="meta" style="display:block;">Never used yet — still pickable when you save a game.</span>
+                </span>
+                <span class="count"><span class="n">0</span><span class="lbl">games</span></span>
+                <button class="icon-btn" aria-label="Rename Riverside Pub">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+
+    <figure>
+      <p class="frame-label">Rename refused — collision</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="stack" style="gap:8px;">
+              <div class="card" style="border-color:var(--error);">
+                <div class="field">
+                  <label for="ln">Location name</label>
+                  <input id="ln" type="text" value="The Deck" maxlength="40">
+                </div>
+                <div class="banner banner-error" style="margin-top:12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v6"/><path d="M12 16.75v.01"/></svg>
+                  <div>
+                    <p class="b-title">"The Deck" already has that name.</p>
+                    <p>Pick a different name for now — merging two places into one is coming in a later update.</p>
+                  </div>
+                </div>
+                <div class="row2" style="margin-top:12px;">
+                  <button class="btn btn-ghost">Cancel</button>
+                  <button class="btn btn-primary">Save name</button>
+                </div>
+              </div>
+              <div class="place-row">
+                <span><span class="name">Player C's House</span></span>
+                <span class="count"><span class="n">4</span><span class="lbl">games</span></span>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <p class="note-caption" style="text-align:center; max-width:375px;">Renaming "Riverside Pub" to "The Deck" —
+      refused, names the existing place, no merge action offered yet (Stage 4).</p>
+    </figure>
+
+    <figure>
+      <p class="frame-label">375px — empty database</p>
+      <div class="phone" style="min-height:auto;">
+        <div class="screen">
+          <div class="appbar">
+            <a class="back-btn" href="#games-list" aria-label="Back to games">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </a>
+            <div><h1>Places</h1></div>
+          </div>
+          <main>
+            <div class="card">
+              <p style="font-weight:700; margin:0 0 4px;">No places yet.</p>
+              <p class="muted" style="margin:0;">Add one from the review screen next time you save a game.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <div class="intro" style="margin-top:24px;">
+    <p class="small muted">1280px desktop: every screen above keeps the same single-column reading width
+    (<code>max-w-read</code>, 640px) centred on the page, exactly like the existing games list and game view —
+    nothing here introduces a wide-layout variant.</p>
+  </div>
+
+</div>
+</body>
+</html>
