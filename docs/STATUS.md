@@ -7,8 +7,11 @@
   merged 2026-09-13). **Milestone 2 is now in flight.** Its full delivery spec (86 criteria, 87–173, across four
   stages) is written in `docs/PRD.md`. **Stage 1** (the admin panel finished — both password changes, the
   forgotten-password runbook, the score CSV, usage and spend) is built, tested, and open as
-  [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **not merged**, pending the founder's decision on
-  PRD open question 5 (see below). **Stage 2** (editing and deleting a saved game, plus app-level 404/error screens)
+  [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **not yet merged**. PRD open question 5 (the
+  IAM grant blocking in-panel password rotation) is **answered**: the founder chose to widen the grant
+  (2026-09-14), the code change is made and an ADR recorded in `docs/DECISIONS.md`, and it now needs a
+  security-reviewer pass (an IAM-widening change) before merge. **Stage 2** (editing and deleting a saved game,
+  plus app-level 404/error screens)
   is **merged and live in production** ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), merged and
   deployed 2026-09-14). Its CHANGELOG/README wrap-up is a separate docs-only
   [PR #23](https://github.com/ribenajuice/five-crowns/pull/23), CI green, **awaiting the founder's merge** — the
@@ -22,10 +25,14 @@
   CloudFront URL answers again.
 - **Currently in flight**:
   - [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **Milestone 2 Stage 1**, the admin panel
-    finished. Fully built, QA'd and security/code-reviewed; CI green. **Blocked on a founder decision** (PRD open
-    question 5): the password-change routes need an AWS permission the app was deliberately never given, and
-    widening it re-opens a risk a 2026-09-11 review closed on purpose. Everything else in the PR (the recovery
-    runbook, the CSV download, usage/spend) is unaffected and ready.
+    finished. Fully built, QA'd and security/code-reviewed; CI green. **PRD open question 5 is now answered**:
+    the founder decided (2026-09-14) to widen the web Lambda's SSM grant so the password-change routes can
+    actually write `{group,admin}-password-hash` and `{group,admin}-session-epoch`, re-accepting the risk the
+    2026-09-11 least-privilege review had closed. `sst.config.ts` and the affected docs (`docs/DECISIONS.md`,
+    `docs/ARCHITECTURE.md`, `docs/PRD.md`) are updated on the branch; the branch was also merged up to date
+    with `main` (picking up Stage 2). **Needs a security-reviewer pass** on the widened grant before merge —
+    IAM changes are security-sensitive by the project's own ground rules. Everything else in the PR (the
+    recovery runbook, the CSV download, usage/spend) is unaffected and already verified.
   - ✅ [PR #22](https://github.com/ribenajuice/five-crowns/pull/22) — **Milestone 2 Stage 2**, editing and deleting
     a saved game, plus app-level 404/error screens. **Shipped 2026-09-14**: QA and security review both passed
     after two rounds of real bugs found and fixed (see below); a subsequent `/code-review high` pass found three

@@ -1127,18 +1127,15 @@ URL. Well under 1 MB at this scale, against a 6 MB buffered Lambda response limi
   requests are $0.03 per 10,000; with a 60-second cache and this traffic, under a cent a month.
 - The **web Lambda's role** (`sst.config.ts`, written out by hand, never granted through SST
   `link`) may:
-  - `ssm:GetParameter`/`ssm:GetParameters` on the app-owned parameters under `/five-crowns/prod/`,
-    and `ssm:PutParameter` on exactly three: `anthropic-api-key`, `anthropic-api-key-last4`,
-    `anthropic-api-key-set-at` (2026-09-11 least-privilege ADR — deliberately narrowed so a bug in
-    the internet-facing app cannot overwrite either password hash). ⚠️ **This section previously
-    claimed the write grant also covered `group-password-hash`, `admin-password-hash`,
-    `group-session-epoch` and `admin-session-epoch` — it never did; that was written ahead of
-    Milestone 2 Stage 1 actually needing it, and the two drifted apart until a 2026-09-14 security
-    review caught it.** Stage 1's in-panel password-change routes call `putParameter` on those four
-    parameters and will get `AccessDeniedException` (surfacing as a 500) against the real deployed
-    role until this is resolved — deliberately not resolved by widening the grant here without the
-    founder's sign-off, since doing so re-opens the exact escalation the 2026-09-11 narrowing
-    existed to close. See `docs/DECISIONS.md` for the pending decision. The session secret is
+  - `ssm:GetParameter`/`ssm:GetParameters` **and** `ssm:PutParameter` on all seven app-owned
+    parameters under `/five-crowns/prod/`, including `group-password-hash`, `admin-password-hash`,
+    `group-session-epoch` and `admin-session-epoch`. ⚠️ **This was narrower between 2026-09-11 and
+    2026-09-14**: the write grant covered only `anthropic-api-key`, `anthropic-api-key-last4` and
+    `anthropic-api-key-set-at`, deliberately, so a bug in the internet-facing app could not overwrite
+    either password hash. Milestone 2 Stage 1's in-panel password-change routes need to write those
+    four parameters and would have got `AccessDeniedException` (surfacing as a 500) against that
+    narrower grant. The founder chose in-panel rotation working over keeping the grant narrower
+    (2026-09-14) — see `docs/DECISIONS.md` for the trade this re-accepts. The session secret is
     injected at deploy. The domain and budget parameters are read only by `scripts/deploy.sh`.
   - `s3:GetObject`/`s3:PutObject` on `five-crowns-photos/*`. ⚠️ **Never `s3:DeleteObject*` and
     no bucket-level action** (`PutBucket*`, `PutLifecycle*`, `PutEncryption*`, versioning,

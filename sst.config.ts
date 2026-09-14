@@ -47,12 +47,15 @@ const PHOTOS_BUCKET = "five-crowns-photos";
  * back — but they still live under the same prefix and need the same Get
  * grant, so they are listed here too.
  *
- * ⚠️ **Write is narrower than read.** The app only ever *writes* the three
- * `anthropic-api-key*` entries (`writableAppParameterArns`, below) — never a
- * password hash or a session epoch, which are set by hand or by
- * `scripts/deploy.sh`. Security review: granting `PutParameter` over all
- * seven bought nothing and meant a future bug in the internet-facing Lambda
- * could escalate to overwriting `admin-password-hash`.
+ * ⚠️ **Write is as wide as read, as of 2026-09-14.** Until Milestone 2 Stage 1
+ * the app only ever wrote the three `anthropic-api-key*` entries, on purpose:
+ * a password hash or a session epoch was set only by hand or by
+ * `scripts/deploy.sh`, so a bug in this internet-facing Lambda could not
+ * escalate to overwriting `admin-password-hash`. The panel's password-change
+ * routes need to write both password hashes and both session epochs, and the
+ * founder chose in-panel rotation over keeping that narrower grant — see the
+ * 2026-09-14 ADR in `docs/DECISIONS.md`. `writableAppParameterArns` below is
+ * now simply `appParameterArns`.
  */
 const APP_PARAMETERS = [
   "group-password-hash",
@@ -175,24 +178,19 @@ export default $config({
     );
 
     /**
-     * ⚠️ Security review: the app writes only these three, ever
-     * (`lib/vision/api-key.ts`) — never a password hash or a session epoch,
-     * both of which are set by hand or by `scripts/deploy.sh`. `PutParameter`
-     * was previously granted over all seven, which the app had no use for and
-     * which meant a future bug in the internet-facing Lambda (a
-     * deserialisation flaw, a compromised dependency) could escalate from
-     * "read the API key" to permanently overwriting `admin-password-hash`
-     * with a hash of the attacker's choosing — the one privilege here that
-     * turns a transient bug into a persistent takeover.
+     * ⚠️ Founder decision, 2026-09-14 (Milestone 2 Stage 1, PRD open question 5;
+     * supersedes the write-scope half of the 2026-09-11 least-privilege ADR —
+     * see `docs/DECISIONS.md`). The panel's group- and admin-password-change
+     * routes (`app/api/admin/password/{group,admin}/route.ts`) write
+     * `{group,admin}-password-hash` and `{group,admin}-session-epoch`, so all
+     * seven app-owned parameters are now writable, not just the three
+     * `anthropic-api-key*` entries. This re-accepts the exact risk the
+     * narrower grant existed to close: a future bug in this internet-facing
+     * Lambda (a deserialisation flaw, a compromised dependency) could now
+     * escalate to overwriting either password hash, not just the API key. The
+     * founder chose in-panel rotation over keeping that grant narrower.
      */
-    const writableAppParameterArns = [
-      "anthropic-api-key",
-      "anthropic-api-key-last4",
-      "anthropic-api-key-set-at",
-    ].map(
-      (name) =>
-        $interpolate`arn:aws:ssm:${REGION}:${accountId}:parameter${parameterPrefix}/${name}`,
-    );
+    const writableAppParameterArns = appParameterArns;
 
     /**
      * Everything the internet-facing Lambda may do, and nothing else.
@@ -210,7 +208,7 @@ export default $config({
         resources: appParameterArns,
       },
       {
-        // Rotating the API key only — see writableAppParameterArns above.
+        // All seven app-owned parameters — see writableAppParameterArns above.
         actions: ["ssm:PutParameter"],
         resources: writableAppParameterArns,
       },
