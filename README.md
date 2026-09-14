@@ -10,19 +10,17 @@ recover a forgotten admin password without a developer, and download every game'
 CSV; a saved game can be edited or deleted; every player and roster has its own page (games played,
 wins, win rate), with a places list, renaming, and tappable links throughout; and transcribing a
 scoresheet now suggests who a handwritten name belongs to, with the option to merge two players or
-two places that turn out to be the same person or venue. **Milestone 3 is now underway. Stage 1 —
-the records board — is built and reviewed, on a branch, not yet merged or deployed**: it replaces
-the games list as the app's opening screen with five all-time records — most wins, longest winning
-streak, lowest average score, most rounds won, and the stalwart (most games played) — each one
-tappable through to the exact games it's based on. Every record shows from the very first saved
-game, with a small note at the top while the archive has fewer than 10 games. **Stage 2 — rivalry —
-is also built and reviewed, on a branch, not yet merged or deployed**: a player's own page now
-shows a head-to-head section against every opponent they've shared a game with (games together,
-wins each, win rates both ways), a "Nemesis" card naming whoever most reliably finishes above them,
-and a by-roster breakdown of how they do within each exact group they've played with. Their
-longest-ever winning streak sits next to its opposite, the drought — the longest run without a win.
-The board itself gains two more records, the drought and "the nearly man" (most second-place
-finishes), taking it to seven. See `docs/STATUS.md`.
+two places that turn out to be the same person or venue. **Milestone 3 is now underway, and its
+first two stages are merged and live**: the app now opens on a records board instead of the games
+list — most wins, longest winning streak, lowest average score, most rounds won, and the stalwart
+(most games played), each tappable through to the exact games it's based on, with every record
+shown from the very first saved game and a small note at the top while the archive has fewer than
+10 games. A player's own page now shows a head-to-head section against every opponent they've
+shared a game with, a "Nemesis" card naming whoever most reliably finishes above them, and a
+by-roster breakdown of how they do within each exact group they've played with — plus their
+longest-ever winning streak next to its opposite, the drought. The board itself gains two more
+records, the drought and "the nearly man" (most second-place finishes), taking it to seven. See
+`docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
