@@ -38,9 +38,27 @@ interface PickListProps {
    * nobody appears twice.
    */
   closestMatches?: PickListItem[];
+  /**
+   * The handwritten name as read from the sheet, if this pick-list belongs to
+   * a column (criteria 148, 173): seeds the "add new" input so a founder who
+   * taps "someone new" sees that name pre-filled rather than a blank field,
+   * on a near-match, no-match, or wrong-suggestion column alike. Free to
+   * edit or clear from there — this only seeds the initial value.
+   */
+  newNameSeed?: string | null;
   onSelect: (id: string) => void;
   onAddNew: (name: string) => void;
   onClear?: () => void;
+}
+
+/**
+ * The "add new" input's initial value (criteria 148, 173): the handwritten
+ * name as read, or empty when there isn't one. Exported so it's directly
+ * testable — there's no jsdom harness in this project to simulate opening
+ * the add-new row and reading its rendered value back.
+ */
+export function seedNewName(newNameSeed?: string | null): string {
+  return newNameSeed ?? "";
 }
 
 export function PickList({
@@ -51,12 +69,13 @@ export function PickList({
   emptyMessage,
   clearRowLabel,
   closestMatches,
+  newNameSeed,
   onSelect,
   onAddNew,
   onClear,
 }: PickListProps) {
   const [adding, setAdding] = useState(false);
-  const [draftName, setDraftName] = useState("");
+  const [draftName, setDraftName] = useState(seedNewName(newNameSeed));
 
   function confirmAdd() {
     const trimmed = draftName.trim();

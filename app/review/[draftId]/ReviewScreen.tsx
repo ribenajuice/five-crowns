@@ -759,6 +759,7 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
               closestMatches={closestMatchItemsFor(columnPickerColumn, players)}
               selectedId={columnPickerColumn.playerId}
               pendingLabel={columnPickerColumn.newPlayerName}
+              newNameSeed={columnPickerColumn.sheetName}
               addNewLabel={PLAYER_ADD_NEW_ROW}
               emptyMessage={players.length === 0 ? PLAYER_LIST_FIRST_GAME : undefined}
               onSelect={(id) => {
