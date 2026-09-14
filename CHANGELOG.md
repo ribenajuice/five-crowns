@@ -6,6 +6,10 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 10] - 2026-09-14
+
+The first two stages of Milestone 3: the records board, and rivalry. Live in production.
+
 ### Added
 
 - **The app now opens on a records board instead of the games list.** Five all-time records sit

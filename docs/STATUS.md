@@ -18,14 +18,13 @@
   ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14). **Stage 4** (suggested player-name
   matching, and permanent player/place merging) — the closing stage of Milestone 2 — is also merged and live
   ([PR #27](https://github.com/ribenajuice/five-crowns/pull/27), 2026-09-14). **Milestone 3 — the records board
-  and the analytics — is now in flight.** Its full delivery spec is written stage-by-stage in `docs/PRD.md` as
-  each stage is built, the same way Milestone 2 was. **Stage 1** ("the board, and the engine under it" — the
-  app now opens on a records board instead of the games list) is built, QA'd, code-reviewed and
-  security-reviewed on branch `feat/m3-stage1`, ready to open as a PR — not yet merged or deployed.
-  **Stage 2** ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two
-  more board records) is also built, QA'd, code-reviewed and security-reviewed, on branch `feat/m3-stage2`
-  (stacked on Stage 1's branch, since it builds directly on the board's code), ready to open as a PR — not
-  yet merged or deployed.
+  and the analytics — is now in flight**, with its first two stages merged and live. Its full delivery spec is
+  written stage-by-stage in `docs/PRD.md` as each stage is built, the same way Milestone 2 was. **Stage 1**
+  ("the board, and the engine under it" — the app now opens on a records board instead of the games list) is
+  merged and deployed ([PR #29](https://github.com/ribenajuice/five-crowns/pull/29), 2026-09-14). **Stage 2**
+  ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two more board
+  records) is also merged and deployed ([PR #30](https://github.com/ribenajuice/five-crowns/pull/30),
+  2026-09-14).
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -33,9 +32,9 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**:
-  - [PR #29](https://github.com/ribenajuice/five-crowns/pull/29) — **Milestone 3 Stage 1**, the records board
-    (criteria 175–196). Open, not yet merged. Milestone 3 had no detailed spec at all going in — only a
+- **Currently in flight**: nothing — **Milestone 3's first two stages are merged and live.**
+  - ✅ [PR #29](https://github.com/ribenajuice/five-crowns/pull/29) — **Milestone 3 Stage 1**, the records board
+    (criteria 175–196). **Shipped 2026-09-14.** Milestone 3 had no detailed spec at all going in — only a
     bullet-point sketch — so product-manager wrote the actual delivery plan, proposing a 4-stage breakdown
     (each stage ships the board rows its own numbers happen to compute, rather than building the board and
     the catalogue as two separate passes) and detailing Stage 1 at criterion level. **The founder overruled
@@ -50,23 +49,27 @@
     from Milestone 2 Stage 2. `/code-review high` then found real duplication worth closing before Stage 2
     compounded it (four near-identical ~90-line record-assembly blocks, a shared name comparator duplicated a
     fifth time, a streak-ownership map keyed by display name instead of player id — currently harmless but a
-    landmine) — all fixed. 1332 tests passing, lint and typecheck clean.
-  - **Milestone 3 Stage 2** — "Rivalry" (criteria 197–222). Built on `feat/m3-stage2` (stacked on Stage 1's
-    branch, since it builds directly on the board's code); not yet a PR. Head-to-head records, a "Nemesis"
-    card, per-roster win rates, streaks in context, and two more board records (the drought, the nearly man —
-    the board is now at seven). **The founder was shown five candidate titles for the nemesis card** (the one
-    stat that names a friend as another's problem) and picked the flat "Nemesis" default over four banter
-    options. Second place and winning margin are defined once here for the whole project — Stage 3's "biggest
-    hammering" will bind to this same function rather than re-deriving it. QA drove the real app end-to-end
-    across all 26 criteria and found no bugs in the feature itself, only closing three real test-coverage gaps
-    (the a11y suite had never visited a player page; the nemesis tie-break's "round before comparing" rule was
-    only tested with already-equal fractions; the nearly-man count had no hand-verified fixture test) — plus
-    an honest founder-facing finding: the board now needs scrolling on a phone to see all seven cards. A
-    security review found no blocking issues. `/code-review high` then found a real, untested display bug (3+
-    tied nemesis opponents rendered with the wrong joint-list grammar) and real query duplication (9 database
-    queries where 3 would do on a player-page load, independently corroborated by the security review) — both
-    fixed. 1428 tests passing, lint and typecheck clean.
-    **Next**: open the PR (Stage 1's PR should merge first, since Stage 2 is stacked on it).
+    landmine) — all fixed. 1332 tests passing, lint and typecheck clean. Merged and deployed; verified live:
+    `/`, `/games` and `/records/mostWins` all correctly 307 to `/login`.
+  - ✅ [PR #30](https://github.com/ribenajuice/five-crowns/pull/30) — **Milestone 3 Stage 2**, "Rivalry"
+    (criteria 197–222). **Shipped 2026-09-14.** Head-to-head records, a "Nemesis" card, per-roster win rates,
+    streaks in context, and two more board records (the drought, the nearly man — the board is now at seven).
+    **The founder was shown five candidate titles for the nemesis card** (the one stat that names a friend as
+    another's problem) and picked the flat "Nemesis" default over four banter options. Second place and
+    winning margin are defined once here for the whole project — Stage 3's "biggest hammering" will bind to
+    this same function rather than re-deriving it. QA drove the real app end-to-end across all 26 criteria and
+    found no bugs in the feature itself, only closing three real test-coverage gaps (the a11y suite had never
+    visited a player page; the nemesis tie-break's "round before comparing" rule was only tested with
+    already-equal fractions; the nearly-man count had no hand-verified fixture test) — plus an honest
+    founder-facing finding: the board now needs scrolling on a phone to see all seven cards. A security review
+    found no blocking issues. `/code-review high` then found a real, untested display bug (3+ tied nemesis
+    opponents rendered with the wrong joint-list grammar) and real query duplication (9 database queries where
+    3 would do on a player-page load, independently corroborated by the security review) — both fixed. 1428
+    tests passing, lint and typecheck clean. **Built stacked on Stage 1's branch** (it builds directly on the
+    board's code); once Stage 1 merged, this branch was rebased onto `main`, CI re-confirmed green against the
+    rebased state (the initial force-push didn't auto-retrigger a check run, so one was forced before merging
+    — never merge on a check run against a since-superseded commit), then merged and deployed. Verified live:
+    every rivalry route still correctly 307s to `/login`.
   - Milestone 3 Stage 3 is already specced ahead of time (Distributions and villains, criteria 223–249) but
     deliberately kept off any branch and off `docs/PRD.md` until its turn — parked as a patch at the session's
     scratchpad, ready to apply. Stage 4 is specced too (Place, time, and the filters, criteria 250–280), with
