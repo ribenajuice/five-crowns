@@ -20,6 +20,22 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
   10 games, a small note at the top of the board says so: "Early days — {n} games in the record. A
   single game can still change any of these." It disappears once the archive reaches 10 games.
 - **The games list and "add a game" are still one tap away** from the board.
+- **A player's own page now shows who they're rivals with.** A new "Head-to-head" section lists
+  every opponent they've ever shared a game with, most games together first — each row showing
+  games together, wins each, this player's win rate, and how often that opponent finishes above
+  them. Tap any row to see exactly those games.
+- **A "Nemesis" card names the opponent who most reliably finishes above them**, with the rate and
+  how many games it's based on. Nobody's crowned nemesis on a 0% record — an opponent you've never
+  once lost to isn't a nemesis, however few games you've shared.
+- **A "By roster" section shows a player's wins and win rate within each exact group of people
+  they've played with** — the same four people plus a fifth counts as a different group, with its
+  own numbers, separate from either group's overall record.
+- **Their longest-ever winning streak now sits next to its opposite, the drought** — the longest run
+  of games, one after another, without a win. A game they didn't play doesn't break the run or
+  extend it; only playing does.
+- **Two more records join the board: the drought and "the nearly man"** (most second-place
+  finishes). The board is now at seven records, and both new ones are tappable through to the exact
+  games behind them, the same as the rest.
 
 ## [Stage 9] - 2026-09-14
 
