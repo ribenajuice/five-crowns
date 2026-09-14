@@ -6,6 +6,11 @@
  * Same "stretched link" shape as `GameRow` — the whole row opens the game,
  * the roster name is a second, independently tappable `EntityLink` layered
  * on top (criterion 174).
+ *
+ * The winner marker is crown-plus-label-plus-colour, the same treatment
+ * `FinalRow` already uses (docs/DESIGN-SYSTEM.md § "Player page") — the crown
+ * is decorative (`aria-hidden`), so the literal " · Winner" text is what
+ * actually carries the signal to a screen reader or a colourblind reader.
  */
 
 import Link from "next/link";
@@ -69,6 +74,7 @@ export function PlayerGameRow({
       >
         {isWinner ? <CrownIcon className="text-success" /> : null}
         {finalScore}
+        {isWinner ? " · Winner" : ""}
       </p>
     </div>
   );

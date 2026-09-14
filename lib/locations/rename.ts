@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { location } from "@/lib/db/schema";
 import { nameKey } from "@/lib/draft/state";
+import { MAX_LOCATION_NAME_LENGTH } from "@/lib/ui/constants";
 
 export class LocationNotFoundError extends Error {
   override name = "LocationNotFoundError";
@@ -38,15 +39,25 @@ export interface LocationRenameResult {
 }
 
 /**
+ * Trim and cap at `MAX_LOCATION_NAME_LENGTH` (40), mirroring
+ * `normaliseRosterName` in `lib/rosters/rename.ts`. Unlike a roster, a
+ * location has no auto-name fallback, so an all-blank result is an error
+ * (see `EmptyLocationNameError`), never a silent clear.
+ */
+function normaliseLocationName(raw: string): string {
+  return raw.trim().slice(0, MAX_LOCATION_NAME_LENGTH).trim();
+}
+
+/**
  * @throws {LocationNotFoundError} if `id` doesn't name a real location.
- * @throws {EmptyLocationNameError} if the trimmed name is blank.
+ * @throws {EmptyLocationNameError} if the trimmed (and length-capped) name is blank.
  * @throws {LocationNameConflictError} if another location already has this
  *   `name_key` — refused, never merged (criterion 146).
  */
 export async function renameLocation(id: string, rawName: string): Promise<LocationRenameResult> {
   const db = getDb();
 
-  const trimmed = rawName.trim();
+  const trimmed = normaliseLocationName(rawName);
   if (trimmed.length === 0) throw new EmptyLocationNameError();
 
   const existing = (await db.select().from(location).where(eq(location.id, id)))[0];

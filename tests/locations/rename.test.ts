@@ -76,6 +76,28 @@ describe("renameLocation", () => {
     expect(other!.name).toBe("The pub");
   });
 
+  it("⚠️ QA regression (Stage 3 review, 2026-09-14): renameLocation has no server-side length cap — a 500-character name is accepted and stored verbatim", async () => {
+    // `renameRoster` caps at `MAX_ROSTER_NAME_LENGTH` (40, see
+    // `tests/rosters/rename.test.ts`'s "caps at 40 characters"), and the UI's
+    // own `MAX_LOCATION_NAME_LENGTH` constant (`lib/ui/constants.ts`) is 40
+    // too — but it is only ever wired up as the rename form's `maxLength`
+    // attribute (`components/PlaceRow.tsx`), never enforced here. Confirmed
+    // live against a running dev server via `PATCH /api/locations/{id}`: a
+    // 500-char name round-trips unchanged (200), a 1000-char name still
+    // succeeds, and only 1001+ trips the route's unrelated `z.string().max(1000)`
+    // request-body sanity bound with a generic 400. This test asserts the cap
+    // this codebase's own precedent (roster naming) says should exist here
+    // too; it is expected to fail until `renameLocation` trims and slices to
+    // `MAX_LOCATION_NAME_LENGTH`, mirroring `normaliseRosterName`.
+    const id = await makeLocation("The uncapped-name venue");
+    const { renameLocation } = await import("@/lib/locations/rename");
+    const { MAX_LOCATION_NAME_LENGTH } = await import("@/lib/ui/constants");
+
+    const long = "x".repeat(500);
+    const result = await renameLocation(id, long);
+    expect(result.name.length).toBeLessThanOrEqual(MAX_LOCATION_NAME_LENGTH);
+  });
+
   it("a rename is reflected wherever the location is used (games list / game view read the same row)", async () => {
     const { saveGame } = await import("@/lib/games/save");
     const { draftId, state } = await setUpDraft(SHEET_01, { newLocationName: "Old name" });
