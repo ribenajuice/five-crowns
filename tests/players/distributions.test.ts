@@ -187,6 +187,61 @@ describe("getPlayerDistributions — criteria 223, 225–226", () => {
     expect(selectCallCount).toBe(1);
   });
 
+  // QA gap found in Stage 3 review: criterion 248 names "the player page"
+  // among the screens whose query count must not grow with the archive, and
+  // criterion 221's own bounded-query proof (tests/players/rivalry.test.ts)
+  // only ever measured `getPlayerHeadToHead` — never `getPlayerDistributions`,
+  // Stage 3's own addition to that same page. This closes that gap the same
+  // way `tests/board/queries.test.ts` proves criterion 190.
+  describe("the query count does not grow with the archive (criterion 248)", () => {
+    async function countQueriesAt(playerGameCount: number): Promise<number> {
+      const players = await createPlayers(["Amy", "Bo"]);
+      const seedGame = createGameSeeder();
+      for (let i = 0; i < playerGameCount; i++) {
+        const day = String((i % 27) + 1).padStart(2, "0");
+        const month = String(Math.floor(i / 27) + 1).padStart(2, "0");
+        await seedGame({
+          playedOn: `2026-${month}-${day}`,
+          players: [
+            {
+              playerId: players["Amy"]!,
+              finalScore: 40 + i,
+              handScores: [
+                4 + i,
+                6,
+                5,
+                3,
+                4,
+                3,
+                2,
+                3,
+                4,
+                3,
+                40 + i - (4 + i + 6 + 5 + 3 + 4 + 3 + 2 + 3 + 4 + 3),
+              ],
+            },
+            { playerId: players["Bo"]!, finalScore: 90 + i },
+          ],
+        });
+      }
+
+      const { getPlayerDistributions } = await import("@/lib/players/distributions");
+      selectCallCount = 0;
+      await getPlayerDistributions(players["Amy"]!);
+      return selectCallCount;
+    }
+
+    it("issues the same number of queries at 10 of this player's games and at 60", async () => {
+      const queriesAt10 = await countQueriesAt(10);
+      await teardownTestDb();
+      await setupTestDb();
+      const queriesAt60 = await countQueriesAt(60);
+
+      expect(queriesAt10).toBeGreaterThan(0);
+      expect(queriesAt60).toBe(queriesAt10);
+    });
+  });
+
   it("nothing is cached — a delete is reflected on the very next call", async () => {
     const players = await createPlayers(["Amy", "Bo"]);
     const seedGame = createGameSeeder();

@@ -144,6 +144,17 @@ const BANNED_WORDS = [
   "double-check",
   "double check",
   "confirm the read",
+  // Criterion 192's own addition, restated for Stage 3 by criterion 246 and
+  // the 2026-09-14 ADR ("Row 11 is not self-cancelling"): a final score, an
+  // average or a record may never be called safe, protected or
+  // self-cancelling. QA gap found in Stage 3 review — the exhaustive scan
+  // above only ever checked the *checked/verified/confirmed* half of
+  // criterion 192's ban; nothing caught this half, so a future record's
+  // copy could say "safe" or "protected" with the whole suite still green.
+  "safe",
+  "protected",
+  "self-cancelling",
+  "self cancelling",
 ];
 
 function assertNoBannedWords(sentence: string) {

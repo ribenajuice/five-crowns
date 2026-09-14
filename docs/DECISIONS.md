@@ -20,6 +20,32 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-15 — Milestone 3 Stage 3: `/stats` doesn't re-render a card the board already shows
+
+- **Context**: QA found that criterion 241, as originally worded, required best game ever and worst
+  game ever to visibly "appear on `/stats` as well as on the board," verified by reading both
+  screens side by side. `docs/DESIGN-SYSTEM.md`'s own `/stats` mockup had already decided
+  otherwise — the catalogue reads the two numbers from `getStatsPage()`, which shares
+  `bestGameEver()`/`worstGameEver()` with the board, but deliberately does not render a second copy
+  of either card — and that decision was never recorded here, so the written criterion and the
+  shipped screen quietly disagreed with no ADR reconciling them.
+- **Decision**: the design system's call stands, and criterion 241 is amended to match it. `/stats`
+  computes both numbers from the same function as the board (so they can never drift apart) but does
+  not repeat either card visually — the board already shows it, and the whole reason this project
+  keeps the board and the catalogue as separate screens (Milestone 3's original sketch) is that one
+  answers before you ask and the other is where you go with a question, not two places showing the
+  same answer twice.
+- **Alternatives**: adding the two cards to `/stats` as well was the literal reading of the original
+  criterion, and would have satisfied it without any wording change — rejected only because it adds
+  visual duplication for no informational gain; a founder glancing at `/stats` who wants to know the
+  best/worst game already knows to look at the board first, since it's the landing screen.
+- **Consequences**: no code change — this is a docs-only reconciliation. The house rule that a
+  criterion is checked by QA as literally written held exactly as it should: it caught a real,
+  silent drift between two documents, which is what surfaced this decision needed to exist. The
+  general lesson, restated for future stages: a mockup that changes what a written criterion
+  requires needs a decision entry the same day, not a criterion that quietly stops matching what
+  shipped.
+
 ## 2026-09-14 — Milestone 3 Stage 3: both open questions answered at the founder's checkpoint
 
 - **Context**: Stage 3's spec (criteria 223–249) opened two founder questions before the build

@@ -767,3 +767,158 @@ test("audit: the player page's rivalry sections (M3 Stage 2)", async ({ page, ba
     });
   }
 });
+
+/**
+ * Milestone 3 Stage 3 — distributions and villains (PRD criterion 247:
+ * "npm run audit:a11y covers /stats and every new section", plus criterion
+ * 235's twelve-card board and criterion 194's colour-is-never-the-only-signal
+ * extended to the worst-hand marker). QA gap found in Stage 3 review: before
+ * this test, `/stats` had **zero** audit coverage of any kind — no navigation
+ * to it anywhere in this file — despite criterion 247's own text, and neither
+ * the player page's three new Stage 3 sections (average, eleven-hand
+ * profile, best/worst game) nor the roster page's two new ones (table
+ * average, per-member roster-scoped average) had ever been visited either.
+ *
+ * Saves two real games via the API (same pattern as the tests above), in a
+ * three-player roster with varied final scores and hand-by-hand scores, so
+ * every Stage 3 section has real, non-empty data: an average, an eleven-hand
+ * profile with a real worst hand, a best/worst game each, a roster table
+ * average, and at least one single-hand score to appear on `/stats`'
+ * disasters list.
+ */
+test("audit: /stats and the player/roster pages' Stage 3 sections", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  async function saveGame(playedOn: string, columns: string[], overrides: Record<number, number[]>) {
+    const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+    });
+    if (!uploadRes.ok()) {
+      throw new Error(`POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()}`);
+    }
+    const { photoId, original, model } = await uploadRes.json();
+
+    const fixtureBytes = await readFile(path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"));
+    for (const variant of [original, model]) {
+      const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+      await request.post(uploadUrl, {
+        multipart: {
+          ...variant.fields,
+          file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: fixtureBytes },
+        },
+      });
+    }
+
+    const draftState = {
+      version: 1,
+      photoId,
+      playedOn,
+      locationId: null,
+      newLocationName: null,
+      columns: columns.map((id, order) => ({
+        id,
+        order,
+        playerId: null,
+        newPlayerName: `Stats Audit ${id}`,
+        sheetName: null,
+        activeReadingId: null,
+        readings: [],
+        manualEdits: Object.fromEntries((overrides[order] ?? []).map((v, i) => [String(i), v])),
+        crop: null,
+      })),
+    };
+    const draftRes = await request.post(`${baseURL}/api/drafts`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { photoId, state: draftState },
+    });
+    if (!draftRes.ok()) {
+      throw new Error(`POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`);
+    }
+    const { draftId } = await draftRes.json();
+
+    const saveRes = await request.post(`${baseURL}/api/games`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { draftId, state: draftState },
+    });
+    if (!saveRes.ok()) {
+      throw new Error(`POST /api/games failed: ${saveRes.status()} ${await saveRes.text()}`);
+    }
+  }
+
+  // Two games, same three-player roster, varied running totals so every
+  // player has a distinct final score and a real (non-flat) hand profile —
+  // "Stats Audit s1" wins both, giving them a real best/worst game each and
+  // a genuine worst-hand mark rather than an eleven-way tie.
+  await saveGame("2026-02-01", ["s1", "s2", "s3"], {
+    0: [3, 8, 12, 17, 23, 30, 38, 47, 57, 68, 80],
+    1: [9, 18, 27, 36, 45, 54, 63, 72, 81, 90, 99],
+    2: [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105],
+  });
+  await saveGame("2026-02-08", ["s1", "s2", "s3"], {
+    0: [4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54],
+    1: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110],
+    2: [6, 16, 26, 36, 46, 56, 66, 76, 86, 96, 106],
+  });
+
+  // ---- `/stats`, the catalogue index (criteria 236–242, 247) ----
+  await page.goto("/stats");
+  await auditScreen(page, "/stats");
+  await expect(page.getByRole("heading", { name: "The eleven-hand trend" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hand-by-hand villains" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Biggest single-hand disasters" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Averages" })).toBeVisible();
+  await expect(page.getByText("These are derived from the running totals")).toBeVisible();
+
+  // ---- The records board at twelve cards (criteria 194, 235) ----
+  await page.goto("/");
+  await auditScreen(page, "/ (records board, twelve cards)");
+  for (const title of [
+    "Most wins",
+    "Most wins in a row",
+    "Lowest average score",
+    "Most rounds won",
+    "The stalwart",
+    "The drought",
+    "The nearly man",
+    "Best game ever",
+    "Worst game ever",
+    "The catastrophe",
+    "Cleanest sheet",
+    "Biggest hammering",
+  ]) {
+    await expect(
+      page.getByText(title, { exact: true }),
+      `criterion 235: expected the "${title}" card on the twelve-card board`,
+    ).toBeVisible();
+  }
+
+  // ---- The player page's three new Stage 3 sections (criteria 243, 247) ----
+  await page.goto("/players");
+  const playerLink = page.getByRole("link", { name: "Stats Audit s1" });
+  await expect(playerLink).toBeVisible();
+  const playerHref = await playerLink.getAttribute("href");
+  if (!playerHref) throw new Error("Stats Audit s1's own player page link was not found on /players");
+
+  await page.goto(playerHref);
+  await auditScreen(page, "/players/{id} (Stage 3 distributions sections)");
+  await expect(page.getByRole("heading", { name: "Average final score" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Eleven-hand profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best and worst game" })).toBeVisible();
+  await expect(page.getByText("Best game", { exact: true })).toBeVisible();
+  await expect(page.getByText("Worst game", { exact: true })).toBeVisible();
+
+  // ---- The roster page's two new Stage 3 additions (criteria 244, 247) ----
+  await page.goto("/rosters");
+  const rosterLink = page.locator('a[href^="/rosters/"]').first();
+  await expect(rosterLink).toBeVisible();
+  const rosterHref = await rosterLink.getAttribute("href");
+  if (!rosterHref) throw new Error("No roster link found on /rosters");
+
+  await page.goto(rosterHref);
+  await auditScreen(page, "/rosters/{id} (Stage 3 table average, per-member average)");
+  await expect(page.getByText("Table average", { exact: true })).toBeVisible();
+});

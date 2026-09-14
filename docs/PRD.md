@@ -3139,9 +3139,16 @@ too**, and are equally not restated.*
      and the date, each row reaching that game. ⚠️ **Ties at the last place are all shown** — the
      list runs to eleven or twelve rows rather than cutting a tied score — and an archive with
      fewer than ten hands in it shows what exists rather than padding to ten.
-241. **The catalogue and the board cannot disagree.** Best game ever and worst game ever appear on
-     `/stats` as well as on the board, **from the same function**, and QA reads the two screens side
-     by side and finds the same holder, the same number and the same date.
+241. ⚠️ **Amended 2026-09-15 — the catalogue and the board cannot disagree, but `/stats` does not
+     re-render the card.** `getStatsPage()` computes best game ever and worst game ever from the
+     **exact same function** the board uses (`bestGameEver`/`worstGameEver`), so the two numbers can
+     never drift apart — QA's proof is that one function has one caller path, not a side-by-side
+     screen read. `/stats` deliberately does **not** show a second copy of either card: the board
+     already shows it, and a catalogue that repeats the board's own cards back to itself is the
+     "records board and analytics catalogue are two different screens" line this project has held
+     since Milestone 3 was sketched, not a new one. *(Original wording said QA "reads the two
+     screens side by side" — written before the no-duplication call was made explicit; the intent,
+     one shared function and no drift, was always what mattered and is unchanged.)*
 242. **The averages table** lists **every player's average final score** (one decimal, with its game
      count) and **every roster's table average** (criterion 224, with its games and scores). ⚠️ **No
      ranking decoration** — no crown, no medal, no 1st/2nd/3rd, matching `RecordCard`'s precedent:

@@ -1,12 +1,42 @@
 /**
- * `listRosters` and `getRosterPage` — PRD criteria 137–139.
+ * `listRosters` and `getRosterPage` — PRD criteria 137–139, extended by M3
+ * Stage 3 with the roster's table average and each member's roster-scoped
+ * average (criterion 244) and its own bounded-query-count proof (criterion
+ * 248) — QA gap found in Stage 3 review: this file had **no** query-count
+ * instrumentation or proof at all before this, for either the pre-existing
+ * M2 roster page or Stage 3's own addition to it, despite criterion 248
+ * naming "the roster page" by name alongside `/stats` and the player page.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 import { createPlayers, setUpDraft } from "../helpers/draft";
+import { createGameSeeder } from "../helpers/board";
 import { SHEET_01, SHEET_02 } from "../fixtures/sheets";
+
+// Same query-count instrumentation as tests/board/queries.test.ts and
+// tests/players/rivalry.test.ts — a `Proxy` around `getDb()` counting every
+// `.select(...)` call, so a future per-member or per-game query in a loop
+// fails this file rather than shipping unnoticed.
+let selectCallCount = 0;
+
+vi.mock("@/lib/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db")>();
+  return {
+    ...actual,
+    getDb: () => {
+      const real = actual.getDb();
+      return new Proxy(real, {
+        get(target, prop, _receiver) {
+          if (prop === "select") selectCallCount++;
+          const value = Reflect.get(target as object, prop);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    },
+  };
+});
 
 beforeAll(async () => {
   process.env.CONFIG_SOURCE = "env";
@@ -221,5 +251,49 @@ describe("getRosterPage", () => {
     expect(page!.games).toHaveLength(1);
     expect(page!.games[0]!.locationName).toBe("The venue");
     expect(page!.games[0]!.winners).toEqual(["Player C"]);
+  });
+});
+
+describe("getRosterPage — the query count does not grow with the archive (criterion 248)", () => {
+  async function countQueriesAt(gameCount: number): Promise<number> {
+    const players = await createPlayers(["Amy", "Bo", "Cy", "Dee"]);
+    const seedGame = createGameSeeder();
+    for (let i = 0; i < gameCount; i++) {
+      const day = String((i % 27) + 1).padStart(2, "0");
+      const month = String(Math.floor(i / 27) + 1).padStart(2, "0");
+      await seedGame({
+        playedOn: `2026-${month}-${day}`,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 40 + i },
+          { playerId: players["Bo"]!, finalScore: 80 + i },
+          { playerId: players["Cy"]!, finalScore: 90 + i },
+          { playerId: players["Dee"]!, finalScore: 100 + i },
+        ],
+      });
+    }
+
+    // Every game above shares the same four-player roster (the seeder's own
+    // signature cache, `tests/helpers/board.ts`), so one lookup after the
+    // loop finds it — no need to resolve it on every iteration.
+    const { listRosters, getRosterPage } = await import("@/lib/rosters/queries");
+    const rosterId = (await listRosters())[0]!.id;
+
+    selectCallCount = 0;
+    const page = await getRosterPage(rosterId);
+    expect(page).not.toBeNull();
+    return selectCallCount;
+  }
+
+  it("issues the same number of queries at 10 games and at 60", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+    const queriesAt10 = await countQueriesAt(10);
+
+    await teardownTestDb();
+    await setupTestDb();
+    const queriesAt60 = await countQueriesAt(60);
+
+    expect(queriesAt10).toBeGreaterThan(0);
+    expect(queriesAt60).toBe(queriesAt10);
   });
 });
