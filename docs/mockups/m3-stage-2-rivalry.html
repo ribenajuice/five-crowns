@@ -1,0 +1,776 @@
+<!doctype html>
+<title>Rivalry Mockups</title>
+<style>
+  /* ---------- Tokens (docs/DESIGN-SYSTEM.md, copied verbatim) ---------- */
+  :root {
+    --bg: #faf3e7;
+    --surface: #fffdf8;
+    --sunk: #f2e9d8;
+    --line: #e0d5c0;
+    --text: #23201b;
+    --text-muted: #6b6257;
+    --brand: #17457a;
+    --on-brand: #fffdf8;
+    --accent: #c1462f;
+    --accent-ink: #9c3520;
+    --success: #1f6b45;
+    --warn: #8a5a00;
+    --error: #b3261e;
+    --success-soft: #e2efe7;
+    --warn-soft: #f7ebd4;
+    --error-soft: #fbe4e1;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f;
+      --surface: #211d17;
+      --sunk: #2b251d;
+      --line: #3a3328;
+      --text: #f3eada;
+      --text-muted: #b0a390;
+      --brand: #7fb3e8;
+      --on-brand: #17140f;
+      --accent: #f0906e;
+      --accent-ink: #f0906e;
+      --success: #7ccfa0;
+      --warn: #e5b45c;
+      --error: #ff8b7e;
+      --success-soft: #1d2c23;
+      --warn-soft: #2e2515;
+      --error-soft: #33191a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --sunk: #2b251d;
+    --line: #3a3328;
+    --text: #f3eada;
+    --text-muted: #b0a390;
+    --brand: #7fb3e8;
+    --on-brand: #17140f;
+    --accent: #f0906e;
+    --accent-ink: #f0906e;
+    --success: #7ccfa0;
+    --warn: #e5b45c;
+    --error: #ff8b7e;
+    --success-soft: #1d2c23;
+    --warn-soft: #2e2515;
+    --error-soft: #33191a;
+  }
+
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600&display=swap");
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .display { font-family: "Fraunces", Georgia, "Times New Roman", serif; }
+  .tabular { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  /* ---------- Mockup-only chrome (not part of the product) ---------- */
+  .mock-topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+  }
+  .mock-topbar-inner { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .mock-topbar a {
+    font-size: 13px; font-weight: 700; text-decoration: none; color: var(--brand);
+    padding: 10px 4px; border-radius: 8px;
+  }
+  .mock-brand { font-weight: 800; margin-right: 8px; font-size: 14px; }
+
+  .mock-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 96px; }
+  .mock-section { padding: 48px 0; border-top: 1px dashed var(--line); }
+  .mock-section:first-of-type { border-top: none; }
+  .mock-kicker {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--brand); background: var(--success-soft);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 10px;
+  }
+  .mock-h1 { font-size: 30px; margin: 0 0 6px; }
+  .mock-h2 { font-size: 24px; margin: 0 0 6px; }
+  .mock-lede { color: var(--text-muted); max-width: 72ch; margin: 0 0 20px; }
+  .mock-note {
+    background: var(--sunk); border-radius: var(--radius); padding: 12px 16px;
+    font-size: 13.5px; color: var(--text); margin: 16px 0;
+  }
+  .mock-note b { font-weight: 800; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  .chip-new { color: var(--success); background: var(--success-soft); border-color: transparent; }
+  .chip-open { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+  .chip-unchanged { color: var(--text-muted); background: var(--sunk); border-color: transparent; }
+
+  .frame-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame {
+    width: min(375px, 100%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 10px 30px -12px rgba(0,0,0,0.25);
+  }
+  .frame-label { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
+  .frame-wide { width: 100%; max-width: 720px; }
+  .frame-body { padding: 0 0 16px; }
+
+  /* ---------- Real app components, reproduced ---------- */
+  .appbar { border-bottom: 1px solid var(--line); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+  .appbar-back { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand); flex-shrink: 0; margin-left: -10px; }
+  .appbar h2 { font-size: 22px; margin: 0; font-weight: 700; }
+  .appbar .ctx { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+
+  .p-main { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { font-size: 17px; margin: 0 0 4px; font-weight: 700; }
+  .card .sample { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-block { background: var(--sunk); border-radius: var(--radius); padding: 10px 12px; }
+  .label-xs { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .num-lg { display: block; font-size: 26px; font-weight: 800; margin-top: 2px; }
+  .num-sm { font-size: 15px; font-weight: 800; }
+  .sample-caption { display: block; font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+
+  .ghost-btn {
+    display: flex; min-height: 44px; align-items: center; justify-content: center;
+    border: 1px solid var(--brand); color: var(--brand); border-radius: var(--radius);
+    font-weight: 700; font-size: 15px; text-decoration: none; width: 100%;
+  }
+  .primary-btn {
+    display: flex; min-height: 44px; align-items: center; justify-content: center;
+    background: var(--brand); color: var(--on-brand); border-radius: var(--radius);
+    font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; border: none;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row > * { flex: 1; }
+
+  .entity-link { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+  h4.section-heading { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+
+  /* head-to-head */
+  .hth-list { display: flex; flex-direction: column; gap: 10px; }
+  .hth-row { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; text-decoration: none; color: inherit; display: block; }
+  .hth-row:hover { border-color: var(--brand); }
+  .hth-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .hth-name { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 16px; color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+  .hth-together { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+  .hth-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .hth-mini .mv { text-align: left; }
+
+  /* by-roster */
+  .roster-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 10px 0; }
+  .roster-row:last-child { border-bottom: none; }
+  .roster-row .rname { flex: 1; min-width: 0; }
+  .roster-row .rname a { font-weight: 700; color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+  .roster-row .rsample { display: block; font-size: 12px; color: var(--text-muted); }
+  .roster-row .rstats { text-align: right; }
+  .roster-row .rstats .rate { display: block; font-weight: 800; font-family: ui-monospace, monospace; }
+  .roster-row .rstats .rwins { display: block; font-size: 12.5px; color: var(--text-muted); }
+
+  /* personal record cards (streak / drought) */
+  .personal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .personal-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; text-decoration: none; color: inherit; display: block; }
+  .personal-card .plabel { display: flex; justify-content: space-between; align-items: flex-start; }
+
+  /* nemesis */
+  .nemesis-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; display: block; position: relative; }
+  .nemesis-card .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .nemesis-card .who { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 18px; margin: 6px 0 4px; }
+  .nemesis-card .detail { font-size: 14px; color: var(--text); }
+
+  /* game row */
+  .game-row { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .game-row .gdate { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 15px; }
+  .game-row .gmeta { font-size: 13px; color: var(--text-muted); }
+  .game-row .gwin { margin-left: auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; }
+  .game-list { display: flex; flex-direction: column; gap: 8px; }
+
+  /* chevron */
+  .chev { flex-shrink: 0; color: var(--brand); margin-top: 2px; }
+
+  /* board */
+  .board-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .board-grid.wide { grid-template-columns: 1fr 1fr; }
+  .record-card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; }
+  .record-card:hover { border-color: var(--brand); }
+  .record-card .rc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .record-card .rc-holders { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 17px; margin: 6px 0 6px; line-height: 1.25; }
+  .record-card .rc-value { display: flex; align-items: baseline; gap: 6px; }
+  .record-card .rc-num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 800; }
+  .record-card .rc-unit { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .record-card .rc-sample { margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.35; }
+  .record-card.is-new { outline: 2px solid color-mix(in srgb, var(--success) 55%, transparent); outline-offset: -1px; }
+  .archive-line { background: var(--sunk); border-radius: var(--radius); padding: 12px 14px; font-size: 13.5px; color: var(--text-muted); }
+
+  .candidate-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 760px) { .candidate-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1060px) { .candidate-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .candidate-col { display: flex; flex-direction: column; gap: 10px; }
+  .candidate-col .cand-rationale { font-size: 13.5px; color: var(--text-muted); line-height: 1.4; }
+  .candidate-col .cand-label { font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  @media (min-width: 480px) {
+    .board-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<header class="mock-topbar">
+  <div class="mock-topbar-inner">
+    <span class="mock-brand display">Five Crowns Ledger — Stage 2 mockups</span>
+    <a href="#player-page">Player page</a>
+    <a href="#board">Records board</a>
+    <a href="#drill-through">Drill-through</a>
+    <a href="#nemesis">Nemesis options</a>
+  </div>
+</header>
+
+<main class="mock-main">
+  <section class="mock-section" id="intro">
+    <span class="mock-kicker">Milestone 3 · Stage 2 — Rivalry</span>
+    <h1 class="mock-h1 display">Rivalry: mockups for sign-off</h1>
+    <p class="mock-lede">
+      Every screen below reuses Stage 1's components and tokens exactly — no new colour, no new
+      type scale, no new shape. Data is realistic and invented (Player A–E, per the house rule on
+      mockups); it is chosen so the numbers on the player page, the by-roster section and the board
+      are internally consistent, the way QA will actually check them (criteria 205, 209, 210).
+      Chips mark what's new: <span class="chip chip-new">New this stage</span>
+      <span class="chip chip-unchanged">Unchanged from M2/Stage 1</span>
+      <span class="chip chip-open">Open — founder to pick</span>.
+    </p>
+  </section>
+
+  <!-- ============================= PLAYER PAGE ============================= -->
+  <section class="mock-section" id="player-page">
+    <span class="mock-kicker">Criteria 203–212</span>
+    <h2 class="mock-h2 display">The player page gains three sections</h2>
+    <p class="mock-lede">
+      Head-to-head, by-roster and streak-in-context all live on the existing player page — no new
+      route, no picker, no matrix. Shown here: <strong>Player C</strong>, 14 games played, 9 wins.
+      Nothing above the merge button changes — those three <code>StatBlock</code>s are M2's, untouched.
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">Player page · 375px</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div>
+                <h2 class="display">Player C</h2>
+              </div>
+            </div>
+            <div class="p-main">
+
+              <span class="chip chip-unchanged">Unchanged — M2</span>
+              <div class="stat-grid">
+                <div class="stat-block">
+                  <span class="label-xs">Games played</span>
+                  <span class="num-lg tabular">14</span>
+                </div>
+                <div class="stat-block">
+                  <span class="label-xs">Wins</span>
+                  <span class="num-lg tabular">9</span>
+                  <span class="sample-caption">9 of 14 games</span>
+                </div>
+                <div class="stat-block">
+                  <span class="label-xs">Win rate</span>
+                  <span class="num-lg tabular">64.3%</span>
+                  <span class="sample-caption">9 of 14 games</span>
+                </div>
+              </div>
+
+              <a class="ghost-btn" href="#">This is the same person as…</a>
+
+              <!-- Head to head -->
+              <div>
+                <span class="chip chip-new">New — criteria 203–206</span>
+                <h4 class="section-heading" style="margin-top:8px;">Head-to-head</h4>
+                <div class="hth-list">
+
+                  <a class="hth-row" href="#drill-through">
+                    <div class="hth-top">
+                      <span class="hth-name">Player B</span>
+                      <span class="hth-together">14 games together</span>
+                    </div>
+                    <div class="hth-mini">
+                      <div class="mv"><span class="label-xs">Wins</span><span class="num-sm tabular">9–6</span></div>
+                      <div class="mv"><span class="label-xs">My win rate</span><span class="num-sm tabular">64.3%</span></div>
+                      <div class="mv"><span class="label-xs">Above me</span><span class="num-sm tabular">35.7%</span></div>
+                    </div>
+                  </a>
+
+                  <a class="hth-row" href="#">
+                    <div class="hth-top">
+                      <span class="hth-name">Player A</span>
+                      <span class="hth-together">10 games together</span>
+                    </div>
+                    <div class="hth-mini">
+                      <div class="mv"><span class="label-xs">Wins</span><span class="num-sm tabular">7–4</span></div>
+                      <div class="mv"><span class="label-xs">My win rate</span><span class="num-sm tabular">70.0%</span></div>
+                      <div class="mv"><span class="label-xs">Above me</span><span class="num-sm tabular">30.0%</span></div>
+                    </div>
+                  </a>
+
+                  <a class="hth-row" href="#">
+                    <div class="hth-top">
+                      <span class="hth-name">Player D</span>
+                      <span class="hth-together">9 games together</span>
+                    </div>
+                    <div class="hth-mini">
+                      <div class="mv"><span class="label-xs">Wins</span><span class="num-sm tabular">5–5</span></div>
+                      <div class="mv"><span class="label-xs">My win rate</span><span class="num-sm tabular">55.6%</span></div>
+                      <div class="mv"><span class="label-xs">Above me</span><span class="num-sm tabular">44.4%</span></div>
+                    </div>
+                  </a>
+
+                  <a class="hth-row" href="#" style="border-color: var(--brand);">
+                    <div class="hth-top">
+                      <span class="hth-name">Player E</span>
+                      <span class="hth-together">9 games together</span>
+                    </div>
+                    <div class="hth-mini">
+                      <div class="mv"><span class="label-xs">Wins</span><span class="num-sm tabular">3–7</span></div>
+                      <div class="mv"><span class="label-xs">My win rate</span><span class="num-sm tabular">33.3%</span></div>
+                      <div class="mv"><span class="label-xs">Above me</span><span class="num-sm tabular" style="color:var(--brand)">66.7%</span></div>
+                    </div>
+                  </a>
+
+                </div>
+                <p class="sample" style="margin-top:8px;">Every player you've shared a game with, most games together first. Each row taps through to exactly the games both played.</p>
+              </div>
+
+              <!-- Nemesis -->
+              <div>
+                <span class="chip chip-open">Title &amp; framing — see options below</span>
+                <h4 class="section-heading" style="margin-top:8px;">Nemesis</h4>
+                <a class="nemesis-card" href="#nemesis" style="border-color: var(--brand);">
+                  <div class="top-row">
+                    <span class="label-xs">Nemesis</span>
+                    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                  </div>
+                  <p class="who display">Player E</p>
+                  <p class="detail">Finishes above you in 6 of your 9 games together (66.7%).</p>
+                </a>
+                <p class="sample" style="margin-top:8px;">Shown here with the flat "Nemesis" title so the section has something to sit in place of — the five candidate titles are compared side by side further down this page.</p>
+              </div>
+
+              <!-- By roster -->
+              <div>
+                <span class="chip chip-new">New — criteria 207–210</span>
+                <h4 class="section-heading" style="margin-top:8px;">By roster</h4>
+                <div class="card" style="padding:14px 16px;">
+                  <p class="sample" style="margin:0 0 6px;">This player's wins and win rate within each exact roster they've played in.</p>
+                  <div class="roster-row">
+                    <div class="rname">
+                      <a href="#">Player A, B, C &amp; E</a>
+                      <span class="rsample">5 games</span>
+                    </div>
+                    <div class="rstats">
+                      <span class="rate tabular">80.0%</span>
+                      <span class="rwins">4 of 5</span>
+                    </div>
+                  </div>
+                  <div class="roster-row">
+                    <div class="rname">
+                      <a href="#">Player A, B, C &amp; D</a>
+                      <span class="rsample">5 games</span>
+                    </div>
+                    <div class="rstats">
+                      <span class="rate tabular">60.0%</span>
+                      <span class="rwins">3 of 5</span>
+                    </div>
+                  </div>
+                  <div class="roster-row">
+                    <div class="rname">
+                      <a href="#">Player B, C, D &amp; E</a>
+                      <span class="rsample">4 games</span>
+                    </div>
+                    <div class="rstats">
+                      <span class="rate tabular">50.0%</span>
+                      <span class="rwins">2 of 4</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="sample" style="margin-top:8px;">5 + 5 + 4 = 14 games, 4 + 3 + 2 = 9 wins — exactly the headline numbers above (criterion 210's invariant).</p>
+              </div>
+
+              <!-- Streak in context -->
+              <div>
+                <span class="chip chip-new">New — criteria 211–212</span>
+                <h4 class="section-heading" style="margin-top:8px;">Streak, in context</h4>
+                <div class="personal-grid">
+                  <a class="personal-card" href="#">
+                    <div class="plabel">
+                      <span class="label-xs">Longest winning streak</span>
+                      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    </div>
+                    <span class="num-lg tabular">4</span>
+                    <span class="sample-caption">games in a row</span>
+                  </a>
+                  <a class="personal-card" href="#">
+                    <div class="plabel">
+                      <span class="label-xs">The drought</span>
+                      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    </div>
+                    <span class="num-lg tabular">3</span>
+                    <span class="sample-caption">games without a win</span>
+                  </a>
+                </div>
+                <p class="sample" style="margin-top:8px;">Same streak function (criterion 177) both ways — the drought is that machinery negated. Both are the longest ever recorded, not a current run, and both tap through to their games.</p>
+              </div>
+
+              <div>
+                <h4 class="section-heading">Player C's games</h4>
+                <div class="game-list">
+                  <div class="game-row">
+                    <div>
+                      <div class="gdate display">Sun 13 Sep 2026</div>
+                      <div class="gmeta">Riverside Hotel · <a class="entity-link" href="#">Sunday Crew</a></div>
+                    </div>
+                    <div class="gwin">137 · Winner</div>
+                  </div>
+                  <div class="game-row">
+                    <div>
+                      <div class="gdate display">Thu 28 Aug 2026</div>
+                      <div class="gmeta">Player D's Place · <a class="entity-link" href="#">Player A, B, C &amp; D</a></div>
+                    </div>
+                    <div class="gwin" style="color:var(--text-muted)">109</div>
+                  </div>
+                </div>
+                <p class="sample" style="margin-top:8px;">(games list continues — unchanged from M2)</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <b>Also checked at 1280px:</b> the player page keeps M2's existing 640px reading column,
+      centred with side gutters — the same container every other player/roster page already uses.
+      None of Stage 2's three new sections change that; nothing here is full-width or
+      desktop-specific.
+    </div>
+  </section>
+
+  <!-- ============================= BOARD ============================= -->
+  <section class="mock-section" id="board">
+    <span class="mock-kicker">Criteria 213–218</span>
+    <h2 class="mock-h2 display">The board: five records become seven</h2>
+    <p class="mock-lede">
+      Same <code>ArchiveLine</code>, same <code>BoardNav</code>, same flat <code>RecordCard</code> —
+      two more rows, outlined here in green so you can spot them; that outline is a mockup aid, not
+      real UI. Archive: 16 games recorded.
+    </p>
+
+    <p class="frame-label">Records board · 375px — the legibility question (criterion 218)</p>
+    <div class="frame-row" style="margin-bottom:28px;">
+      <div>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar"><h2 class="display">Five Crowns Ledger</h2></div>
+            <div class="p-main" style="gap:12px;">
+              <div class="archive-line">16 games in the record.</div>
+              <div class="btn-row">
+                <a class="ghost-btn" href="#">Games</a>
+                <a class="primary-btn" href="#">Add a game</a>
+              </div>
+              <div class="board-grid">
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most wins</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player C</p>
+                  <div class="rc-value"><span class="rc-num">9</span><span class="rc-unit">wins</span></div>
+                  <p class="rc-sample">from 14 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most wins in a row</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player A &amp; Player E</p>
+                  <div class="rc-value"><span class="rc-num">4</span><span class="rc-unit">games in a row</span></div>
+                  <p class="rc-sample">Player A — from 12 games · Player E — from 9 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Lowest average score</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player D</p>
+                  <div class="rc-value"><span class="rc-num">46.2</span><span class="rc-unit">avg. score</span></div>
+                  <p class="rc-sample">from 9 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most rounds won</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player B</p>
+                  <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">rounds</span></div>
+                  <p class="rc-sample">from 14 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">The stalwart</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player B</p>
+                  <div class="rc-value"><span class="rc-num">15</span><span class="rc-unit">games played</span></div>
+                </a>
+
+                <a class="record-card is-new" href="#drill-through">
+                  <div class="rc-top"><span class="label-xs">The drought</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player E</p>
+                  <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">games</span></div>
+                  <p class="rc-sample">from 9 games</p>
+                </a>
+
+                <a class="record-card is-new" href="#drill-through">
+                  <div class="rc-top"><span class="label-xs">The nearly man</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player A</p>
+                  <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">second places</span></div>
+                  <p class="rc-sample">from 12 games</p>
+                </a>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <b>QA finding to expect, flagged in advance (criterion 218):</b> seven cards at 375px is
+      roughly one and a half phone screens of scrolling before "the nearly man" is visible — the
+      five-second read still holds for the founder's original four plus the stalwart, but the two
+      newest records are below the fold on a phone. That's a finding for you to react to, not
+      something we've pre-emptively cut — the fix, if you want one, is a one-line reorder or a
+      deletion, never a redesign.
+    </div>
+
+    <p class="frame-label" style="margin-top:24px;">Same seven cards, wider viewport (criterion 194: same grid, 2 columns from ~480px up)</p>
+    <div class="board-grid wide">
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most wins</span></div>
+        <p class="rc-holders">Player C</p>
+        <div class="rc-value"><span class="rc-num">9</span><span class="rc-unit">wins</span></div>
+        <p class="rc-sample">from 14 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most wins in a row</span></div>
+        <p class="rc-holders">Player A &amp; Player E</p>
+        <div class="rc-value"><span class="rc-num">4</span><span class="rc-unit">games in a row</span></div>
+        <p class="rc-sample">Player A — from 12 games · Player E — from 9 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Lowest average score</span></div>
+        <p class="rc-holders">Player D</p>
+        <div class="rc-value"><span class="rc-num">46.2</span><span class="rc-unit">avg. score</span></div>
+        <p class="rc-sample">from 9 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most rounds won</span></div>
+        <p class="rc-holders">Player B</p>
+        <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">rounds</span></div>
+        <p class="rc-sample">from 14 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The stalwart</span></div>
+        <p class="rc-holders">Player B</p>
+        <div class="rc-value"><span class="rc-num">15</span><span class="rc-unit">games played</span></div>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The drought</span></div>
+        <p class="rc-holders">Player E</p>
+        <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">games</span></div>
+        <p class="rc-sample">from 9 games</p>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The nearly man</span></div>
+        <p class="rc-holders">Player A</p>
+        <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">second places</span></div>
+        <p class="rc-sample">from 12 games</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= DRILL-THROUGH ============================= -->
+  <section class="mock-section" id="drill-through">
+    <span class="mock-kicker">Criterion 216 (drill-through reuses criterion 186)</span>
+    <h2 class="mock-h2 display">Drill-through: "The nearly man"</h2>
+    <p class="mock-lede">
+      Tapping the new board record lands on exactly the games Player A came second in — the same
+      unmodified <code>GameRow</code> list Stage 1 already established, newest first, nothing
+      record-specific added (unlike "most rounds won," this claim doesn't need a per-row
+      annotation). The head-to-head rows on the player page drill through the same way, to exactly
+      the games both players shared (criterion 204) — same pattern, not shown twice here.
+    </p>
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">375px</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div>
+                <h2 class="display">The nearly man — Player A</h2>
+                <p class="ctx">5 second places · from 12 games</p>
+              </div>
+            </div>
+            <div class="p-main">
+              <div class="game-list">
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Sun 13 Sep 2026</div>
+                    <div class="gmeta">Riverside Hotel · <a class="entity-link" href="#">Sunday Crew</a></div>
+                  </div>
+                  <div class="gwin">Player C</div>
+                </div>
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Thu 28 Aug 2026</div>
+                    <div class="gmeta">Player D's Place · <a class="entity-link" href="#">Player A, B, C &amp; D</a></div>
+                  </div>
+                  <div class="gwin">Player D</div>
+                </div>
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Sat 15 Aug 2026</div>
+                    <div class="gmeta">The Deck · <a class="entity-link" href="#">Sunday Crew</a></div>
+                  </div>
+                  <div class="gwin">Player B</div>
+                </div>
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Fri 1 Aug 2026</div>
+                    <div class="gmeta">No location · <a class="entity-link" href="#">Player A, B, C, D &amp; E</a></div>
+                  </div>
+                  <div class="gwin">Player C &amp; Player E — shared</div>
+                </div>
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Sun 12 Jul 2026</div>
+                    <div class="gmeta">Player C's Place · <a class="entity-link" href="#">Player A, B, C &amp; E</a></div>
+                  </div>
+                  <div class="gwin">Player E</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= NEMESIS ============================= -->
+  <section class="mock-section" id="nemesis">
+    <span class="mock-kicker">Criteria 199–202, open question 10</span>
+    <h2 class="mock-h2 display">Nemesis: five candidates, side by side</h2>
+    <p class="mock-lede">
+      Open question 10 asked to see options, not have the team pick blind. All five below use the
+      identical, real numbers — Player E finishes above Player C in 6 of their 9 shared games
+      (66.7%) — so only the <em>title</em> and the <em>framing sentence</em> change. Each one passes
+      the mechanical test in criterion 202: printable with both Player C and Player E reading it
+      over each shoulder. None calls either player weak, dominated, owned, hopeless or a walkover;
+      none says a player can't or never will win; none tells anyone what to do about it.
+    </p>
+
+    <div class="candidate-grid">
+
+      <div class="candidate-col">
+        <span class="cand-label">1 · Nemesis</span>
+        <a class="nemesis-card" href="#" style="pointer-events:none;">
+          <div class="top-row">
+            <span class="label-xs">Nemesis</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="who display">Player E</p>
+          <p class="detail">Finishes above you in 6 of your 9 games together (66.7%).</p>
+        </a>
+        <p class="cand-rationale">The founder's own word, from the analytics catalogue — kept
+        completely flat. The safe default if none of the banter options feel right for this
+        screen.</p>
+      </div>
+
+      <div class="candidate-col">
+        <span class="cand-label">2 · The upper hand</span>
+        <a class="nemesis-card" href="#" style="pointer-events:none;">
+          <div class="top-row">
+            <span class="label-xs">The upper hand</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="who display">Player E has it</p>
+          <p class="detail">Above you in 6 of your 9 games together (66.7%).</p>
+        </a>
+        <p class="cand-rationale">Names what the number actually is — one player getting the
+        better of another on a given night — without characterising either of them. Mild banter.</p>
+      </div>
+
+      <div class="candidate-col">
+        <span class="cand-label">3 · The regular</span>
+        <a class="nemesis-card" href="#" style="pointer-events:none;">
+          <div class="top-row">
+            <span class="label-xs">The regular</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="who display">Player E</p>
+          <p class="detail">Finishes above you more often than anyone else you've played — 6 of 9 games (66.7%).</p>
+        </a>
+        <p class="cand-rationale">Dry, understated — reads like a running joke at the table rather
+        than a verdict about the games. Closest in tone to the rest of the board's titles.</p>
+      </div>
+
+      <div class="candidate-col">
+        <span class="cand-label">4 · Bogeyman</span>
+        <a class="nemesis-card" href="#" style="pointer-events:none;">
+          <div class="top-row">
+            <span class="label-xs">Bogeyman</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="who display">Player E</p>
+          <p class="detail">The one who finishes above you most often — 6 of your 9 games together (66.7%).</p>
+        </a>
+        <p class="cand-rationale">Leans furthest into banter of the five — playful, a little
+        theatrical. Still strictly about the number, but it's the one we'd flag as worth a second
+        look if you want the tone kept gentler.</p>
+      </div>
+
+      <div class="candidate-col">
+        <span class="cand-label">5 · Frequent flyer</span>
+        <a class="nemesis-card" href="#" style="pointer-events:none;">
+          <div class="top-row">
+            <span class="label-xs">Frequent flyer</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="who display">Player E</p>
+          <p class="detail">Finishes above you more than anyone else — 6 of 9 games together (66.7%).</p>
+        </a>
+        <p class="cand-rationale">A lighter pun on "flying above" you in the standings — banter
+        with no edge at all. Closest to a safe, everyone-laughs choice.</p>
+      </div>
+
+    </div>
+
+    <div class="mock-note">
+      <b>Not shown as a sixth card, but worth knowing:</b> where nobody has ever finished above a
+      player (criterion 201), the card reuses the board's own no-holder sentence verbatim —
+      <em>"Nobody's done this yet."</em> — rather than new copy. That part isn't in question; only
+      the five titles above are.
+    </div>
+  </section>
+</main>
