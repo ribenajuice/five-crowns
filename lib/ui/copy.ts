@@ -8,8 +8,21 @@
  * these sentences renders it the same way.
  */
 
-import { HANDS_PER_GAME, handLabel, rosterDisplayName, type GridValidation } from "@/lib/scoring";
-import type { BoardRecord, BoardRecordKey } from "@/lib/board/queries";
+import {
+  HANDS_PER_GAME,
+  compareDisplayNames,
+  handLabel,
+  rosterDisplayName,
+  type GridValidation,
+  type HandLabel,
+} from "@/lib/scoring";
+import type {
+  BoardRecord,
+  BoardRecordKey,
+  SingleEventBoardRecord,
+  SingleEventHolder,
+  SingleEventRecordKey,
+} from "@/lib/board/queries";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -990,3 +1003,238 @@ export const PERSONAL_RECORD_STREAK_TITLE = "Longest winning streak";
 export const PERSONAL_RECORD_DROUGHT_TITLE = "The drought";
 export const PERSONAL_RECORD_STREAK_UNIT = "games in a row";
 export const PERSONAL_RECORD_DROUGHT_UNIT = "games without a win";
+
+/* ------------------------------------ Milestone 3 Stage 3: distributions and villains */
+
+/**
+ * "Sat 5 Sep 2026" — the one date format every single-event record, disaster
+ * row and personal best/worst game caption uses (docs/DESIGN-SYSTEM.md's own
+ * mockup examples). `GameRow`/`PlayerGameRow`/`RosterGameRow` each keep their
+ * own private copy of this same format; this one is exported because
+ * `lib/ui/copy.ts` itself needs to embed a formatted date inside a fixed
+ * sentence (a sample line, an instance row, an `aria-label` claim) rather than
+ * just a component's own JSX.
+ */
+export function formatRecordDate(iso: string): string {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Record titles, verbatim — the five records the board gains this stage (criteria 228–232). */
+export const SINGLE_EVENT_RECORD_TITLES: Record<SingleEventRecordKey, string> = {
+  bestGameEver: "Best game ever",
+  worstGameEver: "Worst game ever",
+  catastrophe: "The catastrophe",
+  cleanestSheet: "Cleanest sheet",
+  biggestHammering: "Biggest hammering",
+};
+
+/** Record units, verbatim — beside the number, same `--num-lg` treatment as the other seven cards. */
+export const SINGLE_EVENT_RECORD_UNITS: Record<SingleEventRecordKey, string> = {
+  bestGameEver: "final score",
+  worstGameEver: "final score",
+  catastrophe: "points in one hand",
+  cleanestSheet: "zero-point hands",
+  biggestHammering: "point margin",
+};
+
+/** Single-event sample line, one instance — verbatim, criterion 233: "on {date}", never "from {n} games". */
+export function singleEventSampleLine(playedOn: string): string {
+  return `on ${formatRecordDate(playedOn)}`;
+}
+/** The catastrophe's own one-instance sample line, verbatim: "{hand} · {date}" — it names the hand even with one holder (criterion 230). */
+export function catastropheSampleLine(hand: HandLabel, playedOn: string): string {
+  return `${hand} · ${formatRecordDate(playedOn)}`;
+}
+/** Single-event instance row, plain (best/worst game ever, cleanest sheet, biggest hammering), verbatim: "{Holder(s)} — {date}". */
+export function singleEventInstanceRow(holderNames: string, playedOn: string): string {
+  return `${holderNames} — ${formatRecordDate(playedOn)}`;
+}
+/** Single-event instance row, the catastrophe, verbatim: "{Holder} — {hand} · {date}". */
+export function catastropheInstanceRow(holderNames: string, hand: HandLabel, playedOn: string): string {
+  return `${holderNames} — ${catastropheSampleLine(hand, playedOn)}`;
+}
+
+/** One (deduplicated-by-game[, hand]) row behind a single-event record's card or drill-through. */
+interface SingleEventInstanceGroup {
+  /** One holder's name, or a criterion-181 joint name when more than one holder shares this game (and, for the catastrophe, this hand) — biggest hammering's own documented case (component inventory, `RecordCard` — instance list). */
+  label: string;
+  playedOn: string;
+  hand?: HandLabel;
+}
+
+/**
+ * Groups a single-event record's raw `holders` (one row per (player,
+ * game[, hand]) instance — never deduplicated by player) into one row per
+ * **event**: two holders sharing the same game (and, for the catastrophe, the
+ * same hand) become one row with a joint name, exactly as a shared aggregate
+ * win already renders. Rows order alphabetically by the (possibly joint)
+ * name, then by date (component inventory, `RecordCard` — instance list:
+ * "never a ranking of the instances").
+ */
+function groupSingleEventHolders(holders: readonly SingleEventHolder[]): SingleEventInstanceGroup[] {
+  const byKey = new Map<string, { displayNames: string[]; playedOn: string; hand?: HandLabel }>();
+  for (const h of holders) {
+    const key = `${h.gameId}::${h.hand ?? ""}`;
+    const existing = byKey.get(key);
+    if (existing) existing.displayNames.push(h.displayName);
+    else byKey.set(key, { displayNames: [h.displayName], playedOn: h.playedOn, hand: h.hand });
+  }
+  return [...byKey.values()]
+    .map((g) => ({ label: rosterDisplayName(g.displayNames), playedOn: g.playedOn, hand: g.hand }))
+    .sort(
+      (a, b) =>
+        compareDisplayNames(a.label, b.label) || (a.playedOn < b.playedOn ? -1 : a.playedOn > b.playedOn ? 1 : 0),
+    );
+}
+
+/** One row in a tied `RecordCard`'s stacked instance list — name and date/hand·date, rendered as two separate spans (`RecordInstanceRow`). */
+export interface SingleEventInstance {
+  label: string;
+  date: string;
+}
+
+export interface SingleEventDisplayFacts {
+  title: string;
+  unit: string;
+  value: string;
+  /** Every unique holder's name, alphabetical — used for headings (drill-through, criterion 186's pattern) whether or not the record is tied. */
+  holderNames: string;
+  /** The one-instance sample line ("on {date}" / "{hand} · {date}") — `null` when the record is tied (`instances` below is populated instead). */
+  sample: string | null;
+  /** The stacked instance-row list (criteria 228, 230–231) — `null` for the ordinary one-instance case. */
+  instances: SingleEventInstance[] | null;
+  /** The claim, stated in full, for the card/drill-through's own `aria-label` or context line. */
+  claim: string;
+}
+
+/**
+ * A `SingleEventBoardRecord`'s display facts — the single-event counterpart
+ * to `recordDisplayFacts` above, built the same way so the board, its
+ * drill-through and `/stats` (criterion 241) can never independently drift on
+ * what one of these five cards says.
+ *
+ * `null` when the record has no holder (criterion 185's rule, extended here —
+ * unreachable over a non-empty archive, same as every one of Stage 1's five).
+ */
+export function singleEventDisplayFacts(
+  record: Pick<SingleEventBoardRecord, "key" | "value" | "holders">,
+): SingleEventDisplayFacts | null {
+  if (record.value === null || record.holders.length === 0) return null;
+
+  const title = SINGLE_EVENT_RECORD_TITLES[record.key];
+  const unit = SINGLE_EVENT_RECORD_UNITS[record.key];
+  const value = String(record.value);
+  const holderNames = rosterDisplayName([...new Set(record.holders.map((h) => h.displayName))]);
+  const rows = groupSingleEventHolders(record.holders);
+
+  function rowSentence(row: SingleEventInstanceGroup): string {
+    return row.hand
+      ? catastropheInstanceRow(row.label, row.hand, row.playedOn)
+      : singleEventInstanceRow(row.label, row.playedOn);
+  }
+
+  if (rows.length === 1) {
+    const row = rows[0]!;
+    const sample = row.hand
+      ? catastropheSampleLine(row.hand, row.playedOn)
+      : singleEventSampleLine(row.playedOn);
+    return {
+      title,
+      unit,
+      value,
+      holderNames,
+      sample,
+      instances: null,
+      claim: `${title}: ${row.label}, ${value} ${unit}, ${sample}`,
+    };
+  }
+
+  const instances: SingleEventInstance[] = rows.map((row) => ({
+    label: row.label,
+    date: row.hand ? catastropheSampleLine(row.hand, row.playedOn) : formatRecordDate(row.playedOn),
+  }));
+  const claim = `${title}: ${value} ${unit}. ${rows.map(rowSentence).join("; ")}`;
+
+  return { title, unit, value, holderNames, sample: null, instances, claim };
+}
+
+/**
+ * A single-event drill-through row's own annotation (criterion 234: "that
+ * instance's own number — the score, the count, the margin, the single-hand
+ * score with its hand"), reusing `GameRow`'s existing `annotation` slot — the
+ * same "plain, unmodified `GameRow`" convention Stage 1's rounds-won and
+ * streak-holder annotations already established, rather than a bespoke
+ * right-hand-column layout.
+ */
+export function singleEventGameAnnotation(key: SingleEventRecordKey, value: number, hand?: HandLabel): string {
+  const unit = SINGLE_EVENT_RECORD_UNITS[key];
+  return hand ? `${value} ${unit} · ${hand}` : `${value} ${unit}`;
+}
+
+/** `StatsNavLink` — criterion 236, board and games list. */
+export const STATS_NAV_LINK_LABEL = "See all the stats";
+
+/** `/stats` — the catalogue index (criteria 236–242). */
+export const STATS_APPBAR_TITLE = "Stats";
+export const STATS_BACK_LABEL = "Back to the board";
+/** Not in the fixed-strings table (an empty archive here is only reachable
+ *  defensively — `/games/new` is the only way into this app's data at all,
+ *  same "no games yet" voice `BOARD_EMPTY_TITLE` already uses). */
+export const STATS_EMPTY_TITLE = "No games yet.";
+export const STATS_EMPTY_BODY = "Once you save a game, the stats will show up here.";
+
+export const HAND_TREND_HEADING = "The eleven-hand trend";
+/** Criterion 237's own sample statement — the games, the players and the hand-scores behind it, stated once. */
+export function handTrendSampleLine(gameCount: number, handScoreCount: number): string {
+  return `Average points scored on each hand, across every player and every one of the ${gameCount} ${gamesNoun(
+    gameCount,
+  )} in the record (${handScoreCount} individual hands).`;
+}
+/** Verbatim, criterion 238 — states what the numbers are made of, never that they've been checked. */
+export const HAND_DERIVATION_HONESTY_LINE =
+  "These are derived from the running totals — one misread total moves the two hands either side of it in opposite directions.";
+
+export const PLAYER_HAND_PROFILE_HEADING = "Eleven-hand profile";
+export function playerHandProfileSampleLine(gamesPlayed: number): string {
+  return `Average points on each hand, from ${gamesPlayed} ${gamesNoun(gamesPlayed)}. Worst hand marked.`;
+}
+
+export const VILLAINS_HEADING = "Hand-by-hand villains";
+export const VILLAINS_SAMPLE_LINE =
+  "Average points per hand, every player. Each player's own worst hand is marked.";
+/** Villains table, per-row sample caption — "from {n} games" under each player's own name. */
+export function villainsRowSampleCaption(gamesPlayed: number): string {
+  return `from ${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
+}
+
+export const DISASTERS_HEADING = "Biggest single-hand disasters";
+export const DISASTERS_SAMPLE_LINE = "The ten biggest single-hand scores ever recorded.";
+
+export const AVERAGES_HEADING = "Averages";
+export const AVERAGES_PLAYERS_SUBHEADING = "Players";
+export const AVERAGES_ROSTERS_SUBHEADING = "Rosters";
+/** "{n} games" — a player's own sample caption in `/stats`' averages table. */
+export function playerAverageSampleCaption(gamesPlayed: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
+}
+/** "{games} games · {scores} scores" — criterion 224's dual sample, reused by both `/stats`' rosters list and the roster page's own table average. */
+export function rosterAverageSampleCaption(gamesPlayed: number, scoresCount: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)} · ${scoresCount} ${scoresCount === 1 ? "score" : "scores"}`;
+}
+
+/** Player page (criterion 243). */
+export const PLAYER_AVERAGE_FINAL_SCORE_LABEL = "Average final score";
+export const PLAYER_BEST_WORST_GAME_HEADING = "Best and worst game";
+export const PERSONAL_GAME_CARD_BEST_LABEL = "Best game";
+export const PERSONAL_GAME_CARD_WORST_LABEL = "Worst game";
+
+/** Roster page (criterion 244). */
+export const ROSTER_TABLE_AVERAGE_LABEL = "Table average";
+export const ROSTER_MEMBER_AVERAGE_LABEL = "avg";

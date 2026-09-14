@@ -108,6 +108,23 @@ import {
   headToHeadTogetherCaption,
   nemesisDetailSentence,
 } from "@/lib/ui/copy";
+import {
+  HAND_DERIVATION_HONESTY_LINE,
+  SINGLE_EVENT_RECORD_TITLES,
+  SINGLE_EVENT_RECORD_UNITS,
+  catastropheInstanceRow,
+  catastropheSampleLine,
+  formatRecordDate,
+  handTrendSampleLine,
+  playerAverageSampleCaption,
+  playerHandProfileSampleLine,
+  rosterAverageSampleCaption,
+  singleEventDisplayFacts,
+  singleEventGameAnnotation,
+  singleEventInstanceRow,
+  singleEventSampleLine,
+  villainsRowSampleCaption,
+} from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
   "checked",
@@ -127,6 +144,17 @@ const BANNED_WORDS = [
   "double-check",
   "double check",
   "confirm the read",
+  // Criterion 192's own addition, restated for Stage 3 by criterion 246 and
+  // the 2026-09-14 ADR ("Row 11 is not self-cancelling"): a final score, an
+  // average or a record may never be called safe, protected or
+  // self-cancelling. QA gap found in Stage 3 review — the exhaustive scan
+  // above only ever checked the *checked/verified/confirmed* half of
+  // criterion 192's ban; nothing caught this half, so a future record's
+  // copy could say "safe" or "protected" with the whole suite still green.
+  "safe",
+  "protected",
+  "self-cancelling",
+  "self cancelling",
 ];
 
 function assertNoBannedWords(sentence: string) {
@@ -758,5 +786,166 @@ describe("Milestone 3 Stage 2 (rivalry) — fixed strings", () => {
         expect(sentence.toLowerCase()).not.toContain(word);
       }
     });
+  });
+});
+
+describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", () => {
+  it("single-event record titles and units match the design system's fixed-strings table verbatim", () => {
+    expect(SINGLE_EVENT_RECORD_TITLES.bestGameEver).toBe("Best game ever");
+    expect(SINGLE_EVENT_RECORD_TITLES.worstGameEver).toBe("Worst game ever");
+    expect(SINGLE_EVENT_RECORD_TITLES.catastrophe).toBe("The catastrophe");
+    expect(SINGLE_EVENT_RECORD_TITLES.cleanestSheet).toBe("Cleanest sheet");
+    expect(SINGLE_EVENT_RECORD_TITLES.biggestHammering).toBe("Biggest hammering");
+
+    expect(SINGLE_EVENT_RECORD_UNITS.bestGameEver).toBe("final score");
+    expect(SINGLE_EVENT_RECORD_UNITS.worstGameEver).toBe("final score");
+    expect(SINGLE_EVENT_RECORD_UNITS.catastrophe).toBe("points in one hand");
+    expect(SINGLE_EVENT_RECORD_UNITS.cleanestSheet).toBe("zero-point hands");
+    expect(SINGLE_EVENT_RECORD_UNITS.biggestHammering).toBe("point margin");
+  });
+
+  it("⚠️ criterion 233: singleEventSampleLine is 'on {date}', never a game count", () => {
+    expect(singleEventSampleLine("2026-09-05")).toMatch(/^on /);
+    expect(singleEventSampleLine("2026-09-05")).not.toContain("from");
+    expect(singleEventSampleLine("2026-09-05")).not.toContain("game");
+  });
+
+  it("the catastrophe's one-instance sample line names the hand: '{hand} · {date}'", () => {
+    const sample = catastropheSampleLine("Kings", "2026-09-05");
+    expect(sample.startsWith("Kings · ")).toBe(true);
+    assertNoBannedWords(sample);
+  });
+
+  it("singleEventInstanceRow / catastropheInstanceRow are the verbatim '{Holder(s)} — {date}' templates", () => {
+    expect(singleEventInstanceRow("Player A", "2026-08-28")).toMatch(/^Player A — /);
+    expect(catastropheInstanceRow("Player E", "Kings", "2026-09-05")).toMatch(/^Player E — Kings · /);
+  });
+
+  it("formatRecordDate falls back to the raw string on an unparseable date", () => {
+    expect(formatRecordDate("not-a-date")).toBe("not-a-date");
+  });
+
+  describe("singleEventDisplayFacts", () => {
+    it("returns null for a record with no holder", () => {
+      expect(singleEventDisplayFacts({ key: "worstGameEver", value: null, holders: [] })).toBeNull();
+    });
+
+    it("a single instance renders the ordinary holder + date-sample shape", () => {
+      const facts = singleEventDisplayFacts({
+        key: "worstGameEver",
+        value: 178,
+        holders: [{ playerId: "p2", displayName: "Player B", gameId: "g1", playedOn: "2026-09-05" }],
+      });
+      expect(facts).not.toBeNull();
+      expect(facts!.title).toBe("Worst game ever");
+      expect(facts!.unit).toBe("final score");
+      expect(facts!.value).toBe("178");
+      expect(facts!.holderNames).toBe("Player B");
+      expect(facts!.sample).toMatch(/^on /);
+      expect(facts!.instances).toBeNull();
+      expect(facts!.claim).toContain("Player B");
+      expect(facts!.claim).toContain("178");
+      assertNoBannedWords(facts!.claim);
+    });
+
+    it("⚠️ a tie (two different games) renders the instance-list shape, alphabetical by player", () => {
+      const facts = singleEventDisplayFacts({
+        key: "bestGameEver",
+        value: 28,
+        holders: [
+          { playerId: "p4", displayName: "Player D", gameId: "g2", playedOn: "2026-07-12" },
+          { playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2026-08-28" },
+        ],
+      });
+      expect(facts).not.toBeNull();
+      expect(facts!.sample).toBeNull();
+      expect(facts!.instances).toHaveLength(2);
+      expect(facts!.instances![0]!.label).toBe("Player A");
+      expect(facts!.instances![1]!.label).toBe("Player D");
+      expect(facts!.claim).toContain("Player A");
+      expect(facts!.claim).toContain("Player D");
+    });
+
+    it("⚠️ the same player twice, in two different games, is two instances, not one", () => {
+      const facts = singleEventDisplayFacts({
+        key: "bestGameEver",
+        value: 40,
+        holders: [
+          { playerId: "p1", displayName: "Amy", gameId: "g1", playedOn: "2026-02-01" },
+          { playerId: "p1", displayName: "Amy", gameId: "g2", playedOn: "2026-02-08" },
+        ],
+      });
+      expect(facts!.instances).toHaveLength(2);
+      expect(facts!.instances!.every((i) => i.label === "Amy")).toBe(true);
+      expect(facts!.instances![0]!.date).not.toBe(facts!.instances![1]!.date);
+    });
+
+    it("⚠️ criterion 230: the same player twice, on two different hands in the same game, is two instances", () => {
+      const facts = singleEventDisplayFacts({
+        key: "catastrophe",
+        value: 41,
+        holders: [
+          { playerId: "p1", displayName: "Player E", gameId: "g1", playedOn: "2026-09-05", hand: "Kings" },
+          { playerId: "p1", displayName: "Player E", gameId: "g1", playedOn: "2026-09-05", hand: "9s" },
+        ],
+      });
+      expect(facts!.instances).toHaveLength(2);
+      expect(facts!.instances!.map((i) => i.date).sort()).toEqual(
+        ["9s · " + formatRecordDate("2026-09-05"), "Kings · " + formatRecordDate("2026-09-05")].sort(),
+      );
+    });
+
+    it("biggest hammering's own documented case: a shared win in one game renders as one joint-named instance row, not two", () => {
+      const facts = singleEventDisplayFacts({
+        key: "biggestHammering",
+        value: 52,
+        holders: [
+          { playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2026-08-15" },
+          { playerId: "p2", displayName: "Player B", gameId: "g1", playedOn: "2026-08-15" },
+        ],
+      });
+      // One game, one instance — the ordinary (non-tied) shape, with a joint name.
+      expect(facts!.instances).toBeNull();
+      expect(facts!.holderNames).toBe("Player A & Player B");
+      expect(facts!.sample).toMatch(/^on /);
+    });
+  });
+
+  it("singleEventGameAnnotation reuses GameRow's plain annotation slot — '{value} {unit}', hand appended for the catastrophe", () => {
+    expect(singleEventGameAnnotation("worstGameEver", 178)).toBe("178 final score");
+    expect(singleEventGameAnnotation("biggestHammering", 52)).toBe("52 point margin");
+    expect(singleEventGameAnnotation("catastrophe", 41, "Kings")).toBe("41 points in one hand · Kings");
+  });
+
+  it("handTrendSampleLine states the games and the hand-scores behind the trend, once", () => {
+    expect(handTrendSampleLine(20, 98)).toBe(
+      "Average points scored on each hand, across every player and every one of the 20 games in the record (98 individual hands).",
+    );
+    expect(handTrendSampleLine(1, 11)).toContain("1 game in the record");
+  });
+
+  it("⚠️ criterion 238: the honesty line is verbatim and never claims the numbers were checked", () => {
+    expect(HAND_DERIVATION_HONESTY_LINE).toBe(
+      "These are derived from the running totals — one misread total moves the two hands either side of it in opposite directions.",
+    );
+    assertNoBannedWords(HAND_DERIVATION_HONESTY_LINE);
+  });
+
+  it("playerHandProfileSampleLine states the sample and that the worst hand is marked", () => {
+    expect(playerHandProfileSampleLine(9)).toBe("Average points on each hand, from 9 games. Worst hand marked.");
+    expect(playerHandProfileSampleLine(1)).toContain("from 1 game.");
+  });
+
+  it("villainsRowSampleCaption is 'from {n} games', keeping '1 game' honest", () => {
+    expect(villainsRowSampleCaption(12)).toBe("from 12 games");
+    expect(villainsRowSampleCaption(1)).toBe("from 1 game");
+  });
+
+  it("playerAverageSampleCaption / rosterAverageSampleCaption match the design system's own two shapes", () => {
+    expect(playerAverageSampleCaption(9)).toBe("9 games");
+    expect(playerAverageSampleCaption(1)).toBe("1 game");
+    expect(rosterAverageSampleCaption(9, 40)).toBe("9 games · 40 scores");
+    expect(rosterAverageSampleCaption(1, 4)).toBe("1 game · 4 scores");
+    expect(rosterAverageSampleCaption(5, 1)).toBe("5 games · 1 score");
   });
 });

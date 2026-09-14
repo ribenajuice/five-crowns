@@ -232,6 +232,27 @@ export function ChevronRightIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * The worst-hand marker (`HandTrendBars`, `VillainsTable` — M3 Stage 3,
+ * criteria 226, 239, 247): a filled star, always paired with bold,
+ * `--accent-ink`-coloured text — three signals together, never colour alone.
+ */
+export function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z" />
+    </svg>
+  );
+}
+
 export function CameraIcon({ className }: { className?: string }) {
   return (
     <svg

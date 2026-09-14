@@ -40,6 +40,25 @@ The first two stages of Milestone 3: the records board, and rivalry. Live in pro
 - **Two more records join the board: the drought and "the nearly man"** (most second-place
   finishes). The board is now at seven records, and both new ones are tappable through to the exact
   games behind them, the same as the rest.
+- **Five more records join the board, taking it to twelve**: best game ever and worst game ever (the
+  lowest and highest final score anyone's ever posted), the catastrophe (the single worst hand anyone's
+  ever scored), cleanest sheet (the most zero-point hands scored in one game), and biggest hammering
+  (the largest winning margin in any one game). Each names the game it came from, with its date, and
+  is one tap away from that exact game — so a surprising number is never just a claim, you can always
+  see the sheet it's based on.
+- **A new "Stats" catalogue at `/stats`** brings together everything the board doesn't have room for:
+  an eleven-hand trend showing the average score for every hand from 3s to Kings, a "villains" table
+  showing every player's average on every hand with their own worst hand marked, the ten biggest
+  single-hand disasters in the archive, and an averages table listing every player's and every
+  roster's average final score. It's one tap away from both the board and the games list.
+- **A player's own page now shows their average score, their eleven-hand profile with their worst
+  hand marked, and their best and worst game ever** — each with a date and a link straight to that
+  game.
+- **A roster's own page now shows the whole table's average score, and each member's average within
+  that roster specifically** — separate from their overall average, the same way the roster's win
+  rates already work.
+- **None of this needs 10 games to show up.** A player or roster with a single game under their belt
+  appears on every one of these screens too, with "1 game" stated plainly next to their number.
 
 ## [Stage 9] - 2026-09-14
 

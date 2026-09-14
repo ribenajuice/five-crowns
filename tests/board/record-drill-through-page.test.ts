@@ -5,6 +5,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { HandLabel } from "@/lib/scoring";
 
 const hoisted = vi.hoisted(() => {
   class NotFoundSignal extends Error {}
@@ -33,6 +34,7 @@ function holder(displayName: string, gamesPlayed: number) {
 const BOARD_WITH_MOST_WINS = {
   empty: false as const,
   archiveGameCount: 5,
+  singleEventRecords: [],
   earlyDays: true,
   records: [
     {
@@ -130,6 +132,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -169,6 +172,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 6,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -207,6 +211,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 4,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins" as const, value: null, holders: [], games: [] },
@@ -267,6 +272,7 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
     const boardWithEveryRecordHeld = {
       empty: false as const,
       archiveGameCount: 5,
+      singleEventRecords: [],
       earlyDays: true,
       records: (Object.keys(RECORD_TITLES) as (keyof typeof RECORD_TITLES)[]).map((key) => ({
         key,
@@ -294,5 +300,147 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
         RecordPage({ params: Promise.resolve({ key }) }),
       ).resolves.toBeDefined();
     }
+  });
+});
+
+function singleEventHolder(displayName: string, gameId: string, playedOn: string, hand?: HandLabel) {
+  return { playerId: displayName, displayName, gameId, playedOn, ...(hand ? { hand } : {}) };
+}
+
+const BOARD_WITH_WORST_GAME_EVER = {
+  empty: false as const,
+  archiveGameCount: 20,
+  earlyDays: false,
+  records: [
+    { key: "mostWins" as const, value: null, holders: [], games: [] },
+    { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+    { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+    { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+    { key: "stalwart" as const, value: null, holders: [], games: [] },
+  ],
+  singleEventRecords: [
+    {
+      key: "worstGameEver" as const,
+      value: 178,
+      holders: [singleEventHolder("Player B", "g1", "2026-09-05")],
+      games: [
+        {
+          id: "g1",
+          playedOn: "2026-09-05",
+          locationName: "The Deck",
+          rosterId: "r1",
+          rosterName: "Thursday crew",
+          winners: ["Player C"],
+          winningScore: 40,
+          singleEventValue: 178,
+        },
+      ],
+    },
+  ],
+};
+
+describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–234)", () => {
+  it("⚠️ criterion 233: the heading and context state a date, never a game count", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce(BOARD_WITH_WORST_GAME_EVER);
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "worstGameEver" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Worst game ever — Player B");
+    expect(html).toContain("178 final score");
+    expect(html).toMatch(/on [A-Za-z]+,? 5 Sept?\.? 2026/);
+    expect(html).not.toContain("from 1 game");
+    expect(html).not.toContain("games</p>");
+  });
+
+  it("annotates the row with the instance's own number, in the games list's own row format (criterion 234)", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce(BOARD_WITH_WORST_GAME_EVER);
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "worstGameEver" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("178 final score");
+    expect(html).toContain("/games/g1");
+  });
+
+  it("a made-up single-event key 404s without even reading the board", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockClear();
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "cleanestSweep" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+    expect(getBoard).not.toHaveBeenCalled();
+  });
+
+  it("an empty archive 404s rather than rendering a board of zeros", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "worstGameEver" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+
+  it("a single-event record with no holder 404s — there is nothing to drill into", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      ...BOARD_WITH_WORST_GAME_EVER,
+      singleEventRecords: [{ key: "worstGameEver" as const, value: null, holders: [], games: [] }],
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "worstGameEver" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+
+  it("the catastrophe's heading and annotation both name the hand", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: [
+        { key: "mostWins" as const, value: null, holders: [], games: [] },
+        { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+        { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+        { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+        { key: "stalwart" as const, value: null, holders: [], games: [] },
+      ],
+      singleEventRecords: [
+        {
+          key: "catastrophe" as const,
+          value: 41,
+          holders: [singleEventHolder("Player E", "g1", "2026-09-05", "Kings")],
+          games: [
+            {
+              id: "g1",
+              playedOn: "2026-09-05",
+              locationName: "The Deck",
+              rosterId: "r1",
+              rosterName: "Thursday crew",
+              winners: ["Player C"],
+              winningScore: 40,
+              singleEventValue: 41,
+              singleEventHand: "Kings",
+            },
+          ],
+        },
+      ],
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "catastrophe" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("The catastrophe — Player E");
+    expect(html).toContain("41 points in one hand · Kings");
   });
 });

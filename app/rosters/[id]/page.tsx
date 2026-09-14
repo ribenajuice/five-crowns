@@ -8,9 +8,12 @@ import { RosterGameRow } from "@/components/RosterGameRow";
 import { RosterRenameControl } from "@/components/RosterRenameControl";
 import { StatBlock } from "@/components/StatBlock";
 import {
+  ROSTER_MEMBER_AVERAGE_LABEL,
   ROSTER_STATS_HEADING,
+  ROSTER_TABLE_AVERAGE_LABEL,
   STAT_LABEL_GAMES_PLAYED,
   formatWinRatePercent,
+  rosterAverageSampleCaption,
   rosterGamesHeading,
   rosterStatsSampleLine,
 } from "@/lib/ui/copy";
@@ -57,8 +60,20 @@ export default async function RosterPage({ params }: { params: Promise<{ id: str
         <div className="flex flex-col gap-6">
           <RosterRenameControl rosterId={roster.id} initialDisplayName={roster.displayName} />
 
-          <div className="grid grid-cols-1 gap-2">
+          {/* Criterion 244: the roster's own table average sits beside "Games
+              played" — a fact about the table, stated with both the games
+              and the scores behind it (criterion 224). */}
+          <div className="grid grid-cols-2 gap-2">
             <StatBlock label={STAT_LABEL_GAMES_PLAYED} value={String(roster.gamesPlayed)} />
+            <StatBlock
+              label={ROSTER_TABLE_AVERAGE_LABEL}
+              value={roster.tableAverage ? roster.tableAverage.average.toFixed(1) : "–"}
+              sample={
+                roster.tableAverage
+                  ? rosterAverageSampleCaption(roster.tableAverage.gamesPlayed, roster.tableAverage.scoresCount)
+                  : undefined
+              }
+            />
           </div>
 
           <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
@@ -83,6 +98,17 @@ export default async function RosterPage({ params }: { params: Promise<{ id: str
                     </span>
                     <span className="block text-text-muted">
                       {m.wins} of {roster.gamesPlayed}
+                    </span>
+                  </span>
+                  {/* Criterion 244: each member's own average, within this
+                      roster only — a third figure, the wins/win-rate columns
+                      untouched. */}
+                  <span className="text-right text-sm">
+                    <span className="block text-xs font-bold uppercase tracking-label text-text-muted">
+                      {ROSTER_MEMBER_AVERAGE_LABEL}
+                    </span>
+                    <span className="tabular block text-base font-black">
+                      {m.average ? m.average.average.toFixed(1) : "–"}
                     </span>
                   </span>
                 </li>

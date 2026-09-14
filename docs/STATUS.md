@@ -2,7 +2,7 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-14
+- **Last updated**: 2026-09-15
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
   merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
   deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
@@ -24,7 +24,9 @@
   merged and deployed ([PR #29](https://github.com/ribenajuice/five-crowns/pull/29), 2026-09-14). **Stage 2**
   ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two more board
   records) is also merged and deployed ([PR #30](https://github.com/ribenajuice/five-crowns/pull/30),
-  2026-09-14).
+  2026-09-14). **Stage 3** ("Distributions and villains" — score averages, the eleven-hand trend,
+  hand-by-hand villains, and five more board records) is also built, QA'd and code-reviewed, on branch
+  `feat/m3-stage3`, ready to open as a PR — not yet merged or deployed.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -70,15 +72,40 @@
     rebased state (the initial force-push didn't auto-retrigger a check run, so one was forced before merging
     — never merge on a check run against a since-superseded commit), then merged and deployed. Verified live:
     every rivalry route still correctly 307s to `/login`.
-  - Milestone 3 Stage 3 is already specced ahead of time (Distributions and villains, criteria 223–249) but
-    deliberately kept off any branch and off `docs/PRD.md` until its turn — parked as a patch at the session's
-    scratchpad, ready to apply. Stage 4 is specced too (Place, time, and the filters, criteria 250–280), with
+  - **Milestone 3 Stage 3** — "Distributions and villains" (criteria 223–249). Built on `feat/m3-stage3`;
+    not yet a PR. Two small founder questions from Stage 3's prep work were answered at the
+    checkpoint, both as the stated defaults: none of the five records that read a final score as a number
+    (best/worst game ever, biggest hammering, the catastrophe, every average) carry a caveat beyond their
+    existing sample statement, and "cleanest sheet" stays a single-game record, not a career total. The
+    board grows from seven records to twelve: best and worst game ever, the catastrophe (the single worst
+    hand anyone's scored), cleanest sheet, and biggest hammering — each naming the exact game it came from,
+    with a date, rather than a game count, since a single-event record's "sample" is one observation, not
+    a history. A new `/stats` catalogue brings together the eleven-hand trend (every hand's mean printed as
+    a number, never bar-length-only), a hand-by-hand villains table with each player's own worst hand
+    marked, the ten biggest single-hand disasters, and player/roster averages tables. Player pages gain an
+    average score, an eleven-hand profile, and personal best/worst game; roster pages gain the table's
+    average and each member's roster-scoped average. The design system correctly declined day-of-week/month
+    tables that had mistakenly been included in the build brief — genuinely Stage 4 scope, not this stage's.
+    QA drove the real app across all 27 criteria and found no code bugs in the two areas flagged for extra
+    scrutiny (tied single-event record rendering; biggest hammering's reuse of Stage 2's second-place math,
+    grep-confirmed as the only implementation) — it did close three real test-coverage gaps (the wording-ban
+    scan only checked half the banned words; neither the player nor roster page's new query had a
+    bounded-query-count proof despite criterion 248 naming both; `/stats` and the new player/roster sections
+    had zero a11y audit coverage), and reconciled criterion 241 against a design decision that was never
+    written down (`/stats` deliberately doesn't duplicate a card the board already shows — recorded in
+    `docs/DECISIONS.md`). `/code-review high` then found one real, genuine non-determinism bug (the
+    catastrophe drill-through could silently drop one of two hands tied for the archive's worst single-hand
+    score, because the underlying query had no `ORDER BY` — fixed with a deterministic order and a corrected
+    dedup key) plus redundant recomputation (the board computed second place twice per game; `/stats` had
+    reimplemented a display helper the board already exported) — both fixed. 1558 tests passing, lint and
+    typecheck clean. Known follow-ups deliberately deferred, non-blocking, listed under "Known follow-ups"
+    below. **Next**: open the PR.
+  - [PR #32](https://github.com/ribenajuice/five-crowns/pull/32) — **Milestone 3 Stage 3** is now open,
+    rebased onto `main` after Stages 1-2 merged, CI green. Awaiting founder review/merge.
+  - Stage 4 is specced too (Place, time, and the filters, criteria 250–280), with
     one question flagged as genuinely scope-determining rather than assumed: whether a venue gets its own
     page, or just a filter on the games list (specced to the team's default of "both," struck in place if the
-    founder answers otherwise). Two smaller founder questions remain open from Stage 3's prep work, neither
-    blocking: whether records that read a final score (best/worst game, biggest hammering) should carry a
-    caveat about the known final-row misread risk (default: no change), and whether "cleanest sheet" should be
-    a single-game record or a career total (default: single game).
+    founder answers otherwise).
   - ✅ [PR #27](https://github.com/ribenajuice/five-crowns/pull/27) — **Milestone 2 Stage 4**, suggested
     player-name matching, and permanent player/place merging (criteria 148–166, 172–173). **Shipped 2026-09-14,
     closing Milestone 2.** The spec was already written 2026-09-10 (with 172–173 added 2026-09-14);
@@ -231,12 +258,11 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: **Milestone 3 Stage 3 — Distributions and villains** (criteria 223–249, already specced and
-  parked): score averages per player and roster, the 11-hand trend, hand-by-hand villains, and five more board
-  records (best/worst game ever, the catastrophe, cleanest sheet, biggest hammering — the board reaches
-  twelve). Two small open questions, neither blocking: whether these final-score-based records should carry a
-  caveat about the known misread risk (default: no change), and whether "cleanest sheet" is a single-game or
-  career record (default: single game). Run `/feature Milestone 3 Stage 3` to start.
+- **Next up**: open PRs for **Milestone 3 Stages 1, 2 and 3** (Stage 1's should merge first, then Stage 2's,
+  since each later stage's branch is stacked on the one before it). After that, **Milestone 3 Stage 4 —
+  Place, time, and the filters** (criteria 250–280, already specced): whether a venue gets its own page, or
+  just a filter on the games list, is specced to the team's default of "both," to be struck in place if the
+  founder answers otherwise. Run `/feature Milestone 3 Stage 4` to start.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -322,6 +348,15 @@
     the roster page (Milestone 2 Stage 3) uses the word "correct" in a sentence about win rates summing past
     100%, which is one of the wording rule's own banned words; `AppBar`'s `titleHref` link (the game view's
     heading) measures ~34px, short of the 44px minimum, confirmed not to affect any Stage 1 or Stage 2 screen.
+  - **Milestone 3 Stage 3** (distributions and villains), flagged by `/code-review high` and deliberately
+    deferred as non-blocking: `app/records/[key]/page.tsx` has forked into two near-duplicate render paths
+    — one for a board (multi-game) record, one for a single-event record — instead of one component
+    handling both shapes. `RecordGame` (`lib/board/queries.ts`) has become a grab-bag of optional fields as
+    more record types were added to it, rather than a type per record shape. `pickExtreme` and `bestHolders`
+    duplicate the same tie-tracking pattern in two places that could be unified into one. `lib/ui/copy.ts`'s
+    `singleEventDisplayFacts` has grown some internal triple-branching as it's picked up more record types,
+    and `formatRecordDate` is a fourth duplicate of date-formatting logic that already exists elsewhere in
+    the codebase.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original

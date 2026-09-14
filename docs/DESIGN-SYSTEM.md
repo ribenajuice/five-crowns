@@ -32,6 +32,16 @@
 > exact title and framing sentence are not decided in this document** — the mockup lays out five
 > candidates side by side (§ "The nemesis card" below) for the founder to pick or redirect at the
 > checkpoint; everything else on this page is settled.
+>
+> **Milestone 3 Stage 3** ("Distributions and villains" — the board's five new records, the player
+> and roster pages' new sections, and the `/stats` catalogue index) again adds screens rather than a
+> new direction — mockups at `docs/mockups/m3-stage-3-distributions-and-villains.html`, published at
+> <https://claude.ai/code/artifact/6609a0ef-ac50-417d-a181-0cffbf9d90a2>. ⚠️ **Day-of-week and month
+> tables are not part of this stage** — the mockup's own opening section explains why (criteria
+> 223–249 contain no such criterion; the PRD's "Explicitly out of scope for Stage 3" list and Stage
+> 4's own scope line both name venue/date slices as Stage 4 work) — so nothing below documents them
+> either. Everything on this page for Stage 3 is settled; there is no open founder choice like Stage
+> 2's nemesis titles.
 
 ## Direction
 
@@ -182,6 +192,15 @@ the digit; this is a correctness feature, not typography.
 | `MergeTargetPicker` (Stage 4) | player page's "This is the same person as…"; `PlaceRowActions`' "Merge with another place…" | A `BottomSheet` holding a `PickList`-shaped list of every *other* player or place — no "add new" row and no "someone new" row, since neither concept applies to picking a merge target. Each row's games-played count is shown as secondary text (an existing duplicate is often the one with almost no games), same shape `IndexRow` already uses. Heading: **"Merge {name} with which player?"** / **"Merge {name} with which place?"** |
 | `MergeConfirmScreen` (Stage 4) | reached from `MergeTargetPicker` (players and places both) | A full screen, same two-deliberate-actions shape as "Deleting a game": arriving here is the first action, tapping **"Merge permanently"** is the second. Names both records via two `survivor-card` rows (radio-style, `aria-pressed`, same `--sunk`-highlight idiom `PickList` already uses for a selected row) each showing games-played; **neither is pre-selected** (criterion 156). Once one is picked, both cards immediately carry a `Pill` — **"Stays"** (`tone="ok"`) on the chosen one, **"Deleted"** (`tone="err"`) on the other — and two plain sentences appear beneath (not a `Banner`; same "plain text under the heading" precedent "Deleting a game" set): what moves, and the no-undo/no-record line. `Cancel` (`ghost`) then **"Merge permanently"** (the same documented `ghost` + `--error`-ink + icon destructive variant "Delete permanently" already established, disabled until a survivor is picked) |
 | `MergeConflictRefusal` (Stage 4) | `MergeConfirmScreen`, players only | Where the two players share a game, this **replaces** the entire survivor-picker — not a `Banner` sitting above a still-enabled one. A `Banner error` naming both players and that they share a game, then every offending game listed as an `EntityLink` plus an **"Edit this game"** link, then a single **"Back to {player}"** `ghost` button. Nothing resembling a choice renders while the conflict stands (criterion 160). Places have no equivalent state: a game has exactly one location, so two places can never both be "in the same game" |
+| `RecordCard` — single-event variant (M3 Stage 3, criteria 228–233) | records board, five new cards | Renders exactly like the ordinary `RecordCard` when the record has **one instance** (the common case): holder name, the number, then **the game's date in place of the sample line** — `"on {date}"` — never `"from {n} games"` (criterion 233). The catastrophe's single-instance card additionally states the hand on that same line: `"{hand} · {date}"`, since criterion 230 requires the hand named even with one holder. Unit text sits beside the number exactly like every other card (`"178 final score"`, `"41 points in one hand"`, `"8 zero-point hands"`, `"52 point margin"`) |
+| `RecordCard` — instance list (M3 Stage 3, criteria 228, 230–231) | records board, only when a single-event record is **tied** | Replaces the plain holder-name line with a stacked list of **instance rows** — one per (player, game) pair that shares the tied number, each showing the player's name and its own date (`RecordInstanceRow`: name left, date right, `--text-muted`, `13px`). ⚠️ **Not the same grammar as criterion 181's joint holders** — 181 lists each *person* once against one shared count; this lists each *event*, so the same player's name can legitimately appear twice with two different dates (criterion 228's own example) or, for the catastrophe, two different hands (`"{hand} · {date}"` per row, criterion 230's own example). An instance row's own player field can itself be a criterion-181 joint name (a hammered game's shared winners), nesting the ordinary grammar one level in rather than inventing a third. Rows order alphabetically by player, then by date — never a ranking of the instances |
+| `StatsNavLink` (M3 Stage 3, criterion 236) | records board, directly under `BoardNav`; games list, directly under `IndexNav` | A single full-width `ghost` button, **"See all the stats"**, linking to `/stats`. Not folded into `BoardNav` (which stays the two fixed buttons criteria 179/191 specify) and not a fourth `IndexNav` tile (which stays the three equal-width entity indexes criterion 174 specifies) — `/stats` is one page, not an index of many entities, so it gets its own link rather than distorting either fixed component. Rendered on every state of both screens it appears on, same "always reachable" precedent as its neighbours |
+| `HandTrendBars` (M3 Stage 3, criteria 225, 237–238) | `/stats`' "The eleven-hand trend"; player page's "Eleven-hand profile" | Eleven rows, one per hand (`3s` … `Kings`), each a label, a horizontal bar (`--brand` fill on a `--sunk` track, decorative, `aria-hidden`) and **the mean printed as real text** beside it — never only a bar (criterion 237, 247's "text equivalent"). The archive-wide instance on `/stats` states its sample once above the list (games, players, hand-scores behind it) and carries **`HAND_DERIVATION_HONESTY_LINE`** (fixed strings, below) beneath it, set off by a dashed rule. The player-page instance is the same component with one player's own means, worst hand marked (below), and no honesty line repeated a second time on the same page as the board's wording rules already govern it once per screen it appears on |
+| Worst-hand marker (M3 Stage 3, criterion 226, 239, 247) | `HandTrendBars` (player page); `VillainsTable` (`/stats`) | A small filled star `<svg>` plus bold, `--accent-ink`-coloured text on the marked value — three signals together (icon, weight, colour), never colour alone. Ties are joint: every hand at a player's own highest mean is marked, not just one |
+| `VillainsTable` (M3 Stage 3, criteria 225–226, 239, 247) | `/stats`, "Hand-by-hand villains" | Every player as a row, the eleven hands as columns, each cell a mean to one decimal. The player-name column is sticky-left, the header row sticky-top, and the whole table sits in its own `overflow-x: auto` wrapper — the page itself never scrolls horizontally (hard rules). Each row's own game count sits as a muted caption under the player's name, not a twelfth column. The worst-hand marker (above) appears once per row, on that player's own highest mean |
+| `DisasterRow` / disasters list (M3 Stage 3, criterion 240) | `/stats`, "Biggest single-hand disasters" | `GameRow`-shaped rows reused for a different claim: rank, player (display face), hand and date on a muted second line, the score right-aligned in tabular type, the whole row a tap target to that game. Exactly **`SINGLE_HAND_DISASTERS` (10)** rows normally; ⚠️ **a tie at the last place adds rows rather than cutting one** (criterion 240), so the list can run to eleven or twelve, and every tied rank number repeats (two rows can both read "9") rather than skipping to compensate |
+| `AveragesTable` (M3 Stage 3, criteria 223–224, 242) | `/stats`, "Averages" | Two plain lists in one `Card`-shaped section, headed **"Players"** and **"Rosters"**: a name (`EntityLink`), a muted sample caption (`"{n} games"` for a player; `"{games} games · {scores} scores"` for a roster, criterion 224's dual sample), and the average right-aligned in tabular type. ⚠️ **No ranking decoration of any kind** — no crown, medal, or 1st/2nd/3rd, matching `RecordCard`'s own precedent (criterion 242); rows sit alphabetically by name, the same neutral order `VillainsTable` and every other Stage 3 list uses |
+| `PersonalGameCard` (M3 Stage 3, criteria 228–229, 243) | player page, "Best and worst game" | Two side by side (`grid-template-columns: 1fr 1fr`, never stacking — two numbers, not a list), `StatBlock`-shaped with an added chevron and tap-through to that one game: **"Best game"** and **"Worst game"**, each showing that player's own score and the game's date as its caption (not a game count — this is one event, same reasoning as the board's single-event cards). Deliberately distinct from the board's "best/worst game ever" cards, which name the archive-wide holder; these two are always about the page's own player and never repeat their name |
 
 ## Screen rules
 
@@ -882,6 +901,77 @@ the digit; this is a correctness feature, not typography.
     above. Now fixed in the table below (`NEMESIS_CARD_TITLE`, `nemesisDetailSentence` in
     `lib/ui/copy.ts`), superseding the "not fixed" row this section used to point at.
 
+- **The board gains five more records (M3 Stage 3, criteria 228–235).** `RecordCard`, `ArchiveLine`,
+  `BoardNav` and criterion 181's joint-holder grammar are all unchanged — best game ever, worst game
+  ever, the catastrophe, cleanest sheet and biggest hammering slot into the existing grid. What's new
+  is confined to these five cards specifically:
+  - **The sample line is a date, not a game count** (criterion 233). Every other card on the board
+    reads `"from {n} games"`; these five read `"on {date}"` (the catastrophe additionally names the
+    hand: `"{hand} · {date}"`) — because the number is one observation, not a rate over the holder's
+    history. Nothing else about the card's shape changes for this.
+  - **A tie renders as an instance list, not a name list** (component inventory, `RecordCard` —
+    instance list, above) — criterion 181's "list every holder's name against one number" grammar
+    doesn't hold here, because the same player can be one of two *instances* (two different games at
+    the tied score, or for the catastrophe, two different hands). QA should expect this to look
+    different from every other joint-holder card on the board and that is deliberate, not a bug.
+  - **No caveat beyond the sample statement** (open question 3a, answered 2026-09-14): these five
+    cards carry no extra warning icon, no "read this carefully" line, no different visual weight from
+    the other seven. `ArchiveLine`'s early-days line already governs the whole board and is not
+    duplicated or intensified for this stage's additions.
+  - **Order (criterion 235)**: the founder's four first, then the stalwart, then the drought and the
+    nearly man (Stage 2, in that order), then this stage's five in the order the PRD's own user
+    stories introduce them — best game ever, worst game ever, the catastrophe, cleanest sheet,
+    biggest hammering. This keeps each stage's cards contiguous, so a card's position on the board
+    tells you which stage computes it, and reordering later (open question 12) costs a documentation
+    edit here plus a one-line change in code, never a rebuild.
+  - **Legibility at twelve cards is a founder review point, not a QA pass** (open question 12,
+    following criterion 218's finding at seven). The mockup shows the full twelve-card scroll at
+    375px so the founder can react to it directly; nothing has been pre-emptively collapsed,
+    tabbed, or hidden behind a "show more" control — that would reintroduce the withholding the
+    founder explicitly rejected at Stage 1 (open question 6), just spatially instead of numerically.
+  - **`StatsNavLink`** (component inventory, above) sits directly under `BoardNav`, reading **"See
+    all the stats"**, linking to `/stats` — reachable in one tap from the board per criterion 236.
+
+- **The player page gains three more things (M3 Stage 3, criterion 243).** Average final score, the
+  `HandTrendBars` eleven-hand profile with the worst hand marked, and two `PersonalGameCard`s for
+  this player's own best and worst game. All three sit **below Stage 2's four sections** (head-to-
+  head, nemesis, by-roster, streak-in-context) and above the player's own games list — nothing above
+  them moves, is re-explained, or changes meaning (criterion 243 restates this explicitly, the same
+  discipline criterion 207 already established for Stage 2 against Stage 1). A one-game player shows
+  every one of these three with "1 game" or that game's own date beside it — no floor, nobody set
+  aside (criterion 245).
+
+- **The roster page gains two things (M3 Stage 3, criterion 244).** A second `StatBlock` —
+  **"Table average"** — sits beside the existing "Games played" block, stating both numbers behind it
+  per criterion 224 (`"{games} games · {scores} scores"`). Each member's row in the existing "Wins
+  within this roster" list (criterion 138) gains a third figure, that member's own average **within
+  this roster only**, in the same `--num`/`--text-xs`-label shape the wins and win-rate figures
+  already use — the member list's shape doesn't change, it gains a column.
+
+- **`/stats` — the catalogue index (M3 Stage 3, criteria 236–242).** `AppBar` title **"Stats"**, back
+  arrow labelled **"Back to the board"** (the board is the primary hub either entry point — the
+  board's own link and the games list's — ultimately returns to, so the back arrow is consistent
+  regardless of which one was used to arrive). An unauthenticated request 307s to `/login` exactly as
+  every other screen does (criterion 236, M1 criterion 1's pattern). No `ArchiveLine` repeats on this
+  page — each section states its own sample per its own criterion (237, 239, 240, 242), and a second
+  global count would be exactly the double-statement criterion 182 already forbids. Four sections, in
+  this order: **the eleven-hand trend** (`HandTrendBars`, archive-wide, with the honesty line),
+  **hand-by-hand villains** (`VillainsTable`), **biggest single-hand disasters** (`DisasterRow` list),
+  **averages** (`AveragesTable`, players then rosters). ⚠️ **Best game ever and worst game ever are
+  not re-rendered here as a sixth section** — criterion 241 requires the catalogue and the board to
+  read the same holder, number and date from the same function, and the mockup treats that as "the
+  board already shows this record" rather than duplicating the card; a future session should read
+  criterion 241 before adding a "best/worst game" card to this page a second time.
+
+- **Day-of-week and month tables are explicitly not part of Stage 3.** Flagged here so a future
+  session doesn't assume the brief and the criteria agree: `docs/PRD.md`'s Stage 3 criteria (223–249)
+  contain no day-of-week or month criterion, the "Explicitly out of scope for Stage 3" list names
+  *"Venue and date slices — Stage 4, per open question 9"* by name, and Stage 4's own scope line lists
+  *"day-of-week and time-of-year"* cuts explicitly. Nothing in this document's Stage 3 section
+  describes such a table, and none should be built against a Stage 3 criterion number, because none
+  exists. They belong in Stage 4's own mockup and its own section of this document, written when
+  Stage 4's criteria are.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -1138,6 +1228,43 @@ verified, confirmed, correct, looks right* or *all good*.
 | Nemesis, no-nemesis state | Nobody's done this yet. *(reuses `BOARD_NO_HOLDER_SENTENCE` verbatim — not a new string)* |
 | Nemesis, title | Nemesis *(founder's pick, 2026-09-14 — candidate 1 of 5, `docs/mockups/m3-stage-2-rivalry.html` § "Nemesis: five candidates, side by side," kept flat, no banter on the title itself)* |
 | Nemesis, detail sentence | Finishes above you in {n} of your {total} games together ({rate}%). |
+| Record title — best game ever | Best game ever |
+| Record title — worst game ever | Worst game ever |
+| Record title — the catastrophe | The catastrophe |
+| Record title — cleanest sheet | Cleanest sheet |
+| Record title — biggest hammering | Biggest hammering |
+| Record unit — best/worst game ever | final score |
+| Record unit — the catastrophe | points in one hand |
+| Record unit — cleanest sheet | zero-point hands |
+| Record unit — biggest hammering | point margin |
+| Single-event sample line, one instance — **verbatim, criterion 233** | on {date} |
+| Single-event sample line, the catastrophe, one instance | {hand} · {date} |
+| Single-event instance row, plain (best/worst game ever, cleanest sheet, biggest hammering) | {Holder(s)} — {date} |
+| Single-event instance row, the catastrophe | {Holder} — {hand} · {date} |
+| `StatsNavLink` label | See all the stats |
+| `/stats`, `AppBar` title | Stats |
+| `/stats`, back arrow label | Back to the board |
+| Eleven-hand trend, section heading | The eleven-hand trend |
+| Eleven-hand trend, sample line | Average points scored on each hand, across every player and every one of the {n} games in the record ({m} individual hands). |
+| Eleven-hand trend, honesty line — **verbatim, criterion 238** | These are derived from the running totals — one misread total moves the two hands either side of it in opposite directions. |
+| Player page, eleven-hand profile heading | Eleven-hand profile |
+| Player page, eleven-hand profile sample line | Average points on each hand, from {n} games. Worst hand marked. |
+| Hand-by-hand villains, section heading | Hand-by-hand villains |
+| Hand-by-hand villains, sample line | Average points per hand, every player. Each player's own worst hand is marked. |
+| Villains table, per-row sample caption | from {n} games |
+| Biggest single-hand disasters, section heading | Biggest single-hand disasters |
+| Biggest single-hand disasters, sample line | The ten biggest single-hand scores ever recorded. |
+| Averages, section heading | Averages |
+| Averages, players sub-heading | Players |
+| Averages, rosters sub-heading | Rosters |
+| Player/roster average sample caption — player | {n} games |
+| Player/roster average sample caption — roster | {games} games · {scores} scores |
+| Player page, average final score label | Average final score |
+| Player page, best/worst game section heading | Best and worst game |
+| `PersonalGameCard` label — best | Best game |
+| `PersonalGameCard` label — worst | Worst game |
+| Roster page, table average label | Table average |
+| Roster page, member average label | avg |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

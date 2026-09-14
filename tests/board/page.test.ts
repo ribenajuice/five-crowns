@@ -6,6 +6,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { HandLabel } from "@/lib/scoring";
 
 vi.mock("@/lib/auth/session", () => ({
   requireGroupSession: vi.fn(async () => ({ s: "group", v: 1 })),
@@ -56,6 +57,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         {
@@ -124,6 +126,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         {
@@ -153,6 +156,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 2,
+      singleEventRecords: [],
       earlyDays: true,
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
@@ -177,6 +181,7 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 10,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         {
@@ -204,12 +209,151 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
   });
 });
 
+function singleEventHolder(displayName: string, gameId: string, playedOn: string, hand?: HandLabel) {
+  return { playerId: displayName, displayName, gameId, playedOn, ...(hand ? { hand } : {}) };
+}
+
+describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
+  it("renders the ordinary one-holder card with a date, not a game count", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: [
+        { key: "mostWins", value: null, holders: [], games: [] },
+        { key: "mostWinsInARow", value: null, holders: [], games: [] },
+        { key: "lowestAverageScore", value: null, holders: [], games: [] },
+        { key: "mostRoundsWon", value: null, holders: [], games: [] },
+        { key: "stalwart", value: null, holders: [], games: [] },
+      ],
+      singleEventRecords: [
+        {
+          key: "worstGameEver",
+          value: 178,
+          holders: [singleEventHolder("Player B", "g1", "2026-09-05")],
+          games: [game("g1", "2026-09-05")],
+        },
+      ],
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Worst game ever");
+    expect(html).toContain("Player B");
+    expect(html).toContain("178");
+    expect(html).toContain("final score");
+    // Criterion 233: a date, never a game count — the exact weekday/month
+    // abbreviation is locale-rendering detail (not asserted here, same as
+    // every other date-formatting component in this codebase); what matters
+    // is "on {date}" replaces "from {n} games" entirely.
+    expect(html).toMatch(/on [A-Za-z]+,? 5 Sept?\.? 2026/);
+    expect(html).not.toContain("from 1 game");
+    expect(html).not.toContain("games</p>");
+  });
+
+  it("⚠️ a tie renders the instance-list variant — two rows, each with its own date", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: [
+        { key: "mostWins", value: null, holders: [], games: [] },
+        { key: "mostWinsInARow", value: null, holders: [], games: [] },
+        { key: "lowestAverageScore", value: null, holders: [], games: [] },
+        { key: "mostRoundsWon", value: null, holders: [], games: [] },
+        { key: "stalwart", value: null, holders: [], games: [] },
+      ],
+      singleEventRecords: [
+        {
+          key: "bestGameEver",
+          value: 28,
+          holders: [
+            singleEventHolder("Player A", "g1", "2026-08-28"),
+            singleEventHolder("Player D", "g2", "2026-07-12"),
+          ],
+          games: [game("g1", "2026-08-28"), game("g2", "2026-07-12")],
+        },
+      ],
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Best game ever");
+    expect(html).toContain("28");
+    expect(html).toContain("Player A");
+    expect(html).toMatch(/28 Aug/);
+    expect(html).toContain("Player D");
+    expect(html).toMatch(/12 Jul/);
+    // Alphabetical by player, not by date (component inventory, `RecordCard` — instance list).
+    expect(html.indexOf("Player A")).toBeLessThan(html.indexOf("Player D"));
+  });
+
+  it("the catastrophe names the hand even with one holder", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: [
+        { key: "mostWins", value: null, holders: [], games: [] },
+        { key: "mostWinsInARow", value: null, holders: [], games: [] },
+        { key: "lowestAverageScore", value: null, holders: [], games: [] },
+        { key: "mostRoundsWon", value: null, holders: [], games: [] },
+        { key: "stalwart", value: null, holders: [], games: [] },
+      ],
+      singleEventRecords: [
+        {
+          key: "catastrophe",
+          value: 41,
+          holders: [singleEventHolder("Player E", "g1", "2026-09-05", "Kings")],
+          games: [game("g1", "2026-09-05")],
+        },
+      ],
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("The catastrophe");
+    expect(html).toContain("41");
+    expect(html).toContain("points in one hand");
+    expect(html).toMatch(/Kings · [A-Za-z]+,? 5 Sept?\.? 2026/);
+  });
+
+  it("the board reaches /stats in one tap", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      singleEventRecords: [],
+      records: [
+        { key: "mostWins", value: null, holders: [], games: [] },
+        { key: "mostWinsInARow", value: null, holders: [], games: [] },
+        { key: "lowestAverageScore", value: null, holders: [], games: [] },
+        { key: "mostRoundsWon", value: null, holders: [], games: [] },
+        { key: "stalwart", value: null, holders: [], games: [] },
+      ],
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+    expect(html).toContain("/stats");
+    expect(html).toContain("See all the stats");
+  });
+});
+
 describe("/ — every card links to its own drill-through", () => {
   it("each record's href is /records/{key}", async () => {
     const { getBoard } = await import("@/lib/board/queries");
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      singleEventRecords: [],
       earlyDays: false,
       records: [
         { key: "mostWins", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },

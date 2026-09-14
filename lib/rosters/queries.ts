@@ -12,7 +12,14 @@ import { desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { game, gamePlayer, location, player, roster, rosterMember } from "@/lib/db/schema";
-import { compareDisplayNames, determineWinners, rosterDisplayName, type PlayerScore } from "@/lib/scoring";
+import {
+  averageFinalScore,
+  compareDisplayNames,
+  determineWinners,
+  rosterDisplayName,
+  type AverageScore,
+  type PlayerScore,
+} from "@/lib/scoring";
 
 export interface RosterMemberRow {
   playerId: string;
@@ -101,6 +108,24 @@ export interface RosterPageMember {
   wins: number;
   /** wins / gamesPlayed, a fraction — this roster's games only (criterion 138). */
   winRate: number;
+  /**
+   * This member's own average final score, restricted to this roster's
+   * games only (criterion 244) — the same `averageFinalScore` (criterion
+   * 178) the player page and the board use, never a second mean. Because a
+   * roster is an exact-set match, every member played every one of this
+   * roster's games, so `average.gamesPlayed` here always equals
+   * `RosterPage.gamesPlayed` — the invariant criterion 210 already asks QA
+   * to check, restated for this new number.
+   */
+  average: AverageScore | null;
+}
+
+export interface RosterTableAverage {
+  /** Mean of every final score posted in this roster's games, by any member (criterion 224) — a fact about the table, not about a person. */
+  average: number;
+  gamesPlayed: number;
+  /** How many final scores that average is drawn from — `gamesPlayed × rosterSize` for an exact-set roster, stated separately per criterion 224's own example ("5 games averages 20 scores"). */
+  scoresCount: number;
 }
 
 export interface RosterPageGame {
@@ -116,6 +141,8 @@ export interface RosterPage {
   displayName: string;
   members: RosterPageMember[];
   gamesPlayed: number;
+  /** Criterion 224 — `null` only for a roster with no games, which `listRosters` already excludes from view; kept nullable here for a direct id lookup, which isn't gated the same way. */
+  tableAverage: RosterTableAverage | null;
   /** Newest first. */
   games: RosterPageGame[];
 }
@@ -179,6 +206,26 @@ export async function getRosterPage(id: string): Promise<RosterPage | null> {
   });
 
   const gamesPlayed = gameRows.length;
+
+  // Criterion 224: the roster's own table average is the mean of every final
+  // score posted in its games, by any member — every `gamePlayerRows` row
+  // already fetched above, not grouped by member at all. Criterion 244:
+  // each member's own average is the same function, restricted to their own
+  // rows within `gamePlayerRows` — no second query for either.
+  const scoresByPlayer = new Map<string, number[]>();
+  for (const row of gamePlayerRows) {
+    const arr = scoresByPlayer.get(row.playerId) ?? [];
+    arr.push(row.finalScore);
+    scoresByPlayer.set(row.playerId, arr);
+  }
+
+  const tableAverageResult = averageFinalScore(gamePlayerRows.map((r) => r.finalScore));
+  const tableAverage: RosterTableAverage | null = tableAverageResult && {
+    average: tableAverageResult.average,
+    gamesPlayed,
+    scoresCount: gamePlayerRows.length,
+  };
+
   const memberStats: RosterPageMember[] = members.map((m) => {
     const wins = winsByPlayer.get(m.playerId) ?? 0;
     return {
@@ -186,6 +233,7 @@ export async function getRosterPage(id: string): Promise<RosterPage | null> {
       displayName: m.displayName,
       wins,
       winRate: gamesPlayed > 0 ? wins / gamesPlayed : 0,
+      average: averageFinalScore(scoresByPlayer.get(m.playerId) ?? []),
     };
   });
 
@@ -195,6 +243,7 @@ export async function getRosterPage(id: string): Promise<RosterPage | null> {
     displayName,
     members: memberStats,
     gamesPlayed,
+    tableAverage,
     games,
   };
 }

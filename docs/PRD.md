@@ -92,22 +92,20 @@ those numbers become records is the moment a wrong one becomes permanent and quo
    bites.** Stage 3 builds **best game ever, worst game ever, biggest hammering, the catastrophe and
    every average** — five board records and two screens whose numbers are a score read as a number.
    The question splits cleanly in two, and **they can be answered separately**:
-   - **3a — do these records say anything beyond their sample statement?** Today's default is
-     **no**: each states the date of the game it came from (criterion 233), the wording ban applies,
-     and one tap lands on the game where the photo is. The alternative is **one fixed line, once**,
-     on the board or on `/stats` — something like *"These are read off the paper. If a final score
-     was read wrong, this is where it shows up — the photo's on the game."* ⚠️ **We would not put it
-     on each card**: a caveat per record is the exact failure the early-days line was designed
-     around, and the founder has already ruled once on caveat-per-record (question 6). **Default:
-     nothing changes.**
-   - **3b — does the review screen change?** The original question, unchanged: make the final row
-     deliberate (a tap per final score, or a close-up of the last row by default). ⚠️ **That is new
-     scope in Milestone 1's flow, not a Stage 3 item**, and it is the only one of the two that could
-     stop a wrong number entering the record rather than labelling it afterwards. **Default:
-     nothing changes.**
+   - **3a ✅ Answered 2026-09-14: no, nothing beyond the sample statement.** The founder confirmed
+     the default — each record states the date of the game it came from (criterion 233), the wording
+     ban applies, and one tap lands on the game where the photo is. No fixed caveat line is added to
+     the board or `/stats`. *For the record, the alternative on the table was* **one fixed line,
+     once** — something like *"These are read off the paper. If a final score was read wrong, this
+     is where it shows up — the photo's on the game."* — *never a caveat per card, which the founder
+     had already ruled out once before (question 6).*
+   - **3b — does the review screen change?** Still open, not part of Stage 3's checkpoint. The
+     original question, unchanged: make the final row deliberate (a tap per final score, or a
+     close-up of the last row by default). ⚠️ **That is new scope in Milestone 1's flow, not a
+     Stage 3 item**, and it is the only one of the two that could stop a wrong number entering the
+     record rather than labelling it afterwards. **Default: nothing changes.**
 
-   ⚠️ **Neither blocks Stage 3 being built**, and 3a is a line of fixed copy either way — minutes,
-   not a rebuild.
+   ⚠️ **Neither blocks Stage 3 being built.**
 
 *Opened 2026-09-14 by the Milestone 2 spec. ✅ **Answered by the founder the same day — no longer
 open.** Kept here with its answer rather than deleted, per the house rule on preserving decision
@@ -255,15 +253,12 @@ default is what the criteria already say.*
 *Opened 2026-09-14 by the Milestone 3 **Stage 3** spec (criteria 223–249). Both are the founder's.
 ⚠️ **Neither blocks anything** — Stage 2 is next in the build order, and both have stated defaults.*
 
-11. **Cleanest sheet — one game, or a career?** The board record is *"most zero-point hands"*, and
-    the PRD never said over what. We have specced it as **the most zeros one player scored in one
-    game**, out of eleven — "Jo scored nothing on nine of eleven hands that night" — because a
-    career total mostly measures **turning up**, which the stalwart already measures, and it climbs
-    forever with nothing to compare it against. The other reading is a **career count** of
-    zero-point hands, which is a different and perfectly real record: the person who most often goes
-    out clean. ⚠️ **It is one line of SQL either way** and it changes only what the record *means*,
-    which is why it is yours rather than ours. **Default if unanswered: one game** (decision 18,
-    criterion 231).
+11. ✅ **Answered 2026-09-14: one game, not a career.** The founder confirmed the default — cleanest
+    sheet stays **the most zeros one player scored in one game**, out of eleven (decision 18,
+    criterion 231), not a career count. *For the record, the reasoning offered at the time*: a career
+    total mostly measures **turning up**, which the stalwart already measures, and it climbs forever
+    with nothing to compare it against, whereas a career count of zero-point hands would have been a
+    different and perfectly real record — the person who most often goes out clean.
 12. **Twelve records on the board — is it still readable in five seconds?** Stage 2 takes the board
     to seven cards; **Stage 3 takes it to twelve** (best game ever, worst game ever, the
     catastrophe, cleanest sheet, biggest hammering), and Stage 4's home advantage makes it
@@ -3144,9 +3139,16 @@ too**, and are equally not restated.*
      and the date, each row reaching that game. ⚠️ **Ties at the last place are all shown** — the
      list runs to eleven or twelve rows rather than cutting a tied score — and an archive with
      fewer than ten hands in it shows what exists rather than padding to ten.
-241. **The catalogue and the board cannot disagree.** Best game ever and worst game ever appear on
-     `/stats` as well as on the board, **from the same function**, and QA reads the two screens side
-     by side and finds the same holder, the same number and the same date.
+241. ⚠️ **Amended 2026-09-15 — the catalogue and the board cannot disagree, but `/stats` does not
+     re-render the card.** `getStatsPage()` computes best game ever and worst game ever from the
+     **exact same function** the board uses (`bestGameEver`/`worstGameEver`), so the two numbers can
+     never drift apart — QA's proof is that one function has one caller path, not a side-by-side
+     screen read. `/stats` deliberately does **not** show a second copy of either card: the board
+     already shows it, and a catalogue that repeats the board's own cards back to itself is the
+     "records board and analytics catalogue are two different screens" line this project has held
+     since Milestone 3 was sketched, not a new one. *(Original wording said QA "reads the two
+     screens side by side" — written before the no-duplication call was made explicit; the intent,
+     one shared function and no drift, was always what mattered and is unchanged.)*
 242. **The averages table** lists **every player's average final score** (one decimal, with its game
      count) and **every roster's table average** (criterion 224, with its games and scores). ⚠️ **No
      ranking decoration** — no crown, no medal, no 1st/2nd/3rd, matching `RecordCard`'s precedent:
