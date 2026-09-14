@@ -14,8 +14,8 @@
   found it implemented correctly with no blocking issues. **Stage 2** (editing and deleting a saved game, plus
   app-level 404/error screens) is also merged and live
   ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14). **Stage 3** (player, roster and
-  place pages, plus renaming and in-app navigation to reach them) is built, QA'd, code-reviewed and
-  security-reviewed on branch `feat/m2-stage3`, ready to open as a PR — not yet merged or deployed.
+  place pages, plus renaming and in-app navigation to reach them) is also merged and live
+  ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14).
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -23,12 +23,12 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**:
-  - **Milestone 2 Stage 3** — player, roster and place pages, renaming, and in-app navigation to reach them
-    (criteria 132–146, 174). Built on `feat/m2-stage3`; not yet a PR. The spec was already written 2026-09-10;
-    product-manager confirmed it unaffected by Stages 1–2 and ready to build as-is, with one gap found at the
-    checkpoint — no criterion required the new pages to be *reachable* without typing a URL — put to the founder
-    and approved same day as **criterion 174**. Design, back end and front end all built; QA drove the real app
+- **Currently in flight**: nothing — all three Milestone 2 stages built so far are merged and live.
+  - ✅ [PR #25](https://github.com/ribenajuice/five-crowns/pull/25) — **Milestone 2 Stage 3**, player, roster and
+    place pages, renaming, and in-app navigation to reach them (criteria 132–146, 174). **Shipped 2026-09-14.**
+    The spec was already written 2026-09-10; product-manager confirmed it unaffected by Stages 1–2 and ready to
+    build as-is, with one gap found at the checkpoint — no criterion required the new pages to be *reachable*
+    without typing a URL — put to the founder and approved same day as **criterion 174**. QA drove the real app
     end-to-end and passed all 15 criteria plus 174, catching two real bugs along the way (a missing server-side
     length cap on location renaming, and a player-page winner marker with no accessible text) — both fixed and
     re-verified. `/code-review high` then found two more real regressions in the new "stretched link" pattern
@@ -37,8 +37,9 @@
     reasoned through) and lost information from the row's accessible name. Both fixed, plus two smaller
     consistency gaps (a duplicate-roster-name check that missed doubled internal whitespace; "1 games" instead
     of "1 game"). A security review scoped to the two new API routes (roster/location rename) found no blocking
-    issues — auth, CSRF, id parsing and the length-cap fix all check out. 1104 tests passing, lint and typecheck
-    clean. **Next**: open the PR.
+    issues. Merged, deployed, and verified live: `/players`, `/rosters` and `/places` all correctly 307 to
+    `/login`, and both new rename API routes 401 without a session. Three small things deliberately deferred as
+    non-blocking, listed under "Known follow-ups" below.
   - ✅ [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **Milestone 2 Stage 1**, the admin panel
     finished. **Shipped 2026-09-14**: password rotation, the forgotten-password recovery runbook, the combined
     score CSV download, and usage/spend reporting. PRD open question 5 (the password routes needed an SSM write
@@ -154,10 +155,11 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: **Milestone 2 Stage 3 — People, sets and places** (criteria 132–146): players, rosters and
-  places index pages, the player page and roster page with their three headline numbers, roster renaming, and
-  location renaming. Builds the surfaces Stage 4's merges need — a player merge with no player page to invoke it
-  from is dead weight. Nothing is waiting on the founder. Run `/feature Milestone 2 Stage 3` to start.
+- **Next up**: **Milestone 2 Stage 4 — Identity, repaired** (criteria 148–166, plus 172–173): the name-similarity
+  module and suggested matching on the review screen, player merge (with roster folding and a same-game refusal),
+  place merge, and the `merged_into_id` migration. Deliberately built last, after its own repair tools (Stage 2's
+  game edit, Stage 3's player/roster pages) already exist to fix a bad match. Nothing is waiting on the founder —
+  open question 4 was answered 2026-09-14. This closes Milestone 2. Run `/feature Milestone 2 Stage 4` to start.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.

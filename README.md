@@ -10,11 +10,11 @@ a broken or made-up link shows this app's own "not found" or error screen instea
 **Milestone 2, Stage 1 is also merged and live** — from the admin panel you can now change the group
 password or the admin password, download every game's scores as one CSV, and see this month's
 automatic-reading usage and estimated cost. There's also a written, tested runbook for recovering a
-forgotten admin password without a developer. **Milestone 2, Stage 3 is built and tested, on a
-branch, not yet merged or deployed** — it adds a page per player and per roster (games played, wins
-and win rate), a places list, and lets you rename a roster or a place. Player and roster names
-become tappable links from the games list and a game's own page. Next up after this stage is
-suggested player matching and merging duplicate players or places. See `docs/STATUS.md`.
+forgotten admin password without a developer. **Milestone 2, Stage 3 is also merged and live** —
+every player and every roster now has its own page (games played, wins and win rate), there's a
+places list, and you can rename a roster or a place. Player and roster names are tappable links
+from the games list and a game's own page. Next up is suggested player matching and merging
+duplicate players or places. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
