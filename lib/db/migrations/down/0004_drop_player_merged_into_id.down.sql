@@ -1,0 +1,15 @@
+-- Reverses lib/db/migrations/0004_drop_player_merged_into_id.sql.
+--
+-- Applied by hand:
+--
+--   sqlite3 .data/five-crowns.db < lib/db/migrations/down/0004_drop_player_merged_into_id.down.sql
+--
+-- and remember to remove the matching row from __drizzle_migrations.
+--
+-- ⚠️ This restores the *column*, not its data. `merged_into_id` was an unused
+-- placeholder from early planning (nothing ever wrote to it — Milestone 2's
+-- player merge hard-deletes the losing row instead, per `docs/DECISIONS.md`,
+-- 2026-09-14), so there is no historical value to recover: every row comes
+-- back with `merged_into_id = NULL`, exactly as every row already had it right
+-- up until this column was dropped.
+ALTER TABLE `player` ADD `merged_into_id` text;

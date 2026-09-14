@@ -136,7 +136,9 @@ export interface ResolvedColumn {
  * Resolve every column to a player id.
  *
  * - An existing player (`column.playerId`) is looked up for real and must
- *   exist with no `merged_into_id` (security review MEDIUM 2).
+ *   still exist (security review MEDIUM 2). A player merged away
+ *   (`lib/players/merge.ts`) is hard-deleted, so this is the same "not found"
+ *   check either way — there is no separate "exists but merged away" state.
  * - A pending name (`column.newPlayerName`) resolves by `name_key` against an
  *   existing player first — ⚠️ security review LOW 4: without this, retyping
  *   an existing player's name as "someone new" minted a second row for the
@@ -162,7 +164,7 @@ export async function resolvePlayers(
       const found = (
         await tx.select().from(player).where(eq(player.id, column.playerId))
       )[0];
-      if (!found || found.mergedIntoId) {
+      if (!found) {
         throw new InvalidReferenceError("player", column.playerId);
       }
       playerId = column.playerId;

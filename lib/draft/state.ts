@@ -18,6 +18,7 @@
 
 import { z } from "zod";
 
+import { MAX_CANDIDATES } from "@/lib/players/match";
 import { ORIGINAL_MAX_LONG_EDGE } from "@/lib/ui/constants";
 
 import {
@@ -141,6 +142,17 @@ export const draftColumnSchema = z
     manualEdits: z.record(editIndex, cellValue),
     /** This column's place on the sheet photo. Null until the founder marks it. */
     crop: cropSchema.nullable(),
+    /**
+     * Stage 4 (PRD criteria 148, 173): the best two or three existing players
+     * a name-similarity match found for this column's `sheetName`, best first
+     * — set only when the column is still unassigned and the match is an
+     * "offer" rather than a "suggest" (`lib/players/match.ts`). The frontend
+     * surfaces these at the top of the pick-list, in order; nothing here
+     * pre-selects anything. `.optional()` rather than defaulted, so a draft
+     * persisted before this field existed still parses unchanged — read it as
+     * `column.nameCandidates ?? []`.
+     */
+    nameCandidates: z.array(z.string().min(1).max(64)).max(MAX_CANDIDATES).optional(),
   })
   .refine((column) => !(column.playerId && column.newPlayerName), {
     message: "A column is either an existing player or a new one, not both.",

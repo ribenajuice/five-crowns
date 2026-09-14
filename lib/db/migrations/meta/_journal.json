@@ -29,6 +29,13 @@
       "when": 1789321302486,
       "tag": "0003_draft_editing_game",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789359438988,
+      "tag": "0004_drop_player_merged_into_id",
+      "breakpoints": true
     }
   ]
 }

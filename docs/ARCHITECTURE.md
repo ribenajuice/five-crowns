@@ -269,10 +269,15 @@ erDiagram
 ```
 
 **`player`** — a *person*, persisting across every game they ever play.
-`id`, `display_name`, `slug` (unique, for URLs), `created_at`, `merged_into_id` (nullable
-self-FK, Milestone 2). Individual stats hang off this and nothing else. Fracturing a player is
-the identity risk the PRD calls out, which is why Milestone 1 forces every column name to be
-picked from a list of existing players rather than typed free-hand.
+`id`, `display_name`, `slug` (unique, for URLs), `name_key` (unique typo backstop), `created_at`.
+Individual stats hang off this and nothing else. Fracturing a player is the identity risk the PRD
+calls out, which is why Milestone 1 forces every column name to be picked from a list of existing
+players rather than typed free-hand.
+⚠️ **No `merged_into_id`.** A nullable self-FK reserved here at kickoff for a reversible Milestone 2
+merge was dropped in migration `0004_drop_player_merged_into_id` once the founder decided merges are
+permanent with no history (`docs/DECISIONS.md`, 2026-09-14) — a populated one **is** a merge history.
+Milestone 2's player merge (`lib/players/merge.ts`) hard-deletes the losing row instead; see § "Player
+merge and place merge" below.
 
 **`game`** — one night, one sheet. Confirmed shape after the location change:
 `id`, `played_on` (ISO date — read off the sheet if one is written there, otherwise defaulting to
@@ -957,6 +962,72 @@ totals, with the derived per-hand points available alongside — and mints a 5-m
 for the photo, alongside any column close-ups attached to the players they belong to. Every stat
 displays the number of games it was computed from, per the PRD. From Milestone 3 the **all-time
 records board is the landing screen** past the password gate; until it exists, the games list is.
+
+### Suggested player matching (Milestone 2 Stage 4)
+
+PRD criteria 148–154, 172–173. `lib/players/match.ts` is a **pure** function,
+`matchColumnsToPlayers`, over a plain list of known players and a plain list of columns to match —
+no database, no Next.js, tested with the same rigour as `lib/scoring`. `lib/draft/apply-player-matches.ts`
+is the only thing that touches the database: it fetches every player and calls the pure matcher.
+
+- **Called once, right after a transcription is merged into the draft** — `mergeSheetTranscriptionIntoDraft`
+  (`POST /api/transcribe`) and `mergeColumnTranscriptionIntoDraft` (`POST /api/transcribe/column`) are
+  the only two places an *unassigned* column's `sheetName` is ever set. Manual entry
+  (`emptyDraftState`) never sets `sheetName` at all, so a hand-typed draft is untouched — identical to
+  Milestone 1 (criterion 151).
+- **A confident match (≥ 0.80, clear leader) pre-selects `playerId` directly on the column** —
+  criterion 172's "already selected when the review screen first renders" is satisfied by the column
+  being assigned the moment the draft is persisted, before the screen ever renders it. A pre-selected
+  column counts as assigned for the M1 save gate exactly as a hand-picked one does; nothing new blocks
+  a save.
+- **A near match (0.55–0.80, or the ambiguity rule) populates `draftColumnSchema`'s new, optional
+  `nameCandidates: string[]`** (best two or three, best first) without assigning `playerId`. The
+  frontend surfaces these at the top of the pick-list; the column stays subject to the ordinary save
+  gate.
+- **`sheetName` is never touched by matching** — criterion 153's "the handwritten name as read stays
+  displayed" falls out of the fact that matching only ever reads it, never writes it.
+- ⚠️ **A column that already has a `playerId` — an edit draft's columns (Stage 2), or one already
+  hand-picked earlier in the same session — is never re-matched.** `matchColumnsToPlayers` treats it
+  as immediately "taken" for the rest of the game (criterion 150) and passes it straight through.
+- The left-to-right-first-column-wins rule (criterion 150's worked case) falls out of processing
+  columns in `order` and removing whichever player a column's top candidate names from the pool
+  before scoring the next column — whether that column ends up suggesting the player or merely
+  offering them.
+
+### Player merge and place merge (Milestone 2 Stage 4)
+
+PRD criteria 155–166. Both are single-transaction, permanent repoints with **no history kept
+anywhere** (`docs/DECISIONS.md`, 2026-09-14) — the highest-stakes writes in the project so far, and
+built with that as the overriding constraint.
+
+- **`lib/players/merge.ts`, `mergePlayers(survivorId, loserId)`.** Refuses up front
+  (`SameGameConflictError`, naming every offending game) if the two ever appear in the same game —
+  checked before any transaction opens, so a refusal touches nothing. Otherwise, in one transaction:
+  repoints `game_player`, `round_score` and `photo` (all safe as blanket `UPDATE`s, since the two never
+  share a `game_id` and neither table's primary key can therefore collide), then repoints
+  `roster_member` **roster by roster**, folding any signature collision this produces (survivor = more
+  games, tie = older; a custom name carries across only if the surviving roster had none) exactly as
+  `docs/ARCHITECTURE.md`'s own data-model note on `roster.signature` warned it would have to, then
+  deletes the losing `player` row. `roster_member` cannot be a single bulk `UPDATE`: `roster.signature`
+  is `UNIQUE`, so a collision has to be resolved roster-by-roster, not caught after the fact; and a
+  *stale* roster (Stage 3 decision 5 — never auto-deleted) can already list both players if every game
+  that used it was since deleted or edited away, in which case the loser's `roster_member` row is
+  deleted rather than updated, to avoid colliding with the survivor's own row already there.
+- **`lib/locations/merge.ts`, `mergeLocations(survivorId, loserId)`.** Simpler — a location has no
+  per-entity history to reconcile. One transaction: repoint every `game` row with
+  `location_id = loserId`, delete the loser. A game with no location is never touched, by construction
+  — the `WHERE` clause only ever matches the loser's id.
+- **`player.merged_into_id` is gone** (migration `0004_drop_player_merged_into_id`, with its reversing
+  file) — an unused placeholder from kickoff, dropped once merges were decided to be permanent with no
+  history; a populated one *is* a merge history.
+- **Routes**: `GET /api/players/merge-preview?a=&b=` (both players' names and games-played, plus a
+  fresh same-game check — re-run at request time because criterion 160's refusal has to be current,
+  not stale from whenever a list page last rendered) and `POST /api/players/merge` /
+  `POST /api/locations/merge` (the commit). All three require a **group** session, not admin
+  (criterion 155 — the same trust level as deleting a game) and go through `rejectCrossSitePost`. There
+  is deliberately no `GET /api/locations/merge-preview`: places have no same-game concept to check
+  fresh, and both locations' games-played counts are already on whatever page the founder is merging
+  from.
 
 ---
 

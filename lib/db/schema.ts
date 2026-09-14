@@ -37,6 +37,12 @@ const createdAt = () =>
  * hang off this and nothing else — fracturing a player silently corrupts every
  * stat that mentions them, which is why M1 forces every column name to be
  * picked from a list rather than typed free-hand.
+ *
+ * ⚠️ **Milestone 2 player merge (`lib/players/merge.ts`) hard-deletes the
+ * losing row.** There used to be a `merged_into_id` self-FK reserved for this;
+ * it is dropped in migration `0004_drop_player_merged_into_id` because a
+ * populated one **is** a merge history, and the founder's decision
+ * (`docs/DECISIONS.md`, 2026-09-14) is that merges keep none.
  */
 export const player = sqliteTable(
   "player",
@@ -51,8 +57,6 @@ export const player = sqliteTable(
      * a player already in the book (`lib/games/save.ts`, `resolvePlayers`).
      */
     nameKey: text("name_key").notNull(),
-    /** Milestone 2 player merge. Null for everyone until then. */
-    mergedIntoId: text("merged_into_id"),
     createdAt: createdAt(),
   },
   (t) => [
