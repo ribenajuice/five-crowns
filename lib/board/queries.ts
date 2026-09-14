@@ -1,10 +1,13 @@
 /**
- * The records board — PRD criteria 179–191, 196.
+ * The records board — PRD criteria 179–191, 196, extended by Stage 2 with
+ * two more rows: the drought (213) and the nearly man (216).
  *
- * `getBoard()` is the board's one entry point: three bounded queries (every
- * game, every `game_player` row, every `round_score` row), then everything
- * else — winners, streaks, averages, rounds won, who holds what — is worked
- * out from those rows in memory using `lib/scoring`'s pure definitions.
+ * `getBoard()` is the board's one entry point: **still exactly three bounded
+ * queries** (every game, every `game_player` row, every `round_score` row) —
+ * Stage 2 adds no query of its own (criterion 219) — then everything else —
+ * winners, second places, streaks, droughts, averages, rounds won, who holds
+ * what — is worked out from those same rows in memory using `lib/scoring`'s
+ * pure definitions.
  *
  * ⚠️ **Nothing here is cached, precomputed or summarised** (criterion 189): a
  * delete, an edit or a merge (both M2 features) is reflected on the very next
@@ -31,10 +34,13 @@ import { game, gamePlayer, location, player, roster, roundScore } from "@/lib/db
 import {
   averageFinalScore,
   compareDisplayNames,
+  compareNewestFirst,
   determineWinners,
+  longestDrought,
   longestStreak,
   roundsWon,
   rosterDisplayName,
+  secondPlace,
   winningScore,
   type GameHandScoreRow,
   type PlayerScore,
@@ -94,7 +100,9 @@ export type BoardRecordKey =
   | "mostWinsInARow"
   | "lowestAverageScore"
   | "mostRoundsWon"
-  | "stalwart";
+  | "stalwart"
+  | "drought"
+  | "nearlyMan";
 
 export interface BoardRecord {
   key: BoardRecordKey;
@@ -213,12 +221,15 @@ export async function getBoard(): Promise<Board> {
     gamePlayersByGame.set(row.gameId, arr);
   }
 
-  // Each game's winner(s) and effective roster name, computed once and reused by every drill-through.
+  // Each game's winner(s), second place(s) (criterion 214) and effective
+  // roster name, computed once and reused by every drill-through.
   const winnerIdsByGame = new Map<string, string[]>();
+  const secondPlaceIdsByGame = new Map<string, string[]>();
   const rosterNameByGame = new Map<string, string>();
   for (const [gameId, rows] of gamePlayersByGame) {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
     winnerIdsByGame.set(gameId, determineWinners(scores));
+    secondPlaceIdsByGame.set(gameId, secondPlace(scores)?.playerIds ?? []);
     const g = gamesById.get(gameId)!;
     rosterNameByGame.set(gameId, g.rosterName ?? rosterDisplayName(rows.map((r) => r.displayName)));
   }
@@ -243,12 +254,22 @@ export async function getBoard(): Promise<Board> {
     }
   }
 
+  // The same games, reshaped once into exactly what `longestStreak` /
+  // `longestDrought` need — reused by both the streak and the drought below,
+  // rather than each re-mapping every player's games into this shape on its
+  // own.
+  const streakGamesByPlayer = new Map<string, StreakGame[]>();
+  for (const [playerId, games] of gamesByPlayer) {
+    streakGamesByPlayer.set(
+      playerId,
+      games.map((g) => ({ gameId: g.gameId, playedOn: g.playedOn, createdAt: g.createdAt, won: g.won })),
+    );
+  }
+
+  // Delegates to `lib/scoring`'s one shared chronological comparator — this
+  // module's own job is just resolving a game id to the row it needs.
   function sortNewestFirst(a: string, b: string): number {
-    const ga = gamesById.get(a)!;
-    const gb = gamesById.get(b)!;
-    if (ga.playedOn !== gb.playedOn) return ga.playedOn < gb.playedOn ? 1 : -1;
-    if (ga.createdAt !== gb.createdAt) return ga.createdAt < gb.createdAt ? 1 : -1;
-    return 0;
+    return compareNewestFirst(gamesById.get(a)!, gamesById.get(b)!);
   }
 
   function toRecordGame(
@@ -343,13 +364,7 @@ export async function getBoard(): Promise<Board> {
 
   // --------------------------------------------------------- most wins in a row
   const streakByPlayer = new Map<string, { length: number; gameIds: string[] }>();
-  for (const [playerId, games] of gamesByPlayer) {
-    const streakGames: StreakGame[] = games.map((g) => ({
-      gameId: g.gameId,
-      playedOn: g.playedOn,
-      createdAt: g.createdAt,
-      won: g.won,
-    }));
+  for (const [playerId, streakGames] of streakGamesByPlayer) {
     streakByPlayer.set(playerId, longestStreak(streakGames));
   }
   const streakLengthByPlayer = new Map<string, number>();
@@ -381,11 +396,50 @@ export async function getBoard(): Promise<Board> {
     unionGamesNewestFirst(ids, (playerId) => gamesByPlayer.get(playerId)!.map((g) => g.gameId)),
   );
 
+  // ---------------------------------------------------------------- drought
+  // Criterion 212's machinery, negated (`longestDrought`). ⚠️ A drought of
+  // *zero* — a player who has never failed to win — does not qualify to hold
+  // this record (criterion 217): filtered out here, before `buildRecord` ever
+  // sees it, exactly the same "zero never holds the title" shape criterion
+  // 199 uses for nemesis. The degenerate all-shared-win archive then leaves
+  // this map empty, and `buildRecord` reports the no-holder case on its own.
+  const droughtByPlayer = new Map<string, { length: number; gameIds: string[] }>();
+  const droughtLengthByPlayer = new Map<string, number>();
+  for (const [playerId, streakGames] of streakGamesByPlayer) {
+    const drought = longestDrought(streakGames);
+    droughtByPlayer.set(playerId, drought);
+    if (drought.length > 0) droughtLengthByPlayer.set(playerId, drought.length);
+  }
+  const droughtRecord = buildRecord("drought", droughtLengthByPlayer, higherIsBetter, (ids) =>
+    streakDrillThrough(ids, droughtByPlayer, displayNameByPlayer, toRecordGame, sortNewestFirst),
+  );
+
+  // ------------------------------------------------------------ nearly man
+  // Criterion 216: most second places (214), a shared second counting in
+  // full for each holder. A player only ever appears in this map if they've
+  // actually come second at least once, so the "nobody's ever come second"
+  // archive (criterion 217) leaves it empty with no filtering needed.
+  const secondPlaceGamesByPlayer = new Map<string, string[]>();
+  for (const [gameId, playerIds] of secondPlaceIdsByGame) {
+    for (const playerId of playerIds) {
+      const arr = secondPlaceGamesByPlayer.get(playerId) ?? [];
+      arr.push(gameId);
+      secondPlaceGamesByPlayer.set(playerId, arr);
+    }
+  }
+  const nearlyManCountByPlayer = new Map<string, number>();
+  for (const [playerId, games] of secondPlaceGamesByPlayer) {
+    nearlyManCountByPlayer.set(playerId, games.length);
+  }
+  const nearlyMan = buildRecord("nearlyMan", nearlyManCountByPlayer, higherIsBetter, (ids) =>
+    unionGamesNewestFirst(ids, (playerId) => secondPlaceGamesByPlayer.get(playerId) ?? []),
+  );
+
   return {
     empty: false,
     archiveGameCount: gameRows.length,
     earlyDays: gameRows.length < EARLY_DAYS_BELOW,
-    records: [mostWins, mostWinsInARow, lowestAverageScore, mostRoundsWon, stalwart],
+    records: [mostWins, mostWinsInARow, lowestAverageScore, mostRoundsWon, stalwart, droughtRecord, nearlyMan],
   };
 }
 

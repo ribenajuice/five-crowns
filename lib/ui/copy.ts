@@ -808,21 +808,36 @@ export function archiveCountLine(archiveGameCount: number): string {
 export const BOARD_NAV_GAMES_LABEL = "Games";
 export const BOARD_NAV_ADD_GAME_LABEL = "Add a game";
 
-/** Record titles, verbatim (`docs/DESIGN-SYSTEM.md`'s fixed-strings table). */
+/**
+ * Record titles, verbatim (`docs/DESIGN-SYSTEM.md`'s fixed-strings table,
+ * "Record title — the drought (board)" / "the nearly man (board)").
+ */
 export const RECORD_TITLES: Record<BoardRecordKey, string> = {
   mostWins: "Most wins",
   mostWinsInARow: "Most wins in a row",
   lowestAverageScore: "Lowest average score",
   mostRoundsWon: "Most rounds won",
   stalwart: "The stalwart",
+  drought: "The drought",
+  nearlyMan: "The nearly man",
 };
-/** Record units, verbatim — plain-English, beside the number in `--num-lg`. */
+/**
+ * Record units, verbatim — plain-English, beside the number in `--num-lg`.
+ *
+ * ⚠️ **The drought's board unit is "games" (plain), not "games without a
+ * win"** — that longer phrase is the *personal* record card's unit (the
+ * player page's "Streak, in context" section, a different component), per
+ * `docs/DESIGN-SYSTEM.md`'s fixed-strings table rows for "Record unit — the
+ * drought (board)" and "Personal record card unit — drought" respectively.
+ */
 export const RECORD_UNITS: Record<BoardRecordKey, string> = {
   mostWins: "wins",
   mostWinsInARow: "games in a row",
   lowestAverageScore: "avg. score",
   mostRoundsWon: "rounds",
   stalwart: "games played",
+  drought: "games",
+  nearlyMan: "second places",
 };
 
 /** Lowest average score to one decimal place (criterion 178); every other
@@ -913,3 +928,65 @@ export function streakHolderRowAnnotation(player: string): string {
 /** `docs/DESIGN-SYSTEM.md` § "Empty archive" — criterion 191. */
 export const BOARD_EMPTY_TITLE = "No games yet.";
 export const BOARD_EMPTY_BODY = "Once you save one, the board will show who's who.";
+
+/* -------------------------------------------- Milestone 3 Stage 2: rivalry */
+
+/** `docs/DESIGN-SYSTEM.md` fixed-strings table — player page, "Head-to-head". */
+export const PLAYER_HEAD_TO_HEAD_HEADING = "Head-to-head";
+export const PLAYER_HEAD_TO_HEAD_SAMPLE_LINE =
+  "Every player you've shared a game with, most games together first.";
+/** Criterion 203's "own empty state" — not in the fixed-strings table (this
+ *  shape is only reachable defensively; every real game needs at least two
+ *  players, so a player with any games at all already has a shared one). Same
+ *  plain "nothing here yet" voice as `BOARD_EMPTY_TITLE`. */
+export const PLAYER_HEAD_TO_HEAD_EMPTY_SENTENCE = "No shared games yet.";
+
+export const HEAD_TO_HEAD_WINS_LABEL = "Wins";
+export const HEAD_TO_HEAD_MY_RATE_LABEL = "My win rate";
+export const HEAD_TO_HEAD_ABOVE_ME_LABEL = "Above me";
+
+/** "{n} games together" (criterion 203) — `gamesNoun` keeps "1 game together" honest. */
+export function headToHeadTogetherCaption(gamesTogether: number): string {
+  return `${gamesTogether} ${gamesNoun(gamesTogether)} together`;
+}
+
+/** The head-to-head drill-through's own heading (criterion 204): names both
+ *  players, same "&" grammar as everywhere else a short list of two joins. */
+export function headToHeadDrillThroughHeading(player: string, opponent: string): string {
+  return `${player} & ${opponent}`;
+}
+
+/** `docs/DESIGN-SYSTEM.md` § "The nemesis card" — the founder's pick,
+ *  criterion 202 (open question 10): the flat "Nemesis" candidate, kept
+ *  completely flat, no banter layered on top. */
+export const NEMESIS_CARD_TITLE = "Nemesis";
+/**
+ * The nemesis card's one sentence of detail, verbatim per the founder's pick
+ * (`docs/mockups/m3-stage-2-rivalry.html` § "Nemesis: five candidates, side
+ * by side", candidate 1): "Finishes above you in {n} of your {total} games
+ * together ({rate}%)." — the opponent's own name is never repeated here, it's
+ * already the card's display-face line above this sentence.
+ */
+export function nemesisDetailSentence(
+  above: number,
+  gamesTogether: number,
+  aboveRatePercent: number,
+): string {
+  return `Finishes above you in ${above} of your ${gamesTogether} ${gamesNoun(gamesTogether)} together (${aboveRatePercent.toFixed(1)}%).`;
+}
+
+/** `docs/DESIGN-SYSTEM.md` fixed-strings table — player page, "By roster". */
+export const PLAYER_BY_ROSTER_HEADING = "By roster";
+export const PLAYER_BY_ROSTER_SAMPLE_LINE =
+  "This player's wins and win rate within each exact roster they've played in.";
+/** "{n} games" — the muted caption under a `ByRosterRow`'s roster name. */
+export function byRosterGamesCaption(gamesPlayed: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
+}
+
+/** `docs/DESIGN-SYSTEM.md` fixed-strings table — player page, "Streak, in context". */
+export const PLAYER_STREAK_SECTION_HEADING = "Streak, in context";
+export const PERSONAL_RECORD_STREAK_TITLE = "Longest winning streak";
+export const PERSONAL_RECORD_DROUGHT_TITLE = "The drought";
+export const PERSONAL_RECORD_STREAK_UNIT = "games in a row";
+export const PERSONAL_RECORD_DROUGHT_UNIT = "games without a win";

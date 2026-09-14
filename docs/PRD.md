@@ -41,6 +41,16 @@ decides whether Stage 1's last criterion survives, and 8 and 9 are needed before
 specced, not before the first line of code. They are product opinions, not team calls, which is why
 they are asked rather than assumed.
 
+⚠️ **Milestone 3 Stage 2 was specced the same day** (criteria 197–222) and adds **question 10** —
+the tone of the nemesis, a stat about one named friend beating another. It does not block Stage 2's
+build any more than 6–9 blocked Stage 1's: the default is what the criteria already say.
+
+⚠️ **Milestone 3 Stage 3 was specced the same day too** (criteria **223–249**, immediately after
+Stage 2's), adding questions **11 and 12** and **restating question 3 as 3a/3b** now that it has
+something concrete to bite on. **None of the three blocks anything** — Stage 2 is still the next
+thing built, and each has a stated default. ⚠️ **Stage 3 defines no second place of its own**: its
+*biggest hammering* record uses **Stage 2's criterion 214** and nothing else.
+
 ⚠️ **Updated 2026-09-14, same day: the founder answered 6, 8, and the part of 7 Stage 1 needed.**
 **The board now shows records from game one under an early-days line** instead of withholding them
 (question 6 — criteria 182–185 rewritten), **the stalwart is adopted permanently** (question 7 —
@@ -77,6 +87,27 @@ those numbers become records is the moment a wrong one becomes permanent and quo
    glanceable — e.g. tapping to confirm each final score, or the app offering a close-up of the
    final row by default? ⚠️ **This would be new scope, so it is your call, not ours**, and we are
    not proposing it. A second read is not on the table either way: errors repeat.
+
+   ⚠️ **Restated 2026-09-14 by the Milestone 3 Stage 3 spec, because this is the stage where it
+   bites.** Stage 3 builds **best game ever, worst game ever, biggest hammering, the catastrophe and
+   every average** — five board records and two screens whose numbers are a score read as a number.
+   The question splits cleanly in two, and **they can be answered separately**:
+   - **3a — do these records say anything beyond their sample statement?** Today's default is
+     **no**: each states the date of the game it came from (criterion 233), the wording ban applies,
+     and one tap lands on the game where the photo is. The alternative is **one fixed line, once**,
+     on the board or on `/stats` — something like *"These are read off the paper. If a final score
+     was read wrong, this is where it shows up — the photo's on the game."* ⚠️ **We would not put it
+     on each card**: a caveat per record is the exact failure the early-days line was designed
+     around, and the founder has already ruled once on caveat-per-record (question 6). **Default:
+     nothing changes.**
+   - **3b — does the review screen change?** The original question, unchanged: make the final row
+     deliberate (a tap per final score, or a close-up of the last row by default). ⚠️ **That is new
+     scope in Milestone 1's flow, not a Stage 3 item**, and it is the only one of the two that could
+     stop a wrong number entering the record rather than labelling it afterwards. **Default:
+     nothing changes.**
+
+   ⚠️ **Neither blocks Stage 3 being built**, and 3a is a line of fixed copy either way — minutes,
+   not a rebuild.
 
 *Opened 2026-09-14 by the Milestone 2 spec. ✅ **Answered by the founder the same day — no longer
 open.** Kept here with its answer rather than deleted, per the house rule on preserving decision
@@ -197,6 +228,55 @@ still do not block anything.**
    and it is how the player and roster pages already behave — but where a filter lives is something
    you will use weekly and we will not, so it is yours. **Needed before Stage 4 is specced, not
    before Stage 1.** **Default if unanswered: (c).**
+
+*Opened 2026-09-14 by the Milestone 3 **Stage 2** spec. The founder's, for the same reason the
+personality stats' wording is (open question 8). ⚠️ **It does not block Stage 2 being built** — the
+default is what the criteria already say.*
+
+10. ✅ **Answered 2026-09-14: option (b) — the banter turns up, not flat.** The founder chose to lean
+    into the PRD's own "banter, not a dashboard" tone rather than the team's flat, factual default.
+    ⚠️ **The founder asked to see options, not pick blind**: the ui-designer writes a **short list of
+    candidate titles and framings** for the nemesis card (in place of the single flat sentence
+    criterion 202 originally specified) as part of Stage 2's mockup, and the founder picks or
+    redirects at that checkpoint — this is **not** a blank cheque to invent an edgier tone
+    unsupervised. Still true regardless of wording: nothing may call anyone weak, dominated,
+    hopeless or a walkover, and nothing tells anyone what to do about it — the banter is in the
+    framing and the title, never in language about a specific person. Criterion 202 is amended
+    accordingly; the number, the rate and the sample stay exactly as specced.
+    *The original question, for the record:* **the nemesis is a stat about one named friend beating
+    another — is its tone the founder's to set?** Every other number in this milestone is about a
+    player and the archive; nemesis is about two people, by name, on a screen they both read —
+    "Sam has finished above you in 8 of 9 games you have played together". Three things were on the
+    table: (a) a different title, since *nemesis* was the one word the team didn't write; (b) the
+    banter turned up; (c) nemesis cut entirely. The team would not guess between them, because it is
+    the same call as "the player who looks like they are cheating" — a joke about a named friend is
+    the founder's to make, not the team's to invent.
+
+*Opened 2026-09-14 by the Milestone 3 **Stage 3** spec (criteria 223–249). Both are the founder's.
+⚠️ **Neither blocks anything** — Stage 2 is next in the build order, and both have stated defaults.*
+
+11. **Cleanest sheet — one game, or a career?** The board record is *"most zero-point hands"*, and
+    the PRD never said over what. We have specced it as **the most zeros one player scored in one
+    game**, out of eleven — "Jo scored nothing on nine of eleven hands that night" — because a
+    career total mostly measures **turning up**, which the stalwart already measures, and it climbs
+    forever with nothing to compare it against. The other reading is a **career count** of
+    zero-point hands, which is a different and perfectly real record: the person who most often goes
+    out clean. ⚠️ **It is one line of SQL either way** and it changes only what the record *means*,
+    which is why it is yours rather than ours. **Default if unanswered: one game** (decision 18,
+    criterion 231).
+12. **Twelve records on the board — is it still readable in five seconds?** Stage 2 takes the board
+    to seven cards; **Stage 3 takes it to twelve** (best game ever, worst game ever, the
+    catastrophe, cleanest sheet, biggest hammering), and Stage 4's home advantage makes it
+    **thirteen**. ⚠️ **This is question 7's legibility warning arriving for real** — you said build
+    all of them, and the reason to cut was never cost, it was that *"a board of thirteen records is
+    not readable in five seconds, which was the whole point of it."* Two things we would like from
+    you, both cheap and both reversible: **the order** (which records sit at the top of a phone
+    screen — the four you named are first today) and **whether any of the five Stage 3 additions
+    should not be on the board at all**, with its number still living on `/stats`. ⚠️ **Deleting a
+    record from the board is deleting a row**; moving one is reordering a list. **Default if
+    unanswered: all twelve ship, the founder's four first, in the order documented in the design
+    system** (criterion 235). *(Criterion 218 already asks QA to report how seven reads at 375px —
+    that finding lands before you have to answer this.)*
 
 ---
 
@@ -2267,7 +2347,9 @@ it needs is complete rather than backfilled.
 *Written 2026-09-14, the day Milestone 2 finished. Same job as M1's and M2's delivery specs: the
 build contract, not the decision document. Everything above it still governs — the wording
 constraint, the "no second read" prohibition, the no-accounts stance, and the rule that heuristics
-warn and humans decide. **Four founder questions frame it** (open questions 3, 6, 7, 9 above); each
+warn and humans decide. **Four founder questions frame it** (open questions 3, 6, 7, 9 above), and
+**Stage 2's spec added a fifth** (question 10, the nemesis's tone) **and Stage 3's added two more**
+(questions 11 and 12, the cleanest-sheet reading and the board's legibility at twelve records); each
 has a stated default, so **nothing here waits on an answer to start**.*
 
 ⚠️ **M1's risk was a bad read. M2's was a change nobody can take back. M3's is different again: a
@@ -2355,6 +2437,93 @@ re-derive them. **None of these is a founder question** — those are open quest
     engineering call, folded into a stage by the team; it carries no product criterion beyond the
     per-stage a11y ones.
 
+*Decisions 11–16 were added 2026-09-14 with **Stage 2's** criteria, the same way 1–10 were added
+with Stage 1's. They are the team's and the architect's; the one genuinely founder-shaped question
+this stage raised is **open question 10**, above.*
+
+11. ⚠️ **Head-to-head rides on the player page. There is no versus screen.** "Alice vs Bob" is one
+    row in a **head-to-head section on each player's page**, readable from either side — not a
+    `/players/{a}/vs/{b}` route, not a player picker, not a grid of everyone against everyone. The
+    group is **about six people**, so the section is five rows long and the page you are already on
+    answers the question. A versus route would be a new page type, a new empty state and a new way
+    in, to show numbers that fit on a page that already exists. *(Overrule at mockups if the section
+    reads badly — it is a section, not an architecture.)*
+12. ⚠️ **"Who beats who" is two different numbers, and both are kept.** **Head-to-head wins** count
+    *games won* (M1's lowest total, ties shared) among the games both players were in. **The
+    above-rate** counts the games one player's final score was **strictly lower** than the other's,
+    whoever actually won the night. Keeping both is not indecision: in a group of five, **most games
+    are won by neither of two named players**, so a win-count head-to-head is mostly zeros and says
+    nothing, while the finish-above comparison is populated from the first shared game. **Nemesis is
+    built on the above-rate only** (criterion 199); head-to-head shows both side by side.
+13. ⚠️ **Second place is the second-lowest *distinct* final score, and it can be shared.** The
+    winners hold the lowest distinct score; everyone on the next distinct score up is second. So a
+    shared win still has a second place behind it, two players level on the second score are **both**
+    second, and a game where everyone finished level has **no** second place at all. *Rejected:
+    competition ranking* (a two-way tie for first makes the next player third and nobody second) —
+    it erases second place in exactly the games where the near-miss stings most, and it contradicts
+    how this product already ranks everywhere else: distinct score positions, ties shared.
+    Criterion 214, and Stage 3's *biggest hammering* is bound to the same function (criterion 215,
+    consumed by criterion 232). ⚠️ **Stage 3 was specced after this and defines no second place of
+    its own** — it imports 214 by reference, which is the whole point of settling it here.
+14. ⚠️ **The drought is the streak rule negated, including "ever, not current".** Same order, same
+    "a game they missed neither extends nor breaks it", same "a shared win counts as a win" — and
+    the same **longest ever recorded, not the run they are on now** (criterion 177). Written as its
+    own criterion (212) rather than left implicit, because negating a streak is precisely where a
+    second implementation drifts from the first.
+15. **Per-roster win rates are gathered, not rebuilt.** M2 criterion 138 already gives per-member
+    wins and win rates **inside a roster**, on the roster page, and it is not touched. What did not
+    exist is those numbers **gathered on the person**, which is what the catalogue's "win rates,
+    overall and per roster" asks for from a player's side. One shared function feeds both screens, so
+    they cannot disagree (criteria 208–209). The "overall" half is M2 criterion 133, unchanged.
+16. **Nemesis is per-player and never a board record.** Every player has their own, so there is no
+    single holder and no number over the whole archive — it belongs on a player page, beside the
+    head-to-head rows it is computed from. **The board gains exactly two rows this stage**: the
+    drought and the nearly man.
+
+*Decisions 17–24 were added 2026-09-14 with **Stage 3's** criteria, the same day as 11–16 and
+immediately after them. They are the team's and the architect's; the founder-shaped questions this
+stage raised are **open questions 3, 11 and 12**, above.* ⚠️ **There is deliberately no Stage 3
+decision about second place or the winning margin.** Stage 2 settled both (decision 13, criteria
+214–215) and Stage 3 imports them; a second definition anywhere is the failure this project's
+shared-module habit exists to prevent.
+
+17. ⚠️ **A single-event record is a different animal from an aggregate one, and says so.** Best
+    game ever, worst game ever, the catastrophe, cleanest sheet and biggest hammering are each
+    **one observation**, not a summary of anybody's history. Criterion 182's *"from {n} games"*
+    would be a **false sample statement** on them — the holder having played 40 games says nothing
+    about a number drawn from one night. **They state the game's date instead** (criterion 233).
+    The board's archive line and early-days line are unaffected and still sit at the top.
+18. **Cleanest sheet counts one player's zero-point hands in one game**, out of eleven — not a
+    career total. A career total ranks by turning up, which the stalwart already measures, and it
+    would drift upward forever with nothing to compare against. *(Founder-visible as open question
+    11; default is this.)*
+19. **Per-hand bleed is a mean, not a total.** ⚠️ For a single player the two rank **identically**
+    — every player plays all eleven hands in every game, so each hand's total is its mean times the
+    same *n* — which is precisely why the choice can be made on presentation grounds: **the mean is
+    the number that compares across players and stays stable as the archive grows.**
+20. **The roster's table average is a new definition; the per-member average is not.** M2 criterion
+    138 puts wins and win rate per member on the roster page and **no average at all**, so both
+    numbers are new *to the screen*; only the roster-level one is a new *definition* — the mean of
+    **every final score posted in that roster's games by any member**. It answers "are our nights
+    high-scoring?", which is a fact about the table, not about a person.
+21. ⚠️ **The eleven-hand trend is eleven labelled numbers that happen to be drawn as bars.** No
+    line, no smoothing, no curve fit, no trend arrow, and **no copy claiming where games are
+    decided** — the screen shows the numbers and the reader makes the claim. A smooth line over
+    eleven aggregates of derived scores implies a precision this data does not have, and these
+    numbers are derived from running totals that can be misread.
+22. **The catalogue index is `/stats`**, and it is where slices that belong to nobody in particular
+    live (decision 8). Player-shaped numbers go on player pages, roster-shaped numbers on roster
+    pages. ⚠️ **No per-game chart is built**: a game's eleven hands for four people is the grid the
+    game view already shows, and drawing it twice adds decoration, not information.
+23. **No new honesty mechanism is invented here.** The sample statement, the early-days line, joint
+    holders, the fixed-strings contract, the no-cache rule and the wording ban all **continue**;
+    criterion 246 is a re-run over new surfaces, not new scope. The one addition is decision 17's
+    date-instead-of-count, which is a narrowing of criterion 182, not a second system.
+24. **The drill-through pattern does not fork.** A single-event record still lands on a filtered
+    games list under a heading stating the claim (criterion 186), even when that list has one row.
+    ⚠️ **A one-row list is not a bug**: it keeps one pattern across twelve records, and the row is
+    the ordinary `GameRow` whose link reaches the game and its photo — which is the whole mitigation.
+
 #### User stories
 
 **The board**
@@ -2397,11 +2566,91 @@ re-derive them. **None of these is a founder question** — those are open quest
 - ⚠️ **Nothing claims a number is checked, verified or safe.** Final scores can be misread and the
   product knows it.
 
-**The rest of the catalogue** *(detailed when their stages are specced — Stages 2–4)*
+**Rivalry** *(Stage 2 — written 2026-09-14 with its criteria, 197–222)*
+
+> As a player, I want to see how I do against one particular person, so that "I always beat you"
+> can be settled with a number.
+
+- One section on my player page, **one row per person I have ever shared a game with**: games
+  together, wins each, and my win rate across those games.
+- ⚠️ **A game counts only if we were both at the table.** Nights one of us missed are not part of it,
+  and a night a third person won is still a night we both played.
+- A shared win counts in full for both of us, so the two rates can sum past 100%.
+- Tapping the row lands on exactly those games, like every other claim in this milestone.
 
 > As a player, I want to know who my nemesis is, so that I know who to avoid inviting.
 
+- ⚠️ **Winning the night and finishing above me are different things**, and this is about the
+  second. In a group of five most games are won by neither of us; the person quietly ahead of me
+  every time is who the stat is for.
+- My nemesis is whoever finishes above me most reliably, stated as a rate **with the number of games
+  we have played together** beside it.
+- ⚠️ **Someone who has never once finished above me is not my nemesis**, at any sample size. Where
+  nobody qualifies, the screen says so plainly rather than crowning the least-bad candidate.
+- ⚠️ **This one is about a named friend who will read it.** It states a number. It does not
+  editorialise about either of us.
+
+> As a player, I want to know whether I do better with one set of people than another, so that the
+> roster argument has a number attached to it.
+
+- One row per **exact set** I have played in: games, wins, win rate. Four of us, and the same four
+  plus one, are two rows and neither borrows the other's games.
+- The same numbers the roster page already shows — gathered on me instead of on the set.
+
+> As a player, I want the board to say who has gone longest without a win and who keeps coming
+> second, so that the honours board is not only good news.
+
+- **The drought** — the longest run of games someone played and did not win. **Longest ever, not the
+  run they are on now.**
+- **The nearly man** — most second places, where second place is the next score up from the
+  winner's and can be shared like a win can.
+- Both state their sample and both tap through to the games behind them, like every other record.
+
+**Distributions and villains** *(Stage 3 — written 2026-09-14 with its criteria, 223–249)*
+
+> As a player, I want to know my best and worst nights ever, so that I have something to brag about
+> and something to live down.
+
+- The lowest and the highest final score anyone has ever posted, each with the player, the number
+  and the night it happened, on the board and in the catalogue.
+- Tapping either lands on that game, where the photo is. ⚠️ **The photo is the only way to settle
+  it** — nothing in the app can tell a right final score from a plausible wrong one.
+- Two people who posted the same extreme score both hold it, and both are named.
+
 > As a player, I want to know which hand I bleed on, so that I have something to blame.
+
+- Every player's average points per hand, 3s through Kings, with their own worst hand marked.
+- Read as a whole table on the catalogue index, and on my own page for just me.
+- Each number says how many games it averages; a player on one game is shown, not withheld.
+
+> As a player, I want to see where the points actually go across the eleven hands, so that the
+> "it's all decided on Kings" argument has a number attached to it.
+
+- Eleven numbers, one per hand, averaged across every game and every player in the archive.
+- ⚠️ **The screen does not tell me where games are decided.** It shows what each hand costs on
+  average and says what it is drawn from; the argument stays mine.
+
+> As a player, I want the single worst hand anyone has ever taken to be a named, permanent record,
+> so that nobody is allowed to forget it.
+
+- The biggest points taken in one hand, all-time: who, how many, which hand, which night.
+- The ten biggest, in the catalogue, for the ones that did not quite win.
+
+> As a player, I want to know how a particular crowd scores together, so that "we always play high
+> at that table" stops being a feeling.
+
+- A roster's own average across every score posted in its games, plus each member's average within
+  that roster only.
+
+> As a player, I want the board to say who got hammered worst, so that a landslide is remembered as
+> a landslide.
+
+- The widest gap between the winner and whoever came second, in any one game, named and dated.
+- ⚠️ **"Second" means the same thing here as it does in the nearly man** — Stage 2's criterion 214,
+  used and not re-derived. A game everybody finished level on has no second place, so it cannot
+  hold this record.
+
+**The rest of the catalogue** *(detailed when its stage is specced — Stage 4)*
 
 > As a player, I want to know whether we really do play differently at a particular house, so that
 > the venue argument has a number attached to it.
@@ -2410,8 +2659,12 @@ re-derive them. **None of these is a founder question** — those are open quest
 
 *Numbering continues from Milestone 2's 174, so a criterion number means one thing across the whole
 project. Executable by QA on a scratch environment with a seeded archive, except where a criterion
-names production or the founder's own phone. **Stage 1's criteria are 175–196**; Stages 2–4 are
-numbered from 197 as each is specced, the way M2 wrote its stages' criteria before the stage ran.
+names production or the founder's own phone. **Stage 1's criteria are 175–196**, **Stage 2's are
+197–222** and **Stage 3's are 223–249**, each written before its build starts, the way M2 wrote its
+stages' criteria before the stage ran; **Stage 4 continues from 250** when it is specced.
+⚠️ **Numbers are allocated in writing order and never re-ordered afterwards** — a criterion number is
+an identifier, not a position in the plan, which is the same rule that keeps 147 struck rather than
+reused. Stages 1, 2 and 3 were specced in that order on 2026-09-14 and are built in that order too.
 ⚠️ **M2's closing criteria 167–171** (wording audit, the a11y pass, real unit tests in CI, the
 permanent secret-free check, running cost unchanged) **are re-run over every screen this milestone
 adds**, and are restated with their own M3 numbers when the last stage is specced — no number is
@@ -2549,7 +2802,422 @@ mechanics below are the team's.
 
 **22 criteria for Stage 1, numbered 175–196.** ⚠️ **None of them is conditional any more** —
 196 was adopted and 182–185 were rewritten on 2026-09-14, both on the founder's answers, and no
-number moved in either change. Stages 2–4 continue from 197.
+number moved in either change. **Stage 2 took 197–222 and Stage 3 took 223–249**, both specced the
+same day and in that order; Stage 4 continues from **250**.
+
+---
+
+**Stage 2 — Rivalry: the criteria, 197–222**
+
+*Written 2026-09-14, before the stage starts and while Stage 1 is still in build — the same way
+Stage 1's criteria were written before its build. Three notes before the list:*
+
+- ⚠️ **This stage captures nothing either.** No table, no column, no migration, no backfill. Every
+  number below is a definition over rows M1 and M2 already store, and it applies to the whole
+  archive the moment it exists. Criterion 219 makes that testable.
+- **This is Stage 2's half of open question 7.** The drought and the nearly man are the two extra
+  records this stage's numbers pay for; **the default is "build both"** and this spec is written to
+  that default. Cutting either at the checkpoint is deleting one row and one criterion, not a
+  re-plan. ⚠️ **After this stage the board carries seven records** — the legibility question in
+  question 7 stops being hypothetical here (criterion 218).
+- ⚠️ **One new founder question opened with this spec — open question 10, on the nemesis's tone.**
+  It blocks nothing: the default is to build it exactly as specced below, titled with the founder's
+  own word and saying nothing beyond the number.
+
+**The definitions this stage is built on**
+
+197. **Head-to-head is over games both players were in.** A pure function in `lib/scoring` takes two
+     players and returns, over **the games both of them played**: games together, each player's
+     **wins** (M1's lowest total, **ties shared**), and each player's win rate across those games to
+     **one decimal place**. ⚠️ **A game either of them played without the other is not in the
+     sample**, and a game both played that a **third player** won counts in games-together and in
+     neither win column — so the two win counts need not sum to games together, in either direction.
+     A win the two of them shared counts **in full for both**. Unit tests assert all four shapes
+     (solo win each way, shared win between them, third-party win) and assert **symmetry**:
+     head-to-head(A, B) is head-to-head(B, A) mirrored, from one function, never two.
+198. **"Finishing above" is a comparison of final scores, and it is not the same thing as winning.**
+     In a game both played, **A finishes above B when A's `final_score` is strictly lower than B's**.
+     Equal final scores are **neither above nor below** and count **in the denominator only**. It
+     reads `game_player.final_score` — the same column criterion 178 and the player page already use.
+     ⚠️ **This is deliberately a finer measure than criterion 197's win count** (spec decision 12),
+     and nothing on screen presents the two as the same number.
+199. **Nemesis, precisely.** For a player **P**, take every other player who has shared at least one
+     game with P. For each, the **above-rate** is *(games that opponent finished above P, per 198)
+     ÷ (games both played)*, to one decimal place. **P's nemesis is the opponent with the highest
+     above-rate.** ⚠️ **An opponent who has never once finished above P is never P's nemesis** — an
+     above-rate of zero does not hold the title at any sample size, which is what stops an archive
+     where nobody has beaten P from crowning someone anyway. **Ties are joint**: every opponent on
+     the highest rate is named, alphabetically, exactly as criterion 181 requires of the board.
+     ⚠️ **There is deliberately no secondary tie-break on games played** — this project lists joint
+     holders rather than manufacturing a single one, and a rivalry stat is the last place to start.
+     ⚠️ **Nemesis is asymmetric on purpose**: P's nemesis may be Q while Q's nemesis is R, and
+     nothing on screen calls that a contradiction or tries to reconcile it.
+200. ⚠️ **No minimum sample anywhere, and the sample is always on screen.** Per the founder's answer
+     to open question 6, no head-to-head number, above-rate or nemesis is withheld, rounded away,
+     greyed out or footnoted for thinness — each states the games it is drawn from through **Stage
+     1's shared sample-statement component** (criterion 182), not through wording of its own. QA
+     seeds a pair with **one** shared game and finds a **100.0%** head-to-head rate shown plainly
+     with "1 game together" beside it, and no hedge beyond the board's early-days line.
+201. **A player with no nemesis, and a player with nothing at all.** Where **no opponent has an
+     above-rate greater than zero** — P has finished above or level with everyone, every time, which
+     a one-game archive readily produces — the nemesis line renders the **fixed no-nemesis string**
+     from criterion 193's table and crowns nobody. A player with **no shared games at all** renders
+     the same way, and a player with **zero games** keeps M2 criterion 136's empty state unchanged.
+202. ⚠️ **The wording rule, extended for the one stat that names a friend.** Criterion 192's bans
+     apply unchanged (*checked, validated, verified, confirmed, correct*; *safe, protected,
+     self-cancelling*), plus one addition for every rivalry screen: **nothing characterises a
+     player, only their numbers.** No string calls anyone weak, hopeless, dominated, owned, a victim
+     or a walkover; nothing says a player *can't* beat someone or *never* will; nothing advises
+     anyone what to do about it. ⚠️ **Amended 2026-09-14 (open question 10): the founder chose
+     banter over flat wording.** The ui-designer **may** write tone into the nemesis card's title and
+     framing — this was the team's original hesitation, now lifted by the founder's own answer, not
+     silently assumed — and proposes a short list of candidates for the founder to pick at the
+     mockup checkpoint rather than the single flat sentence this criterion originally specified.
+     Every other ban above still holds absolutely: banter lives in the title and the framing, never
+     in a sentence about what the losing player is or should do. **"Nemesis" itself is the founder's
+     own word** from the analytics catalogue and stays as at least one candidate.
+     ⚠️ **The test is mechanical**: QA reads every string on the player page and its head-to-head
+     rows and fails the stage on any sentence that would not be printable with **both named players
+     reading it, one over each shoulder** — a cheeky title clears this bar; a sentence that calls one
+     of them a loser does not.
+
+**Head-to-head on screen**
+
+203. **The head-to-head section lives on the player page, and there is no new page type.** A player
+     page gains one section with **one row per player they have shared at least one game with**,
+     each row stating: the opponent's name, **games together**, **wins each**, **this player's win
+     rate in those games** (197) and **the opponent's above-rate** (198). Rows are ordered by games
+     together, descending, then alphabetically. ⚠️ **No `/vs/` route, no player picker, no
+     everyone-against-everyone matrix** (spec decision 11). A player with no shared games sees the
+     section's own empty state, not a missing section.
+204. ⚠️ **A head-to-head row is checkable.** Tapping one lands on **exactly the games both players
+     played**, newest first, in the games list's row format, under a heading naming both players and
+     stating the sample — **Stage 1's drill-through (186) reused**, not a second list format. QA
+     counts the rows against the row's own games-together number.
+205. **The same pair reads the same from either side.** QA opens A's page and B's page and finds the
+     identical games-together count and mirrored win columns. Using M1 criterion 66's constructed
+     tie: a win **shared between A and B** shows as a win in **both** columns of the same row, the
+     two win rates therefore sum past 100%, and nothing on screen treats that as an error.
+206. **Nemesis appears on the player page and nowhere else** — the opponent's name, the above-rate,
+     and the games-together count, beside the head-to-head rows it is computed from. ⚠️ **It is not
+     a board record** (spec decision 16): every player has a different one, so there is no single
+     holder and no number over the whole archive. QA confirms the board gains no nemesis row.
+
+**Win rates, overall and per roster**
+
+207. **The overall win rate is not rebuilt.** M2 criterion 133's games played, wins and win rate on
+     the player page **are** the "overall" half of the catalogue's "win rates, overall and per
+     roster" — same number, same place, one decimal place, untouched by this stage. QA confirms the
+     player page's headline numbers are unchanged after Stage 2 lands.
+208. **Per-roster win rate, from the player's own side.** A player page gains a **by-roster
+     section**: one row per roster they have played in, showing the roster's name (custom or auto,
+     per M2 141–142), **games played in it, wins, and win rate to one decimal place**, each with its
+     sample stated. ⚠️ **The roster page is not touched and M2 criterion 138 is not
+     re-implemented** — both screens read one shared function (spec decision 15).
+209. **The two sides cannot disagree.** For any player and any roster they play in, the number on the
+     **roster page** (138) and the number in that player's **by-roster row** are the same figure to
+     the same decimal place. QA checks one roster containing a shared win from both directions.
+210. ⚠️ **Exact sets only, restated where it will bite.** A by-roster row is one **exact** set (M2
+     139): four people, and the same four plus a fifth, are **two rows**, and neither borrows the
+     other's games. QA saves both games and checks the invariant that makes this provable — **the
+     by-roster rows' games sum exactly to the player's overall games played** (criterion 207), with
+     no game counted twice and none missing.
+
+**Streaks, in context**
+
+211. **The longest winning streak is Stage 1's number, shown where the argument is.** The player page
+     states that player's **longest winning streak ever recorded** — criterion 177's definition and
+     **criterion 177's function**, never a second implementation — labelled so it cannot be read as
+     the run they are on now, with the games of that streak reachable by tap (186's drill-through).
+212. **The drought is that machinery negated, and the same rule about "ever".** A player's drought is
+     the longest run of **consecutive games that player was in** which they did **not** win, in the
+     games list's own order (`played_on`, `created_at` as tie-break). ⚠️ **A game they did not play
+     neither extends nor breaks it**, and **a shared win ends a drought exactly as a solo win does.**
+     ⚠️ **The record is the longest ever recorded, not the current run**, identical to criterion 177
+     and stated here rather than left implicit (spec decision 14). QA runs criterion 177's own
+     five-game construction inverted: a player who **loses games 1, 2, 4 and 5 and misses game 3
+     entirely** has a drought of **4**; one who **played game 3 and won it** has a drought of **2**.
+
+**The board gains two rows**
+
+213. **The drought on the board** is the largest drought held by any player (212): holder or holders
+     by name, the number of games, **its sample statement** (182) including each holder's own game
+     count, and a **drill-through** (186) landing on exactly the games of that run, in order. Joint
+     holders are listed alphabetically against the one number (181).
+214. ⚠️ **Second place, defined where wins are shared — once, for the whole project.** Within one
+     game, rank the **distinct** final scores ascending: the winners hold the lowest (M1's rule,
+     unchanged), and **second place is every player holding the second-lowest distinct final
+     score**. ⚠️ **Two records consume this definition and neither may re-derive it**: *the nearly
+     man* (criterion 216, this stage) and *biggest hammering* (criterion 232, Stage 3, bound through
+     criterion 215). One pure function in `lib/scoring`; a second implementation of second place
+     anywhere in the codebase is a QA failure. Four cases, each of which QA constructs and runs:
+     - **Two players tie the win on 100, one player has 110** → second place is **that one player**.
+       ⚠️ Second place is *not* skipped because the win was shared.
+     - **Two players tie on 110 behind a single winner** → **both are second**, counted in full for
+       each, exactly as a shared win counts in full for each.
+     - **Every player in the game finished level** → one distinct score, everybody won, and the game
+       has **no second place**, contributing to nobody's count.
+     - **A winner is never also a second place in the same game** — the definition makes it
+       impossible rather than guarding against it.
+     ⚠️ **The rejected alternative, recorded so it is not re-litigated**: competition ranking, where
+     a two-way tie for first makes the next player *third* and nobody second. It erases second place
+     in exactly the games where the near-miss stings most, and it disagrees with how this product
+     ranks everywhere else — distinct score positions, ties shared.
+215. **Stage 3 is bound to this function, not its own.** *Biggest hammering* (Stage 3) is the widest
+     margin between the winning score and the **runner-up** score, where runner-up means criterion
+     214's second-lowest distinct final score — so **a game with no second place cannot hold that
+     record**. The margin itself is **the second-place score minus the winning score**: a positive
+     integer, or **absent** where 214 returns no second place, which is why an all-level game
+     contributes nothing rather than contributing a zero. ⚠️ **Written here because the definition
+     is written here.** *(Stage 3 was specced later the same day and honours this: **criterion 232**
+     is biggest hammering, and it states no rule of its own.)*
+216. **The nearly man** — most second places, counted per 214, **a shared second counting in full for
+     each holder** — appears on the board with holder or holders by name, the number, its sample
+     statement (182) and a drill-through (186) landing on **exactly the games they came second in**.
+     QA hand-counts one fixture game against `fixtures/sheets/GROUND-TRUTH.md` and matches the
+     number on screen.
+217. **Both new rows survive an archive where nobody holds them.** QA seeds the single degenerate
+     game in which **every player finished level**: nobody has ever failed to win, so **the drought
+     has no holder**, and no game has a second place, so **the nearly man has no holder**. Both rows
+     render the **no-holder sentence** (185, verbatim per 193) rather than vanishing from the board,
+     and neither ever shows **0 with a name beside it**.
+218. **The board gains these two rows and nothing else in this stage.** After Stage 2 it carries
+     **seven records**: the four the founder named, the stalwart (196), the drought and the nearly
+     man. ⚠️ **Legibility is now live, not hypothetical** (open question 7's own warning): QA reports
+     how the board reads at **375px** — how far it scrolls, and whether the five-second read still
+     holds — as a finding for the founder, not as a pass/fail. **Cutting a row remains the founder's
+     call and costs one deletion.**
+
+**Nothing new is captured, nothing is stored, nothing is cached**
+
+219. ⚠️ **No schema change, again.** Stage 2 adds no table, no column and no migration: QA confirms
+     `lib/db/migrations/` is untouched and every number above traces to rows M1 and M2 already
+     store. *(Restated rather than inherited from 195, because a pair-wise stat is exactly the thing
+     a future session would be tempted to give a table of its own.)*
+220. ⚠️ **Nothing is cached.** No head-to-head table, no stored pair matrix, no nemesis column, no
+     scheduled recompute. QA **deletes a game** and **merges two players** (M2's own features),
+     reloads a player page and the board, and finds the head-to-head rows, the nemesis, the
+     by-roster rows, the drought and the nearly man **all moved**. ⚠️ **On the merge**: the surviving
+     player's head-to-head rows are the **union** of both players' opponents and **no row names the
+     player who was merged away**. A row of a player against *themselves* is unreachable by
+     construction — M2 criterion 160 refuses a merge where both players appear in the same game — so
+     this is a check, not a guard to build.
+221. **The query count does not grow with the archive or with the group.** QA compares the player
+     page's and the board's database queries at **10 games and at 60**, and at **4 players and at
+     8**, and finds the same bounded number each time — ⚠️ **no per-opponent, per-roster or per-game
+     query in a loop**, which is the specific temptation of a pair-wise screen (criterion 190,
+     extended).
+222. `npm run audit:a11y` covers the player page's new sections and the board's two new rows at
+     **375px and 1280px**: no horizontal overflow, ≥44px targets, visible focus, and ⚠️ **colour is
+     never the only signal** for a win column, a losing row, a no-holder row or the nemesis.
+
+**26 criteria for Stage 2, numbered 197–222.** None is conditional. ⚠️ **Two of them are the ones
+to read hardest at the checkpoint**: 214 (what "second place" means when a win is shared, which is
+a definition the archive will live with forever) and 202 (the tone of a stat about a named friend).
+**Stage 3 continues from 223**; Stage 4 from 250.
+
+---
+
+**Stage 3 — Distributions and villains: the criteria, 223–249**
+
+*Written 2026-09-14, the same day as Stage 2's and immediately after them, before either stage
+starts — the same way Stage 1's and Stage 2's criteria were written before their builds. Build order
+is unchanged: Stage 2 ships first. Three notes before the list:*
+
+- ⚠️ **This stage captures nothing either.** No table, no column, no migration, no backfill. Every
+  number below is a definition over rows M1 and M2 already store. Criterion 246 makes that testable.
+- ⚠️ **Second place is not defined here.** *Biggest hammering* needs the identical definition *the
+  nearly man* needs, and **Stage 2 settled it first** — criterion 214, bound to this stage through
+  criterion 215. **Criterion 232 uses that function and states no rule of its own.** Two stages
+  computing second place two different ways is exactly the failure the shared-module habit exists to
+  prevent; whichever stage is built first owns the function and the other imports it.
+- ⚠️ **This is the most exposed stage in the milestone and it does not get to be coy about that.**
+  Every number here reads a score **as a number rather than as a comparison**. *Most wins* survives
+  a misread final score because a game is rarely close enough for 30 points to flip it; *worst game
+  ever* **is** the number, and a final score misread into the record is permanent, quotable, and
+  invisible to everything the app does automatically (risk 1; ADR "Row 11 is not self-cancelling",
+  2026-09-14). **The mitigation is not a check and must never be written as one.** It is that every
+  record here names the game it came from, and one tap from the record lands on that game, where the
+  photo is. ⚠️ **Nothing on these screens may say *checked, verified, confirmed, correct, safe,
+  protected* or *self-cancelling*** — criterion 192 already bans it and criterion 246 re-runs it
+  over every string this stage adds. **The founder's standing call on whether these records should
+  say more than that is open question 3, restated as 3a/3b above.**
+
+*⚠️ **Stage 1's criteria 181, 182, 185, 186, 189, 190, 192, 193, 194 and 195 govern everything below
+and are not restated as new scope** — criterion 246 is where QA re-runs them over this stage's
+screens. **Stage 2's criteria 200 (no minimum sample) and 214–215 (second place, the margin) govern
+too**, and are equally not restated.*
+
+**The definitions this stage is built on**
+
+223. **Averages reuse criterion 178's function unchanged** — mean of `game_player.final_score`, one
+     decimal place. ⚠️ **No second mean is written anywhere in this stage.** QA greps for a second
+     averaging implementation and finds none.
+224. **A roster's table average** is the mean of **every final score posted in that roster's games,
+     by any member** — a fact about the table, distinct from any member's own average. It is stated
+     with **both** numbers behind it: the games and the scores (a four-person roster over 5 games
+     averages 20 scores, and the screen says so).
+225. **Per-hand mean.** A pure function groups stored `round_score.score` rows by hand and returns
+     the mean to one decimal, with hands labelled **3s through Kings** from the existing
+     `HAND_LABELS` rather than by number. Unit tests assert it over both fixture games.
+226. **The hand a player bleeds on** is **the hand with their highest per-hand mean** across every
+     game they have played. ⚠️ **Ties are joint and every tied hand is named** — "Jo bleeds on 9s
+     and Kings" is an ordinary result, not a tie-break failure. A player with one game has one, and
+     it is shown with "from 1 game" beside it.
+227. **A zero-point hand is a stored `round_score.score` of exactly 0** — M1's derived value, read
+     as-is. ⚠️ **Nothing in this stage re-derives zeros from running totals or reinterprets a
+     repeat**, and nothing anywhere treats a run of identical running totals as a suspected
+     duplicate read. QA hand-counts the zeros in fixture sheet 1 against
+     `fixtures/sheets/GROUND-TRUTH.md` — including the column that holds the same value for five
+     consecutive hands — and matches the count on screen.
+
+**The five records the board gains**
+
+228. **Best game ever** — the **lowest** `final_score` ever posted by anyone in any game. The card
+     states the record title, the holder, the score, and **the date of that game**. ⚠️ **Joint
+     holders are every (player, game) pair at that score**, listed alphabetically by player; where
+     one player posted it in two different games, each instance is listed with its own date.
+229. **Worst game ever** — the **highest** `final_score` ever posted, same shape, same tie rule.
+     ⚠️ **Rendered exactly like every other record: no commiseration, no joke in the copy, no
+     `warn` treatment.** It is a record, not a problem being flagged.
+230. **The catastrophe** — the **highest single `round_score.score`** across every player, game and
+     hand in the archive. The card names **the player, the score, the hand (3s … Kings) and the
+     date**. Joint holders are **every (player, game, hand) triple** at that value, all listed; the
+     same player appearing twice is listed twice, each with its own hand and date.
+231. **Cleanest sheet** — the **most zero-point hands one player scored in one game**, out of
+     eleven. The card names the player, the count, and the date. ⚠️ **It is not a career total**
+     (decision 18). Joint holders are every (player, game) pair at that count. QA seeds a game in
+     which a player scores nine zeros and confirms the record reads "9" and not "9 of 11 across 3
+     games" or any career figure.
+232. **Biggest hammering** — the **largest winning margin in any one game**, where the margin is
+     **criterion 215's**: the second-place score minus the winning score, with second place being
+     **criterion 214's** second-lowest distinct final score. ⚠️ **This criterion defines nothing.**
+     It calls Stage 2's function, and QA fails the build on a second implementation of second place
+     or of the margin anywhere in the codebase. The card names **the winner or winners, the margin,
+     and the date**. ⚠️ **A game with no second place cannot hold it** and does not appear in its
+     drill-through. Two games tied on the margin are joint holders, each listed with its own
+     winner(s) and date. QA constructs a game with a **shared win** and confirms the margin is
+     measured **to the next distinct score, not to the co-winner** (which would read as 0), and a
+     game where **every player finished level** and confirms it contributes **nothing** rather than
+     a margin of zero — criterion 214's own third case, read from this side.
+233. ⚠️ **A single-event record states the game's date, not a game count.** Criteria 228–232 each
+     render **the date of the game their number came from** where criterion 182 puts "from {n}
+     games", because the number is one observation and the holder's own history is not its sample
+     (decision 17). QA finds **no "from {n} games" anywhere on these five cards**, and finds a date
+     on every one of them. The board's archive statement and the early-days line are unchanged and
+     still appear once at the top.
+234. **Each of the five drills through** to exactly the games its number came from, newest first,
+     in the games list's own row format, under a heading stating the claim — criterion 186's
+     pattern, unchanged. Each row is annotated with **that instance's own number** (the score, the
+     count, the margin, the single-hand score with its hand). ⚠️ **A one-row list is correct and is
+     not padded, decorated, or replaced by a redirect straight to the game** (decision 24).
+235. **The board carries twelve cards after this stage and still works at 375px.** Stage 1 left five,
+     Stage 2 made it seven (criterion 218), and these five make twelve. QA loads the board at 375px
+     and 1280px with all twelve present: no horizontal overflow, one column on a phone, and the
+     order **matching the fixed order documented in `docs/DESIGN-SYSTEM.md`** — not source order, not
+     alphabetical, not "newest stage last". ⚠️ **Legibility at twelve records is a founder review
+     point, not a QA pass** (open question 12, informed by criterion 218's finding at seven).
+
+**The catalogue index**
+
+236. **`/stats` exists and is the catalogue index.** It is reachable **in one tap from the board**
+     and from the games list; an unauthenticated request 307s to `/login` with **no fragment of the
+     record in the response**, exactly as M1 criterion 1 requires of every other screen.
+237. **The eleven-hand trend** renders eleven values, labelled **3s through Kings**, each being the
+     mean points scored in that hand across every player in every game, to one decimal. ⚠️ **Every
+     value is printed as a number**, not only drawn — the bars are an aid to reading eleven numbers,
+     never the only representation of them. The section states its sample once: the games, the
+     players and the hand-scores behind it. ⚠️ **No copy on this section claims where games are
+     decided, and there is no line, curve, fit, trend arrow or projection** (decision 21).
+238. ⚠️ **The trend carries one fixed honesty line**, verbatim from the design system: per-hand
+     scores are **derived from the running totals**, and one misread total moves the two hands
+     either side of it in opposite directions. It states what the numbers are made of; **it does
+     not claim they have been checked**, and it may not acquire a reassuring second sentence —
+     criterion 192 covers it like everything else.
+239. **Hand-by-hand villains** render as every player against the eleven hands, each cell a mean to
+     one decimal, **each player's own worst hand marked**, and each player's row stating the number
+     of games it averages. ⚠️ **The marker is not colour alone** (criterion 247). A player with one
+     game appears, with "from 1 game" — **no floor, nobody set aside** (the 2026-09-14 decision, and
+     Stage 2's criterion 200 on the same point).
+240. **Biggest single-hand disasters** lists the **ten** biggest single-hand scores in the archive
+     (`SINGLE_HAND_DISASTERS = 10`, a named constant), each naming the player, the score, the hand
+     and the date, each row reaching that game. ⚠️ **Ties at the last place are all shown** — the
+     list runs to eleven or twelve rows rather than cutting a tied score — and an archive with
+     fewer than ten hands in it shows what exists rather than padding to ten.
+241. **The catalogue and the board cannot disagree.** Best game ever and worst game ever appear on
+     `/stats` as well as on the board, **from the same function**, and QA reads the two screens side
+     by side and finds the same holder, the same number and the same date.
+242. **The averages table** lists **every player's average final score** (one decimal, with its game
+     count) and **every roster's table average** (criterion 224, with its games and scores). ⚠️ **No
+     ranking decoration** — no crown, no medal, no 1st/2nd/3rd, matching `RecordCard`'s precedent:
+     these are facts listed together, not a podium.
+
+**Player and roster pages**
+
+243. **A player page gains three things**: their **average final score** with its game count, their
+     **eleven-hand profile** with their worst hand marked (criterion 226), and their **best and
+     worst game** — score, date, and a link to each. ⚠️ **M2's criterion 133 numbers do not move,
+     change meaning or change position** (criterion 207 already requires this of Stage 2), and
+     ⚠️ **Stage 2's head-to-head, by-roster and longest-streak sections are equally untouched** —
+     the new sections are added around all of them.
+244. **A roster page gains two things**: the **roster's table average** (criterion 224) and **each
+     member's average within this roster only**. M2 criterion 138's per-member wins and win rates are
+     untouched (Stage 2 did not touch this page either). QA re-runs M2 criterion 139's containment
+     check — the same four people plus a fifth is a different roster, and **neither roster's averages
+     move the other's**.
+245. ⚠️ **No floor anywhere in this stage**, continuing criterion 200. A player or roster with **one
+     game** shows every number in 243 and 244 with "1 game" beside it, and appears in the villains
+     table and the averages table. QA seeds a one-game player and finds them present on every screen
+     this stage adds, with the sample stated and **no sentence anywhere counting anyone as set
+     aside** — there are none.
+
+**Continuing rules, re-run rather than restated**
+
+246. ⚠️ **Stage 1's rules govern every screen this stage adds, and QA re-runs each of them here**:
+     **181** (all joint holders listed, never "and N others"), **182** (every number states its
+     sample, as narrowed by 233 for the five single-event records), **185** (a record with no holder
+     says so rather than vanishing), **186** (every record is checkable by tapping it), **189**
+     (nothing cached — QA deletes a game **and** merges two players, reloads, and finds every new
+     record, the trend, the villains table and both averages tables have moved), **192** (the
+     wording ban, including *safe*, *protected* and *self-cancelling*, read across every new string
+     on the board, `/stats`, the player page, the roster page and all five drill-throughs), **193**
+     (the five new titles, their units, the no-holder sentence and criterion 238's honesty line
+     rendered **verbatim** from the design system's Stage 3 fixed-strings table — a paraphrase is a
+     fail), and **195** (**no schema change**: no table, no column, no migration, and
+     `lib/db/migrations/` untouched).
+247. **`npm run audit:a11y` covers `/stats` and every new section** at 375px and 1280px: no
+     horizontal overflow, ≥44px targets, visible focus. ⚠️ **Colour is never the only signal** for a
+     marked worst hand, a joint holder, a record card or a row in the disasters list, and **the
+     eleven-hand trend has a text equivalent** — its numbers are readable without seeing the bars,
+     by eye and by screen reader.
+248. **The query count does not grow with the archive**, on `/stats`, the player page and the roster
+     page. QA compares each screen's database queries at **10 games and at 60** and finds the same
+     bounded number, with **no per-player, per-hand or per-game query in a loop** — eleven hands
+     times six players is an aggregate, not sixty-six queries.
+249. ⚠️ **Every number traces to a column the rest of the app already shows.** Each one on these
+     screens comes from `game_player.final_score` or `round_score.score` — the same values the game
+     view, the player page and the CSV download already use — so **no two screens in the product can
+     disagree about a score**. QA picks one player, reads their average off the board, the player
+     page and `/stats`, and hand-checks it against the game view's own final scores.
+
+**27 criteria for Stage 3, numbered 223–249.** None is conditional. ⚠️ **The one to read hardest at
+the checkpoint is 233** (a single-event record states a date, not a game count — the only narrowing
+of criterion 182 anywhere in this milestone). **232 carries no definition of its own**: second place
+and the margin are Stage 2's, at 214–215.
+
+**Explicitly out of scope for Stage 3** *(each a decision, not an oversight)*
+
+- **Any per-game chart.** The game view's grid already is the game (decision 22).
+- **Medians, spreads, standard deviations, or "most consistent"** — M4, and a spread is a different
+  claim from an average.
+- **Any claim about where games are decided**, in copy or in a drawn trend line. The numbers are
+  shown; the argument stays the founder's (decision 21).
+- **Venue and date slices** — Stage 4, per open question 9.
+- **Second place as a standing per-player record** — that is Stage 2's nearly man (criterion 216).
+  Stage 3 uses second place only to measure one game's margin, and uses Stage 2's function to do it.
+- **A career zero-count record** — decision 18, unless open question 11 comes back the other way.
+- **Any second read, any new check on a final score, and any wording that implies one exists.** Open
+  question 3 may add a *caveat*; it may not add a claim.
 
 #### The stages
 
@@ -2582,38 +3250,65 @@ so.
 
 ---
 
-**Stage 2 — Rivalry** *(sketch — full criteria written when the stage starts)*
+**Stage 2 — Rivalry** *(specced 2026-09-14 — criteria 197–222; the sketch it replaces is kept below)*
 
-*Scope*: head-to-head records between any two players (who beats who, and by how much); win rates
-overall and per roster; longest winning streaks in context; **nemesis** — the player who most
-reliably finishes above you. Shared wins count for both players in every one of these, and the
-screens do not hide win rates summing past 100%.
+*Scope*: head-to-head records between any two players, as **a section on each player's page** rather
+than a versus screen (who beats who, and by how much — kept as **two numbers**, games won and the
+rate of finishing above, because in a group of five most games are won by neither of two named
+people); **win rates per roster gathered on the player**, reading the same function as M2's roster
+page rather than re-implementing it; **longest winning streak shown where the argument is**, reusing
+Stage 1's streak function; and **nemesis** — the player who most reliably finishes above you, with
+nobody crowned where nobody qualifies. Shared wins count for both players in every one of these, and
+the screens do not hide win rates summing past 100%.
 
-*The board gains*: **the drought** (longest run without a win — the streak machinery run backwards)
-and **the nearly man** (most second places). ⚠️ **Second place needs a definition where wins are
-shared**, and that is a team call to be written down when this stage is specced, not guessed at now.
+*The board gains*: **the drought** (longest run without a win — the streak machinery negated, and
+**longest ever, not the current run**, criterion 212) and **the nearly man** (most second places).
+⚠️ **Second place is now defined**, in criterion 214: the **second-lowest distinct final score**,
+shared like a win is, so a shared win still has a second place behind it and a game where everyone
+finished level has none. *(The sketch said this was "a team call to be written down when this stage
+is specced, not guessed at now" — 214 is that call, and spec decision 13 records what was rejected.)*
+
+*What the founder sees*: **the board stops being only good news**, and a player page starts
+answering "how do I do against you" from either side. ⚠️ **Two things to review hardest**: the
+board now carries **seven records** and the five-second read is the thing at risk (criterion 218),
+and **nemesis is a stat about one named friend beating another** — its tone is open question 10.
 
 *Why second*: it is the half of the catalogue the founder's own framing leads with, it needs nothing
 but games and winners, and it reuses Stage 1's streak code rather than inventing a second one.
 
 ---
 
-**Stage 3 — Distributions and villains** *(sketch — full criteria written when the stage starts)*
+**Stage 3 — Distributions and villains** *(specced 2026-09-14 — criteria 223–249, in the Stage 3
+criteria block above. Nothing built; Stage 2 still ships first.)*
 
 *Scope*: average final score per player and per roster; **best and worst game ever**, named and
-dated; how scores trend across the eleven hands — where games are actually decided; **which hand
-each player bleeds most on** (3s through Kings); biggest single-hand disasters all-time.
+dated; how scores trend across the eleven hands; **which hand each player bleeds most on** (3s
+through Kings); biggest single-hand disasters all-time; **`/stats`, the catalogue index** (decision
+22). ⚠️ *The scope line used to read "where games are actually decided" — **the screens do not say
+that**, because eleven averages do not establish it. The numbers are shown and the claim stays the
+reader's (decision 21).*
 
 *The board gains*: **best game ever**, **worst game ever**, **the catastrophe** (biggest single
-hand), **cleanest sheet** (most zero-point hands — a repeat in a column *is* a zero) and **biggest
-hammering** (widest winner-to-runner-up margin).
+hand), **cleanest sheet** (most zero-point hands **in one game** — a repeat in a column *is* a zero)
+and **biggest hammering** (widest winner-to-runner-up margin, on **Stage 2's** second-place function,
+criteria 214–215). ⚠️ **That takes the board from seven cards to twelve** — legibility at twelve is
+open question 12.
 
-⚠️ **This is the stage most exposed to a misread**, and its spec has to say so plainly: every number
-here reads a score as a number rather than as a comparison, so a wrong cell is quotable forever. It
-is also the stage open question 3 is really about.
+*Acceptance criteria*: **223–249**.
+
+⚠️ **This is the stage most exposed to a misread**, and its spec says so plainly: every number here
+reads a score as a number rather than as a comparison, so a wrong cell is quotable forever. It is
+also the stage open question 3 is really about, which is why 3 is now restated as **3a/3b**.
+
+*What the founder sees*: **the board stops being only about winning**, and the archive starts
+answering "how bad was that night, really". ⚠️ **Two things to review hardest**: the board at
+**twelve records** on a phone (open question 12 — cutting one is deleting a row), and whether the
+five single-event cards reading a **date** rather than "from {n} games" (criterion 233) is what you
+expect to see.
 
 *Why third*: it is the largest single block of new computation, and it wants Stage 1's
-sample-statement and early-days machinery to already be boring.
+sample-statement and early-days machinery — and Stage 2's second-place function — to already be
+boring.
 
 ---
 
@@ -2625,7 +3320,8 @@ the games list and across the analytics — shape per **open question 9**.
 
 *The board gains*: **home advantage** — the biggest gap between a player's win rate at one venue and
 everywhere else, **with the venue's own game count stated beside it** — the same sample rule as
-every other record, since there is no withholding to obey *(amended 2026-09-14)*.
+every other record, since there is no withholding to obey *(amended 2026-09-14)*. ⚠️ **This is the
+thirteenth card**, and the one open question 12 is really counting towards.
 
 *Then, closing the milestone*: the wording audit, the a11y pass extended to every new screen, CI with
 real unit tests over the new definitions, the permanent secret-free check and a confirmation that the

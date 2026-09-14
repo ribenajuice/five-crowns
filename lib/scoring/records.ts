@@ -1,16 +1,21 @@
 /**
- * The records board's definitions — PRD criteria 175–178.
+ * The records board's definitions — PRD criteria 175–178, extended by
+ * Stage 2 (criteria 197–199, 212, 214–215) with second place, the winning
+ * margin, the drought, head-to-head and nemesis.
  *
- * Four pure functions, beside `determineWinners` (`./winners.ts`) and the hand
- * derivation (`./hands.ts`): round winner, most rounds won, a streak, and the
- * lowest average score. Nothing here touches the database — `lib/board/queries.ts`
- * feeds these the rows it already fetched, and is the only thing that knows
- * where a `player_id` or a `game_id` comes from.
+ * Pure functions, beside `determineWinners` (`./winners.ts`) and the hand
+ * derivation (`./hands.ts`): round winner, most rounds won, a streak, the
+ * lowest average score, second place, the drought, head-to-head and nemesis.
+ * Nothing here touches the database — `lib/board/queries.ts` and
+ * `lib/players/rivalry.ts` feed these the rows they already fetched, and are
+ * the only things that know where a `player_id` or a `game_id` comes from.
  *
  * Pure and dependency-free, same as the rest of `lib/scoring`.
  */
 
-import { determineWinners, type PlayerScore } from "./winners";
+import { compareOldestFirst } from "./chronology";
+import { compareDisplayNames } from "./names";
+import { determineWinners, winningScore, type PlayerScore } from "./winners";
 
 /* --------------------------------------------------------- round winner (175) */
 
@@ -140,11 +145,7 @@ const EMPTY_STREAK: Streak = { length: 0, gameIds: [] };
  * drill-through points at.
  */
 export function longestStreak(games: readonly StreakGame[]): Streak {
-  const sorted = [...games].sort((a, b) => {
-    if (a.playedOn !== b.playedOn) return a.playedOn < b.playedOn ? -1 : 1;
-    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
-    return 0;
-  });
+  const sorted = [...games].sort(compareOldestFirst);
 
   let best: Streak = EMPTY_STREAK;
   let current: string[] = [];
@@ -187,4 +188,216 @@ export function averageFinalScore(finalScores: readonly number[]): AverageScore 
     average: Math.round(mean * 10) / 10,
     gamesPlayed: finalScores.length,
   };
+}
+
+/* -------------------------------------------------------- second place (214) */
+
+/**
+ * Every player holding the second-lowest **distinct** final score in one
+ * game — never the winners themselves.
+ */
+export interface SecondPlace {
+  /** The second-lowest distinct score. */
+  score: number;
+  /** Every player on that score, in the order supplied (same convention as `determineWinners`). */
+  playerIds: string[];
+}
+
+/**
+ * Second place, defined **once for the whole project** (criterion 214) — the
+ * function both *the nearly man* (`lib/board/queries.ts`, this stage) and
+ * *biggest hammering* (Stage 3, criterion 215) are bound to, and may not
+ * re-derive. Distinct score positions, ties shared, exactly like the winners
+ * themselves:
+ *
+ * - The winners hold the lowest distinct score (`determineWinners`, unchanged).
+ * - Second place is every player on the **next** distinct score up — not the
+ *   next-ranked player, so a shared win still has a second place behind it.
+ * - A game where every finite score ties the winners' has **no second place
+ *   at all**: there is only one distinct score, and it belongs to the
+ *   winners. Rejected: competition ranking (a two-way tie for first makes
+ *   the next player third, nobody second) — see criterion 214's own note.
+ *
+ * `null` when there is no second place: an empty input, or an all-level game.
+ * A winner can never also be a second place in the same game — the
+ * definition makes it impossible rather than guarding against it.
+ */
+export function secondPlace(scores: readonly PlayerScore[]): SecondPlace | null {
+  const finite = scores.filter((entry) => Number.isFinite(entry.score));
+  if (finite.length === 0) return null;
+
+  const winning = winningScore(finite);
+  if (winning === null) return null;
+
+  const above = finite.filter((entry) => entry.score > winning);
+  if (above.length === 0) return null;
+
+  const second = above.reduce(
+    (lowest, entry) => (entry.score < lowest ? entry.score : lowest),
+    above[0]!.score,
+  );
+
+  return {
+    score: second,
+    playerIds: above.filter((entry) => entry.score === second).map((entry) => entry.playerId),
+  };
+}
+
+/**
+ * The winning margin (criterion 215) — second place's score minus the
+ * winning score, a positive integer. `null` wherever `secondPlace` is `null`,
+ * so an all-level game contributes nothing rather than a false zero margin.
+ */
+export function winningMargin(scores: readonly PlayerScore[]): number | null {
+  const winning = winningScore(scores);
+  const second = secondPlace(scores);
+  if (winning === null || second === null) return null;
+  return second.score - winning;
+}
+
+/* ------------------------------------------------------------ the drought (212) */
+
+/**
+ * The longest-ever run of consecutive games this player was in **without**
+ * winning — `longestStreak` (177), negated (criterion 212, spec decision
+ * 14). Same order, same "a game they missed neither extends nor breaks it,"
+ * same "a shared win counts as a win" — here, as ending the drought exactly
+ * as it would end a streak — and the same **longest ever recorded**, not the
+ * run they are on now. Written as its own function over the same `won` flag
+ * `longestStreak` reads, rather than left as an inline negation at each call
+ * site, precisely because that is where a second implementation would be
+ * tempted to drift from the first.
+ */
+export function longestDrought(games: readonly StreakGame[]): Streak {
+  return longestStreak(games.map((game) => ({ ...game, won: !game.won })));
+}
+
+/* ------------------------------------------------------- head-to-head (197-198) */
+
+/** One game both players were in, already resolved to what head-to-head needs from it. */
+export interface HeadToHeadGame {
+  gameId: string;
+  /** Whether player A held this game's own outright lowest score (M1's win, ties shared) — not "finished above B". */
+  aWon: boolean;
+  bWon: boolean;
+  /** Final scores — all "finishing above" (198) ever compares. */
+  aScore: number;
+  bScore: number;
+}
+
+export interface HeadToHeadSide {
+  wins: number;
+  /** `wins / gamesTogether`, a fraction 0–1. */
+  winRate: number;
+  /**
+   * Games this side finished strictly below (i.e. ahead of) the other
+   * (criterion 198) — deliberately a different count from `wins` (spec
+   * decision 12): "finishing above" is not "winning the night".
+   */
+  above: number;
+  /** `above / gamesTogether`, a fraction 0–1. */
+  aboveRate: number;
+}
+
+export interface HeadToHead {
+  gamesTogether: number;
+  a: HeadToHeadSide;
+  b: HeadToHeadSide;
+}
+
+/**
+ * Head-to-head between two players, over exactly the games supplied — the
+ * caller's job is restricting that list to games both of them played
+ * (criterion 197: "a game either of them played without the other is not in
+ * the sample"). ⚠️ **One function, not two**: swap `a`/`b` in every
+ * `HeadToHeadGame` and this returns the exact mirror image, which is the
+ * whole of criterion 197's symmetry requirement — the two players' pages can
+ * never disagree about the same pair.
+ *
+ * `wins` and `above` need not sum to `gamesTogether` for either player — a
+ * game a third player won counts in `gamesTogether` and in neither `wins`
+ * column, and a level final score between A and B counts in `gamesTogether`
+ * and in neither `above` column. A win the two of them shared counts in full
+ * for both (`aWon` and `bWon` can both be true for the same game).
+ */
+export function headToHead(games: readonly HeadToHeadGame[]): HeadToHead {
+  const gamesTogether = games.length;
+  let aWins = 0;
+  let bWins = 0;
+  let aAbove = 0;
+  let bAbove = 0;
+
+  for (const game of games) {
+    if (game.aWon) aWins++;
+    if (game.bWon) bWins++;
+    if (game.aScore < game.bScore) aAbove++;
+    else if (game.bScore < game.aScore) bAbove++;
+    // Equal final scores are neither above nor below (criterion 198) —
+    // counted in gamesTogether only.
+  }
+
+  const rate = (count: number) => (gamesTogether === 0 ? 0 : count / gamesTogether);
+
+  return {
+    gamesTogether,
+    a: { wins: aWins, winRate: rate(aWins), above: aAbove, aboveRate: rate(aAbove) },
+    b: { wins: bWins, winRate: rate(bWins), above: bAbove, aboveRate: rate(bAbove) },
+  };
+}
+
+/* ------------------------------------------------------------- nemesis (199) */
+
+export interface NemesisCandidate {
+  playerId: string;
+  displayName: string;
+  /** The rate this opponent finished above the player (198), a fraction 0–1. */
+  aboveRate: number;
+  gamesTogether: number;
+}
+
+export interface NemesisHolder {
+  playerId: string;
+  displayName: string;
+  gamesTogether: number;
+}
+
+export interface NemesisResult {
+  /** Every joint holder, alphabetical — empty when nobody qualifies (criterion 201). */
+  holders: NemesisHolder[];
+  /** The winning above-rate, as a percentage to one decimal place (criterion 199) — `null` iff `holders` is empty. */
+  aboveRatePercent: number | null;
+}
+
+/**
+ * A player's nemesis (criterion 199): the opponent(s) with the highest
+ * above-rate against them, among every opponent they have shared at least
+ * one game with. ⚠️ **An above-rate of exactly zero never holds the title,
+ * at any sample size** — an opponent who has never once finished above this
+ * player is excluded outright, which is what stops an archive where nobody
+ * has beaten this player from crowning someone anyway (criteria 199, 201).
+ * With no candidates, or every candidate at zero, nobody qualifies.
+ * ⚠️ **No secondary tie-break on games played** — every opponent on the
+ * highest rate is a joint holder, alphabetical, exactly as criterion 181
+ * requires of the board.
+ *
+ * Compares (and reports) the above-rate **rounded to one decimal place of a
+ * percentage**, matching the precision criterion 199 itself states the rate
+ * in — so two candidates who would read identically on screen are always
+ * joint holders, never silently tie-broken at a precision nobody can see.
+ */
+export function nemesis(candidates: readonly NemesisCandidate[]): NemesisResult {
+  const withPercent = candidates.map((c) => ({ ...c, percent: Math.round(c.aboveRate * 1000) / 10 }));
+
+  let best = 0;
+  for (const c of withPercent) {
+    if (c.percent > best) best = c.percent;
+  }
+  if (best === 0) return { holders: [], aboveRatePercent: null };
+
+  const holders = withPercent
+    .filter((c) => c.percent === best)
+    .map((c) => ({ playerId: c.playerId, displayName: c.displayName, gamesTogether: c.gamesTogether }))
+    .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
+
+  return { holders, aboveRatePercent: best };
 }

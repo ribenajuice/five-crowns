@@ -22,6 +22,10 @@
   each stage is built, the same way Milestone 2 was. **Stage 1** ("the board, and the engine under it" — the
   app now opens on a records board instead of the games list) is built, QA'd, code-reviewed and
   security-reviewed on branch `feat/m3-stage1`, ready to open as a PR — not yet merged or deployed.
+  **Stage 2** ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two
+  more board records) is also built, QA'd, code-reviewed and security-reviewed, on branch `feat/m3-stage2`
+  (stacked on Stage 1's branch, since it builds directly on the board's code), ready to open as a PR — not
+  yet merged or deployed.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -30,29 +34,48 @@
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
 - **Currently in flight**:
-  - **Milestone 3 Stage 1** — the records board (criteria 175–196). Built on `feat/m3-stage1`; not yet a PR.
-    Milestone 3 had no detailed spec at all going in — only a bullet-point sketch — so product-manager wrote
-    the actual delivery plan, proposing a 4-stage breakdown (each stage ships the board rows its own numbers
-    happen to compute, rather than building the board and the catalogue as two separate passes) and detailing
-    Stage 1 at criterion level. **The founder overruled the team's recommended default** at the checkpoint: the
-    board shows every record from game one rather than withholding anything until the archive reaches 10 games
-    — a single honest line at the top of the screen carries the caveat instead, and per-player records state
-    their own holder's game count in place of a minimum-games floor. QA drove the real running app end-to-end,
-    including constructing both of the PRD's own streak examples live and precisely verifying the 9→10-game
-    transition — found one real bug (a shared, pre-existing component fell about 1px short of the 44px
-    touch-target minimum, only caught because QA added a11y test coverage for the board that never existed
-    before) and fixed it. A security review found no blocking issues, independently confirming the auth
-    boundary against a known middleware bypass hazard from Stage 2. `/code-review high` then found real
-    duplication worth closing before Stage 2 compounds it (four near-identical ~90-line record-assembly blocks,
-    a shared name comparator duplicated a fifth time, a streak-ownership map keyed by display name instead of
-    player id — currently harmless but a landmine) — all fixed. 1332 tests passing, lint and typecheck clean.
-    **Next**: open the PR.
-  - Milestone 3 Stages 2 and 3 are already specced ahead of time (Rivalry, criteria 197–222; Distributions and
-    villains, criteria 223–249) but deliberately kept off this branch and off `docs/PRD.md` until their turn —
-    parked as a patch at the session's scratchpad, ready to apply. Two founder questions are still open from
-    that prep work, neither blocking: the nemesis stat's tone/wording (Stage 2), and whether records that read a
-    final score (best/worst game, biggest hammering — Stage 3) should carry a caveat about the known final-row
-    misread risk (default: no change).
+  - [PR #29](https://github.com/ribenajuice/five-crowns/pull/29) — **Milestone 3 Stage 1**, the records board
+    (criteria 175–196). Open, not yet merged. Milestone 3 had no detailed spec at all going in — only a
+    bullet-point sketch — so product-manager wrote the actual delivery plan, proposing a 4-stage breakdown
+    (each stage ships the board rows its own numbers happen to compute, rather than building the board and
+    the catalogue as two separate passes) and detailing Stage 1 at criterion level. **The founder overruled
+    the team's recommended default** at the checkpoint: the board shows every record from game one rather
+    than withholding anything until the archive reaches 10 games — a single honest line at the top of the
+    screen carries the caveat instead, and per-player records state their own holder's game count in place of
+    a minimum-games floor. QA drove the real running app end-to-end, including constructing both of the PRD's
+    own streak examples live and precisely verifying the 9→10-game transition — found one real bug (a shared,
+    pre-existing component fell about 1px short of the 44px touch-target minimum, only caught because QA
+    added a11y test coverage for the board that never existed before) and fixed it. A security review found
+    no blocking issues, independently confirming the auth boundary against a known middleware bypass hazard
+    from Milestone 2 Stage 2. `/code-review high` then found real duplication worth closing before Stage 2
+    compounded it (four near-identical ~90-line record-assembly blocks, a shared name comparator duplicated a
+    fifth time, a streak-ownership map keyed by display name instead of player id — currently harmless but a
+    landmine) — all fixed. 1332 tests passing, lint and typecheck clean.
+  - **Milestone 3 Stage 2** — "Rivalry" (criteria 197–222). Built on `feat/m3-stage2` (stacked on Stage 1's
+    branch, since it builds directly on the board's code); not yet a PR. Head-to-head records, a "Nemesis"
+    card, per-roster win rates, streaks in context, and two more board records (the drought, the nearly man —
+    the board is now at seven). **The founder was shown five candidate titles for the nemesis card** (the one
+    stat that names a friend as another's problem) and picked the flat "Nemesis" default over four banter
+    options. Second place and winning margin are defined once here for the whole project — Stage 3's "biggest
+    hammering" will bind to this same function rather than re-deriving it. QA drove the real app end-to-end
+    across all 26 criteria and found no bugs in the feature itself, only closing three real test-coverage gaps
+    (the a11y suite had never visited a player page; the nemesis tie-break's "round before comparing" rule was
+    only tested with already-equal fractions; the nearly-man count had no hand-verified fixture test) — plus
+    an honest founder-facing finding: the board now needs scrolling on a phone to see all seven cards. A
+    security review found no blocking issues. `/code-review high` then found a real, untested display bug (3+
+    tied nemesis opponents rendered with the wrong joint-list grammar) and real query duplication (9 database
+    queries where 3 would do on a player-page load, independently corroborated by the security review) — both
+    fixed. 1428 tests passing, lint and typecheck clean.
+    **Next**: open the PR (Stage 1's PR should merge first, since Stage 2 is stacked on it).
+  - Milestone 3 Stage 3 is already specced ahead of time (Distributions and villains, criteria 223–249) but
+    deliberately kept off any branch and off `docs/PRD.md` until its turn — parked as a patch at the session's
+    scratchpad, ready to apply. Stage 4 is specced too (Place, time, and the filters, criteria 250–280), with
+    one question flagged as genuinely scope-determining rather than assumed: whether a venue gets its own
+    page, or just a filter on the games list (specced to the team's default of "both," struck in place if the
+    founder answers otherwise). Two smaller founder questions remain open from Stage 3's prep work, neither
+    blocking: whether records that read a final score (best/worst game, biggest hammering) should carry a
+    caveat about the known final-row misread risk (default: no change), and whether "cleanest sheet" should be
+    a single-game record or a career total (default: single game).
   - ✅ [PR #27](https://github.com/ribenajuice/five-crowns/pull/27) — **Milestone 2 Stage 4**, suggested
     player-name matching, and permanent player/place merging (criteria 148–166, 172–173). **Shipped 2026-09-14,
     closing Milestone 2.** The spec was already written 2026-09-10 (with 172–173 added 2026-09-14);
@@ -205,11 +228,12 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: **Milestone 3 Stage 2 — Rivalry** (criteria 197–222, already specced and parked): head-to-head
-  records, win rates overall and per roster, streaks in context, and "nemesis." Adds two more rows to the board
-  (the drought, the nearly man). One open question worth a founder decision before it starts: the nemesis
-  stat's tone/wording, since it names one friend as another's problem on a screen they both read (default: build
-  it exactly as specced). Run `/feature Milestone 3 Stage 2` to start.
+- **Next up**: **Milestone 3 Stage 3 — Distributions and villains** (criteria 223–249, already specced and
+  parked): score averages per player and roster, the 11-hand trend, hand-by-hand villains, and five more board
+  records (best/worst game ever, the catastrophe, cleanest sheet, biggest hammering — the board reaches
+  twelve). Two small open questions, neither blocking: whether these final-score-based records should carry a
+  caveat about the known misread risk (default: no change), and whether "cleanest sheet" is a single-game or
+  career record (default: single game). Run `/feature Milestone 3 Stage 3` to start.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -285,6 +309,16 @@
     measures ~34px tall — a different pre-existing component than the one this stage fixed, not gated by any
     Stage 1 criterion. `GameRow`'s winners column can squeeze text at very narrow widths, but only with
     artificially long QA test names ("Board Audit b1"/"Board Audit b2") — not reproducible with realistic ones.
+  - **Milestone 3 Stage 2** (rivalry), flagged by `/code-review high` and deliberately deferred as non-blocking:
+    `PlayerRecordGame` (`lib/players/rivalry.ts`) and `RecordGame` (`lib/board/queries.ts`) hand-duplicate the
+    same six fields, both claiming to mirror `GameRowProps` — could be derived from one shared type via
+    `Pick`/`Omit` instead of maintained by hand in two places. `ByRosterRow` re-implements the same row layout
+    already inline in the roster page's own member list — worth a shared component if either needs a real
+    visual change. `NemesisCard`'s no-holder state copy-pastes `RecordCard`'s no-holder JSX verbatim rather
+    than sharing a sub-component. Two things QA found that pre-date this stage and aren't Stage 2 regressions:
+    the roster page (Milestone 2 Stage 3) uses the word "correct" in a sentence about win rates summing past
+    100%, which is one of the wording rule's own banned words; `AppBar`'s `titleHref` link (the game view's
+    heading) measures ~34px, short of the 44px minimum, confirmed not to affect any Stage 1 or Stage 2 screen.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original

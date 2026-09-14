@@ -20,6 +20,163 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-14 — Milestone 3 Stage 3: a single-event record states a date, and the trend claims nothing
+
+- **Context**: Stage 3 (distributions and villains) was specced immediately after Stage 2 on the same
+  day, before either stage starts. PRD criteria **223–249**. ⚠️ **It deliberately decides nothing
+  about second place or the winning margin** — Stage 2's entry, immediately below, settled both
+  (PRD 214–215) and Stage 3's *biggest hammering* (PRD 232) calls that function. *(An earlier draft
+  of this entry was written without sight of Stage 2's spec and re-derived second place from
+  scratch; the two derivations agreed in substance, and the duplicate was collapsed into Stage 2's
+  entry rather than kept. That is why this entry starts at the next question.)* What is left is a
+  family of presentation-shaped calls that change what a record **means**, not how it is built, plus
+  one genuinely new definition (a roster's table average).
+- **Decision**:
+  1. ⚠️ **A single-event record states the game's date, not a game count.** Best game ever, worst
+     game ever, the catastrophe, cleanest sheet and biggest hammering are **one observation each**,
+     so criterion 182's *"from {n} games"* would be a **false sample statement** on them — the
+     holder's own history is not the sample. They state the date instead (PRD 233). The board's
+     archive line and early-days line are untouched. This is a **narrowing of 182, not a second
+     honesty system**; nothing else about the sample statement changes.
+  2. **Cleanest sheet counts one player's zeros in one game**, out of eleven — not a career total.
+     A career total mostly measures turning up, which the stalwart already measures, and it drifts
+     upward forever with nothing to compare against. Raised to the founder as **PRD open question
+     11** with this as the default (PRD 231).
+  3. **Per-hand bleed is a mean, not a total.** For one player the two rank **identically** (every
+     player plays all eleven hands in every game), so the choice is free on correctness grounds and
+     was made on comparability: a mean compares across players and stays stable as the archive grows
+     (PRD 225–226).
+  4. **A roster's table average is a new definition** — the mean of **every final score posted in
+     that roster's games by any member**, a fact about the table rather than about a person. M2
+     criterion 138 gives per-member wins and win rates and **no average at all**, so the per-member
+     average is new to the screen but not a new definition (PRD 224, 244).
+  5. ⚠️ **The eleven-hand trend is eleven labelled numbers drawn as bars.** No line, no smoothing,
+     no curve fit, no trend arrow, and **no copy claiming where games are decided** — a smooth line
+     over eleven aggregates of *derived* scores implies a precision this data does not have. The
+     screen shows the numbers; the reader makes the claim (PRD 237). It carries one fixed honesty
+     line about the derivation, which may not acquire a reassuring second sentence (PRD 238).
+  6. **The catalogue index is `/stats`**, for the slices that belong to nobody in particular; player-
+     shaped numbers stay on player pages and roster-shaped numbers on roster pages (spec decision 8).
+     ⚠️ **No per-game chart**: the game view's grid already is the game (PRD 236).
+  7. **The drill-through pattern does not fork.** A single-event record lands on a filtered games
+     list under a heading stating the claim, **even when that list has one row** — one pattern across
+     twelve records beats a special case, and the row is the ordinary `GameRow` whose link reaches
+     the photo, which is the whole mitigation (PRD 234).
+  8. ⚠️ **The board reaches twelve records** (five from Stage 1, seven after Stage 2, twelve after
+     this). Whether that is still readable in five seconds is **PRD open question 12** — question 7's
+     legibility warning arriving for real, and informed by criterion 218's finding at seven.
+- **Alternatives**:
+  - *Give the five single-event records the ordinary "from {n} games" statement* — rejected: the
+    holder's 40 games say nothing about a number drawn from one night, so the sentence would be
+    confidently false in the one place this milestone most needs it true.
+  - *Cleanest sheet as a career count* — not rejected, **deferred to the founder** (open question 11).
+    It is a real and different record; it is one line of SQL either way; it changes only meaning.
+  - *Per-hand bleed as a total* — rejected on comparability only. It ranks identically per player, so
+    nothing is lost and the mean survives the archive growing.
+  - *A drawn trend line, or copy naming where games are decided* — rejected: eleven averages of
+    derived scores do not establish it, and the PRD's own banter-not-dashboard tone is not a licence
+    to assert something the numbers do not show.
+  - *A per-game chart on the game view* — rejected as decoration; the grid already shows every hand.
+  - *Redirect a one-row drill-through straight to the game* — rejected: it forks the pattern for a
+    saving of one tap, and the list heading is what states the claim being checked.
+- **Consequences**:
+  - **27 criteria, PRD 223–249.** Stage 4 continues from 250. **No schema change, nothing cached,
+    nothing captured** — like Stages 1 and 2, definitions over rows already stored.
+  - ⚠️ **Stage 3 is the milestone's most exposed stage**: every record it adds reads a final score
+    **as a number**, which the 2026-09-14 "Row 11 is not self-cancelling" entry found can be misread
+    confidently and permanently. The mitigation is unchanged and is **not a check** — each record
+    names its game and one tap reaches the photo — and **PRD open question 3 is restated as 3a/3b**
+    so the founder can decide whether these records say anything more than that.
+  - **Nothing here invents a new honesty mechanism.** The sample statement, early-days line, joint
+    holders, fixed-strings contract, no-cache rule and wording ban all continue; PRD 246 is a re-run
+    over new surfaces.
+  - **Revisit if**: the founder answers open question 11 the other way (cleanest sheet becomes a
+    career count, PRD 231 rewritten in place), or the board at twelve records fails the five-second
+    read on a phone (open question 12 — cutting a card is deleting a row, not a re-plan).
+
+## 2026-09-14 — Milestone 3 Stage 2: second place, "beating" someone, and the drought, where ties are shared
+
+- **Context**: Stage 2 (rivalry) was specced while Stage 1 was still in build, and its own sketch had
+  flagged one hole explicitly — *"second place needs a definition where wins are shared, and that is
+  a team call to be written down when this stage is specced, not guessed at now."* Three further
+  definitional traps turned up alongside it, all of the same family as M3 Stage 1's round-winner and
+  streak definitions: **what "beating" someone means** when most games in a group of five are won by
+  neither of two named players; **whether the drought is the current run or the longest ever**; and
+  **how nemesis behaves when nobody has ever finished above you**. None of them needs data; all of
+  them are permanent once the archive starts quoting them. PRD criteria **197–222**.
+- **Decision**:
+  1. ⚠️ **Second place is the second-lowest *distinct* final score, and it can be shared.** Winners
+     hold the lowest distinct score; everyone on the next distinct score up is second. So a shared
+     win still has a second place behind it, two players level on the second score are **both**
+     second, and a game where everyone finished level has **no** second place at all. Stage 3's
+     *biggest hammering* is bound to the same function, so the two cannot drift (PRD 214–215).
+  2. ⚠️ **"Who beats who" is kept as two numbers, not reconciled into one.** **Head-to-head wins**
+     count games actually won (lowest total, ties shared) among games both players were in; **the
+     above-rate** counts games one player's final score was *strictly lower* than the other's,
+     whoever won the night. Equal scores are neither above nor below and count in the denominator
+     only. **Nemesis is built on the above-rate alone** — a win-count head-to-head is mostly zeros in
+     a group of five and says nothing until the archive is years old (PRD 197–199).
+  3. **An above-rate of zero never holds the nemesis title**, at any sample size; where no opponent
+     qualifies the screen says so and crowns nobody. Ties are **joint holders, alphabetically**, with
+     **no secondary tie-break on games played** — consistent with criterion 181 and with this
+     project's refusal to manufacture single winners. Nemesis is **asymmetric** and nothing
+     reconciles that (PRD 199, 201).
+  4. **The drought is the streak rule negated, including "longest ever recorded, not the current
+     run"** — same order, same "a game they missed neither extends nor breaks it", same "a shared win
+     counts as a win". Written as its own criterion rather than inherited, because negating a streak
+     is where a second implementation drifts (PRD 212).
+  5. **Head-to-head rides on the player page**: one section, one row per opponent, readable from
+     either side. **No `/vs/` route, no picker, no matrix.** The group is about six people.
+  6. **Per-roster win rates are gathered, not rebuilt.** M2 criterion 138 (roster page, per member)
+     is untouched; the player page gains the same numbers from the person's side, from **one shared
+     function**, with a criterion asserting the two screens agree to the decimal place (PRD 208–209).
+  7. **Nemesis is never a board record** — every player has a different one. The board gains exactly
+     two rows this stage: the drought and the nearly man, taking it to **seven records**.
+  8. ⚠️ **One wording rule specific to this stage**: nothing on a rivalry screen characterises a
+     player, only their numbers — the test being that every string must be printable **with both
+     named players reading it over one shoulder each** (PRD 202). The word *nemesis* is the
+     founder's own, from the analytics catalogue; the team may not build tone around it. Whether the
+     founder wants that tone dialled up, retitled or the stat cut is **PRD open question 10**, raised
+     rather than guessed for the same reason the personality stats' wording was left to them.
+- **Alternatives**:
+  - *Competition ranking for second place* (a two-way tie for first makes the next player **third**,
+    and nobody is second) — **rejected**: it erases second place in exactly the games where the near
+    miss stings most, and it contradicts how this product ranks everywhere else (distinct score
+    positions, ties shared, from the kickoff decision onward). It would also make *the nearly man*
+    quietly under-count in precisely the archive the founder has — small, with shared wins in it.
+  - *One "beats" number instead of two* — rejected both ways round. Win-count only is mostly zeros
+    and leaves nemesis unanswerable for years; above-rate only silently redefines "beat" as "finished
+    ahead of", which is not what the group means when they say it at the table. Both are cheap; the
+    honest move is to show both and label them.
+  - *A minimum number of shared games before a nemesis is named* — rejected as a re-introduction of
+    the withholding the founder deleted on the same day (open question 6). The sample statement does
+    the work: "in 1 game together" is self-evidently thin.
+  - *A secondary tie-break on games played* — rejected: criterion 181's joint-holder rule exists so
+    the product never invents a winner, and a rivalry stat is the last place to start.
+  - *The drought as the current run* — rejected for consistency with criterion 177 (and because a
+    "current run" of losses is the seed of M4's "the player getting absolutely wrecked", whose
+    wording is the founder's).
+  - *A dedicated head-to-head screen* — rejected as a new page type, a new empty state and a new way
+    in, for numbers that fit on a page that already exists.
+- **Consequences**:
+  - **26 criteria, PRD 197–222.** Stage 3 took 223–249 later the same day; Stage 4 continues from
+    250. **No schema change, nothing cached, nothing captured** — this stage, like Stage 1, is
+    definitions over rows already stored.
+  - **Stage 3 inherits a binding**: *biggest hammering* must use Stage 2's second-place function, and
+    a game with no second place cannot hold that record. ⚠️ *Confirmed when Stage 3 was specced:*
+    **PRD criterion 232 calls this function and defines nothing** — second place and the winning
+    margin are canonical **here and at PRD 214–215 only**, and a second implementation anywhere is a
+    QA failure. This entry is the only ADR that reasons about them.
+  - **The board reaches seven records**, which is where open question 7's legibility warning stops
+    being hypothetical. QA reports how the board reads at 375px as a founder-facing finding, not a
+    pass/fail; cutting a row stays the founder's call and costs one deletion.
+  - **One case left live and named**: a merge of two players who have played each other is refused by
+    M2 criterion 160, so a head-to-head row of a player against themselves is unreachable by
+    construction. It is checked (PRD 220), not guarded against.
+  - **Revisit if**: the group grows past the point where a five-row head-to-head section on a player
+    page stops being the whole answer, or a game is ever played where "second place" as defined here
+    reads wrong at the table — that is the evidence this entry would need to reopen.
+
 ## 2026-09-14 — The board shows records from game one: an early-days line replaces withholding
 
 - **Context**: the PRD has said since kickoff that the records board **withholds** — nothing crowned

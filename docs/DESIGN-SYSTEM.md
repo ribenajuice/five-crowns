@@ -24,6 +24,14 @@
 > landing screen at `/`) again adds screens rather than a new direction — mockups at
 > `docs/mockups/m3-stage-1-the-board.html`, published at
 > <https://claude.ai/code/artifact/ef904f9d-c560-43e7-b2d0-36f8fbfb18ed>.
+>
+> **Milestone 3 Stage 2** ("Rivalry" — head-to-head, by-roster and streak-in-context on the player
+> page, the board's two new rows, and the nemesis card) again adds screens rather than a new
+> direction — mockups at `docs/mockups/m3-stage-2-rivalry.html`, published at
+> <https://claude.ai/code/artifact/e9a9adb3-3f73-4acf-a058-be5279cc7be5>. ⚠️ **The nemesis card's
+> exact title and framing sentence are not decided in this document** — the mockup lays out five
+> candidates side by side (§ "The nemesis card" below) for the founder to pick or redirect at the
+> checkpoint; everything else on this page is settled.
 
 ## Direction
 
@@ -137,6 +145,10 @@ the digit; this is a correctness feature, not typography.
 | `BoardNav` (M3 Stage 1) | records board | Two fixed buttons side by side — `ghost` **"Games"**, `primary` **"Add a game"** — directly under `ArchiveLine`, rendered on every board state including the empty one (criteria 179, 191), the same "always reachable" precedent `IndexNav` set on the games list |
 | `GameRow`, rounds-won annotation (M3 Stage 1) | records board drill-through | The existing `GameRow` unchanged, plus one small brand-coloured line under the meta — **"{Player} took {n} of 11 rounds"** — only on the "most rounds won" drill-through, where the claim is a per-game count rather than a single fact each game either carries or doesn't (criterion 186) |
 | `GameRow`, streak-holder annotation (M3 Stage 1) | records board drill-through, joint streak only | When "most wins in a row" is jointly held by players whose qualifying games differ, each row gets a small line naming whose run it belongs to — **"{Player}'s streak game"** — otherwise a list of games with nothing else in common would read as one continuous run it isn't |
+| `HeadToHeadRow` (M3 Stage 2) | player page, "Head-to-head" section | One row per opponent shared at least one game with (criterion 203): the opponent's name as the row's own tappable link (`EntityLink`-styled), a right-aligned "{n} games together" caption, then a three-across mini-stat row in the same label/value shape `StatBlock` already uses at smaller scale — **Wins** (`{mine}–{theirs}`, criterion 197's shared-win-counts-for-both figures), **My win rate** (criterion 197, one decimal place) and **Above me** (the opponent's above-rate, criterion 198, one decimal place). The whole row is the tap target to that pair's shared games (criterion 204, reusing Stage 1's drill-through), same "stretched link" construction as `PlayerGameRow`. Rows order by games together descending, then alphabetically (criterion 203) — never by win rate or above-rate, which would read as a ranking this stat explicitly isn't |
+| `NemesisCard` (M3 Stage 2) | player page, directly under "Head-to-head" | Same visual grammar as `RecordCard` — uppercase label, the opponent's name in the display face, one sentence of detail, a chevron tap target through to that opponent's `HeadToHeadRow` — but personal rather than board-wide: no per-holder sample line (there's only ever one subject, the page it's on), no joint-holder list rendered here even though criterion 199 allows joint nemeses (multiple names simply join with "&", same list grammar as everywhere else). **A player with no nemesis** (criterion 201 — every above-rate is zero, or no shared games at all) renders the `RecordCard` no-holder variant verbatim: the value and chevron drop, the fixed sentence **"Nobody's done this yet."** (`BOARD_NO_HOLDER_SENTENCE`, reused rather than a second string invented for the same shape) takes their place. ⚠️ **The label, the opponent-name line and the detail sentence are the one thing on this page not fixed yet** — see *The nemesis card* below |
+| `ByRosterRow` (M3 Stage 2) | player page, "By roster" section | Mirrors the roster page's own per-member `<li>` (criterion 208's "read one shared function," criterion 209's "cannot disagree") from the other direction: the roster's name as an `EntityLink` to its roster page with a muted "{n} games" caption beneath, right-aligned win rate (`--num`, one decimal) over a "{wins} of {games}" caption — pixel-identical stat shape to the roster page's member row, just naming the roster instead of the member. Rows carry no ranking or reordering by rate; they read in whatever order the player's rosters naturally list (by most games in that roster, descending, ties alphabetical by roster name — the same "games together" ordering logic `HeadToHeadRow` uses, generalised) |
+| `PersonalRecordCard` (M3 Stage 2) | player page, "Streak, in context" section | Two side by side (`grid-template-columns: 1fr 1fr` from 0px — this is two numbers, not a scrolling list, so it never needs to stack): **"Longest winning streak"** and **"The drought"**, each `StatBlock`-shaped with an added chevron and tap target through to that player's own qualifying games. Deliberately not `RecordCard` reused outright — a holder-name line would repeat "you," which is redundant on a player's own page — and deliberately not bare `StatBlock` — these need the tap-through `RecordCard` has and `StatBlock` doesn't. ⚠️ **The drought's own drill-through order needs the same sign-off Stage 1 flagged for the streak** (criterion 186's note, restated here rather than assumed): a run reads as a run in the order it was played, so both cards' drill-throughs render **oldest → newest**, the one deliberate exception to "newest first" this project makes, on both cards for the same reason |
 | `GameRow` | games list | Date · venue · roster · winner(s) |
 | `ScoreTable` | game view | Running totals as written, toggle for derived hands |
 | `PhotoCapture` | add-a-game | `<input type="file" accept="image/*" capture="environment">`, opens the phone camera directly; a paired "Choose a photo" button reaches the system picker. Either way produces a local preview — **nothing uploads yet** |
@@ -808,6 +820,68 @@ the digit; this is a correctness feature, not typography.
     below it, a plain `Card` — **"No games yet."** / *"Once you save one, the board will show who's
     who."* — never an error, never a board of zeroes.
 
+- **The player page gains three sections (M3 Stage 2, criteria 203–212).** All three sit below the
+  existing "This is the same person as…" merge button and above the player's own games list, in
+  this order: **Head-to-head**, **Nemesis** (the `NemesisCard`, directly under the head-to-head
+  list it's computed from, per criterion 206), **By roster**, then **Streak, in context**. Mockups:
+  `docs/mockups/m3-stage-2-rivalry.html`.
+  - **Head-to-head** (203–205): one `HeadToHeadRow` per opponent shared at least one game with,
+    ordered by games together descending then alphabetically. **No section at all renders as an
+    error** — a player with no shared games (a brand-new player, or one whose only games are
+    solo-roster oddities) gets the section's own empty state, a plain sentence, never a missing
+    heading and never the section silently dropped (criterion 203's "a player with no shared games
+    sees the section's own empty state, not a missing section").
+  - **By roster** (207–210): one `ByRosterRow` per **exact** roster the player has been part of.
+    ⚠️ **The numbers must be pixel-identical to the roster page's own per-member figures** — both
+    read `lib/scoring`'s one shared function (criterion 208), so this section is never a second
+    place a rounding difference could sneak into.
+  - **Streak, in context** (211–212): the two `PersonalRecordCard`s. Both labelled so neither reads
+    as "the run I'm on right now" — **"Longest winning streak"** and **"The drought"** are both
+    all-time records, exactly like the board's own streak and (new) drought cards, just personal
+    rather than archive-wide.
+  - **The nemesis card's placement is fixed even though its copy isn't** (see *The nemesis card*,
+    below): it sits directly under the head-to-head list on every layout, so moving between the two
+    once the copy is chosen is a wording change only, never a reflow.
+
+- **The records board gains two rows (M3 Stage 2, criteria 213–218).** `RecordCard`, `ArchiveLine`
+  and `BoardNav` are all unchanged — **the drought** and **the nearly man** slot into the existing
+  grid using the same component, same no-holder variant, same sample-line and joint-holder grammar
+  Stage 1 already established. Nothing new to build for either card itself.
+  - **The board now carries seven records.** ⚠️ **Legibility at 375px is a QA finding this stage,
+    not a design decision made here** (criterion 218) — the mockup shows the board at 375px so the
+    founder can see the scroll for themselves; cutting or reordering a row afterwards is the
+    founder's call and costs one deletion or one reorder, never a rebuild.
+  - **The drought's drill-through is ordered oldest → newest**, the same deliberate exception to
+    "newest first" Stage 1 already made for the winning-streak drill-through and for the same
+    reason — a run reads as a run in the order it was played. Flagged for the same sign-off Stage 1
+    flagged its own streak ordering for.
+  - **Neither new row can ever show a bare `0` beside a name** (criterion 217): an archive where
+    every game in it ended level renders both as the ordinary no-holder card, never a zero.
+
+- **The nemesis card.** Criterion 202 (amended by open question 10) hands the ui-designer the
+  nemesis card's **title and framing sentence** — and only those — to propose as options, not to
+  decide. Everything else about the card is already fixed by criteria 199–201, 206 and is not in
+  play here: the number (the opponent's above-rate, one decimal place), the sample (games together),
+  the no-nemesis state (§ `NemesisCard`, above — reuses `BOARD_NO_HOLDER_SENTENCE` verbatim), and
+  the mechanical wording test (criterion 202: every candidate must be printable with **both named
+  players reading it, one over each shoulder** — nothing calling either weak, hopeless, dominated,
+  owned, a victim or a walkover; nothing saying a player can't or never will win; nothing advising
+  anyone what to do about it).
+  - **Five candidates are laid out side by side** in `docs/mockups/m3-stage-2-rivalry.html` (§
+    "Nemesis: five candidates, side by side"), all rendered against the identical real numbers so
+    only the wording differs: **Nemesis** (the founder's own word from the analytics catalogue,
+    kept flat — the default if this goes unanswered), **The upper hand**, **The regular**,
+    **Bogeyman**, and **Frequent flyer** — ordered driest to most playful. Full copy and the
+    one-line rationale for each sits in the mockup itself, not duplicated here, so there is exactly
+    one place this wording can drift out of sync.
+  - ✅ **Decided 2026-09-14 — the founder picked candidate 1, the flat "Nemesis."** No banter
+    layered on top of the title itself: the card's label and display-face line are just the
+    opponent's name under the plain word **Nemesis**, and the detail sentence is candidate 1's own
+    wording from the mockup, verbatim — **"Finishes above you in {n} of your {total} games together
+    ({rate}%)."** — never repeating the opponent's name a second time, since it's already the line
+    above. Now fixed in the table below (`NEMESIS_CARD_TITLE`, `nemesisDetailSentence` in
+    `lib/ui/copy.ts`), superseding the "not fixed" row this section used to point at.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -1044,6 +1118,26 @@ verified, confirmed, correct, looks right* or *all good*.
 | Drill-through, rounds-won row annotation | {Player} took {n} of 11 rounds |
 | Drill-through, streak-holder row annotation | {Player}'s streak game |
 | Board, empty archive | No games yet. / Once you save one, the board will show who's who. |
+| Player page, head-to-head heading | Head-to-head |
+| Player page, head-to-head sample line | Every player you've shared a game with, most games together first. |
+| Head-to-head row label — together | {n} games together |
+| Head-to-head row label — wins | Wins |
+| Head-to-head row label — my rate | My win rate |
+| Head-to-head row label — their rate | Above me |
+| Player page, by-roster heading | By roster |
+| Player page, by-roster sample line | This player's wins and win rate within each exact roster they've played in. |
+| Player page, streak section heading | Streak, in context |
+| Personal record card — streak | Longest winning streak |
+| Personal record card — drought | The drought |
+| Personal record card unit — streak | games in a row |
+| Personal record card unit — drought | games without a win |
+| Record title — the drought (board) | The drought |
+| Record title — the nearly man (board) | The nearly man |
+| Record unit — the drought (board) | games |
+| Record unit — the nearly man (board) | second places |
+| Nemesis, no-nemesis state | Nobody's done this yet. *(reuses `BOARD_NO_HOLDER_SENTENCE` verbatim — not a new string)* |
+| Nemesis, title | Nemesis *(founder's pick, 2026-09-14 — candidate 1 of 5, `docs/mockups/m3-stage-2-rivalry.html` § "Nemesis: five candidates, side by side," kept flat, no banter on the title itself)* |
+| Nemesis, detail sentence | Finishes above you in {n} of your {total} games together ({rate}%). |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

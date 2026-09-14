@@ -15,8 +15,14 @@ the records board — is built and reviewed, on a branch, not yet merged or depl
 the games list as the app's opening screen with five all-time records — most wins, longest winning
 streak, lowest average score, most rounds won, and the stalwart (most games played) — each one
 tappable through to the exact games it's based on. Every record shows from the very first saved
-game, with a small note at the top while the archive has fewer than 10 games. See
-`docs/STATUS.md`.
+game, with a small note at the top while the archive has fewer than 10 games. **Stage 2 — rivalry —
+is also built and reviewed, on a branch, not yet merged or deployed**: a player's own page now
+shows a head-to-head section against every opponent they've shared a game with (games together,
+wins each, win rates both ways), a "Nemesis" card naming whoever most reliably finishes above them,
+and a by-roster breakdown of how they do within each exact group they've played with. Their
+longest-ever winning streak sits next to its opposite, the drought — the longest run without a win.
+The board itself gains two more records, the drought and "the nearly man" (most second-place
+finishes), taking it to seven. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
