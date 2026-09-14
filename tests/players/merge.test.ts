@@ -8,7 +8,7 @@
  */
 
 import { eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 
@@ -421,6 +421,77 @@ describe("mergePlayers — criterion 162: single transaction, all or nothing", (
       await getDb().select().from(game).where(eq(game.id, "g-folding-1"))
     )[0]!;
     expect(stillFoldingGame.rosterId).toBe("folding");
+  });
+});
+
+describe("mergePlayers — security regression: a player disappearing between the up-front check and the transaction", () => {
+  it("re-checks existence inside the transaction, so a loser deleted by a concurrent merge is refused rather than silently repointed", async () => {
+    // The scenario the security review flagged: two merges in flight sharing
+    // a player, "loser". A third merge — some other player <- "loser" —
+    // commits first: it repoints everything "loser" touched onto itself
+    // (exactly what mergePlayers itself does) and then deletes the "loser"
+    // row, all in the gap between *this* merge's up-front check (before any
+    // transaction opens) and its own transaction actually starting.
+    // Monkeypatching `db.transaction` to do that right before the real
+    // transaction runs reproduces the gap deterministically — this merge's
+    // own up-front check has already passed by the time this runs, so only
+    // the in-transaction re-check (the fix under test) can catch it.
+    await insertPlayer("survivor", "Survivor");
+    await insertPlayer("loser", "Loser");
+    await insertPlayer("already-merged-into", "Third player");
+    await insertRoster("r1", ["loser"]);
+    await insertGame("g1", "r1", ["loser"]);
+
+    const { getDb } = await import("@/lib/db");
+    const { player, gamePlayer, roundScore, rosterMember } = await import("@/lib/db/schema");
+    const db = getDb();
+
+    const originalTransaction = db.transaction.bind(db);
+    vi.spyOn(db, "transaction").mockImplementation((async (
+      cb: Parameters<typeof db.transaction>[0],
+    ) => {
+      // The other, already-completed merge's own repoint-then-delete, run
+      // for real so this delete never violates a foreign key — the same
+      // reason mergePlayers itself repoints game_player/round_score/
+      // roster_member before deleting the loser.
+      await db
+        .update(gamePlayer)
+        .set({ playerId: "already-merged-into" })
+        .where(eq(gamePlayer.playerId, "loser"));
+      await db
+        .update(roundScore)
+        .set({ playerId: "already-merged-into" })
+        .where(eq(roundScore.playerId, "loser"));
+      await db
+        .update(rosterMember)
+        .set({ playerId: "already-merged-into" })
+        .where(eq(rosterMember.playerId, "loser"));
+      await db.delete(player).where(eq(player.id, "loser"));
+      return originalTransaction(cb);
+    }) as typeof db.transaction);
+
+    const { mergePlayers, PlayerNotFoundError } = await import("@/lib/players/merge");
+
+    let caught: unknown;
+    try {
+      await mergePlayers("survivor", "loser");
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(PlayerNotFoundError);
+    expect((caught as InstanceType<typeof PlayerNotFoundError>).playerId).toBe("loser");
+
+    // Nothing was repointed onto "survivor": game_player and roster_member
+    // still name the third player the other merge actually folded "loser"
+    // into — proving mergePlayers touched nothing once it found "loser"
+    // gone, rather than blindly repointing rows onto a dangling id.
+    const gp = (await getDb().select().from(gamePlayer).where(eq(gamePlayer.gameId, "g1")))[0]!;
+    expect(gp.playerId).toBe("already-merged-into");
+    const rm = await getDb().select().from(rosterMember).where(eq(rosterMember.rosterId, "r1"));
+    expect(rm.map((r) => r.playerId)).toEqual(["already-merged-into"]);
+
+    expect(await getDb().select().from(player).where(eq(player.id, "survivor"))).toHaveLength(1);
+    expect(await getDb().select().from(player).where(eq(player.id, "loser"))).toHaveLength(0);
   });
 });
 

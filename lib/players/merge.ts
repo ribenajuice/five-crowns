@@ -333,6 +333,19 @@ export async function mergePlayers(
   if (conflicts.length > 0) throw new SameGameConflictError(conflicts);
 
   return db.transaction(async (tx) => {
+    // Re-check existence inside the transaction: best-effort insurance
+    // against a concurrent merge involving either player landing in between
+    // (docs/ARCHITECTURE.md § "Concurrency, deliberately not solved") — see
+    // mergeLocations for the same pattern. Without this, two in-flight merges
+    // sharing a player could repoint rows onto an id a just-committed merge
+    // already deleted.
+    const [survivorStillThere, loserStillThere] = await Promise.all([
+      tx.select({ id: player.id }).from(player).where(eq(player.id, survivorId)),
+      tx.select({ id: player.id }).from(player).where(eq(player.id, loserId)),
+    ]);
+    if (!survivorStillThere[0]) throw new PlayerNotFoundError(survivorId);
+    if (!loserStillThere[0]) throw new PlayerNotFoundError(loserId);
+
     // Re-check for a conflict inside the transaction too: the up-front check
     // above is best-effort against a concurrent save landing in between
     // (docs/ARCHITECTURE.md § "Concurrency, deliberately not solved" — this
