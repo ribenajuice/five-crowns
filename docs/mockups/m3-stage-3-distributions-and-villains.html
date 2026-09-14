@@ -1,0 +1,940 @@
+<!doctype html>
+<title>Distributions and Villains Mockups</title>
+<style>
+  /* ---------- Tokens (docs/DESIGN-SYSTEM.md, copied verbatim) ---------- */
+  :root {
+    --bg: #faf3e7;
+    --surface: #fffdf8;
+    --sunk: #f2e9d8;
+    --line: #e0d5c0;
+    --text: #23201b;
+    --text-muted: #6b6257;
+    --brand: #17457a;
+    --on-brand: #fffdf8;
+    --accent: #c1462f;
+    --accent-ink: #9c3520;
+    --success: #1f6b45;
+    --warn: #8a5a00;
+    --error: #b3261e;
+    --success-soft: #e2efe7;
+    --warn-soft: #f7ebd4;
+    --error-soft: #fbe4e1;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f;
+      --surface: #211d17;
+      --sunk: #2b251d;
+      --line: #3a3328;
+      --text: #f3eada;
+      --text-muted: #b0a390;
+      --brand: #7fb3e8;
+      --on-brand: #17140f;
+      --accent: #f0906e;
+      --accent-ink: #f0906e;
+      --success: #7ccfa0;
+      --warn: #e5b45c;
+      --error: #ff8b7e;
+      --success-soft: #1d2c23;
+      --warn-soft: #2e2515;
+      --error-soft: #33191a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --sunk: #2b251d;
+    --line: #3a3328;
+    --text: #f3eada;
+    --text-muted: #b0a390;
+    --brand: #7fb3e8;
+    --on-brand: #17140f;
+    --accent: #f0906e;
+    --accent-ink: #f0906e;
+    --success: #7ccfa0;
+    --warn: #e5b45c;
+    --error: #ff8b7e;
+    --success-soft: #1d2c23;
+    --warn-soft: #2e2515;
+    --error-soft: #33191a;
+  }
+
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600&display=swap");
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .display { font-family: "Fraunces", Georgia, "Times New Roman", serif; }
+  .tabular { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  /* ---------- Mockup-only chrome (not part of the product) ---------- */
+  .mock-topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+  }
+  .mock-topbar-inner { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .mock-topbar a {
+    font-size: 13px; font-weight: 700; text-decoration: none; color: var(--brand);
+    padding: 10px 4px; border-radius: 8px;
+  }
+  .mock-brand { font-weight: 800; margin-right: 8px; font-size: 14px; }
+
+  .mock-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 96px; }
+  .mock-section { padding: 48px 0; border-top: 1px dashed var(--line); }
+  .mock-section:first-of-type { border-top: none; }
+  .mock-kicker {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 10px;
+  }
+  .mock-h1 { font-size: 30px; margin: 0 0 6px; }
+  .mock-h2 { font-size: 24px; margin: 0 0 6px; }
+  .mock-lede { color: var(--text-muted); max-width: 72ch; margin: 0 0 20px; }
+  .mock-note {
+    background: var(--sunk); border-radius: var(--radius); padding: 12px 16px;
+    font-size: 13.5px; color: var(--text); margin: 16px 0;
+  }
+  .mock-note b { font-weight: 800; }
+  .mock-note.flag { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  .chip-new { color: var(--success); background: var(--success-soft); border-color: transparent; }
+  .chip-open { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+  .chip-unchanged { color: var(--text-muted); background: var(--sunk); border-color: transparent; }
+  .chip-outofscope { color: var(--accent-ink); background: var(--error-soft); border-color: transparent; }
+
+  .frame-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame {
+    width: min(375px, 100%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 10px 30px -12px rgba(0,0,0,0.25);
+  }
+  .frame-label { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
+  .frame-wide { width: 100%; max-width: 900px; }
+  .frame-body { padding: 0 0 16px; }
+
+  /* ---------- Real app components, reproduced ---------- */
+  .appbar { border-bottom: 1px solid var(--line); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+  .appbar-back { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand); flex-shrink: 0; margin-left: -10px; }
+  .appbar h2 { font-size: 22px; margin: 0; font-weight: 700; }
+  .appbar .ctx { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+
+  .p-main { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { font-size: 17px; margin: 0 0 4px; font-weight: 700; }
+  .card .sample { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-grid.two { grid-template-columns: 1fr 1fr; }
+  .stat-block { background: var(--sunk); border-radius: var(--radius); padding: 10px 12px; }
+  .label-xs { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .num-lg { display: block; font-size: 26px; font-weight: 800; margin-top: 2px; }
+  .num-sm { font-size: 15px; font-weight: 800; }
+  .sample-caption { display: block; font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+
+  .ghost-btn {
+    display: flex; min-height: 44px; align-items: center; justify-content: center;
+    border: 1px solid var(--brand); color: var(--brand); border-radius: var(--radius);
+    font-weight: 700; font-size: 15px; text-decoration: none; width: 100%;
+  }
+  .primary-btn {
+    display: flex; min-height: 44px; align-items: center; justify-content: center;
+    background: var(--brand); color: var(--on-brand); border-radius: var(--radius);
+    font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; border: none;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row > * { flex: 1; }
+
+  .entity-link { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+  h4.section-heading { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+
+  /* game row */
+  .game-row { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .game-row .gdate { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 15px; }
+  .game-row .gmeta { font-size: 13px; color: var(--text-muted); }
+  .game-row .gwin { margin-left: auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; }
+  .game-row .gnote { margin-left: auto; text-align: right; font-size: 13px; font-weight: 800; color: var(--brand); white-space: nowrap; }
+  .game-list { display: flex; flex-direction: column; gap: 8px; }
+
+  /* chevron */
+  .chev { flex-shrink: 0; color: var(--brand); margin-top: 2px; }
+
+  /* board */
+  .board-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .board-grid.wide { grid-template-columns: 1fr 1fr; }
+  .record-card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; }
+  .record-card:hover { border-color: var(--brand); }
+  .record-card .rc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .record-card .rc-holders { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 17px; margin: 6px 0 6px; line-height: 1.25; }
+  .record-card .rc-value { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .record-card .rc-num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 800; }
+  .record-card .rc-unit { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .record-card .rc-sample { margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.35; }
+  .record-card.is-new { outline: 2px solid color-mix(in srgb, var(--success) 55%, transparent); outline-offset: -1px; }
+  .archive-line { background: var(--sunk); border-radius: var(--radius); padding: 12px 14px; font-size: 13.5px; color: var(--text-muted); }
+
+  /* instance-list variant, for tied single-event records */
+  .rc-instances { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 2px; }
+  .rc-instance { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 16px; }
+  .rc-instance .idate { font-family: -apple-system, sans-serif; font-weight: 600; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+
+  @media (min-width: 480px) {
+    .board-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* trend bars */
+  .trend-list { display: flex; flex-direction: column; gap: 6px; }
+  .trend-row { display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; gap: 8px; }
+  .trend-row .thand { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+  .trend-bar-track { background: var(--sunk); border-radius: 999px; height: 18px; position: relative; overflow: hidden; }
+  .trend-bar-fill { background: var(--brand); height: 100%; border-radius: 999px 0 0 999px; }
+  .trend-row .tval { font-size: 13.5px; font-weight: 800; text-align: right; font-family: ui-monospace, monospace; }
+
+  /* villains table */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table.villains { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+  table.villains th, table.villains td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.villains th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; background: var(--sunk); position: sticky; top: 0; }
+  table.villains td:first-child, table.villains th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); font-weight: 700; font-family: "Fraunces", Georgia, serif; }
+  table.villains th:first-child { background: var(--sunk); }
+  table.villains tr:last-child td { border-bottom: none; }
+  .worst-cell { position: relative; font-weight: 800; color: var(--accent-ink); }
+  .worst-cell .worst-mark { display: inline-flex; vertical-align: -2px; margin-right: 2px; }
+  .villains-caption { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
+
+  /* disasters list */
+  .disaster-row { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 10px 14px; text-decoration: none; color: inherit; }
+  .disaster-rank { font-family: ui-monospace, monospace; font-weight: 800; color: var(--text-muted); width: 20px; flex-shrink: 0; }
+  .disaster-main { flex: 1; min-width: 0; }
+  .disaster-main .dname { font-family: "Fraunces", Georgia, serif; font-weight: 700; }
+  .disaster-main .dmeta { font-size: 12.5px; color: var(--text-muted); }
+  .disaster-score { font-family: ui-monospace, monospace; font-weight: 800; font-size: 18px; text-align: right; white-space: nowrap; }
+
+  /* averages tables */
+  .avg-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 9px 0; }
+  .avg-row:last-child { border-bottom: none; }
+  .avg-row .aname { flex: 1; min-width: 0; font-weight: 700; }
+  .avg-row .asample { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+  .avg-row .aval { font-family: ui-monospace, monospace; font-weight: 800; font-size: 16px; }
+
+  .icon-inline { display: inline-block; vertical-align: -3px; }
+</style>
+
+<header class="mock-topbar">
+  <div class="mock-topbar-inner">
+    <span class="mock-brand display">Five Crowns Ledger — Stage 3 mockups</span>
+    <a href="#scope-note">Scope note</a>
+    <a href="#board">Board — 12 cards</a>
+    <a href="#instance-variant">Tied single-event cards</a>
+    <a href="#drill-through">Drill-through</a>
+    <a href="#player-page">Player page</a>
+    <a href="#roster-page">Roster page</a>
+    <a href="#stats">/stats catalogue</a>
+  </div>
+</header>
+
+<main class="mock-main">
+  <section class="mock-section" id="intro">
+    <span class="mock-kicker">Milestone 3 · Stage 3 — Distributions and villains</span>
+    <h1 class="mock-h1 display">Distributions and villains: mockups for sign-off</h1>
+    <p class="mock-lede">
+      Every screen below reuses Stage 1 and Stage 2's components and tokens exactly — no new colour,
+      no new type scale, no new shape beyond what's called out explicitly. Data is realistic and
+      invented (Player A–E, per the house rule on mockups); the board's founder-four-plus-seven
+      numbers are carried over unchanged from the Stage 2 mockup so the two documents describe one
+      continuous archive (now at 20 games). Chips:
+      <span class="chip chip-new">New this stage</span>
+      <span class="chip chip-unchanged">Unchanged from Stage 1/2</span>
+      <span class="chip chip-outofscope">Out of scope — see note</span>.
+    </p>
+  </section>
+
+  <!-- ============================= SCOPE NOTE ============================= -->
+  <section class="mock-section" id="scope-note">
+    <span class="mock-kicker">Read this first</span>
+    <h2 class="mock-h2 display">One thing in the brief isn't in Stage 3's criteria</h2>
+    <div class="mock-note flag">
+      <b>Day-of-week and month tables are not built in this mockup, and shouldn't be built in this
+      stage.</b> The task brief asked for them, but <code>docs/PRD.md</code>'s Stage 3 criteria block
+      (223–249) contains no day-of-week or month criterion at all, and the spec says so explicitly
+      twice: the "Explicitly out of scope for Stage 3" list names <em>"Venue and date slices — Stage
+      4, per open question 9"</em>, and Stage 4's own scope line lists <em>"day-of-week and
+      time-of-year"</em> cuts by name. Criteria 193 and 246 require every fixed string this stage
+      ships to trace to a numbered criterion — there is no criterion number for a day/month table to
+      trace to, so adding one here would be inventing scope the PRD deliberately deferred, not
+      designing what was asked for. <b>This mockup builds everything Stage 3 actually specs</b> — the
+      board's five new cards, the player and roster page additions, and the <code>/stats</code>
+      catalogue (trend, villains table, disasters list, averages) — and leaves day-of-week/month
+      tables for Stage 4's own mockup, when its criteria are written. Flagging this now is cheaper
+      than building a component against a criterion number that doesn't exist and finding out at QA.
+    </div>
+  </section>
+
+  <!-- ============================= BOARD ============================= -->
+  <section class="mock-section" id="board">
+    <span class="mock-kicker">Criteria 228–235</span>
+    <h2 class="mock-h2 display">The board: seven records become twelve</h2>
+    <p class="mock-lede">
+      Same <code>ArchiveLine</code>, same <code>BoardNav</code>, same flat <code>RecordCard</code> —
+      five more rows, outlined in green so you can spot them (a mockup aid, not real UI). Archive: 20
+      games recorded. <b>Order (criterion 235):</b> the founder's four first, then the stalwart, then
+      Stage 2's drought and nearly man, then this stage's five in the order they're introduced in the
+      PRD's own list (best game ever → worst game ever → the catastrophe → cleanest sheet → biggest
+      hammering). That keeps every stage's rows contiguous — a card's position tells you which stage
+      computes it — rather than interleaving by theme, and it's a one-line reorder later if you'd
+      rather group differently.
+    </p>
+
+    <p class="frame-label">Records board · 375px — twelve cards (criterion 235)</p>
+    <div class="frame-row" style="margin-bottom:20px;">
+      <div>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar"><h2 class="display">Five Crowns Ledger</h2></div>
+            <div class="p-main" style="gap:12px;">
+              <div class="archive-line">20 games in the record.</div>
+              <div class="btn-row">
+                <a class="ghost-btn" href="#">Games</a>
+                <a class="primary-btn" href="#">Add a game</a>
+              </div>
+              <a class="ghost-btn" href="#stats">See all the stats</a>
+
+              <div class="board-grid">
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most wins</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player C</p>
+                  <div class="rc-value"><span class="rc-num">9</span><span class="rc-unit">wins</span></div>
+                  <p class="rc-sample">from 14 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most wins in a row</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player A &amp; Player E</p>
+                  <div class="rc-value"><span class="rc-num">4</span><span class="rc-unit">games in a row</span></div>
+                  <p class="rc-sample">Player A — from 12 games · Player E — from 9 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Lowest average score</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player D</p>
+                  <div class="rc-value"><span class="rc-num">46.2</span><span class="rc-unit">avg. score</span></div>
+                  <p class="rc-sample">from 9 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">Most rounds won</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player B</p>
+                  <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">rounds</span></div>
+                  <p class="rc-sample">from 14 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">The stalwart</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player B</p>
+                  <div class="rc-value"><span class="rc-num">15</span><span class="rc-unit">games played</span></div>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">The drought</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player E</p>
+                  <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">games</span></div>
+                  <p class="rc-sample">from 9 games</p>
+                </a>
+
+                <a class="record-card" href="#">
+                  <div class="rc-top"><span class="label-xs">The nearly man</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player A</p>
+                  <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">second places</span></div>
+                  <p class="rc-sample">from 12 games</p>
+                </a>
+
+                <!-- ===== Stage 3's five, tied for legibility as a block ===== -->
+                <a class="record-card is-new" href="#instance-variant">
+                  <div class="rc-top"><span class="label-xs">Best game ever</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <div class="rc-value"><span class="rc-num">28</span><span class="rc-unit">final score</span></div>
+                  <div class="rc-instances">
+                    <div class="rc-instance"><span>Player A</span><span class="idate">Thu 28 Aug 2026</span></div>
+                    <div class="rc-instance"><span>Player D</span><span class="idate">Sun 12 Jul 2026</span></div>
+                  </div>
+                </a>
+
+                <a class="record-card is-new" href="#drill-through">
+                  <div class="rc-top"><span class="label-xs">Worst game ever</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player B</p>
+                  <div class="rc-value"><span class="rc-num">178</span><span class="rc-unit">final score</span></div>
+                  <p class="rc-sample">on Sat 5 Sep 2026</p>
+                </a>
+
+                <a class="record-card is-new" href="#">
+                  <div class="rc-top"><span class="label-xs">The catastrophe</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player E</p>
+                  <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">points in one hand</span></div>
+                  <p class="rc-sample">Kings · Sat 5 Sep 2026</p>
+                </a>
+
+                <a class="record-card is-new" href="#">
+                  <div class="rc-top"><span class="label-xs">Cleanest sheet</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player C</p>
+                  <div class="rc-value"><span class="rc-num">8</span><span class="rc-unit">zero-point hands</span></div>
+                  <p class="rc-sample">on Sun 12 Jul 2026</p>
+                </a>
+
+                <a class="record-card is-new" href="#">
+                  <div class="rc-top"><span class="label-xs">Biggest hammering</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <p class="rc-holders">Player D</p>
+                  <div class="rc-value"><span class="rc-num">52</span><span class="rc-unit">point margin</span></div>
+                  <p class="rc-sample">on Sat 15 Aug 2026</p>
+                </a>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <b>The legibility call (open question 12):</b> twelve cards at 375px is roughly two and a half
+      screens of scrolling — noticeably more than Stage 2's seven, which already put the newest two
+      records below the fold. <b>Nothing here is designed to hide that</b>: no accordion, no
+      "show more" collapse, no tab switcher splitting the board in two — the founder's own default was
+      "build all twelve," and a collapsed board would quietly reintroduce the withholding the founder
+      explicitly rejected at Stage 1 (open question 6), just spatially instead of numerically. What
+      the layout <em>does</em> do: grouping Stage 3's five cards as a contiguous block at the bottom
+      means a reader who only cares "what's new since last week" can stop scrolling once the outlined
+      block ends, and the founder's original four are still the first thing on screen, unscrolled, at
+      every viewport. If this still doesn't read as five seconds' worth on your phone, the fix is
+      exactly what criterion 235's note says: cut or reorder a row, which costs one deletion, not a
+      rebuild.
+    </div>
+    <div class="mock-note">
+      <b>No caveat beyond the sample statement (open question 3a, answered):</b> the five new cards
+      carry no warning icon, no "read carefully" line, no different tone from the other seven — the
+      founder's 2026-09-14 answer was explicit that nothing is added beyond the existing sample
+      pattern, and criterion 233 only changes <em>what</em> the sample says (a date, not a game
+      count), never adds a second sentence on top of it. <code>ArchiveLine</code>'s early-days line
+      is unchanged and still governs the whole board, not these five cards specifically.
+    </div>
+
+    <p class="frame-label" style="margin-top:24px;">Same twelve cards, wider viewport (criterion 194's precedent: same grid, 2 columns from ~480px up)</p>
+    <div class="board-grid wide">
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most wins</span></div>
+        <p class="rc-holders">Player C</p>
+        <div class="rc-value"><span class="rc-num">9</span><span class="rc-unit">wins</span></div>
+        <p class="rc-sample">from 14 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most wins in a row</span></div>
+        <p class="rc-holders">Player A &amp; Player E</p>
+        <div class="rc-value"><span class="rc-num">4</span><span class="rc-unit">games in a row</span></div>
+        <p class="rc-sample">Player A — from 12 games · Player E — from 9 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Lowest average score</span></div>
+        <p class="rc-holders">Player D</p>
+        <div class="rc-value"><span class="rc-num">46.2</span><span class="rc-unit">avg. score</span></div>
+        <p class="rc-sample">from 9 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Most rounds won</span></div>
+        <p class="rc-holders">Player B</p>
+        <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">rounds</span></div>
+        <p class="rc-sample">from 14 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The stalwart</span></div>
+        <p class="rc-holders">Player B</p>
+        <div class="rc-value"><span class="rc-num">15</span><span class="rc-unit">games played</span></div>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The drought</span></div>
+        <p class="rc-holders">Player E</p>
+        <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">games</span></div>
+        <p class="rc-sample">from 9 games</p>
+      </div>
+      <div class="record-card" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The nearly man</span></div>
+        <p class="rc-holders">Player A</p>
+        <div class="rc-value"><span class="rc-num">5</span><span class="rc-unit">second places</span></div>
+        <p class="rc-sample">from 12 games</p>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Best game ever</span></div>
+        <div class="rc-value"><span class="rc-num">28</span><span class="rc-unit">final score</span></div>
+        <div class="rc-instances">
+          <div class="rc-instance"><span>Player A</span><span class="idate">Thu 28 Aug 2026</span></div>
+          <div class="rc-instance"><span>Player D</span><span class="idate">Sun 12 Jul 2026</span></div>
+        </div>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Worst game ever</span></div>
+        <p class="rc-holders">Player B</p>
+        <div class="rc-value"><span class="rc-num">178</span><span class="rc-unit">final score</span></div>
+        <p class="rc-sample">on Sat 5 Sep 2026</p>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">The catastrophe</span></div>
+        <p class="rc-holders">Player E</p>
+        <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">points in one hand</span></div>
+        <p class="rc-sample">Kings · Sat 5 Sep 2026</p>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Cleanest sheet</span></div>
+        <p class="rc-holders">Player C</p>
+        <div class="rc-value"><span class="rc-num">8</span><span class="rc-unit">zero-point hands</span></div>
+        <p class="rc-sample">on Sun 12 Jul 2026</p>
+      </div>
+      <div class="record-card is-new" style="pointer-events:none;">
+        <div class="rc-top"><span class="label-xs">Biggest hammering</span></div>
+        <p class="rc-holders">Player D</p>
+        <div class="rc-value"><span class="rc-num">52</span><span class="rc-unit">point margin</span></div>
+        <p class="rc-sample">on Sat 15 Aug 2026</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= INSTANCE VARIANT ============================= -->
+  <section class="mock-section" id="instance-variant">
+    <span class="mock-kicker">Criteria 228, 230–231, 233 — a new RecordCard variant</span>
+    <h2 class="mock-h2 display">Tied single-event cards read as a list of instances, not a list of names</h2>
+    <p class="mock-lede">
+      Every existing joint-holder rule (criterion 181) lists <em>names</em> against one shared number
+      — "Player A &amp; Player E, 4." That grammar breaks for these five records, because criteria
+      228, 230 and 231 all specify the same unusual case: <b>the same player can hold the record
+      twice, in two different games</b> (or, for the catastrophe, two different hands). A flat name
+      list can't say that — "Player D" once is one fact; "Player D" listed twice, each with its own
+      date, is a different fact, and the card has to be able to state it.
+    </p>
+    <p class="mock-lede">
+      <b>The rule:</b> when a single-event record has exactly one instance (the ordinary case — see
+      every other card on the board above), it renders like any other <code>RecordCard</code>: holder
+      name, then the date line in place of "from {n} games." When it has <b>more than one instance</b>,
+      the holder line is replaced by a stacked list of instance rows — one per (player, game) pair,
+      each with its own date — under the single shared number, which by definition is identical across
+      every instance (that's what makes them tied). The catastrophe's instance rows add the hand,
+      since two tied instances can be on different hands: <span class="tabular">"Player B — Kings, Sat 15 Aug 2026"</span>.
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">Typical case — one instance (Worst game ever, from the board above)</p>
+        <a class="record-card" href="#" style="max-width:340px; pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Worst game ever</span></div>
+          <p class="rc-holders">Player B</p>
+          <div class="rc-value"><span class="rc-num">178</span><span class="rc-unit">final score</span></div>
+          <p class="rc-sample">on Sat 5 Sep 2026</p>
+        </a>
+      </div>
+      <div>
+        <p class="frame-label">Tied case — two instances, same score, two different games</p>
+        <a class="record-card is-new" href="#" style="max-width:340px; pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Best game ever</span></div>
+          <div class="rc-value"><span class="rc-num">28</span><span class="rc-unit">final score</span></div>
+          <div class="rc-instances">
+            <div class="rc-instance"><span>Player A</span><span class="idate">Thu 28 Aug 2026</span></div>
+            <div class="rc-instance"><span>Player D</span><span class="idate">Sun 12 Jul 2026</span></div>
+          </div>
+        </a>
+      </div>
+      <div>
+        <p class="frame-label">The catastrophe, tied — same player, two different hands (criterion 230's own example)</p>
+        <a class="record-card is-new" href="#" style="max-width:340px; pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">The catastrophe</span></div>
+          <div class="rc-value"><span class="rc-num">41</span><span class="rc-unit">points in one hand</span></div>
+          <div class="rc-instances">
+            <div class="rc-instance"><span>Player E</span><span class="idate">Kings · Sat 5 Sep 2026</span></div>
+            <div class="rc-instance"><span>Player E</span><span class="idate">9s · Sun 12 Jul 2026</span></div>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="mock-note">
+      Instance rows are sorted alphabetically by player, then by date — the same tie-break the
+      games list already uses, never a ranking of the instances against each other. Biggest
+      hammering's instance rows can themselves contain a shared-win holder name ("Player A &amp;
+      Player B — Sat 15 Aug 2026"), since the winner of a hammered game can itself be a tie; that's
+      criterion 181's ordinary joint-name grammar nested one level inside this card's instance row,
+      not a third pattern.
+    </div>
+  </section>
+
+  <!-- ============================= DRILL-THROUGH ============================= -->
+  <section class="mock-section" id="drill-through">
+    <span class="mock-kicker">Criteria 233–234 — the date-based drill-through</span>
+    <h2 class="mock-h2 display">Drill-through: "Worst game ever" — a date, not a game count</h2>
+    <p class="mock-lede">
+      This is the one deliberately shown in full: every other drill-through on this board states its
+      claim as <em>"from {n} games"</em> — this one, and its four siblings, state <em>the date the
+      game was played</em> instead, because the record is one observation, not a rate over a
+      history (criterion 233). The list below it is Stage 1's unmodified drill-through pattern
+      (criterion 186) reused exactly — and here it is, correctly, a <b>single row</b> (decision 24):
+      one event, one game, nothing padded in to make the list look fuller than it is.
+    </p>
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">375px</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div>
+                <h2 class="display">Worst game ever — Player B</h2>
+                <p class="ctx">178 final score · on Sat 5 Sep 2026</p>
+              </div>
+            </div>
+            <div class="p-main">
+              <div class="game-list">
+                <div class="game-row">
+                  <div>
+                    <div class="gdate display">Sat 5 Sep 2026</div>
+                    <div class="gmeta">The Deck · <a class="entity-link" href="#">Player B, C, D &amp; E</a></div>
+                  </div>
+                  <div class="gnote">178 pts</div>
+                </div>
+              </div>
+              <p class="sample" style="font-size:13px;color:var(--text-muted);margin-top:8px;">The photo's on this game — tapping it is the only way to settle a number this stage can't check any other way.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= PLAYER PAGE ============================= -->
+  <section class="mock-section" id="player-page">
+    <span class="mock-kicker">Criterion 243</span>
+    <h2 class="mock-h2 display">The player page gains three more things</h2>
+    <p class="mock-lede">
+      Average final score, an eleven-hand profile with the worst hand marked, and this player's own
+      best and worst game — all three sit <b>below Stage 2's streak-in-context section</b> and above
+      the player's own games list, so nothing already on this page moves or is re-explained. Shown
+      here abridged: <strong>Player E</strong>, whose worst hand and single-hand disaster both happen
+      to be the same night, which is exactly the kind of thing this stage exists to let someone
+      notice.
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">Player page · 375px (abridged above the fold)</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div><h2 class="display">Player E</h2></div>
+            </div>
+            <div class="p-main">
+
+              <span class="chip chip-unchanged">Unchanged — M2 stat block, then Stage 2's four sections (head-to-head, nemesis, by roster, streak in context) — not repeated here, see the Stage 2 mockup</span>
+
+              <div>
+                <span class="chip chip-new">New — criterion 243</span>
+                <h4 class="section-heading" style="margin-top:8px;">Average final score</h4>
+                <div class="stat-block" style="max-width:220px;">
+                  <span class="label-xs">Average final score</span>
+                  <span class="num-lg tabular">61.4</span>
+                  <span class="sample-caption">from 9 games</span>
+                </div>
+              </div>
+
+              <div>
+                <span class="chip chip-new">New — criteria 225–226, 243</span>
+                <h4 class="section-heading" style="margin-top:8px;">Eleven-hand profile</h4>
+                <div class="card" style="padding:14px 16px;">
+                  <p class="sample" style="margin:0 0 10px;">Average points on each hand, from 9 games. Worst hand marked.</p>
+                  <div class="trend-list">
+                    <div class="trend-row"><span class="thand">3s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:22%"></div></div><span class="tval">3.4</span></div>
+                    <div class="trend-row"><span class="thand">4s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:29%"></div></div><span class="tval">4.5</span></div>
+                    <div class="trend-row"><span class="thand">5s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:38%"></div></div><span class="tval">5.9</span></div>
+                    <div class="trend-row"><span class="thand">6s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:41%"></div></div><span class="tval">6.4</span></div>
+                    <div class="trend-row"><span class="thand">7s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:50%"></div></div><span class="tval">7.8</span></div>
+                    <div class="trend-row"><span class="thand">8s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:59%"></div></div><span class="tval">9.1</span></div>
+                    <div class="trend-row"><span class="thand">9s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:62%"></div></div><span class="tval">9.7</span></div>
+                    <div class="trend-row"><span class="thand">10s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:68%"></div></div><span class="tval">10.6</span></div>
+                    <div class="trend-row"><span class="thand">Jacks</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:75%"></div></div><span class="tval">11.8</span></div>
+                    <div class="trend-row"><span class="thand">Queens</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:83%"></div></div><span class="tval">12.9</span></div>
+                    <div class="trend-row"><span class="thand">Kings</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:100%; background:var(--accent);"></div></div><span class="tval" style="color:var(--accent-ink)">15.5 <svg class="icon-inline" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span></div>
+                  </div>
+                  <p class="sample" style="margin:10px 0 0;"><svg class="icon-inline" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg> marks the worst hand — Kings — by icon, colour and the bold value together, never colour alone.</p>
+                </div>
+              </div>
+
+              <div>
+                <span class="chip chip-new">New — criteria 228–229, 243</span>
+                <h4 class="section-heading" style="margin-top:8px;">Best and worst game</h4>
+                <div class="personal-grid-3s" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <a class="stat-block" href="#" style="display:block; text-decoration:none; color:inherit;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <span class="label-xs">Best game</span>
+                      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    </div>
+                    <span class="num-lg tabular">39</span>
+                    <span class="sample-caption">Sun 12 Jul 2026</span>
+                  </a>
+                  <a class="stat-block" href="#" style="display:block; text-decoration:none; color:inherit;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <span class="label-xs">Worst game</span>
+                      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    </div>
+                    <span class="num-lg tabular">142</span>
+                    <span class="sample-caption">Sat 5 Sep 2026</span>
+                  </a>
+                </div>
+                <p class="sample" style="margin-top:8px;">This player's own extremes, not the board's — Player E's worst night (142) is well short of the board's own "worst game ever" (178, Player B). Each card taps through to that one game.</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <b>Placement, restated:</b> criterion 243 requires Stage 2's head-to-head/nemesis/by-roster/streak
+      sections stay exactly where they are. These three new pieces are appended after all of them,
+      immediately above the player's own games list — the same "add sections, never reorder existing
+      ones" discipline Stage 2 itself followed against Stage 1's board.
+    </div>
+  </section>
+
+  <!-- ============================= ROSTER PAGE ============================= -->
+  <section class="mock-section" id="roster-page">
+    <span class="mock-kicker">Criterion 244</span>
+    <h2 class="mock-h2 display">The roster page gains two things</h2>
+    <p class="mock-lede">
+      The roster's own table average (criterion 224 — every final score posted by any member, in
+      this roster's games, stated with both the games and the scores behind it) sits beside the
+      existing "Games played" block. Each member's average <em>within this roster only</em> is added
+      to the member list M2 already renders — the wins and win-rate columns are untouched.
+    </p>
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">Roster page · 375px (abridged)</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div><h2 class="display">Sunday Crew</h2></div>
+            </div>
+            <div class="p-main">
+              <span class="chip chip-unchanged">Unchanged — RenameControl above this</span>
+              <div class="stat-grid two">
+                <div class="stat-block">
+                  <span class="label-xs">Games played</span>
+                  <span class="num-lg tabular">9</span>
+                </div>
+                <div class="stat-block">
+                  <span class="chip chip-new" style="margin-bottom:4px;">New — criterion 224</span>
+                  <span class="label-xs">Table average</span>
+                  <span class="num-lg tabular">64.8</span>
+                  <span class="sample-caption">9 games · 40 scores</span>
+                </div>
+              </div>
+
+              <div class="card" style="padding:14px 16px;">
+                <p class="sample" style="margin:0 0 6px;">Each member's wins, win rate and average score within these 9 games.</p>
+                <div class="roster-row" style="display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); padding:10px 0;">
+                  <div style="flex:1;"><a href="#" class="entity-link">Player C</a></div>
+                  <div style="text-align:right;"><span class="num-sm tabular" style="display:block;">88.9%</span><span class="sample-caption">8 of 9</span></div>
+                  <div style="text-align:right; min-width:64px;"><span class="chip chip-new" style="display:inline-block;">avg</span><span class="num-sm tabular" style="display:block;">42.1</span></div>
+                </div>
+                <div class="roster-row" style="display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); padding:10px 0;">
+                  <div style="flex:1;"><a href="#" class="entity-link">Player E</a></div>
+                  <div style="text-align:right;"><span class="num-sm tabular" style="display:block;">33.3%</span><span class="sample-caption">3 of 9</span></div>
+                  <div style="text-align:right; min-width:64px;"><span class="chip chip-new" style="display:inline-block;">avg</span><span class="num-sm tabular" style="display:block;">78.6</span></div>
+                </div>
+                <div class="roster-row" style="display:flex; align-items:center; gap:10px; padding:10px 0;">
+                  <div style="flex:1;"><a href="#" class="entity-link">Player A</a></div>
+                  <div style="text-align:right;"><span class="num-sm tabular" style="display:block;">22.2%</span><span class="sample-caption">2 of 9</span></div>
+                  <div style="text-align:right; min-width:64px;"><span class="chip chip-new" style="display:inline-block;">avg</span><span class="num-sm tabular" style="display:block;">73.4</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <b>Why "40 scores," not "36":</b> criterion 224's roster had a five-player game at least once —
+      a table average is a mean of every score anyone posted at that table, not one row per game, so
+      the divisor tracks players-in-game summed across games, not games × roster size. The caption
+      states both numbers exactly so nobody has to do that arithmetic themselves to trust it.
+    </div>
+  </section>
+
+  <!-- ============================= /stats ============================= -->
+  <section class="mock-section" id="stats">
+    <span class="mock-kicker">Criteria 236–242</span>
+    <h2 class="mock-h2 display">/stats — the catalogue index</h2>
+    <p class="mock-lede">
+      Reachable in one tap from the board (the "See all the stats" link under <code>BoardNav</code>,
+      shown above) and from the games list (the same link, same label, placed directly under
+      <code>IndexNav</code>'s three tiles there — not a fourth tile, since <code>IndexNav</code> is
+      documented as exactly three equal-width entity indexes and this is a single page, not a fourth
+      index). No <code>ArchiveLine</code> repeats here — each section states its own sample per its
+      own criterion, so a second global count would be the double-statement criterion 182 already
+      forbids.
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">/stats · 375px</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <div><h2 class="display">Stats</h2></div>
+            </div>
+            <div class="p-main">
+
+              <!-- Eleven-hand trend -->
+              <div>
+                <span class="chip chip-new">New — criteria 237–238</span>
+                <h4 class="section-heading" style="margin-top:8px;">The eleven-hand trend</h4>
+                <div class="card" style="padding:14px 16px;">
+                  <p class="sample" style="margin:0 0 10px;">Average points scored on each hand, across every player and every one of the 20 games in the record (98 individual hands).</p>
+                  <div class="trend-list">
+                    <div class="trend-row"><span class="thand">3s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:20%"></div></div><span class="tval">3.1</span></div>
+                    <div class="trend-row"><span class="thand">4s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:25%"></div></div><span class="tval">4.0</span></div>
+                    <div class="trend-row"><span class="thand">5s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:36%"></div></div><span class="tval">5.6</span></div>
+                    <div class="trend-row"><span class="thand">6s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:39%"></div></div><span class="tval">6.2</span></div>
+                    <div class="trend-row"><span class="thand">7s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:47%"></div></div><span class="tval">7.4</span></div>
+                    <div class="trend-row"><span class="thand">8s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:57%"></div></div><span class="tval">8.9</span></div>
+                    <div class="trend-row"><span class="thand">9s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:59%"></div></div><span class="tval">9.3</span></div>
+                    <div class="trend-row"><span class="thand">10s</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:69%"></div></div><span class="tval">10.8</span></div>
+                    <div class="trend-row"><span class="thand">Jacks</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:77%"></div></div><span class="tval">12.1</span></div>
+                    <div class="trend-row"><span class="thand">Queens</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:85%"></div></div><span class="tval">13.4</span></div>
+                    <div class="trend-row"><span class="thand">Kings</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:100%"></div></div><span class="tval">15.7</span></div>
+                  </div>
+                  <p class="sample" style="margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--line);">These are derived from the running totals — one misread total moves the two hands either side of it in opposite directions.</p>
+                </div>
+                <p class="sample" style="margin-top:8px;">⚠️ No line, curve, trend arrow or "this is where it's decided" copy anywhere on this section (decision 21) — eleven numbers, each printed, is the entire claim.</p>
+              </div>
+
+              <!-- Villains table -->
+              <div>
+                <span class="chip chip-new">New — criteria 225–226, 239</span>
+                <h4 class="section-heading" style="margin-top:8px;">Hand-by-hand villains</h4>
+                <p class="sample" style="margin:0 0 8px;">Average points per hand, every player. Each player's own worst hand is marked — scroll sideways for the rest of the row.</p>
+                <div class="table-scroll">
+                  <table class="villains">
+                    <thead>
+                      <tr>
+                        <th>Player</th><th>3s</th><th>4s</th><th>5s</th><th>6s</th><th>7s</th><th>8s</th><th>9s</th><th>10s</th><th>Jacks</th><th>Queens</th><th>Kings</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Player A<span class="villains-caption">from 12 games</span></td>
+                        <td>2.9</td><td>3.8</td><td>5.2</td><td>5.9</td><td>7.0</td><td>8.4</td><td>8.9</td><td>10.1</td><td>11.5</td><td>12.8</td>
+                        <td class="worst-cell"><span class="worst-mark"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span>16.2</td>
+                      </tr>
+                      <tr>
+                        <td>Player B<span class="villains-caption">from 14 games</span></td>
+                        <td>3.3</td><td>4.2</td><td>5.8</td><td>6.4</td><td>7.6</td><td>9.0</td><td>9.5</td><td>11.0</td><td>12.3</td>
+                        <td class="worst-cell"><span class="worst-mark"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span>14.8</td>
+                        <td>13.9</td>
+                      </tr>
+                      <tr>
+                        <td>Player C<span class="villains-caption">from 14 games</span></td>
+                        <td>2.6</td><td>3.5</td><td>4.9</td><td>5.5</td><td>6.7</td><td>8.1</td><td>8.6</td><td>9.8</td>
+                        <td class="worst-cell"><span class="worst-mark"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span>13.0</td>
+                        <td>11.6</td><td>12.4</td>
+                      </tr>
+                      <tr>
+                        <td>Player D<span class="villains-caption">from 9 games</span></td>
+                        <td>2.4</td><td>3.1</td><td>4.4</td><td>5.0</td><td>6.1</td><td>7.5</td><td>8.0</td><td>9.2</td><td>10.6</td><td>13.1</td>
+                        <td class="worst-cell"><span class="worst-mark"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span>15.0</td>
+                      </tr>
+                      <tr>
+                        <td>Player E<span class="villains-caption">from 9 games</span></td>
+                        <td>3.4</td><td>4.5</td><td>5.9</td><td>6.4</td><td>7.8</td><td>9.1</td><td>9.7</td><td>10.6</td><td>11.8</td><td>12.9</td>
+                        <td class="worst-cell"><span class="worst-mark"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1-6.3-4.4-6.3 4.4 2.3-7.1-6-4.4h7.6z"/></svg></span>15.5</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="sample" style="margin-top:8px;">The star icon plus bold, accent-coloured text mark the worst cell in each row — never colour alone, and it survives a screen reader (the icon carries no meaning the bold number and the row-order don't already state). The table sits in its own horizontally-scrolling container; the page itself never scrolls sideways.</p>
+              </div>
+
+              <!-- Disasters -->
+              <div>
+                <span class="chip chip-new">New — criterion 240</span>
+                <h4 class="section-heading" style="margin-top:8px;">Biggest single-hand disasters</h4>
+                <p class="sample" style="margin:0 0 8px;">The ten biggest single-hand scores ever recorded.</p>
+                <div class="game-list">
+                  <a class="disaster-row" href="#"><span class="disaster-rank">1</span><div class="disaster-main"><span class="dname display">Player E</span><span class="dmeta">Kings · Sat 5 Sep 2026</span></div><span class="disaster-score">41</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">2</span><div class="disaster-main"><span class="dname display">Player A</span><span class="dmeta">Queens · Fri 1 Aug 2026</span></div><span class="disaster-score">39</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">3</span><div class="disaster-main"><span class="dname display">Player B</span><span class="dmeta">Kings · Sat 15 Aug 2026</span></div><span class="disaster-score">37</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">4</span><div class="disaster-main"><span class="dname display">Player D</span><span class="dmeta">Jacks · Sun 12 Jul 2026</span></div><span class="disaster-score">34</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">5</span><div class="disaster-main"><span class="dname display">Player E</span><span class="dmeta">9s · Sun 12 Jul 2026</span></div><span class="disaster-score">33</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">6</span><div class="disaster-main"><span class="dname display">Player C</span><span class="dmeta">Kings · Thu 28 Aug 2026</span></div><span class="disaster-score">31</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">7</span><div class="disaster-main"><span class="dname display">Player A</span><span class="dmeta">Kings · Sat 5 Sep 2026</span></div><span class="disaster-score">30</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">8</span><div class="disaster-main"><span class="dname display">Player B</span><span class="dmeta">Queens · Sat 15 Aug 2026</span></div><span class="disaster-score">29</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">9</span><div class="disaster-main"><span class="dname display">Player D</span><span class="dmeta">Kings · Thu 28 Aug 2026</span></div><span class="disaster-score">28</span></a>
+                  <a class="disaster-row" href="#"><span class="disaster-rank">9</span><div class="disaster-main"><span class="dname display">Player E</span><span class="dmeta">Jacks · Fri 1 Aug 2026</span></div><span class="disaster-score">28</span></a>
+                </div>
+                <p class="sample" style="margin-top:8px;">Ranks 9 and 10 are shown tied at rank 9 (criterion 240's "ties at the last place are all shown," so this list runs to ten rows here — it would run to eleven or twelve on a wider tie). Each row taps through to that game.</p>
+              </div>
+
+              <!-- Averages -->
+              <div>
+                <span class="chip chip-new">New — criteria 223–224, 242</span>
+                <h4 class="section-heading" style="margin-top:8px;">Averages</h4>
+                <div class="card" style="padding:14px 16px; margin-bottom:12px;">
+                  <p class="sample" style="margin:0 0 6px; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.05em; color:var(--text);">Players</p>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player D</a><span class="asample">9 games</span></div><span class="aval">46.2</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player C</a><span class="asample">14 games</span></div><span class="aval">52.9</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player A</a><span class="asample">12 games</span></div><span class="aval">55.7</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player B</a><span class="asample">14 games</span></div><span class="aval">58.3</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player E</a><span class="asample">9 games</span></div><span class="aval">61.4</span></div>
+                </div>
+                <div class="card" style="padding:14px 16px;">
+                  <p class="sample" style="margin:0 0 6px; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.05em; color:var(--text);">Rosters</p>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Sunday Crew</a><span class="asample">9 games · 40 scores</span></div><span class="aval">64.8</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player A, B, C &amp; D</a><span class="asample">5 games · 20 scores</span></div><span class="aval">51.0</span></div>
+                  <div class="avg-row"><div class="aname"><a href="#" class="entity-link">Player A, B, C &amp; E</a><span class="asample">5 games · 20 scores</span></div><span class="aval">57.2</span></div>
+                </div>
+                <p class="sample" style="margin-top:8px;">No crown, no medal colour, no 1st/2nd/3rd (criterion 242) — rows sit in a plain, unranked order (alphabetical by name), exactly like the villains table above.</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <b>Also checked at 1280px:</b> the same 640px reading column every player/roster page already
+      uses — the trend, the disasters list and the averages tables stay single-column; only the
+      villains table (already inside its own <code>overflow-x:auto</code> container) gets to use the
+      spare width, showing all eleven hand columns without scrolling once the viewport is wide enough.
+    </div>
+  </section>
+</main>
