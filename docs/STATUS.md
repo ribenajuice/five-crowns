@@ -26,7 +26,11 @@
   records) is also merged and deployed ([PR #30](https://github.com/ribenajuice/five-crowns/pull/30),
   2026-09-14). **Stage 3** ("Distributions and villains" — score averages, the eleven-hand trend,
   hand-by-hand villains, and five more board records) is also built, QA'd and code-reviewed, on branch
-  `feat/m3-stage3`, ready to open as a PR — not yet merged or deployed.
+  `feat/m3-stage3`, ready to open as a PR — not yet merged or deployed. **Milestone 4 is also now underway
+  — its first slice, "fun facts" (a pool of eight programmatically-generated facts about the group's
+  history, one shown at random on the board on every page load), is built, QA'd, code-reviewed and
+  security-reviewed, on branch `feat/m4-fun-facts`, ready to open as a PR — not yet merged or deployed.**
+  This slice is independent of Milestone 3's own in-flight PRs and can merge before or after either of them.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -34,7 +38,35 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: nothing — **Milestone 3's first two stages are merged and live.**
+- **Currently in flight**: [PR #32](https://github.com/ribenajuice/five-crowns/pull/32) (Milestone 3
+  Stage 3) and [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) (Milestone 4, fun facts) —
+  **Milestone 3's first two stages are merged and live.**
+  - [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
+    facts** (criteria 281–293). A fixed pool of eight independent fact generators — flatliner, current
+    drought, the comeback nobody asked for, the slump, rivalry needle, overdue, a random old night, and
+    collective trivia — each a pure function that returns one true fact or nothing. The board computes
+    the whole pool fresh on every load and shows exactly one, picked at random; refresh, and you get
+    another. Nothing is cached or precomputed, and no schema change was needed — every generator reads
+    rows Milestones 1–3 already store. At the founder's own instruction, this feature deliberately
+    relaxes criterion 202's "nothing characterises a player" rule — a real, named, unflattering thing
+    about a player is fair game here ("this is for fun among friends"); criterion 192's wording ban and
+    the no-invented-numbers rule still apply. QA found and fixed one real bug: `randomOldNight`'s pick
+    of which past game to tell wasn't deterministic in tests, since the pool itself touched
+    `Math.random()` on every call — fixed by threading an injectable `random` function through, so the
+    pool's own contents stay testable and only `pickFunFact()` (the one place criterion 281 actually
+    asks for randomness) is left non-deterministic by default. `/code-review high` then found and fixed
+    two real bugs: `getBoard()` and `getFunFacts()` were each independently re-fetching and re-grouping
+    the same three tables, doubling the board page's query count on every load (fixed by a shared
+    `getBoardData()` fetch that `app/page.tsx` reads once and passes to both); and the comeback
+    generator had no tie-break between two hands scoring equally badly in the same game, so which one it
+    reported could vary with row order (fixed — now breaks ties by lowest hand number, matching the
+    flatliner's existing convention). A security review found no blocking issues; ship approved. Four
+    small things deliberately deferred as non-blocking — see "Known follow-ups" below. Rebased onto
+    `main` once Stages 1-3 merged (both `app/page.tsx` and `lib/board/queries.ts` were touched by both
+    branches) — the merge itself surfaced one more real bug, the shared `getBoardData()` query for
+    `round_score` was missing the deterministic `ORDER BY` Stage 3's own code review had added, silently
+    reintroducing the catastrophe drill-through's non-determinism — fixed during the rebase, all 1643
+    tests passing, lint and typecheck clean. **Next**: founder review/merge.
   - ✅ [PR #29](https://github.com/ribenajuice/five-crowns/pull/29) — **Milestone 3 Stage 1**, the records board
     (criteria 175–196). **Shipped 2026-09-14.** Milestone 3 had no detailed spec at all going in — only a
     bullet-point sketch — so product-manager wrote the actual delivery plan, proposing a 4-stage breakdown
@@ -338,6 +370,17 @@
     measures ~34px tall — a different pre-existing component than the one this stage fixed, not gated by any
     Stage 1 criterion. `GameRow`'s winners column can squeeze text at very narrow widths, but only with
     artificially long QA test names ("Board Audit b1"/"Board Audit b2") — not reproducible with realistic ones.
+  - **Milestone 4, first slice** (fun facts), flagged by code review and security review and deliberately
+    deferred as non-blocking: `lib/ui/copy.ts`'s `formatFunFactDate` duplicates a date-formatting pattern
+    already repeated in `GameRow.tsx`, `PlayerGameRow.tsx`, `RosterGameRow.tsx` and
+    `MergeConflictRefusal.tsx` — a sixth copy. `pickFunFact()` and `randomOldNight()` both independently
+    implement the same bounded-random-index formula (`Math.min(Math.floor(random() * n), n - 1)`) rather
+    than sharing one helper. The rivalry-needle fact stores only a fraction (`aboveRate`) and reconstructs
+    the integer game count via rounding in the display layer, instead of carrying the exact integer
+    through from `headToHead()`. Two `!` non-null assertions in `lib/board/facts.ts` (on
+    `rosterNameByGame`/`winningScoreByGame` lookups) are unreachable today (deletes/edits are transactional,
+    `validateGrid` requires 2+ assigned columns) but would surface a false sentence rather than fail loudly
+    if that ever changed.
   - **Milestone 3 Stage 2** (rivalry), flagged by `/code-review high` and deliberately deferred as non-blocking:
     `PlayerRecordGame` (`lib/players/rivalry.ts`) and `RecordGame` (`lib/board/queries.ts`) hand-duplicate the
     same six fields, both claiming to mirror `GameRowProps` — could be derived from one shared type via
