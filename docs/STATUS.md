@@ -4,8 +4,8 @@
 
 - **Last updated**: 2026-09-14
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
-  merged 2026-09-13). **Milestone 2 is now in flight**, and both its built stages are **merged and live in
-  production**. Its full delivery spec (86 criteria, 87–173, across four stages) is written in `docs/PRD.md`.
+  merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
+  deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
   **Stage 1** (the admin panel finished — both password changes, the forgotten-password runbook, the score CSV,
   usage and spend) is merged and deployed ([PR #21](https://github.com/ribenajuice/five-crowns/pull/21),
   2026-09-14). PRD open question 5 (the IAM grant blocking in-panel password rotation) is **resolved**: the
@@ -16,9 +16,8 @@
   ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14). **Stage 3** (player, roster and
   place pages, plus renaming and in-app navigation to reach them) is also merged and live
   ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14). **Stage 4** (suggested player-name
-  matching, and permanent player/place merging) — the closing stage of Milestone 2 — is built, QA'd,
-  code-reviewed and security-reviewed on branch `feat/m2-stage4`, ready to open as a PR — not yet merged or
-  deployed.
+  matching, and permanent player/place merging) — the closing stage of Milestone 2 — is also merged and live
+  ([PR #27](https://github.com/ribenajuice/five-crowns/pull/27), 2026-09-14).
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -26,26 +25,28 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**:
-  - **Milestone 2 Stage 4** — suggested player-name matching, and permanent player/place merging (criteria
-    148–166, 172–173). Built on `feat/m2-stage4`; not yet a PR. The spec was already written 2026-09-10 (with
-    172–173 added 2026-09-14); product-manager found it ready to build as-is with **six team-level consistency
-    fixes** applied before build (a contradictory worked example, unstated boundary inclusivity, a missing
-    `photo.playerId` repoint on merge, wiring the merge action into Stage 3's location-rename-collision refusal
-    as promised, excluding already-assigned columns from re-matching, and a left-to-right tie-break) — no founder
-    input needed for any of them. QA drove the real running app end-to-end (not just reading code) against all
-    17 criteria, with particular rigor on the two irreversible merge paths (roster folding in both directions,
-    the same-game refusal, a forced mid-transaction failure) and the matching boundary/ambiguity math using
-    real constructed name pairs — found and this stage fixed one real bug (tapping "someone new" didn't
-    pre-fill the handwritten name, contradicting an explicit, four-times-stated criterion). A security review
-    scoped to the three new merge/matching endpoints found the auth, CSRF, injection-surface and transactional
-    atomicity all correct (verified against the actual libSQL driver, not just code comments) — one low-likelihood
-    but permanent-consequence gap was closed anyway (the player merge didn't re-check both players still existed
-    inside its own transaction, unlike its location-merge sibling). `/code-review high` then found and fixed a
-    real matcher bug (a pending "someone new" name wasn't excluded from later suggestions, risking a confusing
-    save-time error) and a latent error-handling landmine (two same-named but incompatible error classes). Three
-    small things deliberately deferred as non-blocking (below). 1263 tests passing, lint and typecheck clean.
-    **Next**: open the PR.
+- **Currently in flight**: nothing — **Milestone 2 is complete**, all four stages merged and live.
+  - ✅ [PR #27](https://github.com/ribenajuice/five-crowns/pull/27) — **Milestone 2 Stage 4**, suggested
+    player-name matching, and permanent player/place merging (criteria 148–166, 172–173). **Shipped 2026-09-14,
+    closing Milestone 2.** The spec was already written 2026-09-10 (with 172–173 added 2026-09-14);
+    product-manager found it ready to build as-is with **six team-level consistency fixes** applied before
+    build (a contradictory worked example, unstated boundary inclusivity, a missing `photo.playerId` repoint on
+    merge, wiring the merge action into Stage 3's location-rename-collision refusal as promised, excluding
+    already-assigned columns from re-matching, and a left-to-right tie-break) — no founder input needed. QA
+    drove the real running app end-to-end against all 17 criteria, with particular rigor on the two
+    irreversible merge paths (roster folding in both directions, the same-game refusal, a forced
+    mid-transaction failure) and the matching boundary/ambiguity math using real constructed name pairs — found
+    and fixed one real bug (tapping "someone new" didn't pre-fill the handwritten name, contradicting an
+    explicit, four-times-stated criterion). A security review scoped to the three new merge/matching endpoints
+    found the auth, CSRF, injection-surface and transactional atomicity all correct (verified against the
+    actual libSQL driver, not just code comments) — one low-likelihood but permanent-consequence gap was closed
+    anyway (the player merge didn't re-check both players still existed inside its own transaction, unlike its
+    location-merge sibling). `/code-review high` then found and fixed a real matcher bug (a pending "someone
+    new" name wasn't excluded from later suggestions) and a latent error-handling landmine (two same-named but
+    incompatible error classes). Three small things deliberately deferred as non-blocking (see "Known
+    follow-ups" below). Merged, deployed — including migration 0004 (dropping the unused
+    `player.merged_into_id` placeholder), confirmed applied in the deploy log — and verified live: every new
+    merge page 307s to `/login` and every new merge API 401s without a session.
   - ✅ [PR #25](https://github.com/ribenajuice/five-crowns/pull/25) — **Milestone 2 Stage 3**, player, roster and
     place pages, renaming, and in-app navigation to reach them (criteria 132–146, 174). **Shipped 2026-09-14.**
     The spec was already written 2026-09-10; product-manager confirmed it unaffected by Stages 1–2 and ready to
@@ -177,11 +178,13 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: **Milestone 2 Stage 4 — Identity, repaired** (criteria 148–166, plus 172–173): the name-similarity
-  module and suggested matching on the review screen, player merge (with roster folding and a same-game refusal),
-  place merge, and the `merged_into_id` migration. Deliberately built last, after its own repair tools (Stage 2's
-  game edit, Stage 3's player/roster pages) already exist to fix a bad match. Nothing is waiting on the founder —
-  open question 4 was answered 2026-09-14. This closes Milestone 2. Run `/feature Milestone 2 Stage 4` to start.
+- **Next up**: **Milestone 3 — The records board and the analytics**, not yet specced in detail. The records
+  board (the four named records plus the proposed extras) becomes the landing screen past the password gate;
+  round winners, rivalry (head-to-head, streaks, nemesis), score distributions, hand-by-hand villains, and
+  location/time slices are all derivable from data already captured — no migration needed for any of it. Sample
+  sizes and the withholding rules (nothing crowned under 10 games, no player ranked under 5) apply throughout.
+  Run `/feature Milestone 3` to start, or name a specific slice of it (the records board alone is a reasonable
+  first cut).
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
