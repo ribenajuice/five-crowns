@@ -27,6 +27,15 @@ export interface TranscribeResultEvent {
   updatedAt: string;
   transcriptionId: string;
   columns: TranscribeColumnDiagnostic[];
+  /**
+   * The full merged draft state, JSON-shaped — deliberately untyped here, same
+   * reasoning `TranscribeColumnResultEvent.state` already documents below:
+   * this file stays independent of `lib/draft`'s `server-only` imports.
+   * `AddGameFlow` reads this only to find which columns criterion 172's
+   * matcher pre-selected (see {@link extractSuggestedColumnIds}); the review
+   * screen itself always re-fetches its own copy over `GET /api/drafts/{id}`.
+   */
+  state: unknown;
 }
 
 export interface TranscribeErrorEvent {
@@ -90,10 +99,34 @@ export function parseTranscribeEvent(raw: unknown): TranscribeEvent | null {
       updatedAt: raw.updatedAt,
       transcriptionId: raw.transcriptionId,
       columns: raw.columns.map(parseColumn).filter((c): c is TranscribeColumnDiagnostic => c !== null),
+      state: raw.state,
     };
   }
 
   return null;
+}
+
+/**
+ * Stage 4 (PRD criteria 148–154, 172–173): which columns of a freshly merged
+ * sheet-transcription result criterion 172's matcher pre-selected. Every
+ * column starts a fresh draft with `playerId: null` (`emptyDraftState`), and
+ * `applySuggestedPlayerMatches` never touches a column that already carries
+ * one — so at this exact moment (the first render of a brand-new draft), any
+ * column whose `playerId` is now set got there by a suggestion, never by
+ * anything the founder did. `AddGameFlow` hands the result off to
+ * `sessionStorage` for the review screen's one-shot read, the same "this
+ * one attempt only, never persisted" shape `transcribe-hints` already uses —
+ * see `docs/DESIGN-SYSTEM.md` § `SuggestedMatchPill`.
+ */
+export function extractSuggestedColumnIds(state: unknown): string[] {
+  if (!isRecord(state) || !Array.isArray(state.columns)) return [];
+  const ids: string[] = [];
+  for (const raw of state.columns) {
+    if (!isRecord(raw)) continue;
+    if (typeof raw.id !== "string") continue;
+    if (typeof raw.playerId === "string" && raw.playerId.length > 0) ids.push(raw.id);
+  }
+  return ids;
 }
 
 /* -------------------------------------------- Stage 4: targeted column read */

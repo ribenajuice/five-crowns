@@ -77,6 +77,11 @@ export function setColumnPlayer(
     ...column,
     playerId,
     newPlayerName: null,
+    // Stage 4 (criterion 173): a near-match column's candidates only make
+    // sense while it's still unassigned — once the founder picks someone
+    // (from the "Closest matches" section or the ordinary roster below it),
+    // stale candidates must not resurface if the picker reopens later.
+    nameCandidates: undefined,
   }));
 }
 
@@ -89,6 +94,7 @@ export function setColumnNewPlayerName(
     ...column,
     playerId: null,
     newPlayerName: name,
+    nameCandidates: undefined,
   }));
 }
 

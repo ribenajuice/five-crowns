@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseTranscribeColumnEvent, parseTranscribeEvent } from "@/lib/ui/transcribe-events";
+import {
+  extractSuggestedColumnIds,
+  parseTranscribeColumnEvent,
+  parseTranscribeEvent,
+} from "@/lib/ui/transcribe-events";
 
 describe("parseTranscribeEvent", () => {
   it("parses a progress event, defaulting an unexpected stage", () => {
@@ -83,6 +87,46 @@ describe("parseTranscribeEvent", () => {
     expect(parseTranscribeEvent("just a string")).toBeNull();
     expect(parseTranscribeEvent(null)).toBeNull();
     expect(parseTranscribeEvent(42)).toBeNull();
+  });
+
+  it("carries the merged draft state through, unparsed (Stage 4: AddGameFlow reads it for suggested columns)", () => {
+    const raw = {
+      type: "result",
+      status: "ok",
+      draftId: "draft_1",
+      updatedAt: "2026-09-12T00:00:00.000Z",
+      transcriptionId: "tr_1",
+      columns: [],
+      state: { version: 1, columns: [{ id: "col_1", playerId: "p1" }] },
+    };
+    const parsed = parseTranscribeEvent(raw);
+    if (parsed?.type !== "result") throw new Error("expected a result event");
+    expect(parsed.state).toEqual(raw.state);
+  });
+});
+
+describe("extractSuggestedColumnIds (Stage 4, criterion 172)", () => {
+  it("names every column that already carries a playerId — a fresh draft starts with none, so any that has one got there by a suggestion", () => {
+    const state = {
+      columns: [
+        { id: "col_1", playerId: "player-a" },
+        { id: "col_2", playerId: null },
+        { id: "col_3", playerId: "player-b" },
+      ],
+    };
+    expect(extractSuggestedColumnIds(state)).toEqual(["col_1", "col_3"]);
+  });
+
+  it("returns an empty list for a malformed or missing state, never throws", () => {
+    expect(extractSuggestedColumnIds(null)).toEqual([]);
+    expect(extractSuggestedColumnIds(undefined)).toEqual([]);
+    expect(extractSuggestedColumnIds({})).toEqual([]);
+    expect(extractSuggestedColumnIds({ columns: "not an array" })).toEqual([]);
+  });
+
+  it("ignores a column with a non-string or blank playerId", () => {
+    const state = { columns: [{ id: "col_1", playerId: 42 }, { id: "col_2", playerId: "" }] };
+    expect(extractSuggestedColumnIds(state)).toEqual([]);
   });
 });
 

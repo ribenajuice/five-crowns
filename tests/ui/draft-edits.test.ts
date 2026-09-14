@@ -315,6 +315,20 @@ describe("setColumnPlayer / setColumnNewPlayerName", () => {
     state = setColumnNewPlayerName(state, "a", "Someone Else");
     expect(state.columns[0]!.sheetName).toBe("Playr D");
   });
+
+  it("⚠️ Stage 4 (criterion 173): picking an existing player clears any stale near-match candidates", () => {
+    let state = freshState();
+    state.columns[0]!.nameCandidates = ["player_jonny", "player_jenny"];
+    state = setColumnPlayer(state, "a", "player_jonny");
+    expect(state.columns[0]!.nameCandidates).toBeUndefined();
+  });
+
+  it("⚠️ Stage 4 (criterion 173): picking 'someone new' also clears any stale near-match candidates", () => {
+    let state = freshState();
+    state.columns[0]!.nameCandidates = ["player_jonny", "player_jenny"];
+    state = setColumnNewPlayerName(state, "a", "Janny");
+    expect(state.columns[0]!.nameCandidates).toBeUndefined();
+  });
 });
 
 describe("setColumnCrop", () => {

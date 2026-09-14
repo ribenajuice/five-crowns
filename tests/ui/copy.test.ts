@@ -54,12 +54,36 @@ import {
   locationCollisionTitle,
   playerGamesHeading,
   playerZeroGamesBody,
-  renameOpenAriaLabelPlace,
+  editPlaceAriaLabel,
   rosterDuplicateWarningBody,
   rosterDuplicateWarningTitle,
   rosterGamesHeading,
   rosterStatsSampleLine,
   statSampleCaption,
+  LOCATION_COLLISION_BODY,
+  MERGE_CONFIRM_INTRO,
+  MERGE_NO_UNDO_SENTENCE,
+  MERGE_SUCCESS_TITLE,
+  PICKLIST_CLOSEST_MATCHES_LABEL,
+  SAME_GAME_REFUSAL_BODY,
+  SUGGESTED_MATCH_PILL_LABEL,
+  UNASSIGNED_COLUMN_PILL_LABEL,
+  locationCollisionMergeButtonLabel,
+  mergeDetailSentencePlace,
+  mergeDetailSentencePlayer,
+  mergePickEmptyBodyPlace,
+  mergePickEmptyBodyPlayer,
+  mergeSuccessBodyPlace,
+  mergeSuccessBodyPlayer,
+  mergeTargetHeadingPlace,
+  mergeTargetHeadingPlayer,
+  mergeTargetRowGamesLabel,
+  readAsCaption,
+  rosterFoldNote,
+  sameGameBackButtonLabel,
+  sameGameRefusalTitle,
+  survivorGamesPlayedLabel,
+  survivorGamesPlayedThereLabel,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -465,8 +489,8 @@ describe("Stage 3: players, rosters, places copy", () => {
     expect(rosterGamesHeading("Thursday crew")).toBe("Thursday crew's games");
   });
 
-  it("renameOpenAriaLabelPlace names the place (criterion 145)", () => {
-    expect(renameOpenAriaLabelPlace("The Deck")).toBe("Rename The Deck");
+  it("⚠️ Stage 4: editPlaceAriaLabel names the place, and reads 'Edit', not 'Rename' (was renameOpenAriaLabelPlace pre-Stage-4)", () => {
+    expect(editPlaceAriaLabel("The Deck")).toBe("Edit The Deck");
   });
 
   it("rosterDuplicateWarningTitle/Body name the colliding roster by its members, not by name (criterion 143)", () => {
@@ -478,5 +502,101 @@ describe("Stage 3: players, rosters, places copy", () => {
 
   it("locationCollisionTitle names the existing place (criterion 146)", () => {
     expect(locationCollisionTitle("The Deck")).toBe("The Deck already has that name.");
+  });
+
+  it("⚠️ Stage 4: LOCATION_COLLISION_BODY now offers the merge, not 'coming in a later update' (criterion 163 fulfils 146)", () => {
+    expect(LOCATION_COLLISION_BODY).toBe("Pick a different name, or merge the two into one instead.");
+    expect(LOCATION_COLLISION_BODY.toLowerCase()).not.toContain("later update");
+  });
+});
+
+describe("Stage 4: identity, repaired — review screen copy (criteria 148–154, 172–173)", () => {
+  it("SUGGESTED_MATCH_PILL_LABEL and UNASSIGNED_COLUMN_PILL_LABEL are the exact fixed strings", () => {
+    expect(SUGGESTED_MATCH_PILL_LABEL).toBe("Suggested");
+    expect(UNASSIGNED_COLUMN_PILL_LABEL).toBe("Needs a player");
+    expect(PICKLIST_CLOSEST_MATCHES_LABEL).toBe("Closest matches");
+  });
+
+  it("readAsCaption names the sheet name, verbatim 'Read as {name}.'", () => {
+    expect(readAsCaption("Sam")).toBe("Read as Sam.");
+    assertNoBannedWords(readAsCaption("Sam"));
+  });
+});
+
+describe("Stage 4: identity, repaired — merging players and places (criteria 155–166)", () => {
+  it("mergeTargetHeadingPlayer/Place name who's being merged", () => {
+    expect(mergeTargetHeadingPlayer("Samuel")).toBe("Merge Samuel with which player?");
+    expect(mergeTargetHeadingPlace("The Deck")).toBe("Merge The Deck with which place?");
+  });
+
+  it("MERGE_CONFIRM_INTRO is the exact fixed sentence, and states nothing is pre-chosen (criterion 156)", () => {
+    expect(MERGE_CONFIRM_INTRO).toBe("Pick which one stays. Nothing is chosen for you.");
+  });
+
+  it("mergeDetailSentencePlayer names every table criterion 158 repoints", () => {
+    expect(mergeDetailSentencePlayer("Samuel", "Sam")).toBe(
+      "Samuel is deleted for good. Every game, round, roster spot and photo of theirs moves to Sam.",
+    );
+  });
+
+  it("mergeDetailSentencePlace names the games moving", () => {
+    expect(mergeDetailSentencePlace("The Deck (typo)", "The Deck")).toBe(
+      "The Deck (typo) is deleted for good. Every game at The Deck (typo) moves to The Deck.",
+    );
+  });
+
+  it("MERGE_NO_UNDO_SENTENCE covers both 'no undo' (157) and 'no history' (162) in one sentence", () => {
+    expect(MERGE_NO_UNDO_SENTENCE).toBe("There's no undo, and no record that a merge happened.");
+    assertNoBannedWords(MERGE_NO_UNDO_SENTENCE);
+  });
+
+  it("sameGameRefusalTitle/Body name both players and the reason (criterion 160)", () => {
+    expect(sameGameRefusalTitle("Sam", "Player A")).toBe("Sam and Player A played the same game.");
+    expect(SAME_GAME_REFUSAL_BODY).toBe(
+      "One person can't hold two seats at the same table. Fix these first, then try the merge again:",
+    );
+  });
+
+  it("sameGameBackButtonLabel names the originating player", () => {
+    expect(sameGameBackButtonLabel("Sam")).toBe("Back to Sam");
+  });
+
+  it("MERGE_SUCCESS_TITLE / mergeSuccessBodyPlayer / mergeSuccessBodyPlace / rosterFoldNote match the fixed table verbatim", () => {
+    expect(MERGE_SUCCESS_TITLE).toBe("Merged.");
+    expect(mergeSuccessBodyPlayer("Samuel", "Sam")).toBe("Samuel is now part of Sam's record.");
+    expect(mergeSuccessBodyPlace("The Deck (typo)", "The Deck")).toBe(
+      "The Deck (typo) is now part of The Deck.",
+    );
+    expect(rosterFoldNote("Thursday crew")).toBe(
+      'Two rosters folded into one — kept the name "Thursday crew".',
+    );
+  });
+
+  it("survivor-card and merge-target-row games labels use singular grammar for exactly one game", () => {
+    expect(survivorGamesPlayedLabel(0)).toBe("0 games played");
+    expect(survivorGamesPlayedLabel(1)).toBe("1 game played");
+    expect(survivorGamesPlayedThereLabel(1)).toBe("1 game played there");
+    expect(survivorGamesPlayedThereLabel(2)).toBe("2 games played there");
+    expect(mergeTargetRowGamesLabel(1)).toBe("1 game");
+    expect(mergeTargetRowGamesLabel(9)).toBe("9 games");
+  });
+
+  it("mergePickEmptyBodyPlayer/Place name the only player/place left", () => {
+    expect(mergePickEmptyBodyPlayer("Sam")).toBe("Sam is the only player in the book right now.");
+    expect(mergePickEmptyBodyPlace("The Deck")).toBe("The Deck is the only place in the book right now.");
+  });
+
+  it("locationCollisionMergeButtonLabel names the existing place", () => {
+    expect(locationCollisionMergeButtonLabel("The Deck")).toBe("Merge with The Deck");
+  });
+
+  it("none of this stage's new sentences use a banned word (criterion 154, restated)", () => {
+    assertNoBannedWords(mergeTargetHeadingPlayer("Sam"));
+    assertNoBannedWords(mergeDetailSentencePlayer("Samuel", "Sam"));
+    assertNoBannedWords(mergeDetailSentencePlace("A", "B"));
+    assertNoBannedWords(sameGameRefusalTitle("Sam", "Player A"));
+    assertNoBannedWords(mergeSuccessBodyPlayer("Samuel", "Sam"));
+    assertNoBannedWords(mergeSuccessBodyPlace("A", "B"));
+    assertNoBannedWords(rosterFoldNote("Thursday crew"));
   });
 });

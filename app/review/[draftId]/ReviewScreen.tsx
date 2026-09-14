@@ -51,12 +51,15 @@ import {
   REORDER_DONE_BUTTON,
   REORDER_SCREEN_CAPTION,
   REORDER_SCREEN_HEADING,
+  SUGGESTED_MATCH_PILL_LABEL,
+  UNASSIGNED_COLUMN_PILL_LABEL,
   VENUE_ADD_NEW_ROW,
   VENUE_FIELD_LABEL,
   VENUE_LIST_EMPTY,
   DATE_FIELD_LABEL,
   GAME_DELETED_MID_EDIT_MESSAGE,
   columnStatusLabel,
+  readAsCaption,
   saveBlockedMessage,
 } from "@/lib/ui/copy";
 import {
@@ -97,6 +100,24 @@ function labelForColumn(column: DraftColumn, players: PickListItem[]): string {
     return players.find((p) => p.id === column.playerId)?.label ?? "Someone";
   }
   return column.sheetName ?? "This column";
+}
+
+/**
+ * Stage 4 (criterion 173): the up-to-three near-match candidates a column's
+ * `nameCandidates` names, resolved to pick-list items, best first. `null`
+ * (rather than a candidate-less column, or one already assigned — a
+ * "suggest"-tier column never carries `nameCandidates`, criterion 172) yields
+ * an empty list, so the pick-list's ordinary alphabetical roster is untouched.
+ */
+function closestMatchItemsFor(
+  column: DraftColumn | null,
+  players: PickListItem[],
+): PickListItem[] {
+  if (!column?.nameCandidates?.length) return [];
+  const byId = new Map(players.map((p) => [p.id, p]));
+  return column.nameCandidates
+    .map((id) => byId.get(id))
+    .filter((p): p is PickListItem => Boolean(p));
 }
 
 function statusForColumn(
@@ -172,6 +193,35 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       // Malformed hand-off — no hints this visit, nothing else is affected.
     }
   }, [draftId]);
+
+  // Stage 4 (criteria 172, 158 in `docs/DESIGN-SYSTEM.md` § `SuggestedMatchPill`):
+  // which columns arrived pre-selected by a confident suggestion, handed off
+  // the same one-shot way as `readHints` above — a UI-only signal, never
+  // persisted on the draft, cleared for good the instant the founder touches
+  // that column's name control (even to re-pick the same player).
+  const [suggestedColumnIds, setSuggestedColumnIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const key = `suggested-columns:${draftId}`;
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return;
+    window.sessionStorage.removeItem(key);
+    try {
+      const ids = JSON.parse(raw) as string[];
+      setSuggestedColumnIds(new Set(ids));
+    } catch {
+      // Malformed hand-off — no column shows a "Suggested" pill this visit.
+    }
+  }, [draftId]);
+
+  /** The founder touched this column's name control — the pill retires for good. */
+  const retireSuggestion = useCallback((columnId: string) => {
+    setSuggestedColumnIds((current) => {
+      if (!current.has(columnId)) return current;
+      const next = new Set(current);
+      next.delete(columnId);
+      return next;
+    });
+  }, []);
 
   // "Fix the shape" (insert/delete a row) shifts every value below the edit
   // point (criterion 33) — a stored hint index has to shift the same way, or
@@ -581,6 +631,7 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
                   validation={gridValidation.columns[activeColumn.id]!}
                   photo={photo}
                   canRemove={sortedColumns.length > 1}
+                  suggested={suggestedColumnIds.has(activeColumn.id)}
                   readHintIndex={readHints[activeColumn.id] ?? null}
                   onPickPlayer={() => setColumnPicker({ columnId: activeColumn.id, step: "pick" })}
                   onAdjustCrop={() => setColumnPicker({ columnId: activeColumn.id, step: "crop" })}
@@ -697,17 +748,27 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
         >
           {columnPicker.step === "pick" ? (
             <PickList
-              items={players}
+              items={
+                closestMatchItemsFor(columnPickerColumn, players).length > 0
+                  ? players.filter(
+                      (p) =>
+                        !closestMatchItemsFor(columnPickerColumn, players).some((c) => c.id === p.id),
+                    )
+                  : players
+              }
+              closestMatches={closestMatchItemsFor(columnPickerColumn, players)}
               selectedId={columnPickerColumn.playerId}
               pendingLabel={columnPickerColumn.newPlayerName}
               addNewLabel={PLAYER_ADD_NEW_ROW}
               emptyMessage={players.length === 0 ? PLAYER_LIST_FIRST_GAME : undefined}
               onSelect={(id) => {
                 applyEdit((s) => setColumnPlayer(s, columnPickerColumn.id, id));
+                retireSuggestion(columnPickerColumn.id);
                 afterPlayerPicked(columnPickerColumn);
               }}
               onAddNew={(name) => {
                 applyEdit((s) => setColumnNewPlayerName(s, columnPickerColumn.id, name));
+                retireSuggestion(columnPickerColumn.id);
                 afterPlayerPicked(columnPickerColumn);
               }}
             />
@@ -842,6 +903,7 @@ function ActiveColumnCard({
   validation,
   photo,
   canRemove,
+  suggested,
   readHintIndex,
   onPickPlayer,
   onAdjustCrop,
@@ -857,6 +919,8 @@ function ActiveColumnCard({
   validation: ColumnValidation;
   photo: PhotoState | null;
   canRemove: boolean;
+  /** Stage 4 (criterion 172): a pre-selected suggestion this session hasn't touched yet. */
+  suggested: boolean;
   readHintIndex: number | null;
   onPickPlayer: () => void;
   onAdjustCrop: () => void;
@@ -873,14 +937,32 @@ function ActiveColumnCard({
 
   return (
     <div className="mt-3 rounded-[var(--radius)] border border-line bg-surface p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 truncate font-display text-lg font-bold">{label}</h2>
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <h2
+          className={
+            assigned
+              ? "min-w-0 flex-1 truncate font-display text-lg font-bold"
+              : "min-w-0 flex-1 truncate font-display text-lg font-semibold italic text-text-muted"
+          }
+        >
+          {label}
+        </h2>
+        {assigned && suggested ? <Pill tone="neutral">{SUGGESTED_MATCH_PILL_LABEL}</Pill> : null}
+        {!assigned ? <Pill tone="warn">{UNASSIGNED_COLUMN_PILL_LABEL}</Pill> : null}
         {validation.filled !== validation.expected ? (
           <Pill tone={validation.ok ? "neutral" : "warn"}>
             {columnStatusLabel(validation.filled, validation.expected)}
           </Pill>
         ) : null}
       </div>
+
+      {/* Stage 4 (criterion 153): the handwritten name, on every assigned
+          column once a transcription exists — an unassigned column's own
+          heading already *is* the handwritten name, so it gets no separate
+          caption. */}
+      {assigned && column.sheetName ? (
+        <p className="mb-2 text-xs text-text-muted">{readAsCaption(column.sheetName)}</p>
+      ) : null}
 
       <div className="mb-3 flex gap-2">
         <button type="button" onClick={onPickPlayer} className={buttonClasses("ghost")}>

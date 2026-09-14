@@ -8,6 +8,8 @@
 
 import "server-only";
 
+import { eq } from "drizzle-orm";
+
 import { getDb } from "@/lib/db";
 import { game, location } from "@/lib/db/schema";
 
@@ -39,4 +41,26 @@ export async function listPlaces(): Promise<PlaceListItem[]> {
       gamesPlayed: gamesPlayedByLocation.get(l.id) ?? 0,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+/**
+ * One place by id, with its own games-played count — `null` for a made-up id
+ * (a 404, same rule every other id-addressed page in this app follows).
+ * Stage 4: the merge-picker and merge-confirm screens (PRD criteria 163–166)
+ * need exactly this, and there is no place page to otherwise reuse.
+ */
+export async function getPlace(id: string): Promise<PlaceListItem | null> {
+  const db = getDb();
+
+  const row = (
+    await db.select({ id: location.id, name: location.name }).from(location).where(eq(location.id, id))
+  )[0];
+  if (!row) return null;
+
+  const gameRows = await db
+    .select({ locationId: game.locationId })
+    .from(game)
+    .where(eq(game.locationId, id));
+
+  return { id: row.id, name: row.name, gamesPlayed: gameRows.length };
 }

@@ -117,7 +117,7 @@ describe("PATCH /api/locations/{id}", () => {
   });
 
   it("⚠️ criterion 146: 409s a name_key collision, naming the other place, and does not rename", async () => {
-    await makeLocation("Player C's House");
+    const existingId = await makeLocation("Player C's House");
     const otherId = await makeLocation("The pub");
 
     const { PATCH } = await import("@/app/api/locations/[id]/route");
@@ -127,6 +127,10 @@ describe("PATCH /api/locations/{id}", () => {
     expect(response.status).toBe(409);
     const body = await response.json();
     expect(body.error.message).toContain("Player C's House");
+    // ⚠️ Stage 4 (criterion 163 fulfils criterion 146's promise): the existing
+    // place's own id travels alongside `error`, so `PlaceRow` can offer a
+    // direct "Merge with {existing place}" button without a second request.
+    expect(body.existingLocation).toEqual({ id: existingId, name: "Player C's House" });
 
     const { listPlaces } = await import("@/lib/locations/queries");
     expect((await listPlaces()).find((p) => p.id === otherId)!.name).toBe("The pub");

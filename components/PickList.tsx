@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { Pill } from "./Pill";
 import { buttonClasses } from "./Button";
+import { PICKLIST_CLOSEST_MATCHES_LABEL } from "@/lib/ui/copy";
 
 export interface PickListItem {
   id: string;
@@ -29,6 +30,14 @@ interface PickListProps {
   emptyMessage?: string;
   /** The venue field's explicit "No location" row (criterion 61). */
   clearRowLabel?: string;
+  /**
+   * Stage 4 (criterion 173): the best two or three near-matches for a column
+   * still unassigned, pinned above the ordinary roster, in the order the
+   * matcher ranked them — an ordering change to this same sheet, not a new
+   * component. `items` below is expected to already exclude these ids so
+   * nobody appears twice.
+   */
+  closestMatches?: PickListItem[];
   onSelect: (id: string) => void;
   onAddNew: (name: string) => void;
   onClear?: () => void;
@@ -41,6 +50,7 @@ export function PickList({
   addNewLabel,
   emptyMessage,
   clearRowLabel,
+  closestMatches,
   onSelect,
   onAddNew,
   onClear,
@@ -74,6 +84,27 @@ export function PickList({
               {clearRowLabel}
             </button>
           </li>
+        ) : null}
+
+        {closestMatches && closestMatches.length > 0 ? (
+          <>
+            <li className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-label text-text-muted">
+              {PICKLIST_CLOSEST_MATCHES_LABEL}
+            </li>
+            {closestMatches.map((item) => (
+              <li key={`closest-${item.id}`}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.id)}
+                  aria-pressed={selectedId === item.id}
+                  className="flex min-h-13 w-full items-center rounded-[var(--radius)] px-3 text-left text-base aria-pressed:bg-sunk aria-pressed:font-bold"
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+            <li aria-hidden="true" className="my-1 border-t border-line" />
+          </>
         ) : null}
 
         {items.map((item) => (

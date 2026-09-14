@@ -642,8 +642,11 @@ export function rosterGamesHeading(roster: string): string {
 
 /** `RenameControl` (criteria 141–146). */
 export const RENAME_OPEN_LINK_ROSTER = "Rename";
-export function renameOpenAriaLabelPlace(place: string): string {
-  return `Rename ${place}`;
+/** ⚠️ Stage 4: `PlaceRowActions` (criterion 163) replaces the pencil's direct
+ *  jump to the rename `Field` — it no longer commits to one action on tap, so
+ *  the label changed from "Rename {place}" to "Edit {place}". */
+export function editPlaceAriaLabel(place: string): string {
+  return `Edit ${place}`;
 }
 export const RENAME_FIELD_LABEL_ROSTER = "Roster name";
 export const RENAME_FIELD_LABEL_PLACE = "Location name";
@@ -664,8 +667,10 @@ export function rosterDuplicateWarningBody(othersMembersLabel: string): string {
 export function locationCollisionTitle(existingPlace: string): string {
   return `${existingPlace} already has that name.`;
 }
-export const LOCATION_COLLISION_BODY =
-  "Pick a different name for now — merging two places into one is coming in a later update.";
+/** ⚠️ Stage 4 (criterion 163 fulfils criterion 146's promise) — was "Pick a
+ *  different name for now — merging two places into one is coming in a later
+ *  update." The refusal screen now offers the merge directly. */
+export const LOCATION_COLLISION_BODY = "Pick a different name, or merge the two into one instead.";
 /** Not a wording-critical string (no location "just saved" banner is
  *  specced) — the rename form's own generic fallback if a rename fails for a
  *  reason other than the collision (network error, gone-missing place). */
@@ -681,3 +686,103 @@ export const RENAME_GENERIC_ERROR_BODY = "Check your connection and try again.";
  */
 export const GAME_DELETED_MID_EDIT_MESSAGE =
   "This game was deleted before your changes went through — nothing was saved.";
+
+/* ------------------------------------------- Stage 4: identity, repaired */
+
+/**
+ * Review screen — the suggested match (criteria 148–154, 172–173).
+ * `docs/DESIGN-SYSTEM.md` § `SuggestedMatchPill` / `ReadAsCaption`: "Suggested"
+ * and "Read as …" are the only two new words the matching flow adds — every
+ * other string on this screen is untouched by Stage 4.
+ */
+export const SUGGESTED_MATCH_PILL_LABEL = "Suggested";
+export function readAsCaption(sheetName: string): string {
+  return `Read as ${sheetName}.`;
+}
+export const UNASSIGNED_COLUMN_PILL_LABEL = "Needs a player";
+export const PICKLIST_CLOSEST_MATCHES_LABEL = "Closest matches";
+
+/** Merging players and places (criteria 155–166). */
+export const MERGE_ENTRY_POINT_LABEL = "This is the same person as…";
+export function mergeTargetHeadingPlayer(player: string): string {
+  return `Merge ${player} with which player?`;
+}
+export function mergeTargetHeadingPlace(place: string): string {
+  return `Merge ${place} with which place?`;
+}
+export const MERGE_CONFIRM_TITLE_PLAYER = "Merge two players?";
+export const MERGE_CONFIRM_TITLE_PLACE = "Merge two places?";
+export const MERGE_CONFIRM_INTRO = "Pick which one stays. Nothing is chosen for you.";
+export const SURVIVOR_PILL_STAYS = "Stays";
+export const SURVIVOR_PILL_DELETED = "Deleted";
+export function mergeDetailSentencePlayer(loser: string, survivor: string): string {
+  return `${loser} is deleted for good. Every game, round, roster spot and photo of theirs moves to ${survivor}.`;
+}
+export function mergeDetailSentencePlace(loser: string, survivor: string): string {
+  return `${loser} is deleted for good. Every game at ${loser} moves to ${survivor}.`;
+}
+export const MERGE_NO_UNDO_SENTENCE =
+  "There's no undo, and no record that a merge happened.";
+export const MERGE_CANCEL_BUTTON = "Cancel";
+export const MERGE_COMMIT_BUTTON = "Merge permanently";
+export const MERGE_COMMIT_BUSY_BUTTON = "Merging…";
+/** Not in the fixed-strings table — this project's usual voice for a failed
+ *  network action (matches `DELETE_GAME_ERROR_*` / `RENAME_GENERIC_ERROR_*`). */
+export const MERGE_GENERIC_ERROR_TITLE = "That didn't merge.";
+export const MERGE_GENERIC_ERROR_BODY = "Check your connection and try again.";
+
+export function sameGameRefusalTitle(a: string, b: string): string {
+  return `${a} and ${b} played the same game.`;
+}
+export const SAME_GAME_REFUSAL_BODY =
+  "One person can't hold two seats at the same table. Fix these first, then try the merge again:";
+export function sameGameBackButtonLabel(player: string): string {
+  return `Back to ${player}`;
+}
+
+export const MERGE_SUCCESS_TITLE = "Merged.";
+export function mergeSuccessBodyPlayer(loser: string, survivor: string): string {
+  return `${loser} is now part of ${survivor}'s record.`;
+}
+export function mergeSuccessBodyPlace(loser: string, survivor: string): string {
+  return `${loser} is now part of ${survivor}.`;
+}
+export function rosterFoldNote(name: string): string {
+  return `Two rosters folded into one — kept the name "${name}".`;
+}
+
+/** Not in the fixed-strings table (illustrative only in the mockup) — the
+ *  survivor card's own secondary line, and a merge-target row's games count. */
+export function survivorGamesPlayedLabel(gamesPlayed: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)} played`;
+}
+export function survivorGamesPlayedThereLabel(gamesPlayed: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)} played there`;
+}
+export function mergeTargetRowGamesLabel(gamesPlayed: number): string {
+  return `${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
+}
+
+/** Not specced (no player/place ever has "nobody else" in the mockups) — this
+ *  project's plain "nothing to act on" voice, same shape as every other empty
+ *  state in this file. */
+export const MERGE_PICK_EMPTY_TITLE = "Nobody else to merge with.";
+export function mergePickEmptyBodyPlayer(name: string): string {
+  return `${name} is the only player in the book right now.`;
+}
+export function mergePickEmptyBodyPlace(name: string): string {
+  return `${name} is the only place in the book right now.`;
+}
+
+/** `PlaceRowActions` (Stage 4, criterion 163). */
+export const PLACE_ROW_ACTIONS_RENAME_ROW = "Rename";
+export const PLACE_ROW_ACTIONS_RENAME_SUBCAPTION = "Give this place a different name.";
+export const PLACE_ROW_ACTIONS_MERGE_ROW = "Merge with another place…";
+export const PLACE_ROW_ACTIONS_MERGE_SUBCAPTION =
+  "Combine it with a duplicate — the games move, one place goes away.";
+/** Not specced — the in-place chooser's own way back to the resting row,
+ *  same word every other cancel affordance in this file already uses. */
+export const PLACE_CHOOSER_CANCEL_BUTTON = "Cancel";
+export function locationCollisionMergeButtonLabel(existingPlace: string): string {
+  return `Merge with ${existingPlace}`;
+}
