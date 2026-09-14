@@ -1498,7 +1498,11 @@ session doesn't re-derive them. None of these is a founder question.*
    and the result screen says so.
 5. **A roster is never auto-deleted, but listings only show rosters with at least one game.** The
    alternative — deleting an emptied roster — would silently destroy a name like "Thursday crew"
-   because someone edited a game. Hiding is free and reversible; deleting is neither.
+   because someone edited a game. Hiding is free and reversible; deleting is neither. ⚠️ **This is
+   about a roster emptied by a game edit, not the folding in point 4** — a player merge that collides
+   two rosters' signatures *does* delete the losing one, deliberately (criterion 159): a
+   `roster_signature_unique` constraint makes it impossible for both to survive, and the merge itself
+   is already permanent and undoable-by-design, unlike an ordinary edit.
 6. **"Basic record" means exactly three numbers**: games played, wins (a shared win is a full win
    for each), win rate as wins ÷ games. ⚠️ **The records board's withholding rules do not apply
    here.** Withholding exists to stop a *ranking* crowning someone on four games; a player page is a
@@ -1857,14 +1861,21 @@ database, except where a criterion names production or the founder's own phone.*
 **Suggested player match**
 
 148. Matching follows **exactly** decision 1's rule, and unit tests assert the table: normalise, then
-     `1 − levenshtein / max(len)`; **≥ 0.80 with a clear leader suggests**; **0.55–0.80 offers the
-     best two or three at the top of the pick-list without suggesting**; **< 0.55 suggests and offers
-     nothing**, leaving M1's plain pick-list with "someone new" pre-filled with the handwritten name.
-149. ⚠️ **The ambiguity rule.** With players "Jo" and "Joe" both in the book and a column read as
-     "Joe", the two best candidates are within 0.10 of each other, so **nothing is suggested** —
-     both are offered first instead.
+     `1 − levenshtein / max(len)`; **≥ 0.80 with a clear leader suggests**; **≥ 0.55 and < 0.80 offers
+     the best two or three at the top of the pick-list without suggesting**; **< 0.55 suggests and
+     offers nothing**, leaving M1's plain pick-list with "someone new" pre-filled with the handwritten
+     name. ⚠️ **Boundary values are inclusive as written**: a score of exactly 0.80 is eligible to
+     suggest (subject to 149's ambiguity rule), and exactly 0.55 is eligible to offer. Neither boundary
+     is hypothetical — a one-character difference in a five-letter name scores exactly 0.80.
+149. ⚠️ **The ambiguity rule.** With players "Jonny" and "Jenny" both in the book and a column read as
+     "Janny", both score exactly **0.80** (one substitution each against a five-letter name) — the two
+     best candidates are within 0.10 of each other with **no clear leader**, so **nothing is
+     suggested** even though each individually clears the suggest threshold — both are offered first
+     instead.
 150. A player already assigned to another column of the same game is **never suggested or offered**
-     for a second column. One person cannot hold two columns.
+     for a second column. One person cannot hold two columns. ⚠️ **Where two unassigned columns would
+     both match the same player**, only the **left-to-right first** column gets the suggestion or
+     offer; later columns are matched as if that player were already taken.
 151. On a **fresh database with no players**, behaviour is identical to M1: no suggestions anywhere,
      "someone new" pre-filled with the handwritten name.
 152. **"Someone new" is one tap away on every column at every confidence level**, including one that
@@ -1890,6 +1901,10 @@ meaning. They belong to this block and to Stage 4. Reasoning in `docs/DECISIONS.
      for the M1 save gate (criterion 26) exactly as a hand-picked one does — ⚠️ **no new blocking
      gate, no acknowledgement state, no "unconfirmed" badge.** The review screen is the check, and it
      holds that weight for a pre-filled name the same way it already does for a pre-filled number.
+     ⚠️ **Suggestions apply only to unassigned columns.** A column that already carries a `playerId`
+     — every column of an edit draft (Stage 2), and any column already hand-picked earlier in the same
+     session — is never re-matched or re-suggested. Re-opening a saved game to edit it must show the
+     game exactly as it was, not a fresh guess.
 173. ⚠️ **Where there is no confident suggestion, nothing is guessed.** The three cases, each run by
      QA against a seeded player list:
      - **A near match (0.55–0.80), or two candidates within 0.10 of each other** — the column renders
@@ -1915,10 +1930,12 @@ meaning. They belong to this block and to Stage 4. Reasoning in `docs/DECISIONS.
      for them by age or size.
 157. The confirmation takes a deliberate second action — a button labelled **"Merge permanently"** —
      and states that **there is no undo and no record of the merge is kept**.
-158. On merge, every `game_player`, `round_score` and `roster_member` row referencing the losing
-     player is **repointed to the survivor**, the losing `player` row is **deleted**, and
-     `player.merged_into_id` is dropped from the schema in the same migration, with its reversing
-     file in `lib/db/migrations/down/`.
+158. On merge, every `game_player`, `round_score`, `roster_member` **and `photo`** row referencing the
+     losing player is **repointed to the survivor** — a column close-up already attributes to a
+     `player_id`, and a hard delete without this step would leave it naming someone who no longer
+     exists (same principle as the edit path's photo-attribution handling, `docs/DECISIONS.md`,
+     2026-09-14) — the losing `player` row is **deleted**, and `player.merged_into_id` is dropped from
+     the schema in the same migration, with its reversing file in `lib/db/migrations/down/`.
 159. ⚠️ **Roster folding.** Where repointing makes two rosters' signatures identical, the rosters are
      folded per decision 4: the survivor is the one with more games (tie: the older), the other's
      games are repointed, its `roster_member` rows and the roster itself are deleted, and a custom
@@ -1937,7 +1954,10 @@ meaning. They belong to this block and to Stage 4. Reasoning in `docs/DECISIONS.
 **Merging places**
 
 163. Merge is reached from the **places index**, with the same mechanism, the same "Merge
-     permanently" confirmation and the same permanence wording as a player merge.
+     permanently" confirmation and the same permanence wording as a player merge. ⚠️ **Fulfils
+     criterion 146's promise.** Stage 3's location-rename collision refusal already says "merging two
+     places into one is coming in a later update" — this stage is that update, so the refusal screen
+     now offers the merge as one of its actions, not only the places index.
 164. On merge, every game referencing the losing location is repointed to the survivor and the losing
      `location` row is deleted. No history is kept.
 165. **Games with no location are untouched** by any merge.
@@ -1964,9 +1984,11 @@ meaning. They belong to this block and to Stage 4. Reasoning in `docs/DECISIONS.
      service; expected running cost stays about **A$0.65/month**, effectively all Anthropic usage.
      QA confirms nothing new appears in `sst.config.ts`'s resource list.
 
-**86 live acceptance criteria, numbered 87–173.** ⚠️ **147 is struck and retired** (player renaming,
+**87 live acceptance criteria, numbered 87–174.** ⚠️ **147 is struck and retired** (player renaming,
 cut 2026-09-14 — offered as a proposal, not asked for), and its number is never reused. **Nothing is
 reserved and nothing is pending**: open question 4 was answered on 2026-09-14 and produced 172–173.
+*(Count corrected 2026-09-14 when founder-approved criterion **174** was added mid-Stage-3; it read
+"86 … numbered 87–173" before 174 existed. No scope changed with this edit.)*
 
 #### The stages
 
