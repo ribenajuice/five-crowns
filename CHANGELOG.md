@@ -6,6 +6,10 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 8] - 2026-09-14
+
+The third stage of Milestone 2: people, sets and places. Live in production.
+
 ### Added
 
 - **Every player now has their own page.** A new "Players" list shows everyone who's played, and
