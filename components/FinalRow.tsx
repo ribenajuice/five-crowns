@@ -4,14 +4,28 @@
  * The last line of every column, called out on its own — a wrong number here
  * changes who won (PRD criterion 23). Winner(s) marked by crown, label *and*
  * colour together; a tie marks all of them (criterion 66).
+ *
+ * Stage 3, criterion 174: every name here is an `EntityLink` to that
+ * player's page — deliberately the only place a player name links out from
+ * the game view (not also `ScoreTable`'s column headers, per the design
+ * system's "Reaching these pages"). A winner's link keeps the row's existing
+ * crown/bold/success treatment and additionally carries the underline, so
+ * "this is a link" and "this is the winner" stay two separate signals.
  */
 
+import { EntityLink } from "./EntityLink";
 import { CrownIcon } from "./icons";
 
 export interface FinalRowItem {
   id: string;
   label: string;
   finalScore: number | null;
+  /**
+   * The player's page, when there is one to link to (the game view). `null`/
+   * `undefined` on the review screen, where `id` is a draft *column* id, not
+   * a saved player id, and where nothing should be tappable yet.
+   */
+  playerHref?: string | null;
 }
 
 export function FinalRow({
@@ -45,7 +59,13 @@ export function FinalRow({
                 <span className="size-[18px] shrink-0" aria-hidden="true" />
               )}
               <span className={`flex-1 ${isWinner ? "font-bold text-success" : "text-text"}`}>
-                {item.label}
+                {item.playerHref ? (
+                  <EntityLink href={item.playerHref} variant={isWinner ? "success" : "muted"}>
+                    {item.label}
+                  </EntityLink>
+                ) : (
+                  item.label
+                )}
                 {isWinner ? " · Winner" : ""}
               </span>
               <span

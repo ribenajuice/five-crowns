@@ -6,6 +6,30 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+### Added
+
+- **Every player now has their own page.** A new "Players" list shows everyone who's played, and
+  how many games. Tap a name to see their games played, wins, and win rate — each stated alongside
+  how many games it's based on — then every game they've played, newest first, with its date,
+  venue, roster, final score and a marker on the winner. A player with no games yet gets a plain
+  "no games" message, not an error.
+- **Rosters now have their own page too**, listing every roster that's played at least once — its
+  members and games played — and, on the roster's own page, the same per-member stats, but scoped
+  to games that exact group of people played together. If a win was shared, it counts in full for
+  everyone who shared it, so the win rates on that page can add up to more than 100% — that's
+  correct, not a bug.
+- **A new "Places" list shows every venue**, including ones nobody's played at yet (shown as 0
+  games) — they're still there to pick next time you save a game.
+- **You can rename a roster from its own page**, and rename a place from the places list. A roster
+  name can be cleared to go back to its automatic name (the members' names joined together). Two
+  rosters sharing a name gets a warning, not a block — you can still save it if you mean to. Two
+  places can't share a name — renaming one to match another is refused, naming which place already
+  has it. Merging two places into one is planned for later, not this update.
+- **Player and roster names are now tappable** wherever they appear — on the games list and on a
+  game's own page — taking you straight to that player's or roster's page. The games list also
+  links to the new Players, Rosters and Places lists, so all three are reachable by tapping, not
+  just by typing in a URL.
+
 ## [Stage 7] - 2026-09-14
 
 The first stage of Milestone 2: the rest of the admin panel. Live in production.

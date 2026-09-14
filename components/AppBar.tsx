@@ -14,9 +14,17 @@ interface AppBarProps {
   context?: string;
   /** An optional back link, rendered as the bar's single icon button. */
   back?: { href: string; label: string };
+  /**
+   * Criterion 174, "Reaching these pages": on the game view, the title *is*
+   * the roster name, so the `h1` itself becomes an `EntityLink` to that
+   * roster's page — the one place in this app a page's own heading doubles
+   * as navigation. Keeps the title's existing size/weight, adding only the
+   * underline (`docs/DESIGN-SYSTEM.md` § "Reaching these pages", point 2).
+   */
+  titleHref?: string;
 }
 
-export function AppBar({ title, context, back }: AppBarProps) {
+export function AppBar({ title, context, back, titleHref }: AppBarProps) {
   return (
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex w-full max-w-read items-center gap-2 px-4 py-3">
@@ -43,7 +51,15 @@ export function AppBar({ title, context, back }: AppBarProps) {
           </Link>
         ) : null}
         <div className="min-w-0">
-          <h1 className="font-display text-xl font-bold">{title}</h1>
+          <h1 className="font-display text-xl font-bold">
+            {titleHref ? (
+              <Link href={titleHref} className="text-inherit underline underline-offset-2">
+                {title}
+              </Link>
+            ) : (
+              title
+            )}
+          </h1>
           {context ? (
             <p className="text-sm text-text-muted">{context}</p>
           ) : null}

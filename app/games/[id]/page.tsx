@@ -40,6 +40,9 @@ export default async function GamePage({
     id: column.playerId,
     label: column.displayName,
     finalScore: column.finalScore,
+    // Criterion 174: player names link out only from this list, not from
+    // ScoreTable's column headers.
+    playerHref: `/players/${column.playerId}`,
   }));
   const winnerIds = game.columns.filter((c) => c.isWinner).map((c) => c.playerId);
   const displayNameByPlayerId = new Map(game.columns.map((c) => [c.playerId, c.displayName]));
@@ -48,6 +51,7 @@ export default async function GamePage({
     <>
       <AppBar
         title={game.rosterName}
+        titleHref={`/rosters/${game.rosterId}`}
         context={`${game.playedOn} · ${game.locationName ?? NO_LOCATION_GAMES_LIST}`}
         back={{ href: "/games", label: "Back to games" }}
       />

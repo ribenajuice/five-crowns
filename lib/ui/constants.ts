@@ -34,3 +34,14 @@ export const AUTOSAVE_DEBOUNCE_MS = 1000;
 
 /** The grid's row pitch, matching `--pitch` in app/globals.css. */
 export const REVIEW_ROW_PITCH_PX = 46;
+
+/**
+ * Roster and place name caps (Stage 3, criteria 141, 145–146;
+ * docs/DESIGN-SYSTEM.md § "Renaming a roster" / "Places index, and renaming a
+ * location"). Kept here, not in `lib/rosters/rename.ts` (which re-exports
+ * `MAX_ROSTER_NAME_LENGTH` from here for backward compatibility), because that
+ * module is `server-only` and the rename forms are client components that
+ * need the same number for their `maxlength` attribute.
+ */
+export const MAX_ROSTER_NAME_LENGTH = 40;
+export const MAX_LOCATION_NAME_LENGTH = 40;

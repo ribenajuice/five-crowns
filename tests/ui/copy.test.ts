@@ -50,6 +50,16 @@ import {
   todayColumnRereadsLabel,
   todaySheetReadsLabel,
   usageEstimateDisclosure,
+  formatWinRatePercent,
+  locationCollisionTitle,
+  playerGamesHeading,
+  playerZeroGamesBody,
+  renameOpenAriaLabelPlace,
+  rosterDuplicateWarningBody,
+  rosterDuplicateWarningTitle,
+  rosterGamesHeading,
+  rosterStatsSampleLine,
+  statSampleCaption,
 } from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
@@ -418,5 +428,55 @@ describe("reading history and past-reading compare copy (PRD criterion 41)", () 
 
   it("compareHistoryLink names the count", () => {
     expect(compareHistoryLink(3)).toBe("See every reading (3)");
+  });
+});
+
+describe("Stage 3: players, rosters, places copy", () => {
+  it("formatWinRatePercent renders one decimal place, including 0% and 100% (criterion 133)", () => {
+    expect(formatWinRatePercent(0)).toBe("0.0%");
+    expect(formatWinRatePercent(1)).toBe("100.0%");
+    expect(formatWinRatePercent(0.5)).toBe("50.0%");
+    expect(formatWinRatePercent(1.25)).toBe("125.0%");
+  });
+
+  it("statSampleCaption uses singular grammar for exactly one game", () => {
+    expect(statSampleCaption(1, 1)).toBe("1 of 1 game");
+    expect(statSampleCaption(2, 4)).toBe("2 of 4 games");
+    expect(statSampleCaption(0, 3)).toBe("0 of 3 games");
+  });
+
+  it("playerGamesHeading / playerZeroGamesBody name the player", () => {
+    expect(playerGamesHeading("Player C")).toBe("Player C's games");
+    expect(playerZeroGamesBody("Player F")).toBe(
+      "Nothing saved right now has Player F at the table.",
+    );
+  });
+
+  it("rosterStatsSampleLine uses singular grammar for exactly one game", () => {
+    expect(rosterStatsSampleLine(1)).toBe(
+      "Each member's wins and win rate across these 1 game.",
+    );
+    expect(rosterStatsSampleLine(4)).toBe(
+      "Each member's wins and win rate across these 4 games.",
+    );
+  });
+
+  it("rosterGamesHeading names the roster", () => {
+    expect(rosterGamesHeading("Thursday crew")).toBe("Thursday crew's games");
+  });
+
+  it("renameOpenAriaLabelPlace names the place (criterion 145)", () => {
+    expect(renameOpenAriaLabelPlace("The Deck")).toBe("Rename The Deck");
+  });
+
+  it("rosterDuplicateWarningTitle/Body name the colliding roster by its members, not by name (criterion 143)", () => {
+    expect(rosterDuplicateWarningTitle("Sunday crew")).toBe("Sunday crew is already a roster name.");
+    expect(rosterDuplicateWarningBody("Player B, Player D & Player E")).toBe(
+      "Player B, Player D & Player E answers to it too — nothing stops you saving it, rename either one later if it's confusing.",
+    );
+  });
+
+  it("locationCollisionTitle names the existing place (criterion 146)", () => {
+    expect(locationCollisionTitle("The Deck")).toBe("The Deck already has that name.");
   });
 });

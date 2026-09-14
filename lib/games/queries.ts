@@ -65,6 +65,7 @@ export async function listGames(): Promise<GameListItem[]> {
       id: game.id,
       playedOn: game.playedOn,
       locationName: location.name,
+      rosterId: game.rosterId,
       rosterName: roster.name,
     })
     .from(game)
@@ -99,6 +100,7 @@ export async function listGames(): Promise<GameListItem[]> {
       id: row.id,
       playedOn: row.playedOn,
       locationName: row.locationName,
+      rosterId: row.rosterId,
       rosterName: row.rosterName ?? rosterDisplayName(gamePlayers.map((p) => p.displayName)),
       winners,
       winningScore: winningScore(scores) ?? 0,
@@ -116,6 +118,7 @@ export async function getGame(id: string): Promise<GameDetail | null> {
         id: game.id,
         playedOn: game.playedOn,
         locationName: location.name,
+        rosterId: game.rosterId,
         rosterName: roster.name,
       })
       .from(game)
@@ -237,6 +240,7 @@ export async function getGame(id: string): Promise<GameDetail | null> {
     id: gameRow.id,
     playedOn: gameRow.playedOn,
     locationName: gameRow.locationName,
+    rosterId: gameRow.rosterId,
     rosterName,
     columns,
     winners,

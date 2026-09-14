@@ -13,7 +13,9 @@
   in-panel rotation actually working — recorded as an ADR, and a security-reviewer pass scoped to the widening
   found it implemented correctly with no blocking issues. **Stage 2** (editing and deleting a saved game, plus
   app-level 404/error screens) is also merged and live
-  ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14).
+  ([PR #22](https://github.com/ribenajuice/five-crowns/pull/22), 2026-09-14). **Stage 3** (player, roster and
+  place pages, plus renaming and in-app navigation to reach them) is built, QA'd, code-reviewed and
+  security-reviewed on branch `feat/m2-stage3`, ready to open as a PR — not yet merged or deployed.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -21,7 +23,22 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: nothing — both Milestone 2 stages built so far are merged and live.
+- **Currently in flight**:
+  - **Milestone 2 Stage 3** — player, roster and place pages, renaming, and in-app navigation to reach them
+    (criteria 132–146, 174). Built on `feat/m2-stage3`; not yet a PR. The spec was already written 2026-09-10;
+    product-manager confirmed it unaffected by Stages 1–2 and ready to build as-is, with one gap found at the
+    checkpoint — no criterion required the new pages to be *reachable* without typing a URL — put to the founder
+    and approved same day as **criterion 174**. Design, back end and front end all built; QA drove the real app
+    end-to-end and passed all 15 criteria plus 174, catching two real bugs along the way (a missing server-side
+    length cap on location renaming, and a player-page winner marker with no accessible text) — both fixed and
+    re-verified. `/code-review high` then found two more real regressions in the new "stretched link" pattern
+    used for in-row navigation: it silently broke tapping most of a game row to open the game (a CSS
+    stacking/pointer-events issue, verified with a headless-Chromium hit-test before and after the fix, not just
+    reasoned through) and lost information from the row's accessible name. Both fixed, plus two smaller
+    consistency gaps (a duplicate-roster-name check that missed doubled internal whitespace; "1 games" instead
+    of "1 game"). A security review scoped to the two new API routes (roster/location rename) found no blocking
+    issues — auth, CSRF, id parsing and the length-cap fix all check out. 1104 tests passing, lint and typecheck
+    clean. **Next**: open the PR.
   - ✅ [PR #21](https://github.com/ribenajuice/five-crowns/pull/21) — **Milestone 2 Stage 1**, the admin panel
     finished. **Shipped 2026-09-14**: password rotation, the forgotten-password recovery runbook, the combined
     score CSV download, and usage/spend reporting. PRD open question 5 (the password routes needed an SSM write
@@ -192,6 +209,15 @@
   - The admin cookie's `Path` changed from `/admin` to `/` in Stage 3 (fixing a real reachability bug) — a
     browser holding a pre-Stage-3 `Path=/admin` cookie may keep both until it expires. Harmless: revocation is
     checked from the token's own signed epoch, not cookie freshness, so this can't grant stale access.
+  - **Milestone 2 Stage 3** (people, sets and places), flagged by `/code-review high` and deliberately deferred as
+    non-blocking: `lib/locations/rename.ts`'s check-then-write on a name collision isn't transactional, so two
+    simultaneous renames to the same name give the loser a generic 500 instead of a clean 409 — needs two people
+    renaming the same place at the same instant, and the unique index means the data itself stays correct either
+    way. `getRosterPage` loads every roster's members via `membersByRoster()` just to read one roster's list —
+    fine at this project's scale, would want a scoped query if roster counts ever grow large. `RosterRenameControl`
+    and `PlaceRow` each hand-roll the same "reveal a rename form in place" state machine instead of sharing one
+    component — already drifting (only one of the two calls `router.refresh()`), worth collapsing into a shared
+    `RenameControl` next time either needs a real change.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original

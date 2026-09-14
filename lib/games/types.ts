@@ -16,6 +16,8 @@ export interface GameListItem {
   playedOn: string;
   /** Null renders as "No location", never a gap (criterion 61). */
   locationName: string | null;
+  /** For linking the roster name to its page (criterion 174). */
+  rosterId: string;
   /** `roster.name`, or the auto-name built from its members (criterion 68). */
   rosterName: string;
   /** Display names. More than one on a shared win. */
@@ -42,6 +44,8 @@ export interface GameDetail {
   id: string;
   playedOn: string;
   locationName: string | null;
+  /** For linking the game view's roster title to its page (criterion 174). */
+  rosterId: string;
   rosterName: string;
   /** In the paper's column order. */
   columns: GameColumn[];

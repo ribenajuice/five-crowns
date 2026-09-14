@@ -566,6 +566,112 @@ export const ERROR_BANNER_BODY = "Try again, or head back to the games list.";
 export const ERROR_RETRY_BUTTON_LABEL = "Try again";
 export const ERROR_BACK_BUTTON_LABEL = "Back to games";
 
+/* ------------------------------------- Stage 3: players, rosters, places */
+
+/** `docs/DESIGN-SYSTEM.md` § "Players index". */
+export const PLAYERS_INDEX_TITLE = "Players";
+export const PLAYERS_INDEX_EMPTY_TITLE = "Nobody's in the book yet.";
+export const PLAYERS_INDEX_EMPTY_BODY = "Add a game and its players will show up here.";
+
+/** `docs/DESIGN-SYSTEM.md` § "Rosters index". */
+export const ROSTERS_INDEX_TITLE = "Rosters";
+export const ROSTERS_INDEX_EMPTY_TITLE = "No rosters yet.";
+export const ROSTERS_INDEX_EMPTY_BODY =
+  "A roster appears the first time its exact set of players saves a game.";
+/** The rosters index's second line for a roster still on its auto-name — its
+ *  name already *is* the joined member list, so repeating it would be a bare
+ *  duplicate; this names what the row is showing instead. Not in the fixed
+ *  copy table, illustrated only in the mockup, so treated as ordinary UI
+ *  copy rather than a wording-critical string. */
+export const ROSTER_AUTO_NAMED_CAPTION = "auto-named";
+
+/** `docs/DESIGN-SYSTEM.md` § "Places index, and renaming a location". */
+export const PLACES_INDEX_TITLE = "Places";
+export const PLACES_INDEX_EMPTY_TITLE = "No places yet.";
+export const PLACES_INDEX_EMPTY_BODY = "Add one from the review screen next time you save a game.";
+export const PLACES_UNUSED_CAPTION = "Never used yet — still pickable when you save a game.";
+
+/** `docs/DESIGN-SYSTEM.md` § "`IndexNav`" — criterion 174. */
+export const INDEX_NAV_PLAYERS_LABEL = "Players";
+export const INDEX_NAV_ROSTERS_LABEL = "Rosters";
+export const INDEX_NAV_PLACES_LABEL = "Places";
+export const INDEX_NAV_ARIA_LABEL = "Browse the record";
+
+/** `docs/DESIGN-SYSTEM.md` § "`StatBlock`" / player & roster pages. */
+export const STAT_LABEL_GAMES_PLAYED = "Games played";
+export const STAT_LABEL_WINS = "Wins";
+export const STAT_LABEL_WIN_RATE = "Win rate";
+
+/**
+ * "game" or "games" — the one shared pluralization rule for every count of
+ * games stated anywhere in this feature (criterion 135: "1 game" reads like
+ * any other count, never "1 games"). Every call site that states a number of
+ * games reuses this rather than writing its own inline ternary, so a fourth
+ * one can never drift from the other three.
+ */
+export function gamesNoun(gamesPlayed: number): string {
+  return gamesPlayed === 1 ? "game" : "games";
+}
+
+/** "{wins} of {gamesPlayed} games" — the sample-size caption under Wins/Win rate. */
+export function statSampleCaption(sampleSize: number, gamesPlayed: number): string {
+  return `${sampleSize} of ${gamesPlayed} ${gamesNoun(gamesPlayed)}`;
+}
+/** One decimal place, always (criterion 133) — `0` games has no rate to state. */
+export function formatWinRatePercent(winRate: number): string {
+  return `${(winRate * 100).toFixed(1)}%`;
+}
+
+/** Player page (criteria 133–136). */
+export function playerGamesHeading(player: string): string {
+  return `${player}'s games`;
+}
+export const PLAYER_ZERO_GAMES_TITLE = "No games on record.";
+export function playerZeroGamesBody(player: string): string {
+  return `Nothing saved right now has ${player} at the table.`;
+}
+
+/** Roster page (criteria 138–139, 141–144). */
+export const ROSTER_STATS_HEADING = "Wins within this roster";
+export function rosterStatsSampleLine(gamesPlayed: number): string {
+  return `Each member's wins and win rate across these ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
+}
+export function rosterGamesHeading(roster: string): string {
+  return `${roster}'s games`;
+}
+
+/** `RenameControl` (criteria 141–146). */
+export const RENAME_OPEN_LINK_ROSTER = "Rename";
+export function renameOpenAriaLabelPlace(place: string): string {
+  return `Rename ${place}`;
+}
+export const RENAME_FIELD_LABEL_ROSTER = "Roster name";
+export const RENAME_FIELD_LABEL_PLACE = "Location name";
+export const RENAME_HELPER_ROSTER =
+  "Up to 40 characters. Leave it blank to use the automatic name from its members.";
+export const RENAME_HELPER_PLACE = "Up to 40 characters.";
+export const RENAME_CANCEL_BUTTON = "Cancel";
+export const RENAME_SAVE_BUTTON = "Save name";
+export const RENAME_SAVE_BUSY_BUTTON = "Saving…";
+export const RENAME_SAVED_ROSTER_TITLE = "Saved.";
+export const RENAME_SAVED_ROSTER_MESSAGE = "Showing everywhere this roster appears.";
+export function rosterDuplicateWarningTitle(name: string): string {
+  return `${name} is already a roster name.`;
+}
+export function rosterDuplicateWarningBody(othersMembersLabel: string): string {
+  return `${othersMembersLabel} answers to it too — nothing stops you saving it, rename either one later if it's confusing.`;
+}
+export function locationCollisionTitle(existingPlace: string): string {
+  return `${existingPlace} already has that name.`;
+}
+export const LOCATION_COLLISION_BODY =
+  "Pick a different name for now — merging two places into one is coming in a later update.";
+/** Not a wording-critical string (no location "just saved" banner is
+ *  specced) — the rename form's own generic fallback if a rename fails for a
+ *  reason other than the collision (network error, gone-missing place). */
+export const RENAME_GENERIC_ERROR_TITLE = "That didn't save.";
+export const RENAME_GENERIC_ERROR_BODY = "Check your connection and try again.";
+
 /**
  * PRD criterion 122: saving an edit over a game deleted meanwhile "fails with
  * a plain message and does not resurrect the game". The server's own honest

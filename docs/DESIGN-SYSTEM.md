@@ -9,6 +9,11 @@
 > Where it came from: `docs/mockups/visual-directions.html`, published as an Artifact at
 > <https://claude.ai/code/artifact/19cf1033-89db-43ba-9dff-de83d298b2e5>. The two rejected
 > directions stay in that file as the record of what was considered.
+>
+> **Milestone 2 Stage 3** (players, rosters and places; renaming; the criterion 174 navigation)
+> adds screens rather than a new direction — mockups at
+> `docs/mockups/stage-3-people-sets-places.html`, published at
+> <https://claude.ai/code/artifact/c56313a7-74e0-42be-ab7c-5a5f4ccd1b60>.
 
 ## Direction
 
@@ -139,6 +144,12 @@ the digit; this is a correctness feature, not typography.
 | `WrongColumnWarning` (Stage 4) | `ReadingCompare`, above the grid | A `Banner warn` — **non-blocking**, same shape as everywhere else `Banner` is used: *"This looks like {sheet player}'s column, not {assigned player}'s."* / *"The close-up's own reading of the name doesn't match — you can use the new numbers anyway."* Neither footer button is disabled underneath it |
 | `TypedCellDisagreement` (Stage 4) | `ReadingCompare`, beneath one specific row | The row keeps its ordinary "changed" tint, and additionally gets the `SoftWarning` treatment (`warn` border, tint, icon) **layered on, not swapped in** — because only this row carries an extra fact its neighbours don't: the founder typed that value by hand. Fixed sentence, named per-cell: *"You typed {typed}; the close-up reads {read}."* Never a generic banner — criterion 43 requires the specific cell |
 | Column-scoped `TranscribeProgress` (Stage 4) | review, in place of `ActiveColumnCard`, while a close-up is being read | Same component as Stage 3's full-sheet read, narrower copy: heading *"Reading {Player}'s column…"*, captions *"One column, eleven numbers."* → the existing slow-only line after ~20s. The pager dot for that column shows a hollow **accent** ring (not `todo`'s hollow neutral ring) while the read is in flight, so it reads as "busy, camera path" rather than "incomplete" |
+| `EntityLink` (Stage 3) | game view's "How it finished," games list rows, player and roster pages' own games lists | The one new inline-link idiom this stage introduces: a player or roster **name appearing away from its own page**, rendered `--brand` and **underlined** (`text-underline-offset: 2px`) — colour is never the only signal that it's tappable, same reasoning the rest of the system already applies to status. On a winner's row in `FinalRow` the link recolours to `--success` (it inherits that row's existing colour/bold/crown treatment) but **keeps its underline**, so "this is a link" and "this is the winner" stay two separate signals layered on the same text, never collapsed into one. Every `EntityLink` gets a real 44px-tall tap target via padding, not by resizing the visible text |
+| `IndexNav` (Stage 3) | games list, directly under "Add a game" | Criterion 174's answer to "all three index pages reachable from the games list": three equal-width `ghost`-shaped tiles in a row (`grid-template-columns: repeat(3, 1fr)`), each ≥48px tall — **Players**, **Rosters**, **Places** — an inline SVG glyph above or beside the label, brand-coloured, never an icon alone (the label is always visible text, so this isn't an icon-only control). Always present, never conditional on the games list having content, because the three index pages are worth reaching even from the empty state |
+| `IndexRow` (Stage 3) | players index, rosters index | The whole row is a `Link` (unlike `PlaceRow` below, which isn't one) — 52px+ tall, `PickList`-row shaped: a name in the display face, an optional muted second line (a roster's member list), and a right-aligned games-played count in the same uppercase-label-over-`--num`-value shape `StatBlock` uses. Players index: name only. Rosters index: name plus its members on a second line |
+| `StatBlock` (Stage 3) | player page, roster page | The admin usage panel's own label/value shape (`docs/DESIGN-SYSTEM.md` § "Admin panel — usage and spend"), formalised as a named, reusable unit now that a third screen needs it: uppercase `--text-xs` label, a `--num`-sized tabular value, and — wherever criterion 133 requires it — a muted one-line **sample-size caption** underneath (*"4 of 9 games"*). Three sit in a row (`grid-template-columns: repeat(3, 1fr)`) at the top of the player page; the roster page uses a single one for "Games played," since its per-member numbers get their own list, below |
+| `PlaceRow` (Stage 3) | places index | Unlike `IndexRow`, **not** a `Link` — there's no place page for it to lead to. Name, an optional muted caption on a never-used venue, a right-aligned games-played count (0 renders like any other number), and the row's `RenameControl` trigger |
+| `RenameControl` (Stage 3) | roster page (its own name); places index (per row) | A `ghost` **"Rename"** link that reveals a `Field` in place — no separate screen, same "reveal the form in place" convention `AdminKeyPanel`'s "Replace key" already established. Roster page: one control, above the stats, for the roster's own name. Places index: one per row, opened by a 44×44 pencil `IconButton` (`aria-label="Rename {place}"`) rather than a text link, because the row has no spare width for a label. Both share the same footer shape — `Cancel` (`ghost`) then **"Save name"** (`primary`) — and the same non-blocking-warning-vs-blocking-refusal split described under *Renaming* below |
 
 ## Screen rules
 
@@ -495,6 +506,123 @@ the digit; this is a correctness feature, not typography.
     same non-destructive retry shape every other error banner in this app already uses, never a
     re-photograph or a re-type — and **"Back to games"** (`ghost`).
 
+- **Players index** (Stage 3, criterion 132). `AppBar` (title **"Players"**, back arrow labelled
+  **"Back to games"**). Every player renders as an `IndexRow` — name, right-aligned games-played
+  count — the whole row a `Link` to that player's page, including a player on **0 games**
+  (criterion 132 says "every player," and a zero-game player is a real, if unusual, row here rather
+  than a special case). **Empty database**: a `Card` — *"Nobody's in the book yet."* / *"Add a game
+  and its players will show up here."* — same shape as the games list's own empty state, no button
+  (there's nothing to add from this screen).
+
+- **Player page** (Stage 3, criteria 133–136). `AppBar` (title the player's name, back arrow
+  labelled **"Back to players"**). Three `StatBlock`s in a row — **"Games played"**, **"Wins"**,
+  **"Win rate"** — the wins and win-rate blocks each carrying their sample-size caption
+  (*"{wins} of {gamesPlayed} games"*), stated **to one decimal place** on the rate itself
+  (criterion 133). ⚠️ **No ranking, no highlighting, no colour on these numbers** — this is a
+  factual page, not a leaderboard; that's Milestone 3's records board. Below, that player's games
+  **newest first**, each an `EntityLink`-bearing row: date, venue-or-**"No location"**, the roster
+  name (an `EntityLink` to its roster page — not required by criterion 133's literal wording, but
+  the same link this stage adds everywhere else a roster name appears, so it would be a stray
+  inconsistency to leave it plain here), their **own** final score for that game, and a winner
+  marker (the same crown-plus-label-plus-colour treatment `FinalRow` already uses) when they won.
+  - **One game** (criterion 135): renders exactly like any other count — *"1 game"*, a rate of
+    *"0.0%"* or *"100.0%"*, sample stated as *"1 of 1 game"*. Nothing is withheld or hedged; only
+    the M3 records board's 10-/5-game rules govern a ranking, not a statement of fact about one
+    person.
+  - **Zero games** (criterion 136 — created, then edited out of their only game): the "Games
+    played" `StatBlock` alone (wins and win-rate blocks don't render — there is no sample to state
+    a rate against), followed by a `Card`: **"No games on record."** / *"Nothing saved right now
+    has {Player} at the table."* Not an error, not a blank page.
+
+- **Rosters index** (Stage 3, criterion 137). `AppBar` (title **"Rosters"**, back arrow to games).
+  Every roster **with at least one game** — never a zero-game roster, which is exactly the filter
+  the games list and games' own roster-matching already apply — as an `IndexRow`: name (custom or
+  auto), its members on a muted second line, right-aligned games-played count, the whole row a
+  `Link` to that roster's page. **Empty database**: *"No rosters yet."* / *"A roster appears the
+  first time its exact set of players saves a game."*
+
+- **Roster page** (Stage 3, criteria 138–139, 141–144). `AppBar` (title the roster's name, back
+  arrow labelled **"Back to rosters"**). A `RenameControl` sits first, above the stats — see
+  *Renaming a roster* below. One `StatBlock` — **"Games played"** — then a `Card` headed **"Wins
+  within this roster"**, one line stating the sample once (*"Each member's wins and win rate across
+  these {n} games."*), and a plain list of members (each an `EntityLink` to their player page)
+  with their wins and win rate **computed within this roster only** (criterion 138) — a member's
+  overall win rate on their own player page can differ from their rate here, and that's the whole
+  point of the roster page existing separately. ⚠️ **Rates can sum past 100%** when the roster has
+  shared a win — a second, italic muted line names the game responsible the first time it happens
+  on a mocked page (*"125% total — {A} and {B} shared a win on {date}, so this is correct, not a
+  bug."*) so nobody reads a sum over 100% as broken arithmetic; this is a one-off reassurance,
+  **not** a permanent fixture of the real screen once the founder has seen it once or twice — the
+  frontend-developer should treat the exact wording as illustrative, not a fixed string, since it
+  names a specific game. Below, the roster's games **newest first**: date, venue-or-**"No
+  location"**, winner(s) — the roster name itself is omitted from these rows (it's redundant on its
+  own page).
+  - Criterion 139 (roster numbers are set-exact): a QA-visible consequence of exact-set matching
+    (M1 decision 3 / criterion 67), not a new design surface — nothing on this page changes for it.
+
+- **Renaming a roster** (criteria 141–144). The `RenameControl`'s `Field`, labelled **"Roster
+  name"**, pre-filled with the current name (custom or auto), **trimmed and capped at 40
+  characters** (`maxlength="40"` plus a matching server-side trim/cap — the hint line states it:
+  *"Up to 40 characters. Leave it blank to use the automatic name from its members."* — covering
+  criterion 142 in the same sentence as the length rule, so clearing the field is documented as a
+  deliberate, supported action rather than discovered by accident). Saving:
+  - **A case-insensitive duplicate** (criterion 143) is a `Banner warn` **above** the Cancel/Save
+    row, both buttons staying enabled underneath it — *"{Name} is already a roster name."* /
+    *"{Other roster's members} answers to it too — nothing stops you saving it, rename either one
+    later if it's confusing."* Naming the other roster **by its members**, not by the name itself,
+    because the two names are now identical text and naming "the other roster" by the very string
+    that collided would be no help identifying which one it is.
+  - **An ordinary save** confirms the same way the admin key panel's save does — a brief `Banner
+    ok`: **"Saved."** / *"Showing everywhere this roster appears."* — then the control collapses
+    back to resting, name updated on this page immediately (criterion 141 also lists four other
+    surfaces — games list, game view, every member's player page, the rosters index — that inherit
+    the new name from the same underlying row, not from anything re-rendered here).
+  - ⚠️ **A rename never changes which roster a re-entered exact set matches** (criterion 144) — no
+    design consequence, since identity is the player-set key, never the display name; noted here so
+    nobody "fixes" a rename into creating a new roster row.
+
+- **Places index, and renaming a location** (Stage 3, criteria 140, 145–146). `AppBar` (title
+  **"Places"**, back arrow to games). **There is no place page** — nothing in the PRD gives a
+  location anywhere else to link to yet (filtering by location is Milestone 3), so a places-index
+  row is **not** a `Link`: a `PlaceRow` is name, an optional muted caption on a never-used venue
+  (*"Never used yet — still pickable when you save a game."*), a right-aligned games-played count
+  — **0 renders like any other number, never hidden or dashed** (criterion 140) — and a 44×44 pencil
+  `IconButton` opening that row's `RenameControl` in place. **Empty database**: *"No places yet."* /
+  *"Add one from the review screen next time you save a game."*
+  - **An ordinary rename** shows on every game that used it, the games list, the game view, the
+    review screen's pick-list and this index (criterion 145) — five surfaces sharing the one
+    underlying row, exactly the same "one row, everywhere inherits it" shape roster renaming uses.
+  - **A `name_key` collision** (criterion 146) is **refused**, not warned — `Banner error` replacing
+    the confirm row rather than sitting above an enabled one: **"{Existing place} already has that
+    name."** / *"Pick a different name for now — merging two places into one is coming in a later
+    update."* ⚠️ **No merge action is offered here** — decision recorded in `docs/DECISIONS.md`
+    (2026-09-14): the merge itself is Stage 4 scope, so this stage's refusal names the other place
+    plainly and stops there, rather than promising or half-building a control that doesn't work yet.
+
+- **Reaching these pages** (Stage 3, criterion 174). Three decisions, all ours to make per the
+  criterion's own wording ("where the links sit is a design call, not a further product decision"):
+  1. **`IndexNav`** sits directly under "Add a game" on the games list, **always rendered** — even
+     against the empty-games-list state — because the three index pages are worth reaching before
+     the archive has a single game in it (a fresh players/rosters/places index just shows its own
+     empty state, above).
+  2. **A roster name becomes an `EntityLink`** everywhere it appears **away from its own page** —
+     games list rows, the game view's `AppBar` title, and (our own extension, for consistency) the
+     player and roster pages' own games lists. On the games list, the row itself stays one large tap
+     target to the game (a "stretched link" — an absolutely-positioned, empty, `aria-label`led
+     anchor filling the card, `z-index` below the visible roster link) so today's easy, whole-row
+     tap to open a game is unchanged; the roster name is a second, independently focusable and
+     tappable link layered on top with its own 44px hit slop via padding, not by resizing the
+     visible text. On the game view, the `AppBar`'s `h1` itself becomes the link (there is exactly
+     one roster per game, so there's exactly one title to make tappable) — the one place in this app
+     a page's own heading doubles as navigation, and it keeps the title's existing size and weight,
+     adding only the `EntityLink` underline.
+  3. **A player's name becomes an `EntityLink` only in the game view's "How it finished" list**
+     (`FinalRow`) — deliberately **not** also in `ScoreTable`'s column headers, even though a name
+     appears there too. Turning every header cell of a dense score grid into a link adds four or
+     five extra tab stops before a keyboard or screen-reader user ever reaches the numbers, for a
+     destination `FinalRow` already offers cleanly two sections up; one clear way to reach a player
+     page beats two redundant ones on the same screen.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -656,6 +784,33 @@ verified, confirmed, correct, looks right* or *all good*.
 | Error screen, banner body | Try again, or head back to the games list. |
 | Error screen, retry button | Try again |
 | Error screen, back button | Back to games |
+| Players index, `AppBar` title | Players |
+| Players index, empty state | Nobody's in the book yet. / Add a game and its players will show up here. |
+| Rosters index, `AppBar` title | Rosters |
+| Rosters index, empty state | No rosters yet. / A roster appears the first time its exact set of players saves a game. |
+| Places index, `AppBar` title | Places |
+| Places index, empty state | No places yet. / Add one from the review screen next time you save a game. |
+| Places index, unused-location caption | Never used yet — still pickable when you save a game. |
+| `IndexNav` labels | Players · Rosters · Places |
+| Player/roster stat label | Games played · Wins · Win rate |
+| Player/roster stat, sample caption | {wins} of {gamesPlayed} games |
+| Player page, games-list heading | {Player}'s games |
+| Player page, zero games | No games on record. / Nothing saved right now has {Player} at the table. |
+| Roster page, stats heading | Wins within this roster |
+| Roster page, stats sample line | Each member's wins and win rate across these {n} games. |
+| Roster page, games-list heading | {Roster}'s games |
+| `RenameControl` open link (roster) | Rename |
+| `RenameControl` open button (place, `aria-label`) | Rename {place} |
+| Rename field label — roster | Roster name |
+| Rename field label — place | Location name |
+| Rename length/blank helper (roster) | Up to 40 characters. Leave it blank to use the automatic name from its members. |
+| Rename length helper (place) | Up to 40 characters. |
+| Rename, cancel button | Cancel |
+| Rename, save button | Save name |
+| Rename, save button busy | Saving… |
+| Rename saved (roster) | Saved. / Showing everywhere this roster appears. |
+| Roster name, duplicate warning | {Name} is already a roster name. / {Other roster's members} answers to it too — nothing stops you saving it, rename either one later if it's confusing. |
+| Location rename, refused (collision) | {Existing place} already has that name. / Pick a different name for now — merging two places into one is coming in a later update. |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.
