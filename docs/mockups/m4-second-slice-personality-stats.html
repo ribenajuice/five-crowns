@@ -1,0 +1,571 @@
+<!doctype html>
+<title>Personality Stats Wording</title>
+<style>
+  /* ---------- Tokens (docs/DESIGN-SYSTEM.md, copied verbatim) ---------- */
+  :root {
+    --bg: #faf3e7;
+    --surface: #fffdf8;
+    --sunk: #f2e9d8;
+    --line: #e0d5c0;
+    --text: #23201b;
+    --text-muted: #6b6257;
+    --brand: #17457a;
+    --on-brand: #fffdf8;
+    --accent: #c1462f;
+    --accent-ink: #9c3520;
+    --success: #1f6b45;
+    --warn: #8a5a00;
+    --error: #b3261e;
+    --success-soft: #e2efe7;
+    --warn-soft: #f7ebd4;
+    --error-soft: #fbe4e1;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f; --surface: #211d17; --sunk: #2b251d; --line: #3a3328;
+      --text: #f3eada; --text-muted: #b0a390; --brand: #7fb3e8; --on-brand: #17140f;
+      --accent: #f0906e; --accent-ink: #f0906e; --success: #7ccfa0; --warn: #e5b45c; --error: #ff8b7e;
+      --success-soft: #1d2c23; --warn-soft: #2e2515; --error-soft: #33191a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f; --surface: #211d17; --sunk: #2b251d; --line: #3a3328;
+    --text: #f3eada; --text-muted: #b0a390; --brand: #7fb3e8; --on-brand: #17140f;
+    --accent: #f0906e; --accent-ink: #f0906e; --success: #7ccfa0; --warn: #e5b45c; --error: #ff8b7e;
+    --success-soft: #1d2c23; --warn-soft: #2e2515; --error-soft: #33191a;
+  }
+
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600&display=swap");
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.5;
+  }
+  .display { font-family: "Fraunces", Georgia, "Times New Roman", serif; }
+  .tabular { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  /* ---------- Mockup-only chrome ---------- */
+  .mock-topbar { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  .mock-topbar-inner { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .mock-topbar a { font-size: 13px; font-weight: 700; text-decoration: none; color: var(--brand); padding: 10px 4px; border-radius: 8px; }
+  .mock-brand { font-weight: 800; margin-right: 8px; font-size: 14px; }
+
+  .mock-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 96px; }
+  .mock-section { padding: 48px 0; border-top: 1px dashed var(--line); }
+  .mock-section:first-of-type { border-top: none; }
+  .mock-kicker { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
+  .mock-h1 { font-size: 30px; margin: 0 0 6px; }
+  .mock-h2 { font-size: 24px; margin: 0 0 6px; }
+  .mock-h3 { font-size: 19px; margin: 24px 0 6px; }
+  .mock-lede { color: var(--text-muted); max-width: 72ch; margin: 0 0 20px; }
+  .mock-note { background: var(--sunk); border-radius: var(--radius); padding: 12px 16px; font-size: 13.5px; color: var(--text); margin: 16px 0; }
+  .mock-note b { font-weight: 800; }
+  .mock-note.flag { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+  .mock-note.open { border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .chip-new { color: var(--success); background: var(--success-soft); border-color: transparent; }
+  .chip-open { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+  .chip-unchanged { color: var(--text-muted); background: var(--sunk); border-color: transparent; }
+
+  .frame-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame { width: min(375px, 100%); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--bg); box-shadow: 0 10px 30px -12px rgba(0,0,0,0.25); }
+  .frame-label { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
+  .frame-wide { width: 100%; }
+  .frame-body { padding: 0 0 16px; }
+
+  /* ---------- Real app components, reproduced ---------- */
+  .appbar { border-bottom: 1px solid var(--line); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+  .appbar-back { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand); flex-shrink: 0; margin-left: -10px; }
+  .appbar h2 { font-size: 22px; margin: 0; font-weight: 700; }
+  .appbar .ctx { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+
+  .p-main { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { font-size: 17px; margin: 0 0 4px; font-weight: 700; }
+  .card .sample { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
+
+  .ghost-btn { display: flex; min-height: 44px; align-items: center; justify-content: center; border: 1px solid var(--brand); color: var(--brand); border-radius: var(--radius); font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; background: none; }
+  .primary-btn { display: flex; min-height: 44px; align-items: center; justify-content: center; background: var(--brand); color: var(--on-brand); border-radius: var(--radius); font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; border: none; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row > * { flex: 1; }
+
+  .entity-link { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+  h4.section-heading { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+
+  /* game row */
+  .game-row { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .game-row .gdate { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 15px; }
+  .game-row .gmeta { font-size: 13px; color: var(--text-muted); }
+  .game-row .gwin { margin-left: auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; }
+  .game-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .chev { flex-shrink: 0; color: var(--brand); margin-top: 2px; }
+
+  /* board */
+  .archive-line { background: var(--sunk); border-radius: var(--radius); padding: 12px 14px; font-size: 13.5px; color: var(--text-muted); }
+  .board-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .board-grid.wide { grid-template-columns: repeat(2, 1fr); }
+  .record-card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; }
+  .record-card:hover { border-color: var(--brand); }
+  .record-card .rc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .record-card .rc-holders { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 17px; margin: 6px 0 6px; line-height: 1.25; }
+  .record-card .rc-value { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .record-card .rc-num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 800; }
+  .record-card .rc-unit { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .record-card .rc-sample { margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.35; }
+  .record-card.is-new { outline: 2px solid color-mix(in srgb, var(--success) 55%, transparent); outline-offset: -1px; }
+  .label-xs { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+
+  /* candidate comparison, same grammar the nemesis mockup used */
+  .candidate-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 760px) { .candidate-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1060px) { .candidate-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .candidate-col { display: flex; flex-direction: column; gap: 10px; }
+  .candidate-col .cand-label { font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .candidate-col .cand-rationale { font-size: 13.5px; color: var(--text-muted); line-height: 1.4; margin: 0; }
+  .cand-noholder { font-size: 13px; margin: 0; padding: 8px 10px; background: var(--sunk); border-radius: 10px; }
+  .cand-noholder em { font-style: italic; color: var(--text-muted); }
+
+  .icon-inline { display: inline-block; vertical-align: -3px; }
+</style>
+
+<header class="mock-topbar">
+  <div class="mock-topbar-inner">
+    <span class="mock-brand display">Five Crowns Ledger — M4 second slice mockups</span>
+    <a href="#intro">Recap</a>
+    <a href="#board-375">Board · 375px</a>
+    <a href="#board-1280">Board · 1280px</a>
+    <a href="#cheating">Card 1 — cheating</a>
+    <a href="#wrecked">Card 2 — wrecked</a>
+    <a href="#clutch">Card 3 — comeback</a>
+    <a href="#consistent">Card 4 — consistent</a>
+    <a href="#drill">Drill-through</a>
+    <a href="#legibility">Legibility read</a>
+  </div>
+</header>
+
+<main class="mock-main">
+  <section class="mock-section" id="intro">
+    <span class="mock-kicker">PRD criteria 294–319 · checkpoint for criterion 312</span>
+    <h1 class="mock-h1 display">The four personality stats: card wording, for sign-off</h1>
+    <p class="mock-lede">
+      Four new cards join the honours board's existing thirteen, taking it to <b>seventeen</b>. Every
+      definition, number and drill-through is already locked in the PRD — nothing about
+      <em>what's counted</em> is a design decision. What's below is <b>only</b> the wording criterion
+      312 reserved for this checkpoint: each card's <b>title</b>, its <b>sample statement</b>, and its
+      <b>no-holder sentence</b>. Three real candidates per card, not one — same process as the nemesis
+      card (M3 Stage 2), same mechanical test.
+    </p>
+    <div class="mock-note">
+      <b>What's already settled and not up for debate here.</b> Criterion 202 ("nothing characterises
+      a player") is set aside <b>in full</b> for these four cards — titles and every sentence — per
+      the founder's 2026-09-15 decision, going further than the team recommended. Two things stay
+      absolute regardless: <b>criterion 192's bans</b> (never <em>checked/validated/verified/
+      confirmed/correct</em>, never <em>safe/protected/self-cancelling</em>) and <b>the honesty
+      rule</b> (no invented, rounded or exaggerated number; no probability, no "expected", no claim
+      about <em>why</em>). And criterion 202's own mechanical test still applies to every candidate
+      below: <b>printable with the named player reading it over your shoulder.</b> A pointed title
+      clears that bar. Telling somebody what to do about their number does not — none of the eleven
+      candidates below do that.
+    </div>
+    <div class="mock-note open">
+      <b>Open question 12 stays open.</b> Whether the board is still readable in five seconds at
+      seventeen cards is explicitly deferred to the founder (criterion 296) — answering it is not this
+      slice's job and I haven't tried to. <a href="#legibility">My visual read is at the bottom</a>,
+      flagged, not resolved.
+    </div>
+  </section>
+
+  <!-- ============================= THE BOARD AT 17 ============================= -->
+  <section class="mock-section" id="board-375">
+    <span class="mock-kicker">Criteria 294–296 · does RecordCard need to change?</span>
+    <h2 class="mock-h2 display">The board at seventeen cards — no new component, no layout change</h2>
+    <p class="mock-lede">
+      Short answer: <b>yes, it fits as-is.</b> <code>RecordCard</code> is unchanged — same flat shape,
+      same joint-holder grammar, same no-holder variant, same single-column list on phone that becomes
+      a two-column grid on desktop. Seventeen is just four more rows of a list that already scales;
+      nothing about the grid's CSS or the component's props needs to change for this slice. The four
+      new cards are appended after home advantage, in the order the PRD specs them (cheating → wrecked
+      → clutch comeback → most consistent) — one candidate is shown live in place below (candidate 1
+      for each), so the comparison sections further down aren't the only place you see them in context.
+    </p>
+    <p class="frame-label">375px — full board, all seventeen cards, scrolling list</p>
+    <div class="frame">
+      <div class="frame-body">
+        <div class="appbar"><h2 class="display">Five Crowns Ledger</h2></div>
+        <div class="p-main">
+          <div class="archive-line">24 games in the record.</div>
+          <div class="board-grid" id="grid-375"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mock-section" id="board-1280">
+    <span class="mock-kicker">Hard rule: every screen works at 375px and 1280px</span>
+    <h2 class="mock-h2 display">The same board at 1280px</h2>
+    <p class="mock-lede">
+      Two-column grid, same as it's been since Stage 1 — nine rows tall instead of seventeen. No third
+      column introduced for this slice; going wider wasn't needed to fit seventeen legibly at desktop
+      width, and a three-column grid would make the flat, equal-weight cards read more like a dashboard
+      than a board.
+    </p>
+    <p class="frame-label">1280px (shown narrower to fit this page)</p>
+    <div class="frame-wide" style="max-width:900px;">
+      <div class="p-main" style="padding:0;">
+        <div class="board-grid wide" id="grid-1280"></div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Shared board data so the 375px and 1280px renders can't drift apart in this mockup.
+    const cards = [
+      { t: "Most wins", h: "Player B", n: "9", u: "wins", s: "from 24 games" },
+      { t: "Most wins in a row", h: "Player D", n: "4", u: "games in a row", s: "from 17 games" },
+      { t: "Lowest average score", h: "Player C", n: "41.7", u: "avg. score", s: "from 19 games" },
+      { t: "Most rounds won", h: "Player A", n: "63", u: "rounds", s: "from 24 games" },
+      { t: "The stalwart", h: "Player E", n: "24", u: "games played", s: "" },
+      { t: "The drought", h: "Player C", n: "11", u: "games without a win", s: "from 19 games" },
+      { t: "The nearly man", h: "Player D", n: "7", u: "second places", s: "from 17 games" },
+      { t: "Best game ever", h: "Player B", n: "27", u: "final score", s: "on 3 Aug 2026" },
+      { t: "Worst game ever", h: "Player A", n: "189", u: "final score", s: "on 14 Feb 2026" },
+      { t: "The catastrophe", h: "Player A", n: "61", u: "points in one hand", s: "Kings · 14 Feb 2026" },
+      { t: "Cleanest sheet", h: "Player E", n: "6", u: "zero-point hands", s: "on 21 Jun 2026" },
+      { t: "Biggest hammering", h: "Player B", n: "71", u: "point margin", s: "on 3 Aug 2026" },
+      { t: "Home advantage", h: "Player D, The Boat Shed", n: "+38.4", u: "points", s: "won 5 of 7 there, 2 of 17 elsewhere" },
+      { t: "Looks like cheating", h: "Player B", n: "+47.4", u: "points", s: "Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).", isNew: true },
+      { t: "Getting absolutely wrecked", h: "Player C", n: "6", u: "games running", s: "Last place in every one of their last 6 games — since 2 Aug 2026.", isNew: true },
+      { t: "Most clutch comeback", h: "Player A", n: "71", u: "points down at hand 9", s: "Won it outright, finishing on 132 · 9 Nov 2025.", isNew: true },
+      { t: "Most consistent", h: "Player E", n: "34", u: "point range", s: "Best 58, worst 92, from 9 games.", isNew: true },
+    ];
+    function cardHtml(c) {
+      return `<a class="record-card${c.isNew ? " is-new" : ""}" href="#">
+        <div class="rc-top"><span class="label-xs">${c.t}</span>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </div>
+        <p class="rc-holders">${c.h}</p>
+        <div class="rc-value"><span class="rc-num">${c.n}</span><span class="rc-unit">${c.u}</span></div>
+        ${c.s ? `<p class="rc-sample">${c.s}</p>` : ""}
+      </a>`;
+    }
+    document.getElementById("grid-375").innerHTML = cards.map(cardHtml).join("");
+    document.getElementById("grid-1280").innerHTML = cards.map(cardHtml).join("");
+  </script>
+
+  <!-- ============================= CARD 1 — CHEATING ============================= -->
+  <section class="mock-section" id="cheating">
+    <span class="mock-kicker">Criteria 297–299 · settled definition, wording open</span>
+    <h2 class="mock-h2 display">"The player who looks like they're cheating"</h2>
+    <p class="mock-lede">
+      Settled number (open question 15, candidate C): the largest gap between a player's own win rate
+      and the combined win rate of the other seats, counted <b>only across the games they actually
+      played together</b>. All three candidates below use the identical numbers — Player B wins 75.0%
+      of their 12 games; the rest of the table wins 27.6% in those same 12 games — so only the title
+      and sentence change.
+    </p>
+    <div class="candidate-grid">
+      <div class="candidate-col">
+        <span class="cand-label">1 · Looks like cheating</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Looks like cheating</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player B</p>
+          <div class="rc-value"><span class="rc-num">+47.4</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).</p>
+        </a>
+        <p class="cand-rationale">The founder's own phrase from the catalogue, almost verbatim. The
+        most direct option — reads exactly like something said at the table.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's numbers look suspicious yet."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">2 · Suspiciously good</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Suspiciously good</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player B</p>
+          <div class="rc-value"><span class="rc-num">+47.4</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).</p>
+        </a>
+        <p class="cand-rationale">Softer — describes the number rather than the accusation. Closer in
+        register to the board's drier titles ("the nearly man", "the stalwart").</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's suspiciously good yet."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">3 · Definitely not cheating</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Definitely not cheating</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player B</p>
+          <div class="rc-value"><span class="rc-num">+47.4</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).</p>
+        </a>
+        <p class="cand-rationale">The ironic denial — leans furthest into banter of the three. Still
+        strictly about the number; the joke is entirely in the title, same split criterion 298
+        requires.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody needs an alibi yet."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= CARD 2 — WRECKED ============================= -->
+  <section class="mock-section" id="wrecked">
+    <span class="mock-kicker">Criteria 300–303 · settled definition, wording open</span>
+    <h2 class="mock-h2 display">"The player getting absolutely wrecked"</h2>
+    <p class="mock-lede">
+      Settled number (open question 16, candidate A): the longest <b>current</b> run of finishing
+      last, counted back from the player's most recent game until one game breaks it — no recency
+      constant, alive by construction. All three candidates: Player C, last in 6 games running, since
+      2 Aug 2026.
+    </p>
+    <div class="candidate-grid">
+      <div class="candidate-col">
+        <span class="cand-label">1 · Getting absolutely wrecked</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Getting absolutely wrecked</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player C</p>
+          <div class="rc-value"><span class="rc-num">6</span><span class="rc-unit">games running</span></div>
+          <p class="rc-sample">Last place in every one of their last 6 games — since 2 Aug 2026.</p>
+        </a>
+        <p class="cand-rationale">The founder's own phrase, kept whole. Same directness as candidate 1
+        on card 1 — this is the pair of titles the founder used to justify the relaxation in the first
+        place.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's currently getting wrecked."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">2 · Currently getting wrecked</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Currently getting wrecked</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player C</p>
+          <div class="rc-value"><span class="rc-num">6</span><span class="rc-unit">games running</span></div>
+          <p class="rc-sample">Last place in every one of their last 6 games — since 2 Aug 2026.</p>
+        </a>
+        <p class="cand-rationale">Puts "currently" in the title itself — the word the founder called
+        the interesting one when picking candidate (A) over the all-time alternative. Makes the
+        card's own logic legible without reading the sample line.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's currently on a bad run."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">3 · Rock bottom</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Rock bottom</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player C</p>
+          <div class="rc-value"><span class="rc-num">6</span><span class="rc-unit">games running</span></div>
+          <p class="rc-sample">Last place in every one of their last 6 games — since 2 Aug 2026.</p>
+        </a>
+        <p class="cand-rationale">Terser — two words, matching the length of "the drought" and "the
+        catastrophe" rather than describing the mechanic. Reads more like a permanent board title,
+        less like a live commentary line.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's at rock bottom right now."</p>
+      </div>
+    </div>
+    <div class="mock-note">
+      <b>Distinct unit on purpose.</b> "Games running" rather than "games in a row" (already used by
+      "most wins in a row") — two different streak concepts sit on the same board, and criterion 301
+      makes "currently" a property of this one alone. Reusing the other card's unit text would blur
+      that distinction at a glance, before anyone reads either sample line.
+    </div>
+  </section>
+
+  <!-- ============================= CARD 3 — CLUTCH COMEBACK ============================= -->
+  <section class="mock-section" id="clutch">
+    <span class="mock-kicker">Criteria 304–306 · single-event record</span>
+    <h2 class="mock-h2 display">Most clutch comeback</h2>
+    <p class="mock-lede">
+      One night, not a career number — same single-event shape as best/worst game ever. Deficit at
+      hand 9, and it only counts because the player went on to win outright (a shared win does not
+      count — the one named exception to "ties are shared," decided at this checkpoint). All three
+      candidates: Player A, 71 points down at hand 9, won outright on 132, 9 Nov 2025.
+    </p>
+    <div class="candidate-grid">
+      <div class="candidate-col">
+        <span class="cand-label">1 · Most clutch comeback</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Most clutch comeback</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player A</p>
+          <div class="rc-value"><span class="rc-num">71</span><span class="rc-unit">points down at hand 9</span></div>
+          <p class="rc-sample">Won it outright, finishing on 132 · 9 Nov 2025.</p>
+        </a>
+        <p class="cand-rationale">The founder's own working name, plain. Reads as a straightforward
+        superlative, matching "biggest hammering" and "best game ever."</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's clawed one back yet."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">2 · The great escape</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">The great escape</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player A</p>
+          <div class="rc-value"><span class="rc-num">71</span><span class="rc-unit">points down at hand 9</span></div>
+          <p class="rc-sample">Won it outright, finishing on 132 · 9 Nov 2025.</p>
+        </a>
+        <p class="cand-rationale">More dramatic, "the drought"/"the catastrophe" register. This is the
+        one positive, celebratory card of the four — the title can lean further into theatre than the
+        other three without risking anyone's feelings.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's ever escaped from behind."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">3 · Back from the dead</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Back from the dead</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player A</p>
+          <div class="rc-value"><span class="rc-num">71</span><span class="rc-unit">points down at hand 9</span></div>
+          <p class="rc-sample">Won it outright, finishing on 132 · 9 Nov 2025.</p>
+        </a>
+        <p class="cand-rationale">The most playful of the three — biggest tonal swing from the flat
+        default. Still says nothing about the player, only the game, so it clears the same bar.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's come back from the dead yet."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= CARD 4 — MOST CONSISTENT ============================= -->
+  <section class="mock-section" id="consistent">
+    <span class="mock-kicker">Criteria 307–309, 318 · no floor, both ends printed</span>
+    <h2 class="mock-h2 display">Most consistent</h2>
+    <p class="mock-lede">
+      Highest final score minus lowest, across every game a player has played — smallest range holds
+      it, with no minimum-games floor. The sample line carries the whole honesty burden here
+      (criterion 309): game count and both ends of the range are always printed, so a two-game holder
+      is self-evidently thin rather than quietly flattered. All three candidates: Player E, range of
+      34 (58–92), from 9 games.
+    </p>
+    <div class="candidate-grid">
+      <div class="candidate-col">
+        <span class="cand-label">1 · Most consistent</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Most consistent</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player E</p>
+          <div class="rc-value"><span class="rc-num">34</span><span class="rc-unit">point range</span></div>
+          <p class="rc-sample">Best 58, worst 92, from 9 games.</p>
+        </a>
+        <p class="cand-rationale">Plain, matches the founder's own catalogue name for this stat. The
+        least characterful of the four titles, on purpose — this is the one complimentary, unremarkable
+        stat and doesn't need banter to land.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's played enough games to have a range yet."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">2 · The metronome</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">The metronome</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player E</p>
+          <div class="rc-value"><span class="rc-num">34</span><span class="rc-unit">point range</span></div>
+          <p class="rc-sample">Best 58, worst 92, from 9 games.</p>
+        </a>
+        <p class="cand-rationale">A single-word image instead of a description — steady, mechanical,
+        a little affectionate. Matches the "the drought"/"the stalwart" two-or-three-word naming
+        convention already on the board.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's earned a range yet — two games gets you in."</p>
+      </div>
+      <div class="candidate-col">
+        <span class="cand-label">3 · Never brilliant, never a disaster</span>
+        <a class="record-card" href="#" style="pointer-events:none;">
+          <div class="rc-top"><span class="label-xs">Never brilliant, never a disaster</span>
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <p class="rc-holders">Player E</p>
+          <div class="rc-value"><span class="rc-num">34</span><span class="rc-unit">point range</span></div>
+          <p class="rc-sample">Best 58, worst 92, from 9 games.</p>
+        </a>
+        <p class="cand-rationale">A direct callback to the founder's own words in this stat's user
+        story ("recognised as its own kind of good rather than being invisible next to the extremes").
+        Longest of the eleven candidate titles here — worth a check against the card's width at 375px,
+        which is why it's shown live in the board grid above rather than only in this comparison.</p>
+        <p class="cand-noholder"><em>No-holder:</em> "Nobody's steady enough to call yet — needs a second game."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= DRILL-THROUGH ============================= -->
+  <section class="mock-section" id="drill">
+    <span class="mock-kicker">Criterion 294: "no new drill-through format"</span>
+    <h2 class="mock-h2 display">Drill-through — the ordinary pattern, unchanged</h2>
+    <p class="mock-lede">
+      All four use the board's existing drill-through exactly: the claim as the <code>AppBar</code>
+      heading, the value and sample as its context line, a plain list of <code>GameRow</code>s. Shown
+      here for "looks like cheating," which lands on the holder's own games, newest first, each row
+      showing who actually won it — both sides of the comparison in one list, per criterion 299.
+    </p>
+    <div class="frame">
+      <div class="frame-body">
+        <div class="appbar">
+          <a class="appbar-back" aria-label="Back to the board">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+          </a>
+          <div>
+            <h2 class="display">Looks like cheating — Player B</h2>
+            <p class="ctx">+47.4 points, wins 75.0% (9 of 12) against the table's 27.6% (10 of 36)</p>
+          </div>
+        </div>
+        <div class="p-main">
+          <div class="game-list">
+            <div class="game-row">
+              <div><p class="gdate">Sat 5 Sep 2026</p><p class="gmeta">Player A, Player B, Player D &amp; Player E</p></div>
+              <p class="gwin">Player B</p>
+            </div>
+            <div class="game-row">
+              <div><p class="gdate">Tue 18 Aug 2026</p><p class="gmeta">Player A, Player B &amp; Player E</p></div>
+              <p class="gwin">Player B</p>
+            </div>
+            <div class="game-row">
+              <div><p class="gdate">Sun 12 Jul 2026</p><p class="gmeta">Player A, Player B, Player D &amp; Player E</p></div>
+              <p class="gwin">Player D</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= LEGIBILITY ============================= -->
+  <section class="mock-section" id="legibility">
+    <span class="mock-kicker">Open question 12 — flagged, not decided here</span>
+    <h2 class="mock-h2 display">My visual read on seventeen cards</h2>
+    <p class="mock-lede">
+      Not my call to make, and I haven't tried to. What I can report from looking at the frames above:
+    </p>
+    <div class="mock-note flag">
+      At 375px, seventeen stacked cards is a genuinely long scroll — roughly 3,000–3,500px, call it
+      10–14 screens' worth of thumb-scrolling depending on phone. Twelve cards already put this
+      question on the table (Stage 3's ADR); seventeen is not a marginal case of the same worry, it's
+      past the point where "readable in five seconds" and "the landing screen" can both be true of the
+      whole board at once. What still <em>is</em> true at five seconds: the first 3–4 cards (whichever
+      the group's most recent night made move) and the archive line at the top. The rest is a board you
+      scroll and read, not glance at — which may be exactly fine for this app's audience of six
+      friends, just worth naming plainly rather than leaving implicit.
+    </div>
+    <div class="mock-note">
+      No layout change was needed to <em>fit</em> seventeen cards — that part of your question has a
+      clean answer: yes, as-is. If you do want to revisit five-second legibility later, the two
+      cheapest levers, unexplored here because it's your call and not blocking this slice, are
+      reordering (move the four newest, most personality-driven cards to the top, since they're the
+      ones with the most "water-cooler" pull) or a plain subheading between groups of cards (no new
+      component, one line of text) — not a rebuild either way.
+    </div>
+  </section>
+</main>

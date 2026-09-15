@@ -50,6 +50,24 @@
 > <https://claude.ai/code/artifact/8388d93d-012a-4840-9592-ebacad5f83e9>. **Open question 9 was already answered (c), both a venue page and a
 > filter, before this document was written** (`docs/DECISIONS.md`, 2026-09-15) — so nothing on this
 > page is conditional, unlike Stage 2's nemesis wording. This is the last stage of Milestone 3.
+>
+> **Milestone 4, second slice** (the four personality stats — PRD criteria 294–319) adds four cards
+> to the board, taking it to **seventeen**, and adds no new component: `RecordCard`, its no-holder
+> variant and its single-event variant cover all four exactly as specced. Mockups at
+> `docs/mockups/m4-second-slice-personality-stats.html`, published as an Artifact at
+> <https://claude.ai/code/artifact/29e6f894-0fe8-4529-a6df-774d308ad6ed>. ✅ **Decided 2026-09-15 —
+> the founder's picks: "Looks like cheating," "Getting absolutely wrecked," "Most clutch comeback" and
+> "The metronome."** Criterion 202 was set aside in full for these four (titles *and* every sentence,
+> per the 2026-09-15 ADR), and criterion 312 handed the wording to a mockup checkpoint exactly as
+> Stage 2 did for the nemesis: three candidates per card, and the founder picked the first candidate on
+> three of the four cards and the second on the fourth ("The metronome," not the plain "Most
+> consistent"). Full strings are fixed in *The four personality cards* below and in the fixed string
+> table. **Everything else is settled**: all four definitions, their placement (appended after home
+> advantage, same order as the PRD's four stats), and the drill-through (the board's ordinary pattern,
+> unchanged). ⚠️ **Open
+> question 12 — is the board still readable in five seconds — is deliberately not answered by this
+> slice**; the mockup renders the full seventeen-card board at 375px and 1280px and flags a visual
+> read without resolving it, per the founder's own instruction that this stays theirs to call.
 
 ## Direction
 
@@ -1099,6 +1117,60 @@ the digit; this is a correctness feature, not typography.
   - **Its drill-through** (criterion 269) reuses the ordinary board-record drill-through unchanged —
     see the component inventory entry above.
 
+- **The board gains four more rows — the personality stats (M4 second slice, criteria 294–319).**
+  `RecordCard`, its no-holder variant, its single-event variant (for the clutch comeback) and
+  criterion 181's joint-holder grammar are all unchanged; no new component, no new page type, no new
+  drill-through shape. What's new is confined to four cards' worth of copy.
+  - **Order**: appended after home advantage, in the PRD's own order — "looks like cheating," "getting
+    absolutely wrecked," most clutch comeback, most consistent — the same "a card's position tells you
+    which stage computes it" precedent Stage 4 set. **The board now carries seventeen records.**
+  - ✅ **Wording is decided** — see *The four personality cards*, below, the direct successor to
+    *The nemesis card*'s process above.
+  - ⚠️ **Legibility at seventeen is, once again, a founder review point and not resolved here**
+    (criterion 296's explicit deferral of open question 12) — the mockup renders the full
+    seventeen-card board at both 375px and 1280px with a flagged visual read, not a verdict.
+
+- **The four personality cards.** Criterion 202 was set aside **in full** for these four (titles *and*
+  every sentence — the 2026-09-15 ADR, going further than the nemesis card's title-only relaxation),
+  and criterion 312 handed the ui-designer all three of each card's strings — title, sample statement,
+  no-holder sentence — to propose, not decide. Two things stayed outside the relaxation throughout:
+  **criterion 192's bans** (unchanged) and **the honesty rule** (criterion 311 — no invented, rounded
+  or exaggerated number, no probability, no claim about *why*). Criterion 202's own mechanical test
+  gated every candidate: printable with the named player reading it over your shoulder.
+  - **Three candidates per card were laid out side by side** in
+    `docs/mockups/m4-second-slice-personality-stats.html`, against identical numbers per card so only
+    the wording differed — same construction as the nemesis mockup's five. Full copy and the rejected
+    candidates' rationale sit in the mockup, not duplicated here — it stays as historical record and
+    isn't being republished.
+  - ✅ **Decided 2026-09-15 — the founder's picks, one card at a time:**
+    - **"Looks like cheating"** (candidate 1 of 3 — not "Suspiciously good" or "Definitely not
+      cheating"). Sample statement: **"Wins {rate}% of their games ({wins} of {games}) — the table
+      wins {tableRate}% in those same games ({tableWins} of {tableGames})."** — e.g. *"Wins 75.0% of
+      their games (9 of 12) — the table wins 27.6% in those same games (10 of 36)."* No-holder
+      sentence: **"Nobody's numbers look suspicious yet."** Unit unchanged from the mockup: `points`.
+    - **"Getting absolutely wrecked"** (candidate 1 of 3 — not "Currently getting wrecked" or "Rock
+      bottom"). No-holder sentence: **"Nobody's currently getting wrecked."** ⚠️ **Unit changed from
+      every candidate the mockup offered**: all three used `games running`; the founder replaced it
+      with **`games in last place`** — plainer than "running," and it doesn't collide with "games in a
+      row" (already the unit on "most wins in a row"), the same collision the mockup's own note flagged
+      when it rejected that third option for this card. Read on its own, the value and unit already say
+      the whole thing — *"6 games in last place"* — so the sample sentence doesn't need to re-state
+      "streak" a second time. Sample statement, written fresh for the new unit rather than a mechanical
+      swap into the old sentence (which would have read "last" twice back to back): **"Last place in
+      every one of their last {n} games — since {date}."** — e.g. *"Last place in every one of their
+      last 6 games — since 2 Aug 2026."*
+    - **"Most clutch comeback"** (candidate 1 of 3 — not "The great escape" or "Back from the dead").
+      Sample statement: **"Won it outright, finishing on {finalScore} · {date}."** — e.g. *"Won it
+      outright, finishing on 132 · 9 Nov 2025."* No-holder sentence: **"Nobody's clawed one back
+      yet."** Unit unchanged from the mockup: `points down at hand 9`.
+    - **"The metronome"** (candidate **2** of 3 — the one card where the founder didn't pick the plain
+      option: not "Most consistent," not "Never brilliant, never a disaster"). Sample statement:
+      **"Best {high}, worst {low}, from {n} games."** — e.g. *"Best 58, worst 92, from 9 games."*
+      No-holder sentence: **"Nobody's earned a range yet — two games gets you in."** Unit unchanged
+      from the mockup: `point range`.
+  - Now fixed in the table below (Milestone 4 rows), the same way the nemesis card's entry above was
+    updated once decided.
+
 ## Review screen law
 
 Whichever direction is chosen, the review screen must:
@@ -1415,6 +1487,22 @@ verified, confirmed, correct, looks right* or *all good*.
 | Record unit — home advantage | points *(percentage points — never a `%` sign)* |
 | Home advantage, holder line | {Player}, {Venue} |
 | Home advantage, sample sentence | won {n} of {m} there, {p} of {q} elsewhere |
+| Record title — looks like cheating | Looks like cheating *(founder's pick, 2026-09-15 — candidate 1 of 3, `docs/mockups/m4-second-slice-personality-stats.html`)* |
+| Record title — getting absolutely wrecked | Getting absolutely wrecked *(founder's pick, 2026-09-15 — candidate 1 of 3)* |
+| Record title — most clutch comeback | Most clutch comeback *(founder's pick, 2026-09-15 — candidate 1 of 3)* |
+| Record title — most consistent (board) | The metronome *(founder's pick, 2026-09-15 — candidate 2 of 3, not the plain "Most consistent")* |
+| Record unit — looks like cheating | points |
+| Record unit — getting absolutely wrecked | games in last place *(founder's pick, 2026-09-15 — none of the mockup's three candidates; replaces "games running," and deliberately not "games in a row," already used by "most wins in a row")* |
+| Record unit — most clutch comeback | points down at hand 9 |
+| Record unit — most consistent (board) | point range |
+| Looks like cheating, sample sentence | Wins {rate}% of their games ({wins} of {games}) — the table wins {tableRate}% in those same games ({tableWins} of {tableGames}). |
+| Looks like cheating, no-holder sentence | Nobody's numbers look suspicious yet. |
+| Getting absolutely wrecked, sample sentence | Last place in every one of their last {n} games — since {date}. |
+| Getting absolutely wrecked, no-holder sentence | Nobody's currently getting wrecked. |
+| Most clutch comeback, sample sentence | Won it outright, finishing on {finalScore} · {date}. |
+| Most clutch comeback, no-holder sentence | Nobody's clawed one back yet. |
+| The metronome, sample sentence | Best {high}, worst {low}, from {n} games. |
+| The metronome, no-holder sentence | Nobody's earned a range yet — two games gets you in. |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.
