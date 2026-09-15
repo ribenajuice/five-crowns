@@ -410,25 +410,35 @@
     the roster page (Milestone 2 Stage 3) uses the word "correct" in a sentence about win rates summing past
     100%, which is one of the wording rule's own banned words; `AppBar`'s `titleHref` link (the game view's
     heading) measures ~34px, short of the 44px minimum, confirmed not to affect any Stage 1 or Stage 2 screen.
-  - **Milestone 3 Stage 3** (distributions and villains), flagged by `/code-review high` and deliberately
-    deferred as non-blocking: `app/records/[key]/page.tsx` has forked into two near-duplicate render paths
-    — one for a board (multi-game) record, one for a single-event record — instead of one component
-    handling both shapes. `RecordGame` (`lib/board/queries.ts`) has become a grab-bag of optional fields as
-    more record types were added to it, rather than a type per record shape. `pickExtreme` and `bestHolders`
-    duplicate the same tie-tracking pattern in two places that could be unified into one. `lib/ui/copy.ts`'s
-    `singleEventDisplayFacts` has grown some internal triple-branching as it's picked up more record types,
-    and `formatRecordDate` is a fourth duplicate of date-formatting logic that already exists elsewhere in
-    the codebase.
-  - **Milestone 3 Stage 4** (place, time, and the filters), flagged by `/code-review high` and deliberately
-    deferred as non-blocking: `homeAdvantage()` (`lib/scoring/records.ts`) hand-writes its own "find max,
-    collect ties" loop instead of reusing the existing `pickExtreme<T>` helper the five single-event records
-    already share. `components/VenuePlayerRow.tsx` duplicates `components/ByVenueRow.tsx` almost verbatim
-    (same row shape) — could be one shared component. `components/TimeSliceRow.tsx`'s own doc comment admits
-    it's "AverageRow's exact shape with the link removed" — genuine, self-acknowledged duplication.
-    `components/AppBar.tsx`'s touch-target fix hand-copies `EntityLink`'s hit-slop CSS constant instead of
-    adding a `text-inherit`-preserving variant to `EntityLink` itself (documented in the code with the
-    tradeoff explained). The new `ratePercent()` helper (`lib/scoring/records.ts`) reimplements the same
-    rounding formula `nemesis()` already computes inline, rather than sharing one rounding primitive.
+  - **Milestone 3 Stage 3** (distributions and villains), flagged by `/code-review high`. ✅ **Two fixed** in
+    the M3 follow-up cleanup pass (branch `chore/m3-known-followups`): `app/records/[key]/page.tsx`'s three
+    drill-through render paths (board records, single-event records, home advantage) now share one
+    `renderDrillThroughShell` helper for the `AppBar` header and the `GameRow` list — only the per-record
+    annotation logic stays distinct, since that part is genuinely different per record family; `lib/ui/copy.ts`'s
+    `singleEventDisplayFacts` no longer re-branches on `row.hand` three separate times — one
+    `singleEventRowFacts` helper decides it once, reused by both the single-instance and tied-instance
+    shapes. **Two deliberately left**, judged not worth forcing: `RecordGame` (`lib/board/queries.ts`) stays
+    a grab-bag of optional fields rather than a discriminated union — every concrete `games` array already
+    only ever populates one family of the four optional fields, so a union would need to parameterise
+    `RecordGame` per record kind, rippling through `toRecordGame`, `buildRecord`/`buildSingleEventRecord` and
+    the drill-through shell just unified above, for no behaviour change and no real type-safety gap today;
+    `pickExtreme` (single-event records) and `bestHolders` (`lib/board/queries.ts`, keyed by player in a
+    `Map`) still duplicate the same "find max, keep every tie" shape over genuinely different input shapes
+    (an array vs. a player-keyed map) — not touched here (see home advantage's own fix, below, for the one
+    duplicate of this shape that *was* worth unifying). `formatRecordDate` remains a fourth date-formatting
+    duplicate, unrelated to this pass.
+  - **Milestone 3 Stage 4** (place, time, and the filters), flagged by `/code-review high`. ✅ **All fixed**
+    in the same cleanup pass: `homeAdvantage()` (`lib/scoring/records.ts`) now reuses the existing
+    `pickExtreme<T>` helper instead of hand-writing its own "find max, collect ties" loop.
+    `components/ByVenueRow.tsx` and `components/VenuePlayerRow.tsx` now share their win-rate and average
+    stat blocks through a new `components/WinRateAndAverageStats.tsx`. `components/TimeSliceRow.tsx` is now
+    a thin wrapper over `AverageRow` (which gained an optional `href` — omit it for a plain-text name — and
+    a nullable `average` — render the no-data string in muted ink) instead of hand-duplicating its shape;
+    both existing `AverageRow` callers (`/stats`' player and roster averages lists) are unaffected, since
+    both still pass both. `components/AppBar.tsx`'s title link now uses a new `inherit` `EntityLink` variant
+    (`text-inherit`, no colour override) instead of hand-copying `EntityLink`'s hit-slop CSS constant. The
+    `ratePercent()` helper and `nemesis()` (`lib/scoring/records.ts`) now share one
+    `roundToOneDecimalPercent()` rounding helper instead of each inlining the same formula.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original
