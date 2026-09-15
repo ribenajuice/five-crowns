@@ -2,7 +2,7 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-15
+- **Last updated**: 2026-09-15 (PR #37 opened)
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
   merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
   deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
@@ -44,8 +44,26 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: nothing — **Milestone 3 is complete, all four stages merged and live, and
-  Milestone 4's first slice is merged and live too** — see below.
+- **Currently in flight**: [PR #37](https://github.com/ribenajuice/five-crowns/pull/37) — **Milestone 4,
+  second slice: the four personality stats** (criteria 294–319), CI green, **needs the founder's review and
+  merge**. Four new records join the existing 13-card honours board (going to 17): "Looks like cheating" (biggest
+  win-rate gap vs. the table, scoped to games actually played together), "Getting absolutely wrecked" (longest
+  current last-place streak), "Most clutch comeback" (biggest hand-9 deficit overturned into an **outright** win —
+  a tied win deliberately doesn't count, a named exception to the project's usual "ties are shared" rule), and
+  "The metronome" (smallest score range, no minimum-games floor, game count and both range ends shown plainly).
+  No schema change, no new endpoint, no caching. The founder made seven decisions at the spec checkpoint and four
+  wording picks at the mockup checkpoint (mockup: https://claude.ai/code/artifact/29e6f894-0fe8-4529-a6df-774d308ad6ed)
+  — final titles are "Looks like cheating," "Getting absolutely wrecked" (unit: games in last place), "Most clutch
+  comeback," and "The metronome." QA drove the real app end-to-end and found and fixed two real bugs (every
+  no-holder card fell back to a generic sentence instead of its own; the metronome's "best"/"worst" were swapped),
+  closed the milestone-closing delete/merge sweep for these four stats, and fixed a genuine self-contradiction in
+  criterion 318. `/code-review high` then found and fixed one more real bug (a joint holder's "since" date could be
+  miscomputed when sharing only some games with other holders) plus six duplication/efficiency cleanups. A security
+  review found no blocking issues. 1848 tests passing, lint and typecheck clean. `CHANGELOG.md` has an Unreleased
+  entry ready to be promoted to a dated "is live" heading (alongside a README board-count bump to seventeen) once
+  this merges and deploys — see below for the rest of what's already live.
+- **Previously in flight, now shipped**: Milestone 3 is complete, all four stages merged and live, and
+  Milestone 4's first slice is merged and live too — see below.
   - ✅ [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
     facts** (criteria 281–293). **Shipped 2026-09-14.** A fixed pool of eight independent fact generators — flatliner, current
     drought, the comeback nobody asked for, the slump, rivalry needle, overdue, a random old night, and
