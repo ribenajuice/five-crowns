@@ -44,6 +44,7 @@ function game(id: string, playedOn: string, overrides: Partial<Record<string, un
   return {
     id,
     playedOn,
+    createdAt: `${playedOn}T00:00:00.000Z`,
     locationName: "The Deck",
     rosterId: "r1",
     rosterName: "Thursday crew",

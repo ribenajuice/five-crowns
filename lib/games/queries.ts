@@ -64,48 +64,59 @@ export interface GamesListFilterInput {
  * still renders through this function's ordinary, non-`null` result.
  *
  * Two bounded queries at most (one per filter actually supplied), never one
- * per candidate or a query that grows with the archive.
+ * per candidate or a query that grows with the archive. ⚠️ **`?location=` and
+ * `?roster=` resolve concurrently** (code review: neither branch reads the
+ * other's result, so the combined-filter case — Stage 4's own reason this
+ * function accepts both — paid up to three sequential round-trips for no
+ * reason) — only the roster branch's own two queries stay sequential
+ * (`memberRows` needs `rosterRow.id`).
  */
 export async function resolveGamesFilter(
   input: GamesListFilterInput,
 ): Promise<ResolvedGamesFilter | null> {
-  const db = getDb();
+  const [locationFilter, rosterFilter] = await Promise.all([
+    resolveLocationFilter(input.location),
+    resolveRosterFilter(input.roster),
+  ]);
 
-  let locationFilter: ResolvedLocationFilter | undefined;
-  if (input.location !== undefined) {
-    if (input.location === "none") {
-      locationFilter = { kind: "none" };
-    } else {
-      const row = (
-        await db
-          .select({ id: location.id, name: location.name })
-          .from(location)
-          .where(eq(location.id, input.location))
-      )[0];
-      if (!row) return null;
-      locationFilter = { kind: "venue", id: row.id, name: row.name };
-    }
-  }
-
-  let rosterFilter: ResolvedRosterFilter | undefined;
-  if (input.roster !== undefined) {
-    const rosterRow = (
-      await db.select({ id: roster.id, name: roster.name }).from(roster).where(eq(roster.id, input.roster))
-    )[0];
-    if (!rosterRow) return null;
-
-    const memberRows = await db
-      .select({ displayName: player.displayName })
-      .from(rosterMember)
-      .innerJoin(player, eq(rosterMember.playerId, player.id))
-      .where(eq(rosterMember.rosterId, rosterRow.id));
-    rosterFilter = {
-      id: rosterRow.id,
-      name: rosterRow.name ?? rosterDisplayName(memberRows.map((m) => m.displayName)),
-    };
-  }
-
+  if (locationFilter === null || rosterFilter === null) return null;
   return { location: locationFilter, roster: rosterFilter };
+}
+
+async function resolveLocationFilter(
+  rawLocation: string | undefined,
+): Promise<ResolvedLocationFilter | undefined | null> {
+  if (rawLocation === undefined) return undefined;
+  if (rawLocation === "none") return { kind: "none" };
+
+  const db = getDb();
+  const row = (
+    await db.select({ id: location.id, name: location.name }).from(location).where(eq(location.id, rawLocation))
+  )[0];
+  if (!row) return null;
+  return { kind: "venue", id: row.id, name: row.name };
+}
+
+async function resolveRosterFilter(
+  rawRoster: string | undefined,
+): Promise<ResolvedRosterFilter | undefined | null> {
+  if (rawRoster === undefined) return undefined;
+
+  const db = getDb();
+  const rosterRow = (
+    await db.select({ id: roster.id, name: roster.name }).from(roster).where(eq(roster.id, rawRoster))
+  )[0];
+  if (!rosterRow) return null;
+
+  const memberRows = await db
+    .select({ displayName: player.displayName })
+    .from(rosterMember)
+    .innerJoin(player, eq(rosterMember.playerId, player.id))
+    .where(eq(rosterMember.rosterId, rosterRow.id));
+  return {
+    id: rosterRow.id,
+    name: rosterRow.name ?? rosterDisplayName(memberRows.map((m) => m.displayName)),
+  };
 }
 
 interface GamePlayerRow {

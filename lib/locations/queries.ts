@@ -155,23 +155,29 @@ export interface VenuePage {
 export async function getVenuePage(id: string): Promise<VenuePage | null> {
   const db = getDb();
 
-  const row = (
-    await db.select({ id: location.id, name: location.name }).from(location).where(eq(location.id, id))
-  )[0];
+  // Queries 1 and 2 of up to 3: the location row, and this venue's own
+  // games — neither depends on the other's result (query 2 filters by the
+  // `id` argument itself, not by anything query 1 returns), so both run
+  // concurrently (code review: these two ran as sequential awaits with
+  // nothing between them). A made-up id still discards the games result and
+  // 404s below, exactly as before — the wasted query only happens on that
+  // rare path, not on every real venue's page load.
+  const [row, gameRows] = await Promise.all([
+    db.select({ id: location.id, name: location.name }).from(location).where(eq(location.id, id)).then((rows) => rows[0]),
+    db
+      .select({
+        id: game.id,
+        playedOn: game.playedOn,
+        createdAt: game.createdAt,
+        rosterId: game.rosterId,
+        rosterName: roster.name,
+      })
+      .from(game)
+      .innerJoin(roster, eq(game.rosterId, roster.id))
+      .where(eq(game.locationId, id))
+      .orderBy(desc(game.playedOn), desc(game.createdAt)),
+  ]);
   if (!row) return null;
-
-  const gameRows = await db
-    .select({
-      id: game.id,
-      playedOn: game.playedOn,
-      createdAt: game.createdAt,
-      rosterId: game.rosterId,
-      rosterName: roster.name,
-    })
-    .from(game)
-    .innerJoin(roster, eq(game.rosterId, roster.id))
-    .where(eq(game.locationId, id))
-    .orderBy(desc(game.playedOn), desc(game.createdAt));
 
   if (gameRows.length === 0) {
     return { id: row.id, name: row.name, gamesPlayed: 0, tableAverage: null, players: [], games: [] };

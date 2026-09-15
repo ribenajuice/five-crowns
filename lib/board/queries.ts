@@ -115,6 +115,17 @@ export interface RecordHolder {
 export interface RecordGame {
   id: string;
   playedOn: string;
+  /**
+   * The tie-break for two games sharing a `playedOn` date — carried through
+   * so a caller merging more than one already-sorted `games` array (home
+   * advantage's drill-through, `app/records/[key]/page.tsx`, is the one
+   * caller that does) can re-sort the union with the same `ChronologicalRow`
+   * comparator (`lib/scoring/chronology.ts`) everything else in this app
+   * uses, rather than a `playedOn`-only comparator that falls back to
+   * insertion order on a tie. Not rendered by `GameRow` — an internal detail,
+   * not part of `GameRowProps`.
+   */
+  createdAt: string;
   /** Null renders as "No location", same as the games list. */
   locationName: string | null;
   rosterId: string;
@@ -526,6 +537,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     return {
       id: g.id,
       playedOn: g.playedOn,
+      createdAt: g.createdAt,
       locationName: g.locationName,
       rosterId: g.rosterId,
       rosterName: rosterNameByGame.get(gameId)!,
@@ -824,6 +836,13 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     locationName: string;
     wins: number;
     games: number;
+    /**
+     * This (player, venue) pair's own game ids, built up alongside the tally
+     * above — read straight back during holder assembly (below) instead of
+     * re-filtering this player's whole game history a second time for the
+     * same pair (code review: the two passes were computing the same thing).
+     */
+    gameIds: string[];
   }
   const venueTalliesByPlayer = new Map<string, Map<string, VenueTally>>();
   const knownVenueTotalByPlayer = new Map<string, { wins: number; games: number }>();
@@ -841,9 +860,11 @@ export async function getBoard(data?: BoardData): Promise<Board> {
         locationName: gamesById.get(g.gameId)!.locationName ?? "",
         wins: 0,
         games: 0,
+        gameIds: [],
       };
       tally.games += 1;
       if (g.won) tally.wins += 1;
+      tally.gameIds.push(g.gameId);
       byVenue.set(locationId, tally);
     }
     venueTalliesByPlayer.set(playerId, byVenue);
@@ -869,9 +890,8 @@ export async function getBoard(data?: BoardData): Promise<Board> {
 
   const homeAdvantageResult = homeAdvantage(homeAdvantageCandidates);
   const homeAdvantageHolders: HomeAdvantageBoardRecord["holders"] = homeAdvantageResult.holders.map((h) => {
-    const games = (gamesByPlayer.get(h.playerId) ?? [])
-      .filter((g) => gamesById.get(g.gameId)!.locationId === h.locationId)
-      .map((g) => g.gameId)
+    const games = (venueTalliesByPlayer.get(h.playerId)?.get(h.locationId)?.gameIds ?? [])
+      .slice()
       .sort(sortNewestFirst)
       .map((id) => toRecordGame(id));
     return { ...h, games };

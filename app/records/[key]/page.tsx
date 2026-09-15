@@ -4,6 +4,7 @@ import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { GameRow } from "@/components/GameRow";
 import { getBoard, type BoardRecordKey, type SingleEventRecordKey } from "@/lib/board/queries";
+import { compareNewestFirst } from "@/lib/scoring/chronology";
 import {
   RECORD_TITLES,
   SINGLE_EVENT_RECORD_TITLES,
@@ -132,9 +133,7 @@ async function renderHomeAdvantageDrillThrough() {
   for (const holder of record.holders) {
     for (const g of holder.games) byId.set(g.id, g);
   }
-  const games = [...byId.values()].sort((a, b) =>
-    a.playedOn < b.playedOn ? 1 : a.playedOn > b.playedOn ? -1 : 0,
-  );
+  const games = [...byId.values()].sort(compareNewestFirst);
 
   return (
     <>

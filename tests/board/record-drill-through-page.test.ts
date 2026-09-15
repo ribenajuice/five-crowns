@@ -46,6 +46,7 @@ const BOARD_WITH_MOST_WINS = {
         {
           id: "g2",
           playedOn: "2026-01-08",
+          createdAt: "2026-01-08T00:00:00.000Z",
           locationName: null,
           rosterId: "r1",
           rosterName: "Thursday crew",
@@ -55,6 +56,7 @@ const BOARD_WITH_MOST_WINS = {
         {
           id: "g1",
           playedOn: "2026-01-01",
+          createdAt: "2026-01-01T00:00:00.000Z",
           locationName: "The Deck",
           rosterId: "r1",
           rosterName: "Thursday crew",
@@ -149,6 +151,7 @@ describe("/records/{key} — a real record", () => {
             {
               id: "g1",
               playedOn: "2026-01-01",
+              createdAt: "2026-01-01T00:00:00.000Z",
               locationName: "The Deck",
               rosterId: "r1",
               rosterName: "Thursday crew",
@@ -189,6 +192,7 @@ describe("/records/{key} — a real record", () => {
             {
               id: "g1",
               playedOn: "2026-01-01",
+              createdAt: "2026-01-01T00:00:00.000Z",
               locationName: "The Deck",
               rosterId: "r1",
               rosterName: "Thursday crew",
@@ -227,6 +231,7 @@ describe("/records/{key} — a real record", () => {
             {
               id: "g1",
               playedOn: "2026-01-01",
+              createdAt: "2026-01-01T00:00:00.000Z",
               locationName: "The Deck",
               rosterId: "r1",
               rosterName: "Thursday crew",
@@ -237,6 +242,7 @@ describe("/records/{key} — a real record", () => {
             {
               id: "g2",
               playedOn: "2026-01-08",
+              createdAt: "2026-01-08T00:00:00.000Z",
               locationName: "The Deck",
               rosterId: "r1",
               rosterName: "Thursday crew",
@@ -287,6 +293,7 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
           {
             id: "g1",
             playedOn: "2026-01-01",
+            createdAt: "2026-01-01T00:00:00.000Z",
             locationName: "The Deck",
             rosterId: "r1",
             rosterName: "Thursday crew",
@@ -333,6 +340,7 @@ const BOARD_WITH_WORST_GAME_EVER = {
         {
           id: "g1",
           playedOn: "2026-09-05",
+          createdAt: "2026-09-05T00:00:00.000Z",
           locationName: "The Deck",
           rosterId: "r1",
           rosterName: "Thursday crew",
@@ -431,6 +439,7 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
             {
               id: "g1",
               playedOn: "2026-09-05",
+              createdAt: "2026-09-05T00:00:00.000Z",
               locationName: "The Deck",
               rosterId: "r1",
               rosterName: "Thursday crew",
@@ -487,6 +496,7 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
               {
                 id: "g1",
                 playedOn: "2026-09-05",
+                createdAt: "2026-09-05T00:00:00.000Z",
                 locationName: "Player E's",
                 rosterId: "r1",
                 rosterName: "Thursday crew",
@@ -531,6 +541,7 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
               {
                 id: "g2",
                 playedOn: "2026-08-01",
+                createdAt: "2026-08-01T00:00:00.000Z",
                 locationName: "The Lake House",
                 rosterId: "r2",
                 rosterName: "Sunday crew",
@@ -551,6 +562,7 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
               {
                 id: "g1",
                 playedOn: "2026-09-05",
+                createdAt: "2026-09-05T00:00:00.000Z",
                 locationName: "Player E's",
                 rosterId: "r1",
                 rosterName: "Thursday crew",
@@ -572,6 +584,76 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
     expect(html).toContain("/games/g2");
     // Newest first: g1 (2026-09-05) precedes g2 (2026-08-01).
     expect(html.indexOf("/games/g1")).toBeLessThan(html.indexOf("/games/g2"));
+  });
+
+  it("⚠️ code review regression: two merged pairs' games sharing a `playedOn` date fall back to `createdAt`, not insertion order", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 41.7,
+        holders: [
+          // Alphabetically first holder ("Player A") carries the game
+          // actually created *later* — an ad-hoc `playedOn`-only comparator
+          // would still place it second, by insertion/array order, which is
+          // exactly the bug this test guards against.
+          {
+            playerId: "p2",
+            displayName: "Player A",
+            locationId: "loc2",
+            locationName: "The Lake House",
+            here: { wins: 3, games: 5, ratePercent: 60 },
+            elsewhere: { wins: 1, games: 17, ratePercent: 5.9 },
+            gapPercentagePoints: 41.7,
+            games: [
+              {
+                id: "g-later",
+                playedOn: "2026-09-05",
+                createdAt: "2026-09-05T18:00:00.000Z",
+                locationName: "The Lake House",
+                rosterId: "r2",
+                rosterName: "Sunday crew",
+                winners: ["Player A"],
+                winningScore: 30,
+              },
+            ],
+          },
+          {
+            playerId: "p1",
+            displayName: "Sam",
+            locationId: "loc1",
+            locationName: "Player E's",
+            here: { wins: 4, games: 6, ratePercent: 66.7 },
+            elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+            gapPercentagePoints: 41.7,
+            games: [
+              {
+                id: "g-earlier",
+                playedOn: "2026-09-05",
+                createdAt: "2026-09-05T09:00:00.000Z",
+                locationName: "Player E's",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Sam"],
+                winningScore: 48,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "homeAdvantage" }) });
+    const html = renderToStaticMarkup(element);
+
+    // Same `playedOn` date, different `createdAt` — the later-created game
+    // sorts first, exactly `compareNewestFirst`'s own tie-break.
+    expect(html.indexOf("/games/g-later")).toBeLessThan(html.indexOf("/games/g-earlier"));
   });
 
   it("a made-up key still checks the ordinary record keys, and 404s the same as before", async () => {
