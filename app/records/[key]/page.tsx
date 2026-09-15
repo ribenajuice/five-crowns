@@ -171,23 +171,22 @@ async function renderHomeAdvantageDrillThrough() {
 }
 
 /**
- * "Looks like cheating"'s own drill-through (criterion 299) — the same
- * fourth-animal pattern as home advantage above: a holder's own games,
- * merged and deduplicated across every tied holder, newest first. Unlike
- * home advantage's (player, venue) pairs, each holder here is a unique
- * player, so there is only ever one `games` list per holder to merge — the
- * merge step still matters for a tie, where two holders' own game lists can
- * overlap (they played each other).
+ * The shared body of "looks like cheating"'s and the metronome's own
+ * drill-throughs (criteria 299, 309) — the same fourth-animal pattern as home
+ * advantage above: each holder's own `games` merged and deduplicated across
+ * every tied holder, newest first, then handed to the shared shell. The two
+ * record families differ only in which board field they read and which
+ * display-facts function turns it into a heading (code review: the two
+ * functions were line-for-line identical bodies otherwise).
  */
-async function renderLooksLikeCheatingDrillThrough() {
-  const board = await getBoard();
-  if (board.empty) notFound();
-
-  const record = board.looksLikeCheating;
-  const facts = looksLikeCheatingDisplayFacts(record);
+function renderMergedGamesDrillThrough<R extends { holders: readonly { games: readonly RecordGame[] }[] }>(
+  record: R,
+  displayFacts: (record: R) => Parameters<typeof renderDrillThroughShell>[0] | null,
+) {
+  const facts = displayFacts(record);
   if (!facts) notFound();
 
-  const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
+  const byId = new Map<string, RecordGame>();
   for (const holder of record.holders) {
     for (const g of holder.games) byId.set(g.id, g);
   }
@@ -197,27 +196,31 @@ async function renderLooksLikeCheatingDrillThrough() {
 }
 
 /**
+ * "Looks like cheating"'s own drill-through (criterion 299). Unlike home
+ * advantage's (player, venue) pairs, each holder here is a unique player, so
+ * there is only ever one `games` list per holder to merge — the merge step
+ * still matters for a tie, where two holders' own game lists can overlap
+ * (they played each other).
+ */
+async function renderLooksLikeCheatingDrillThrough() {
+  const board = await getBoard();
+  if (board.empty) notFound();
+
+  return renderMergedGamesDrillThrough(board.looksLikeCheating, looksLikeCheatingDisplayFacts);
+}
+
+/**
  * The metronome's own drill-through (criterion 309) — "tapping lands on that
  * player's games": each holder's own `games` is their **whole** game history
  * (`MetronomeBoardRecord`'s own doc comment), not just the two games at
  * either end of the range, merged and deduplicated across every tied holder
- * the same way as the two record families above.
+ * the same way as "looks like cheating" above.
  */
 async function renderMetronomeDrillThrough() {
   const board = await getBoard();
   if (board.empty) notFound();
 
-  const record = board.metronome;
-  const facts = metronomeDisplayFacts(record);
-  if (!facts) notFound();
-
-  const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
-  for (const holder of record.holders) {
-    for (const g of holder.games) byId.set(g.id, g);
-  }
-  const games = [...byId.values()].sort(compareNewestFirst);
-
-  return renderDrillThroughShell(facts, games);
+  return renderMergedGamesDrillThrough(board.metronome, metronomeDisplayFacts);
 }
 
 export default async function RecordDrillThroughPage({

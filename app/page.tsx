@@ -19,16 +19,13 @@ import {
   BOARD_APPBAR_TITLE,
   BOARD_EMPTY_BODY,
   BOARD_EMPTY_TITLE,
-  CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
-  GETTING_WRECKED_NO_HOLDER_SENTENCE,
   HOME_ADVANTAGE_RECORD_TITLE,
   HOME_ADVANTAGE_RECORD_UNIT,
-  LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
   LOOKS_LIKE_CHEATING_RECORD_TITLE,
   LOOKS_LIKE_CHEATING_RECORD_UNIT,
-  METRONOME_NO_HOLDER_SENTENCE,
   METRONOME_RECORD_TITLE,
   METRONOME_RECORD_UNIT,
+  NO_HOLDER_SENTENCE_BY_KEY,
   RECORD_TITLES,
   RECORD_UNITS,
   SINGLE_EVENT_RECORD_TITLES,
@@ -40,6 +37,18 @@ import {
   recordDisplayFacts,
   singleEventDisplayFacts,
 } from "@/lib/ui/copy";
+
+/**
+ * The four personality stats' own fixed no-holder sentence (`NO_HOLDER_SENTENCE_BY_KEY`,
+ * `lib/ui/copy.ts`) is keyed by only those four record keys, not by every
+ * `BoardRecordKey`/`SingleEventRecordKey` — this guard is how `toCardProps`
+ * and `toSingleEventCardProps` below tell whether a given record has one of
+ * its own before looking it up, replacing what used to be a one-off ternary
+ * per key.
+ */
+function hasFixedNoHolderSentence(key: string): key is keyof typeof NO_HOLDER_SENTENCE_BY_KEY {
+  return key in NO_HOLDER_SENTENCE_BY_KEY;
+}
 
 /**
  * The records board — PRD criteria 179–196, extended by Stage 2 (criteria
@@ -67,8 +76,9 @@ function toCardProps(record: BoardRecord): RecordCardProps {
     // no-holder sentence, not this shared builder's generic fallback — every
     // other record through this path (`toCardProps`) still gets
     // `RecordCard`'s own default.
-    const noHolderSentence =
-      record.key === "gettingWrecked" ? GETTING_WRECKED_NO_HOLDER_SENTENCE : undefined;
+    const noHolderSentence = hasFixedNoHolderSentence(record.key)
+      ? NO_HOLDER_SENTENCE_BY_KEY[record.key]
+      : undefined;
     return {
       title,
       holderNames: "",
@@ -104,8 +114,9 @@ function toSingleEventCardProps(record: SingleEventBoardRecord): RecordCardProps
     // Criterion 312: "most clutch comeback" has its own fixed no-holder
     // sentence — every other single-event record through this shared builder
     // still gets `RecordCard`'s own generic default.
-    const noHolderSentence =
-      record.key === "clutchComeback" ? CLUTCH_COMEBACK_NO_HOLDER_SENTENCE : undefined;
+    const noHolderSentence = hasFixedNoHolderSentence(record.key)
+      ? NO_HOLDER_SENTENCE_BY_KEY[record.key]
+      : undefined;
     return {
       title,
       holderNames: "",
@@ -149,59 +160,97 @@ function toHomeAdvantageCardProps(record: HomeAdvantageBoardRecord): RecordCardP
 }
 
 /**
- * A `RecordCard`'s props for "looks like cheating" (criteria 297–299) — the
- * board's own fourth-animal card, same treatment as home advantage: no new
- * component or visual variant, the ordinary `RecordCard` shape reusing its
- * existing slots with new copy grammar (design system, "The four personality
- * cards").
+ * A `RecordCard`'s props for either of the board's fourth-animal cards —
+ * "looks like cheating" and the metronome (criteria 297–299, 307–309): same
+ * treatment as home advantage, no new component or visual variant, just the
+ * ordinary `RecordCard` shape reusing its existing slots with new copy
+ * grammar (design system, "The four personality cards"). The two record
+ * families previously repeated this ~20-line shape with only their own
+ * constants and display-facts function swapped in (code review); this is the
+ * one shared builder both `toLooksLikeCheatingCardProps` and
+ * `toMetronomeCardProps` below now call.
  */
-function toLooksLikeCheatingCardProps(record: LooksLikeCheatingBoardRecord): RecordCardProps {
-  const href = "/records/looksLikeCheating";
-  const facts = looksLikeCheatingDisplayFacts(record);
+function toFourthAnimalCardProps<R>(
+  key: keyof typeof NO_HOLDER_SENTENCE_BY_KEY,
+  title: string,
+  unit: string,
+  record: R,
+  displayFacts: (record: R) => { holderNames: string; value: string; sample: string; claim: string } | null,
+): RecordCardProps {
+  const href = `/records/${key}`;
+  const facts = displayFacts(record);
 
   if (!facts) {
     return {
-      title: LOOKS_LIKE_CHEATING_RECORD_TITLE,
+      title,
       holderNames: "",
       value: null,
-      unit: LOOKS_LIKE_CHEATING_RECORD_UNIT,
+      unit,
       sample: null,
       href,
-      claim: LOOKS_LIKE_CHEATING_RECORD_TITLE,
-      noHolderSentence: LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
+      claim: title,
+      noHolderSentence: NO_HOLDER_SENTENCE_BY_KEY[key],
     };
   }
 
-  const { title, unit, holderNames, value, sample, claim } = facts;
+  const { holderNames, value, sample, claim } = facts;
   return { title, holderNames, value, unit, sample, href, claim };
 }
 
 /**
- * A `RecordCard`'s props for the metronome (criteria 307–309) — the board's
- * other fourth-animal card. Criterion 309 requires the holder's own game
- * count and both ends of the range stated plainly on the card, not hidden:
- * `metronomeDisplayFacts`'s `sample` carries all three and is never optional
- * here (unlike the stalwart's documented exception), so it always renders.
+ * A `RecordCard`'s props for "looks like cheating" (criteria 297–299).
+ */
+function toLooksLikeCheatingCardProps(record: LooksLikeCheatingBoardRecord): RecordCardProps {
+  return toFourthAnimalCardProps(
+    "looksLikeCheating",
+    LOOKS_LIKE_CHEATING_RECORD_TITLE,
+    LOOKS_LIKE_CHEATING_RECORD_UNIT,
+    record,
+    looksLikeCheatingDisplayFacts,
+  );
+}
+
+/**
+ * A `RecordCard`'s props for the metronome (criteria 307–309). Criterion 309
+ * requires the holder's own game count and both ends of the range stated
+ * plainly on the card, not hidden: `metronomeDisplayFacts`'s `sample` carries
+ * all three and is never optional here (unlike the stalwart's documented
+ * exception), so it always renders.
  */
 function toMetronomeCardProps(record: MetronomeBoardRecord): RecordCardProps {
-  const href = "/records/metronome";
-  const facts = metronomeDisplayFacts(record);
+  return toFourthAnimalCardProps(
+    "metronome",
+    METRONOME_RECORD_TITLE,
+    METRONOME_RECORD_UNIT,
+    record,
+    metronomeDisplayFacts,
+  );
+}
 
-  if (!facts) {
-    return {
-      title: METRONOME_RECORD_TITLE,
-      holderNames: "",
-      value: null,
-      unit: METRONOME_RECORD_UNIT,
-      sample: null,
-      href,
-      claim: METRONOME_RECORD_TITLE,
-      noHolderSentence: METRONOME_NO_HOLDER_SENTENCE,
-    };
+/**
+ * Pulls the one record matching `key` out of `records`, and every other
+ * record in the same single pass — used below for "getting absolutely
+ * wrecked" and "most clutch comeback", the two records `getBoard()` returns
+ * in place inside `records`/`singleEventRecords` (`lib/board/queries.ts`'s
+ * own doc comment) but this page renders in a different, fixed spot
+ * (criterion 235's board order). One pass rather than a `.find(...)!`
+ * followed by a separate `.filter(...)` re-scan of the same array (code
+ * review), and `picked` is `null` rather than asserted non-null — reachable
+ * only defensively (`getBoard()`'s own guarantee that every non-empty
+ * archive holds both), so a record that's somehow missing simply doesn't
+ * render its own designated card below, instead of throwing.
+ */
+function partitionByKey<T extends { key: string }>(
+  records: readonly T[],
+  key: string,
+): { picked: T | null; rest: T[] } {
+  const rest: T[] = [];
+  let picked: T | null = null;
+  for (const record of records) {
+    if (record.key === key) picked = record;
+    else rest.push(record);
   }
-
-  const { title, unit, holderNames, value, sample, claim } = facts;
-  return { title, holderNames, value, unit, sample, href, claim };
+  return { picked, rest };
 }
 
 export default async function Home() {
@@ -227,13 +276,23 @@ export default async function Home() {
   // records those arrays already held (`lib/board/queries.ts`'s own doc
   // comment). That in-place position is *not* this slice's board order (it
   // would land them ahead of Stage 3's five and home advantage), so both are
-  // pulled out here and rendered in their own designated spot below, after
-  // home advantage — the frontend's own job, since `getBoard()` "doesn't
-  // impose an order across them itself" (same module comment).
-  const gettingWreckedRecord = board.empty ? null : board.records.find((r) => r.key === "gettingWrecked")!;
-  const clutchComebackRecord = board.empty
-    ? null
-    : board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+  // pulled out here — in the same pass as filtering them out of the grid's
+  // own arrays, via `partitionByKey` — and rendered in their own designated
+  // spot below, after home advantage — the frontend's own job, since
+  // `getBoard()` "doesn't impose an order across them itself" (same module
+  // comment).
+  const boardRecordsSource: readonly BoardRecord[] = board.empty ? [] : board.records;
+  const singleEventRecordsSource: readonly SingleEventBoardRecord[] = board.empty
+    ? []
+    : board.singleEventRecords;
+  const { picked: gettingWreckedRecord, rest: boardRecords } = partitionByKey(
+    boardRecordsSource,
+    "gettingWrecked",
+  );
+  const { picked: clutchComebackRecord, rest: singleEventRecords } = partitionByKey(
+    singleEventRecordsSource,
+    "clutchComeback",
+  );
 
   return (
     <>
@@ -265,23 +324,24 @@ export default async function Home() {
              * the metronome (design system, "the board gains four more rows").
              * "Getting absolutely wrecked" and "most clutch comeback" are
              * pulled out of `board.records`/`board.singleEventRecords` above
-             * and rendered here instead, in their own designated spot.
+             * (`boardRecords`/`singleEventRecords`, already filtered) and
+             * rendered here instead, in their own designated spot.
              */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {board.records
-                .filter((record) => record.key !== "gettingWrecked")
-                .map((record) => (
-                  <RecordCard key={record.key} {...toCardProps(record)} />
-                ))}
-              {board.singleEventRecords
-                .filter((record) => record.key !== "clutchComeback")
-                .map((record) => (
-                  <RecordCard key={record.key} {...toSingleEventCardProps(record)} />
-                ))}
+              {boardRecords.map((record) => (
+                <RecordCard key={record.key} {...toCardProps(record)} />
+              ))}
+              {singleEventRecords.map((record) => (
+                <RecordCard key={record.key} {...toSingleEventCardProps(record)} />
+              ))}
               <RecordCard key="homeAdvantage" {...toHomeAdvantageCardProps(board.homeAdvantage)} />
               <RecordCard key="looksLikeCheating" {...toLooksLikeCheatingCardProps(board.looksLikeCheating)} />
-              <RecordCard key="gettingWrecked" {...toCardProps(gettingWreckedRecord!)} />
-              <RecordCard key="clutchComeback" {...toSingleEventCardProps(clutchComebackRecord!)} />
+              {gettingWreckedRecord ? (
+                <RecordCard key="gettingWrecked" {...toCardProps(gettingWreckedRecord)} />
+              ) : null}
+              {clutchComebackRecord ? (
+                <RecordCard key="clutchComeback" {...toSingleEventCardProps(clutchComebackRecord)} />
+              ) : null}
               <RecordCard key="metronome" {...toMetronomeCardProps(board.metronome)} />
             </div>
           </div>
