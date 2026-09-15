@@ -555,6 +555,48 @@ describe("getBoard — the query count does not grow with the archive (criterion
     expect(queriesAt10).toBeGreaterThan(0);
     expect(queriesAt60).toBe(queriesAt10);
   });
+
+  /**
+   * QA gap fix (criterion 315): criterion 315 asks for the query count to be
+   * compared "at 10 games and at 60 **and at 4 players and at 8**" — the test
+   * above only ever varies the game count at a fixed 4 players.  M4 second
+   * slice's four stats are the first records that fan out *per other seat in
+   * a game* ("looks like cheating"'s `otherWins`/`otherGames`, "the
+   * metronome"'s per-player final-score arrays), which is exactly the shape a
+   * per-player loop query could hide in without this ever catching it.
+   */
+  async function countQueriesAtPlayerCount(playerCount: number): Promise<number> {
+    const names = Array.from({ length: playerCount }, (_, i) => `Player${i}`);
+    const players = await createPlayers(names);
+    const seedGame = createGameSeeder();
+    for (let i = 0; i < 10; i++) {
+      const day = String((i % 27) + 1).padStart(2, "0");
+      await seedGame({
+        playedOn: `2026-01-${day}`,
+        players: names.map((name, seat) => ({
+          playerId: players[name]!,
+          finalScore: 40 + i + seat * 5,
+        })),
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    selectCallCount = 0;
+    const board = await getBoard();
+    expect(board.empty).toBe(false);
+    return selectCallCount;
+  }
+
+  it("issues the same number of queries at 4 players and at 8", async () => {
+    const queriesAt4 = await countQueriesAtPlayerCount(4);
+
+    await teardownTestDb();
+    await setupTestDb();
+    const queriesAt8 = await countQueriesAtPlayerCount(8);
+
+    expect(queriesAt4).toBeGreaterThan(0);
+    expect(queriesAt8).toBe(queriesAt4);
+  });
 });
 
 describe("getBoard — every game counts towards every number (criterion 188)", () => {
@@ -769,7 +811,7 @@ describe("getBoard — Stage 2 adds no query of its own (criterion 219)", () => 
     expect(board.empty).toBe(false);
     expect(selectCallCount).toBe(3);
     if (board.empty) throw new Error("unreachable");
-    expect(board.records).toHaveLength(7);
+    expect(board.records).toHaveLength(8);
     expect(board.records.map((r) => r.key)).toEqual([
       "mostWins",
       "mostWinsInARow",
@@ -778,6 +820,7 @@ describe("getBoard — Stage 2 adds no query of its own (criterion 219)", () => 
       "stalwart",
       "drought",
       "nearlyMan",
+      "gettingWrecked",
     ]);
   });
 });
@@ -1200,14 +1243,15 @@ describe("getBoard — Stage 3 adds no query of its own (criterion 248)", () => 
     const board = await getBoard();
     expect(selectCallCount).toBe(3);
     if (board.empty) throw new Error("unreachable");
-    expect(board.records).toHaveLength(7);
-    expect(board.singleEventRecords).toHaveLength(5);
+    expect(board.records).toHaveLength(8);
+    expect(board.singleEventRecords).toHaveLength(6);
     expect(board.singleEventRecords.map((r) => r.key)).toEqual([
       "bestGameEver",
       "worstGameEver",
       "catastrophe",
       "cleanestSheet",
       "biggestHammering",
+      "clutchComeback",
     ]);
   });
 });
@@ -1487,5 +1531,595 @@ describe("getBoard — Stage 3's records are nothing cached (criterion 246, rest
     // Same two games, but both instances now belong to the merged "Amy".
     expect(afterBest.holders).toHaveLength(2);
     expect(afterBest.holders.every((h) => h.displayName === "Amy")).toBe(true);
+  });
+});
+
+/* ======================================================================
+ * Milestone 4, second slice — the four personality stats (criteria 294–319).
+ * ====================================================================== */
+
+describe("getBoard — getting absolutely wrecked (criteria 300–303)", () => {
+  it("crowns the longest CURRENT run of finishing last, states the run length and the games it's built from oldest first", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    // Bo finishes last three games running, most recent game included.
+    for (const playedOn of ["2026-01-01", "2026-01-08", "2026-01-15"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 40 },
+          { playerId: players["Bo"]!, finalScore: 90 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked.value).toBe(3);
+    expect(wrecked.holders.map((h) => h.displayName)).toEqual(["Bo"]);
+    // Oldest → newest — a run reads as a run in the order it was played.
+    expect(wrecked.games.map((g) => g.playedOn)).toEqual(["2026-01-01", "2026-01-08", "2026-01-15"]);
+  });
+
+  it("⚠️ is the CURRENT run, not the longest ever — an older, broken run doesn't win over a shorter trailing one", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    // Bo: last, last, last, WIN, last, last — a run of 3 broken, then a
+    // trailing run of only 2, which is the one that's current.
+    const games: [string, number, number][] = [
+      ["2026-01-01", 40, 90],
+      ["2026-01-08", 40, 90],
+      ["2026-01-15", 40, 90],
+      ["2026-01-22", 90, 40], // Bo wins this one — breaks the run
+      ["2026-01-29", 40, 90],
+      ["2026-02-05", 40, 90],
+    ];
+    for (const [playedOn, amyScore, boScore] of games) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: amyScore },
+          { playerId: players["Bo"]!, finalScore: boScore },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked.value).toBe(2);
+    expect(wrecked.games.map((g) => g.playedOn)).toEqual(["2026-01-29", "2026-02-05"]);
+  });
+
+  it("⚠️ a run of exactly one game does not qualify — an archive where every current run is length 1 has no holder", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 90 },
+        { playerId: players["Bo"]!, finalScore: 40 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked).toEqual({ key: "gettingWrecked", value: null, holders: [], games: [] });
+  });
+
+  it("a shared last counts as last, extending the run for both players sharing it", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 30 },
+          { playerId: players["Bo"]!, finalScore: 90 },
+          { playerId: players["Cy"]!, finalScore: 90 }, // shared last with Bo
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked.value).toBe(2);
+    expect(wrecked.holders.map((h) => h.displayName)).toEqual(["Bo", "Cy"]);
+  });
+
+  it("⚠️ three+ joint holders, a strict subset sharing games: each game's full owner set is carried on `streakOwners`, not just a single `streakOwner`", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy", "Dan"]);
+    const seedGame = createGameSeeder();
+    // Amy & Bo's own 2-game run — shared between exactly two of the three
+    // holders, never involving Cy.
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 90 },
+          { playerId: players["Bo"]!, finalScore: 90 },
+          { playerId: players["Dan"]!, finalScore: 10 },
+        ],
+      });
+    }
+    // Cy's own, entirely separate 2-game run — no game in common with Amy or Bo.
+    for (const playedOn of ["2026-02-01", "2026-02-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Cy"]!, finalScore: 90 },
+          { playerId: players["Dan"]!, finalScore: 10 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked.value).toBe(2);
+    expect(wrecked.holders.map((h) => h.displayName)).toEqual(["Amy", "Bo", "Cy"]);
+    expect(wrecked.games.map((g) => g.playedOn)).toEqual([
+      "2026-01-01",
+      "2026-01-08",
+      "2026-02-01",
+      "2026-02-08",
+    ]);
+    // The two Amy/Bo games carry both their names — a strict subset of the
+    // three holders — never a single `streakOwner`, since owning a game
+    // between two of three holders isn't the single-owner case.
+    expect(wrecked.games.map((g) => g.streakOwners)).toEqual([
+      ["Amy", "Bo"],
+      ["Amy", "Bo"],
+      ["Cy"],
+      ["Cy"],
+    ]);
+    expect(wrecked.games.map((g) => g.streakOwner)).toEqual([undefined, undefined, "Cy", "Cy"]);
+  });
+});
+
+describe("getBoard — most clutch comeback (criteria 304–306)", () => {
+  it("crowns the largest deficit at hand 9 that was still overturned into an outright win", async () => {
+    const players = await createPlayers(["Cy", "Dee"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        // Cy: 90 at hand 9 (30 behind Dee's 60), scores nothing more, wins outright at 90.
+        { playerId: players["Cy"]!, finalScore: 90, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 10] },
+        // Dee: the leader at hand 9 (60), then blows up in the closing hands.
+        { playerId: players["Dee"]!, finalScore: 160, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0, 50, 50] },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const comeback = board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(comeback.value).toBe(30);
+    expect(comeback.holders).toHaveLength(1);
+    expect(comeback.holders[0]!.displayName).toBe("Cy");
+    expect(comeback.games).toHaveLength(1);
+    expect(comeback.games[0]!.winningScore).toBe(90);
+  });
+
+  it("⚠️ a shared win does NOT count — the named exception to kickoff decision 1", async () => {
+    const players = await createPlayers(["Cy", "Dee"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        // Cy is 30 behind at hand 9 but only ties Dee's final score — a shared win.
+        { playerId: players["Cy"]!, finalScore: 90, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 10] },
+        { playerId: players["Dee"]!, finalScore: 90, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0] },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const comeback = board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(comeback).toEqual({ key: "clutchComeback", value: null, holders: [], games: [] });
+  });
+
+  it("no comeback has ever happened: the no-holder case", async () => {
+    const players = await createPlayers(["Cy", "Dee"]);
+    const seedGame = createGameSeeder();
+    // Cy is already the leader at hand 9 and wins outright — never behind.
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Cy"]!, finalScore: 60, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0] },
+        { playerId: players["Dee"]!, finalScore: 90, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 10] },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const comeback = board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(comeback).toEqual({ key: "clutchComeback", value: null, holders: [], games: [] });
+  });
+
+  it("joint holders: two different games, each won outright by a different player, on the same deficit", async () => {
+    const players = await createPlayers(["Cy", "Dee", "Eli", "Fran"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Cy"]!, finalScore: 80, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 0] },
+        { playerId: players["Dee"]!, finalScore: 160, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0, 50, 50] },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        // Same shape as game one (deficit 20 again), different game, different players.
+        { playerId: players["Eli"]!, finalScore: 80, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 0] },
+        { playerId: players["Fran"]!, finalScore: 170, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0, 55, 55] },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const comeback = board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(comeback.value).toBe(20);
+    expect(comeback.holders.map((h) => h.displayName).sort()).toEqual(["Cy", "Eli"]);
+    expect(comeback.games).toHaveLength(2);
+  });
+});
+
+describe("getBoard — looks like cheating (criteria 297–299)", () => {
+  it("QA's own construction: a heavy winner who plays rarely, in an archive where one of the same opponents wins constantly without them", async () => {
+    const players = await createPlayers(["Sam", "Bo", "Cy", "Ivy"]);
+    const seedGame = createGameSeeder();
+
+    // Sam plays 5 games with Bo and Cy, winning 4 of the 5.
+    for (const [i, playedOn] of ["2026-01-01", "2026-01-08", "2026-01-15", "2026-01-22", "2026-01-29"].entries()) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Sam"]!, finalScore: i === 4 ? 90 : 10 },
+          { playerId: players["Bo"]!, finalScore: i === 4 ? 10 : 90 },
+          { playerId: players["Cy"]!, finalScore: 90 },
+        ],
+      });
+    }
+    // Cy also plays a further 20 games with Ivy, without Sam or Bo, and wins
+    // every one of them — this must never move Sam's own gap, since none of
+    // these are one of Sam's own games (criterion 297's own qualifier).
+    for (let i = 0; i < 20; i++) {
+      await seedGame({
+        playedOn: `2026-03-${String(i + 1).padStart(2, "0")}`,
+        players: [
+          { playerId: players["Cy"]!, finalScore: 10 },
+          { playerId: players["Ivy"]!, finalScore: 90 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    // Sam holds the board's own record outright: Sam's 70-point gap beats
+    // Cy's own combined 63.3 (80% across 25 games vs. 16.7% for their own
+    // opponents across those same 25) and Bo's own -20 — proving the 20
+    // games Cy dominates elsewhere raise Cy's *own* number, but never Sam's.
+    expect(board.looksLikeCheating.holders.map((h) => h.displayName)).toEqual(["Sam"]);
+    const holder = board.looksLikeCheating.holders[0]!;
+    expect(holder.gamesPlayed).toBe(5);
+    expect(holder.own).toEqual({ wins: 4, games: 5, ratePercent: 80 });
+    // Other seats: 2 other players × 5 games = 10 other-seat-games, only 1 win
+    // (the one game Bo took) — computed only from Sam's own 5 games, not the
+    // 20 games Cy went on to dominate without Sam.
+    expect(holder.others).toEqual({ wins: 1, games: 10, ratePercent: 10 });
+    expect(holder.gapPercentagePoints).toBeCloseTo(70, 1);
+    // Drill-through: exactly Sam's own 5 games, not the 20 Sam never played in.
+    expect(holder.games).toHaveLength(5);
+  });
+});
+
+describe("getBoard — the metronome (criteria 307–309)", () => {
+  it("crowns the smallest range between a player's own highest and lowest final score, stating both ends and the game count", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Filler"]);
+    const seedGame = createGameSeeder();
+    // Amy: a wide-ranging career, three games far apart. "Filler" sits in on
+    // every game with its own wildly varying score, so its own range is far
+    // wider than either Amy's or Bo's and it never contends for the record.
+    for (const [playedOn, score, fillerScore] of [
+      ["2026-01-01", 40, 100],
+      ["2026-01-08", 90, 300],
+      ["2026-01-15", 70, 10],
+    ] as const) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: score },
+          { playerId: players["Filler"]!, finalScore: fillerScore },
+        ],
+      });
+    }
+    // Bo: only two games, close together.
+    await seedGame({
+      playedOn: "2026-02-01",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 55 },
+        { playerId: players["Filler"]!, finalScore: 250 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-02-08",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 58 },
+        { playerId: players["Filler"]!, finalScore: 5 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.metronome.range).toBe(3);
+    expect(board.metronome.holders).toHaveLength(1);
+    const holder = board.metronome.holders[0]!;
+    expect(holder.displayName).toBe("Bo");
+    expect(holder.gamesPlayed).toBe(2);
+    expect(holder.highest).toBe(58);
+    expect(holder.lowest).toBe(55);
+    expect(holder.games).toHaveLength(2);
+  });
+
+  it("⚠️ no minimum-games floor — a two-game player holds the record over a many-game player, unhedged", async () => {
+    const players = await createPlayers(["Veteran", "Newbie", "Filler"]);
+    const seedGame = createGameSeeder();
+    for (let i = 0; i < 10; i++) {
+      await seedGame({
+        playedOn: `2026-04-${String(i + 1).padStart(2, "0")}`,
+        players: [
+          { playerId: players["Veteran"]!, finalScore: 40 + i * 5 }, // range 45
+          { playerId: players["Filler"]!, finalScore: i % 2 === 0 ? 5 : 300 }, // Filler's own range: 295
+        ],
+      });
+    }
+    await seedGame({
+      playedOn: "2026-05-01",
+      players: [
+        { playerId: players["Newbie"]!, finalScore: 50 },
+        { playerId: players["Filler"]!, finalScore: 5 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-05-08",
+      players: [
+        { playerId: players["Newbie"]!, finalScore: 52 }, // range 2
+        { playerId: players["Filler"]!, finalScore: 300 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.metronome.range).toBe(2);
+    expect(board.metronome.holders[0]!.displayName).toBe("Newbie");
+    expect(board.metronome.holders[0]!.gamesPlayed).toBe(2);
+  });
+
+  it("a single-game player never contributes a candidate at all — the record needs no floor to exclude them", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Once"]);
+    const seedGame = createGameSeeder();
+    // "Once" plays a single game and would trivially have a range of zero if
+    // they were a candidate at all — they must simply never enter the pool.
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 60 },
+        { playerId: players["Bo"]!, finalScore: 65 },
+        { playerId: players["Once"]!, finalScore: 70 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 50 },
+        { playerId: players["Amy"]!, finalScore: 55 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-15",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 90 },
+        { playerId: players["Amy"]!, finalScore: 95 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.metronome.holders.some((h) => h.displayName === "Once")).toBe(false);
+    // Amy: 60/55/95 → range 40. Bo: 65/50/90 → range 40. A genuine tie.
+    expect(board.metronome.holders.map((h) => h.displayName)).toEqual(["Amy", "Bo"]);
+  });
+});
+
+/**
+ * QA gap fix (criterion 314): the "nothing is cached" sweep was written for
+ * Stage 1's seven records (criterion 189, above) and restated for Stage 3's
+ * five single-event records (criterion 246, above) but was never extended to
+ * this slice's four — despite criterion 314 asking for exactly this: delete
+ * a game, merge two players, and find all four numbers moved. Same pattern
+ * as the two sweeps above, one case per stat.
+ */
+describe("getBoard — the four personality stats are nothing cached (criterion 314, restating 189/246)", () => {
+  it("looks like cheating: a deleted game removes it from the holder's own count on the very next call", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    const gameId = await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+    // A second Amy-vs-Bo game so Amy still has a games list to be on after
+    // the first is deleted — the sweep is about the *number* moving, not
+    // about pushing her out of the archive altogether.
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 45 },
+        { playerId: players["Bo"]!, finalScore: 85 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const before = await getBoard();
+    if (before.empty) throw new Error("unreachable");
+    const beforeCheating = before.looksLikeCheating.holders.find((h) => h.displayName === "Amy")!;
+    expect(beforeCheating.own.games).toBe(2);
+    expect(beforeCheating.own.wins).toBe(2);
+
+    const { deleteGame } = await import("@/lib/games/delete");
+    await deleteGame(gameId);
+
+    const after = await getBoard();
+    if (after.empty) throw new Error("unreachable");
+    const afterCheating = after.looksLikeCheating.holders.find((h) => h.displayName === "Amy")!;
+    expect(afterCheating.own.games).toBe(1);
+    expect(afterCheating.own.wins).toBe(1);
+  });
+
+  it("getting absolutely wrecked: merging the current holder's identity away repoints the streak, live", async () => {
+    const players = await createPlayers(["Amy", "Amy Alt", "Bo"]);
+    const seedGame = createGameSeeder();
+    // "Amy Alt" finishes last twice running — a genuine current streak.
+    await seedGame({
+      playedOn: "2026-02-01",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 40 },
+        { playerId: players["Amy Alt"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-02-08",
+      players: [
+        { playerId: players["Bo"]!, finalScore: 45 },
+        { playerId: players["Amy Alt"]!, finalScore: 95 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const before = await getBoard();
+    if (before.empty) throw new Error("unreachable");
+    const beforeWrecked = before.records.find((r) => r.key === "gettingWrecked")!;
+    expect(beforeWrecked.value).toBe(2);
+    expect(beforeWrecked.holders.map((h) => h.displayName)).toEqual(["Amy Alt"]);
+
+    const { mergePlayers } = await import("@/lib/players/merge");
+    await mergePlayers(players["Amy"]!, players["Amy Alt"]!);
+
+    const after = await getBoard();
+    if (after.empty) throw new Error("unreachable");
+    const afterWrecked = after.records.find((r) => r.key === "gettingWrecked")!;
+    // Same run, same length — now under the survivor's own name.
+    expect(afterWrecked.value).toBe(2);
+    expect(afterWrecked.holders.map((h) => h.displayName)).toEqual(["Amy"]);
+  });
+
+  it("most clutch comeback: deleting the record-holding game clears the record to no-holder, live", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    const gameId = await seedGame({
+      playedOn: "2026-03-01",
+      players: [
+        // Amy: 90 at hand 9 (30 behind Bo's 60), wins outright at 90.
+        { playerId: players["Amy"]!, finalScore: 90, handScores: [10, 10, 10, 10, 10, 10, 10, 10, 10] },
+        { playerId: players["Bo"]!, finalScore: 160, handScores: [10, 10, 10, 10, 0, 0, 10, 10, 0, 50, 50] },
+      ],
+    });
+    // A second, unrelated game — no comeback in it — so the archive isn't
+    // *empty* after the first is deleted; the sweep is about the record
+    // clearing to no-holder, not about the whole board vanishing.
+    await seedGame({
+      playedOn: "2026-03-08",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 41 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const before = await getBoard();
+    if (before.empty) throw new Error("unreachable");
+    const beforeComeback = before.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(beforeComeback.value).toBe(30);
+
+    const { deleteGame } = await import("@/lib/games/delete");
+    await deleteGame(gameId);
+
+    const after = await getBoard();
+    if (after.empty) throw new Error("unreachable");
+    const afterComeback = after.singleEventRecords.find((r) => r.key === "clutchComeback")!;
+    expect(afterComeback.value).toBeNull();
+    expect(afterComeback.holders).toEqual([]);
+  });
+
+  it("the metronome: merging a two-game holder's identity into a player with no other games keeps the same range under the survivor's name", async () => {
+    const players = await createPlayers(["Amy", "Amy Alt", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-04-01",
+      players: [
+        { playerId: players["Amy Alt"]!, finalScore: 60 },
+        { playerId: players["Bo"]!, finalScore: 30 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-04-08",
+      players: [
+        { playerId: players["Amy Alt"]!, finalScore: 62 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const before = await getBoard();
+    if (before.empty) throw new Error("unreachable");
+    expect(before.metronome.range).toBe(2);
+    expect(before.metronome.holders.map((h) => h.displayName)).toEqual(["Amy Alt"]);
+
+    const { mergePlayers } = await import("@/lib/players/merge");
+    await mergePlayers(players["Amy"]!, players["Amy Alt"]!);
+
+    const after = await getBoard();
+    if (after.empty) throw new Error("unreachable");
+    expect(after.metronome.range).toBe(2);
+    expect(after.metronome.holders.map((h) => h.displayName)).toEqual(["Amy"]);
   });
 });

@@ -2,18 +2,25 @@
  * The records board — PRD criteria 179–191, 196, extended by Stage 2 with
  * two more rows (the drought, 213, and the nearly man, 216), by Stage 3 with
  * five single-event records (criteria 228–235): best/worst game ever, the
- * catastrophe, cleanest sheet and biggest hammering, and by Stage 4 with a
- * thirteenth, home advantage (criteria 253–254, 268–269).
+ * catastrophe, cleanest sheet and biggest hammering, by Stage 4 with a
+ * thirteenth, home advantage (criteria 253–254, 268–269), and by Milestone
+ * 4's second slice with four more — "looks like cheating" (297–299),
+ * "getting absolutely wrecked" (300–303), most clutch comeback (304–306) and
+ * the metronome (307–309) — taking the board to **seventeen** (criterion
+ * 296).
  *
  * `getBoard()` is the board's one entry point: **still exactly three bounded
  * queries** (every game, every `game_player` row, every `round_score` row) —
- * neither Stage 2, Stage 3 nor Stage 4 adds a query of its own (criteria 219,
- * 248, 273) — then everything else — winners, second places, streaks,
- * droughts, averages, rounds won, single-event extremes, home advantage, who
- * holds what — is worked out from those same rows in memory using
- * `lib/scoring`'s pure definitions. Stage 4 only widens query 1's own
- * `SELECT` list with `game.location_id` (already stored since Milestone 1) —
- * not a fourth query.
+ * no stage, including this one, adds a query of its own (criteria 219, 248,
+ * 273, 315) — then everything else — winners, second places, streaks,
+ * droughts, averages, rounds won, single-event extremes, home advantage,
+ * last-place runs, win-rate gaps, score ranges, hand-9 deficits, who holds
+ * what — is worked out from those same rows in memory using `lib/scoring`'s
+ * pure definitions. Stage 4 widened query 1's own `SELECT` list with
+ * `game.location_id` (already stored since Milestone 1); this slice adds no
+ * column and no query at all — the hand-9 running total most clutch comeback
+ * needs is the sum of `round_score.score` for hands 1 through `CLUTCH_HAND`,
+ * already present in query 3's own rows.
  *
  * ⚠️ **Stage 3's five records are a different animal from the other seven**
  * (spec decision 17) and are returned separately, on `singleEventRecords`,
@@ -21,13 +28,22 @@
  * instances — the same player can appear twice, once per game — not unique
  * players with a career game count, so `RecordHolder`'s shape (which a
  * single-event holder would either lie about or leave blank) never applies
- * to them. ⚠️ **Home advantage is a third animal again** (Stage 4): its
+ * to them; most clutch comeback (this slice) is the same shape and joins
+ * that array. ⚠️ **Home advantage is a third animal again** (Stage 4): its
  * holder unit is a (player, venue) pair, so it gets its own `homeAdvantage`
  * field rather than fitting into either array — see `HomeAdvantageBoardRecord`'s
- * own doc comment. A caller building the thirteen-card board concatenates
- * `records`, `singleEventRecords` and `homeAdvantage` in `docs/DESIGN-SYSTEM.md`'s
- * fixed order (criteria 235, 270); this module doesn't impose an order across
- * them itself.
+ * own doc comment. ⚠️ **"Looks like cheating" and the metronome are a fourth
+ * animal** (this slice): unique players, like the first seven, but each
+ * holder carries more than `RecordHolder` has room for (two rates; a range's
+ * two ends), so they get their own fields too — see
+ * `LooksLikeCheatingBoardRecord` and `MetronomeBoardRecord`'s own doc
+ * comments. "Getting absolutely wrecked" is the one addition that **is** the
+ * first shape unchanged (a unique player, one number, `records`) — see
+ * `BoardRecordKey`'s own doc comment on `"gettingWrecked"`. A caller building
+ * the seventeen-card board concatenates `records`, `singleEventRecords`,
+ * `homeAdvantage`, `looksLikeCheating` and `metronome` in
+ * `docs/DESIGN-SYSTEM.md`'s fixed order (criteria 235, 270, 296); this module
+ * doesn't impose an order across them itself.
  *
  * ⚠️ **Nothing here is cached, precomputed or summarised** (criterion 189): a
  * delete, an edit or a merge (both M2 features) is reflected on the very next
@@ -69,24 +85,35 @@ import {
   biggestHammering,
   catastrophe,
   cleanestSheet,
+  CLUTCH_HAND,
+  clutchComebackInstances,
   compareDisplayNames,
   compareNewestFirst,
+  currentLastPlaceStreak,
+  determineLastPlace,
   determineWinners,
   handLabel,
   homeAdvantage,
   longestDrought,
   longestStreak,
+  looksLikeCheating,
+  metronome,
+  mostClutchComeback,
   roundsWon,
   rosterDisplayName,
   secondPlace,
   winningScore,
   worstGameEver,
   zeroHandCountsByPlayerGame,
+  type CheatingHolder,
+  type ClutchCandidate,
   type FinalScoreInstance,
   type HammeringInstance,
   type HandLabel,
   type HomeAdvantageCandidate,
   type HomeAdvantageHolder,
+  type LastPlaceGame,
+  type MetronomeHolder,
   type PlayerScore,
   type StreakGame,
 } from "@/lib/scoring";
@@ -149,6 +176,19 @@ export interface RecordGame {
    */
   streakOwner?: string;
   /**
+   * Joint-streak drill-through only: **every** holder this particular game's
+   * run belongs to, by display name, set whenever the record is held by more
+   * than one player — unlike `streakOwner` above (which is only set for the
+   * single-owner case, for the row annotation), this is the full owner set
+   * regardless of how many holders it has, so a caller can tell "this game is
+   * part of holder X's own run" apart from "this game merely isn't holder X's
+   * run alone" for *any* holder, not just when exactly one owns it. Needed
+   * because with 3+ joint holders, a game can belong to a strict subset (2 of
+   * 3, say) without belonging to every holder — `streakOwner` alone can't
+   * express that case (`gettingWreckedStartDate`, `lib/ui/copy.ts`).
+   */
+  streakOwners?: string[];
+  /**
    * A single-event drill-through only (criterion 234): that instance's own
    * number — the score, the zero count or the margin. Rendered beside the
    * row rather than relying on the record's shared `value`, because two
@@ -167,7 +207,18 @@ export type BoardRecordKey =
   | "mostRoundsWon"
   | "stalwart"
   | "drought"
-  | "nearlyMan";
+  | "nearlyMan"
+  /**
+   * "Getting absolutely wrecked" (Milestone 4, second slice, criteria
+   * 300–303) — the longest *current* run of finishing last
+   * (`currentLastPlaceStreak`, `lib/scoring`). Fits this same aggregate
+   * shape unchanged: a unique player, one number (the run length), a
+   * `RecordGame[]` drill-through built by `streakDrillThrough` exactly as
+   * "most wins in a row" and the drought already are — `{ length,
+   * gameIds }` is `Streak`'s own shape, and `CurrentLastPlaceStreak` is
+   * structurally identical on purpose.
+   */
+  | "gettingWrecked";
 
 /** One (player, game) instance a single-event record is held by — criteria 228, 230, 231, 232. */
 export interface SingleEventHolder {
@@ -186,7 +237,17 @@ export type SingleEventRecordKey =
   | "worstGameEver"
   | "catastrophe"
   | "cleanestSheet"
-  | "biggestHammering";
+  | "biggestHammering"
+  /**
+   * Most clutch comeback (Milestone 4, second slice, criteria 304–306) —
+   * the largest deficit at hand 9 (`CLUTCH_HAND`, `lib/scoring`) that was
+   * still overturned into an outright win. A single-event record like the
+   * other five: the holder is a (player, game) instance, `singleEventValue`
+   * carries the deficit, and `RecordGame`'s existing `playedOn` /
+   * `winningScore` fields already state the date and the final score the
+   * game ended on (criterion 306) with no new field needed.
+   */
+  | "clutchComeback";
 
 /** The two lookups `toSingleEventHolder` needs to resolve a raw (player, game) id pair — whatever `getBoard()` and `getStatsPage()` each already built their own copy of. */
 export interface SingleEventHolderContext {
@@ -260,15 +321,16 @@ export interface BoardRecord {
 }
 
 /**
- * Home advantage (criteria 253–254, 268–269) — the board's thirteenth
- * record, and a third *different* animal from the other twelve: its holder
- * unit is a (player, venue) **pair**, not a unique player (like the seven
- * Stage 1/2 records) and not a (player, game[, hand]) instance (like Stage
- * 3's five) — so it gets its own field on `Board` rather than being forced
- * into either existing array's shape. `docs/DESIGN-SYSTEM.md`'s fixed card
- * order still places it **last**, after Stage 3's five, when a caller
- * concatenates `records`, `singleEventRecords` and this one into the
- * board's thirteen cards.
+ * Home advantage (criteria 253–254, 268–269) — a third *different* animal
+ * from the seven Stage 1/2 records and Stage 3's five single-event records:
+ * its holder unit is a (player, venue) **pair**, not a unique player (like
+ * the seven Stage 1/2 records) and not a (player, game[, hand]) instance
+ * (like Stage 3's five) — so it gets its own field on `Board` rather than
+ * being forced into either existing array's shape. The board has grown to
+ * seventeen cards (Milestone 4's second slice added four more): home
+ * advantage's own fixed position in `docs/DESIGN-SYSTEM.md`'s card order is
+ * followed by `looksLikeCheating`, `gettingWrecked`, `clutchComeback` and
+ * `metronome` — no longer last.
  */
 export interface HomeAdvantageBoardRecord {
   /** `null` iff `holders` is empty (criterion 254: nobody with a positive gap). */
@@ -280,6 +342,40 @@ export interface HomeAdvantageBoardRecord {
   })[];
 }
 
+/**
+ * "Looks like cheating" (Milestone 4, second slice, criteria 297–299) — a
+ * fourth animal again, same reasoning as `HomeAdvantageBoardRecord` above:
+ * its holder unit is a unique player, like the seven Stage 1/2 records, but
+ * each holder carries **two** rates (their own, and the other seats'
+ * combined) rather than `RecordHolder`'s single game count, so it gets its
+ * own field on `Board` too. `games` on each holder is that player's own
+ * qualifying games — exactly the games the gap was computed from (criterion
+ * 297: "in the same games they played") — newest first, each one already
+ * carrying its own winner(s) via `RecordGame.winners`, which is both sides
+ * of the comparison in one list (criterion 299).
+ */
+export interface LooksLikeCheatingBoardRecord {
+  /** `null` iff `holders` is empty — only reachable for an empty archive. */
+  gapPercentagePoints: number | null;
+  holders: (CheatingHolder & { games: RecordGame[] })[];
+}
+
+/**
+ * The metronome (Milestone 4, second slice, criteria 307–309) — the smallest
+ * range between a player's own highest and lowest `final_score`. Same
+ * "fourth animal" shape as `LooksLikeCheatingBoardRecord`: a unique player,
+ * but each holder carries `highest`/`lowest` alongside their own game count
+ * (criterion 309), which `RecordHolder` has no room for. `games` on each
+ * holder is that player's **whole** game history, newest first (criterion
+ * 309: "tapping lands on that player's games") — not just the two games at
+ * either end of the range, so the full trend behind the number is visible.
+ */
+export interface MetronomeBoardRecord {
+  /** `null` iff `holders` is empty — only reachable when nobody in the archive has played two or more games (criterion 308). */
+  range: number | null;
+  holders: (MetronomeHolder & { games: RecordGame[] })[];
+}
+
 export type Board =
   | { empty: true }
   | {
@@ -289,10 +385,14 @@ export type Board =
       /** `archiveGameCount < EARLY_DAYS_BELOW` — the board's one early-days line (criterion 183). */
       earlyDays: boolean;
       records: BoardRecord[];
-      /** Stage 3's five single-event records (criteria 228–232) — see this module's doc comment for why they're a separate array. */
+      /** Stage 3's five single-event records (criteria 228–232), plus Milestone 4's clutch comeback (criteria 304–306) — see this module's doc comment for why they're a separate array. */
       singleEventRecords: SingleEventBoardRecord[];
       /** Stage 4's thirteenth record (criteria 253–254, 268–269) — see `HomeAdvantageBoardRecord`'s own doc comment for why it isn't folded into either array above. */
       homeAdvantage: HomeAdvantageBoardRecord;
+      /** Milestone 4, second slice's "looks like cheating" (criteria 297–299) — see `LooksLikeCheatingBoardRecord`'s own doc comment. */
+      looksLikeCheating: LooksLikeCheatingBoardRecord;
+      /** Milestone 4, second slice's "the metronome" (criteria 307–309) — see `MetronomeBoardRecord`'s own doc comment. */
+      metronome: MetronomeBoardRecord;
     };
 
 export interface BoardGameRow {
@@ -441,6 +541,8 @@ interface PlayerGameFact {
   createdAt: string;
   finalScore: number;
   won: boolean;
+  /** Whether this player held this game's own outright *highest* score (`determineLastPlace`) — Milestone 4's "getting absolutely wrecked" (criterion 300) reads this; nothing else does. */
+  finishedLast: boolean;
 }
 
 /**
@@ -474,12 +576,18 @@ export async function getBoard(data?: BoardData): Promise<Board> {
   // directly from this same `second` instead of calling `winningMargin`
   // again, avoiding tripling the work `getBoard()` already does on every `/`
   // page load.
+  // Every game's own last-place holder(s) too (criterion 300) — `determineLastPlace`
+  // is `determineWinners`'s own mirror (`lib/scoring/winners.ts`), computed once
+  // here alongside second place and the hammering margin rather than adding a
+  // further pass over `gamePlayersByGame`.
   const secondPlaceIdsByGame = new Map<string, string[]>();
+  const lastPlaceIdsByGame = new Map<string, string[]>();
   const hammeringInstances: HammeringInstance[] = [];
   for (const [gameId, rows] of gamePlayersByGame) {
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
     const second = secondPlace(scores);
     secondPlaceIdsByGame.set(gameId, second?.playerIds ?? []);
+    lastPlaceIdsByGame.set(gameId, determineLastPlace(scores));
     const winning = winningScore(scores);
     const margin = winning !== null && second !== null ? second.score - winning : null;
     if (margin !== null) hammeringInstances.push({ gameId, margin, winnerIds: [...(winnerIdsByGame.get(gameId) ?? [])] });
@@ -490,6 +598,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
   const gamesByPlayer = new Map<string, PlayerGameFact[]>();
   for (const [gameId, rows] of gamePlayersByGame) {
     const winnerIds = new Set(winnerIdsByGame.get(gameId));
+    const lastPlaceIds = new Set(lastPlaceIdsByGame.get(gameId));
     const g = gamesById.get(gameId)!;
     for (const row of rows) {
       displayNameByPlayer.set(row.playerId, row.displayName);
@@ -500,6 +609,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
         createdAt: g.createdAt,
         finalScore: row.finalScore,
         won: winnerIds.has(row.playerId),
+        finishedLast: lastPlaceIds.has(row.playerId),
       });
       gamesByPlayer.set(row.playerId, arr);
     }
@@ -517,24 +627,53 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     );
   }
 
+  // Same reshaping, for "getting absolutely wrecked" (criteria 300–301) —
+  // `currentLastPlaceStreak`'s own input shape, read from the same per-player
+  // games this module already built above.
+  const lastPlaceGamesByPlayer = new Map<string, LastPlaceGame[]>();
+  for (const [playerId, games] of gamesByPlayer) {
+    lastPlaceGamesByPlayer.set(
+      playerId,
+      games.map((g) => ({ gameId: g.gameId, playedOn: g.playedOn, createdAt: g.createdAt, finishedLast: g.finishedLast })),
+    );
+  }
+
   // Delegates to `lib/scoring`'s one shared chronological comparator — this
   // module's own job is just resolving a game id to the row it needs.
   function sortNewestFirst(a: string, b: string): number {
     return compareNewestFirst(gamesById.get(a)!, gamesById.get(b)!);
   }
 
+  // Scoped to this one `getBoard()` call. Only ever reused for the plain,
+  // no-`extra` shape below — "looks like cheating" and the metronome each
+  // resolve every holder's *entire* game history through `toRecordGame`
+  // with no `extra`, so when two joint holders (or one holder for both
+  // records) share games, the normal case in a small, closed group, the
+  // same `gameId` would otherwise be independently re-resolved into an
+  // identical `RecordGame` two or three times per page load. Never used to
+  // cache an `extra`-annotated call (the streak, rounds-won and single-event
+  // drill-throughs) — those vary per caller, so caching by `gameId` alone
+  // could silently serve one caller's annotation to another.
+  const plainRecordGameCache = new Map<string, RecordGame>();
+
   function toRecordGame(
     gameId: string,
     extra: Pick<
       RecordGame,
-      "roundsWonByHolder" | "streakOwner" | "singleEventValue" | "singleEventHand"
+      "roundsWonByHolder" | "streakOwner" | "streakOwners" | "singleEventValue" | "singleEventHand"
     > = {},
   ): RecordGame {
+    const isPlain = Object.keys(extra).length === 0;
+    if (isPlain) {
+      const cached = plainRecordGameCache.get(gameId);
+      if (cached) return cached;
+    }
+
     const g = gamesById.get(gameId)!;
     const rows = gamePlayersByGame.get(gameId) ?? [];
     const winnerIds = new Set(winnerIdsByGame.get(gameId));
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
-    return {
+    const result: RecordGame = {
       id: g.id,
       playedOn: g.playedOn,
       createdAt: g.createdAt,
@@ -545,6 +684,9 @@ export async function getBoard(data?: BoardData): Promise<Board> {
       winningScore: winningScore(scores) ?? 0,
       ...extra,
     };
+
+    if (isPlain) plainRecordGameCache.set(gameId, result);
+    return result;
   }
 
   function holder(playerId: string): RecordHolder {
@@ -606,6 +748,20 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     gamesFor: (playerId: string) => string[],
   ): RecordGame[] {
     return unionGames(holderIds, gamesFor).sort(sortNewestFirst).map((id) => toRecordGame(id));
+  }
+
+  /**
+   * One holder's own full game history — every game they played, newest
+   * first — as `RecordGame`s. Shared by "looks like cheating" and the
+   * metronome (both below): each holder's drill-through there is simply
+   * every game they played, not a filtered subset like the streak or "most
+   * wins" drill-throughs above.
+   */
+  function holderOwnGamesNewestFirst(playerId: string): RecordGame[] {
+    return (gamesByPlayer.get(playerId) ?? [])
+      .map((g) => g.gameId)
+      .sort(sortNewestFirst)
+      .map((id) => toRecordGame(id));
   }
 
   // ----------------------------------------------------------------- most wins
@@ -690,6 +846,26 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     unionGamesNewestFirst(ids, (playerId) => secondPlaceGamesByPlayer.get(playerId) ?? []),
   );
 
+  // ------------------------------------------------ getting absolutely wrecked
+  // Criteria 300–303: the longest *current* run of finishing last.
+  // `currentLastPlaceStreak` already excludes a run of one (criterion 301),
+  // so — exactly like the drought's `length > 0` filter above — a player
+  // with no qualifying run simply never enters this map, and `buildRecord`
+  // reports the no-holder case on its own for an archive where nobody
+  // currently has one.
+  const wreckedStreakByPlayer = new Map<string, { length: number; gameIds: string[] }>();
+  const wreckedLengthByPlayer = new Map<string, number>();
+  for (const [playerId, lastPlaceGames] of lastPlaceGamesByPlayer) {
+    const streak = currentLastPlaceStreak(lastPlaceGames);
+    if (streak) {
+      wreckedStreakByPlayer.set(playerId, streak);
+      wreckedLengthByPlayer.set(playerId, streak.length);
+    }
+  }
+  const gettingWrecked = buildRecord("gettingWrecked", wreckedLengthByPlayer, higherIsBetter, (ids) =>
+    streakDrillThrough(ids, wreckedStreakByPlayer, displayNameByPlayer, toRecordGame, sortNewestFirst),
+  );
+
   // ================================================================
   // Stage 3's five single-event records (criteria 228–232) — a different
   // assembly path from the seven above by design (spec decision 17): each
@@ -748,7 +924,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     const games: RecordGame[] = [];
     for (const instance of extreme.instances) {
       const g = gameFor(instance);
-      const key = g.singleEventHand === undefined ? g.id : `${g.id} ${g.singleEventHand}`;
+      const key = g.singleEventHand === undefined ? g.id : `${g.id} ${g.singleEventHand}`;
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
       games.push(g);
@@ -818,6 +994,47 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     hammeringResult && { value: hammeringResult.margin, instances: hammeringResult.instances },
     (i) => i.winnerIds.map((playerId) => holderFor(playerId, i.gameId)),
     (i) => toRecordGame(i.gameId, { singleEventValue: i.margin }),
+  );
+
+  // -------------------------------------------------------- most clutch comeback
+  // Criteria 304–306: each player's own running total at `CLUTCH_HAND` (hand
+  // 9) in each game they played, summed from `round_score.score` for hands 1
+  // through `CLUTCH_HAND` — no new query, and equivalent to reading
+  // `running_total` directly at that hand, since a running total *is* the
+  // cumulative sum of the per-hand scores this module already has in
+  // `roundScoreRows` (criterion 313).
+  const clutchHandTotalByGamePlayer = new Map<string, number>();
+  for (const row of roundScoreRows) {
+    if (row.hand > CLUTCH_HAND) continue;
+    const key = `${row.gameId} ${row.playerId}`;
+    clutchHandTotalByGamePlayer.set(key, (clutchHandTotalByGamePlayer.get(key) ?? 0) + row.score);
+  }
+
+  // ⚠️ `wonOutright` — criterion 304's named exception to kickoff decision 1,
+  // scoped to this record alone: a shared win is `false` here even though
+  // `winnerIdsByGame` (every other record's own "won" flag, including
+  // `gamesByPlayer.won` above) still treats it as a win in full.
+  const clutchCandidates: ClutchCandidate[] = [];
+  for (const [gameId, rows] of gamePlayersByGame) {
+    const winnerIds = winnerIdsByGame.get(gameId) ?? [];
+    for (const row of rows) {
+      const runningTotalAtClutchHand = clutchHandTotalByGamePlayer.get(`${gameId} ${row.playerId}`);
+      if (runningTotalAtClutchHand === undefined) continue; // defensive: no round_score rows for this (player, game)
+      clutchCandidates.push({
+        playerId: row.playerId,
+        gameId,
+        runningTotalAtClutchHand,
+        wonOutright: winnerIds.length === 1 && winnerIds[0] === row.playerId,
+      });
+    }
+  }
+
+  const comebackResult = mostClutchComeback(clutchComebackInstances(clutchCandidates));
+  const clutchComebackRecord = buildSingleEventRecord(
+    "clutchComeback",
+    comebackResult && { value: comebackResult.deficit, instances: comebackResult.instances },
+    (i) => [holderFor(i.playerId, i.gameId)],
+    (i) => toRecordGame(i.gameId, { singleEventValue: i.deficit }),
   );
 
   // ================================================================
@@ -902,19 +1119,85 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     holders: homeAdvantageHolders,
   };
 
+  // ================================================================
+  // Milestone 4, second slice — "looks like cheating" (criteria 297–299).
+  // A fourth assembly path (this slice): the holder unit is a unique player,
+  // like the first seven records, but each one carries two rates rather than
+  // `RecordHolder`'s single game count, so `looksLikeCheating` (`lib/scoring`)
+  // returns its own holder shape and this module only adds each holder's own
+  // drill-through games on top — no new query: every input is
+  // `gamePlayersByGame` and `winnerIdsByGame`, already built above.
+  // ================================================================
+  const cheatingCandidates = [...gamesByPlayer.entries()].map(([playerId, games]) => {
+    let wins = 0;
+    let otherWins = 0;
+    let otherGames = 0;
+    for (const g of games) {
+      if (g.won) wins += 1;
+      const participants = gamePlayersByGame.get(g.gameId) ?? [];
+      const winnersInGame = winnerIdsByGame.get(g.gameId) ?? [];
+      otherGames += participants.length - 1;
+      otherWins += winnersInGame.length - (g.won ? 1 : 0);
+    }
+    return {
+      playerId,
+      displayName: displayNameByPlayer.get(playerId)!,
+      gamesPlayed: games.length,
+      wins,
+      otherWins,
+      otherGames,
+    };
+  });
+
+  const cheatingResult = looksLikeCheating(cheatingCandidates);
+  const looksLikeCheatingRecord: LooksLikeCheatingBoardRecord = {
+    gapPercentagePoints: cheatingResult.gapPercentagePoints,
+    holders: cheatingResult.holders.map((h) => ({ ...h, games: holderOwnGamesNewestFirst(h.playerId) })),
+  };
+
+  // ================================================================
+  // Milestone 4, second slice — the metronome (criteria 307–309). Same
+  // fourth-animal shape as "looks like cheating" above: a unique player, but
+  // each holder carries a range's two ends rather than a game count alone.
+  // No new query: every input is `gamesByPlayer`, already built above.
+  // ================================================================
+  const metronomeCandidates = [...gamesByPlayer.entries()].map(([playerId, games]) => ({
+    playerId,
+    displayName: displayNameByPlayer.get(playerId)!,
+    finalScores: games.map((g) => g.finalScore),
+  }));
+
+  const metronomeResult = metronome(metronomeCandidates);
+  const metronomeRecord: MetronomeBoardRecord = {
+    range: metronomeResult.range,
+    holders: metronomeResult.holders.map((h) => ({ ...h, games: holderOwnGamesNewestFirst(h.playerId) })),
+  };
+
   return {
     empty: false,
     archiveGameCount: gameRows.length,
     earlyDays: gameRows.length < EARLY_DAYS_BELOW,
-    records: [mostWins, mostWinsInARow, lowestAverageScore, mostRoundsWon, stalwart, droughtRecord, nearlyMan],
+    records: [
+      mostWins,
+      mostWinsInARow,
+      lowestAverageScore,
+      mostRoundsWon,
+      stalwart,
+      droughtRecord,
+      nearlyMan,
+      gettingWrecked,
+    ],
     singleEventRecords: [
       bestGameEverRecord,
       worstGameEverRecord,
       catastropheRecord,
       cleanestSheetRecord,
       biggestHammeringRecord,
+      clutchComebackRecord,
     ],
     homeAdvantage: homeAdvantageRecord,
+    looksLikeCheating: looksLikeCheatingRecord,
+    metronome: metronomeRecord,
   };
 }
 
@@ -938,7 +1221,7 @@ function streakDrillThrough(
   holderIds: readonly string[],
   streakByPlayer: Map<string, { length: number; gameIds: string[] }>,
   displayNameByPlayer: Map<string, string>,
-  toRecordGame: (gameId: string, extra?: Pick<RecordGame, "roundsWonByHolder" | "streakOwner">) => RecordGame,
+  toRecordGame: (gameId: string, extra?: Pick<RecordGame, "roundsWonByHolder" | "streakOwner" | "streakOwners">) => RecordGame,
   sortNewestFirst: (a: string, b: string) => number,
 ): RecordGame[] {
   // Keyed by playerId, like every sibling map in this module — never by
@@ -956,12 +1239,14 @@ function streakDrillThrough(
 
   return gameIds.map((gameId) => {
     const owners = ownersByGame.get(gameId)!;
-    // Resolve to a display name only at this final point of output.
-    const streakOwner =
-      holderIds.length > 1 && owners.size === 1
-        ? displayNameByPlayer.get([...owners][0]!)!
-        : undefined;
-    return toRecordGame(gameId, streakOwner ? { streakOwner } : {});
+    // Resolve to display names only at this final point of output.
+    const ownerNames = [...owners].map((id) => displayNameByPlayer.get(id)!);
+    const streakOwner = holderIds.length > 1 && owners.size === 1 ? ownerNames[0]! : undefined;
+    // The full owner set, regardless of size — lets a caller tell whether
+    // *any* given holder's own run includes this game, not just whether
+    // exactly one holder does (see `RecordGame.streakOwners`'s doc comment).
+    const streakOwners = holderIds.length > 1 ? ownerNames : undefined;
+    return toRecordGame(gameId, { ...(streakOwner ? { streakOwner } : {}), ...(streakOwners ? { streakOwners } : {}) });
   });
 }
 

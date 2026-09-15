@@ -150,6 +150,24 @@ import {
   venuePlayersSampleLine,
   venueZeroGamesBody,
 } from "@/lib/ui/copy";
+import {
+  CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
+  GETTING_WRECKED_NO_HOLDER_SENTENCE,
+  LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
+  LOOKS_LIKE_CHEATING_RECORD_TITLE,
+  LOOKS_LIKE_CHEATING_RECORD_UNIT,
+  METRONOME_NO_HOLDER_SENTENCE,
+  METRONOME_RECORD_TITLE,
+  METRONOME_RECORD_UNIT,
+  clutchComebackSampleSentence,
+  formatLooksLikeCheatingGap,
+  gettingWreckedSampleSentence,
+  looksLikeCheatingDisplayFacts,
+  looksLikeCheatingSampleSentence,
+  metronomeDisplayFacts,
+  metronomeSampleSentence,
+  recordDisplayFacts,
+} from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
   "checked",
@@ -852,7 +870,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
 
   describe("singleEventDisplayFacts", () => {
     it("returns null for a record with no holder", () => {
-      expect(singleEventDisplayFacts({ key: "worstGameEver", value: null, holders: [] })).toBeNull();
+      expect(singleEventDisplayFacts({ key: "worstGameEver", value: null, holders: [], games: [] })).toBeNull();
     });
 
     it("a single instance renders the ordinary holder + date-sample shape", () => {
@@ -860,6 +878,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
         key: "worstGameEver",
         value: 178,
         holders: [{ playerId: "p2", displayName: "Player B", gameId: "g1", playedOn: "2026-09-05" }],
+        games: [],
       });
       expect(facts).not.toBeNull();
       expect(facts!.title).toBe("Worst game ever");
@@ -881,6 +900,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
           { playerId: "p4", displayName: "Player D", gameId: "g2", playedOn: "2026-07-12" },
           { playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2026-08-28" },
         ],
+        games: [],
       });
       expect(facts).not.toBeNull();
       expect(facts!.sample).toBeNull();
@@ -899,6 +919,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
           { playerId: "p1", displayName: "Amy", gameId: "g1", playedOn: "2026-02-01" },
           { playerId: "p1", displayName: "Amy", gameId: "g2", playedOn: "2026-02-08" },
         ],
+        games: [],
       });
       expect(facts!.instances).toHaveLength(2);
       expect(facts!.instances!.every((i) => i.label === "Amy")).toBe(true);
@@ -913,6 +934,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
           { playerId: "p1", displayName: "Player E", gameId: "g1", playedOn: "2026-09-05", hand: "Kings" },
           { playerId: "p1", displayName: "Player E", gameId: "g1", playedOn: "2026-09-05", hand: "9s" },
         ],
+        games: [],
       });
       expect(facts!.instances).toHaveLength(2);
       expect(facts!.instances!.map((i) => i.date).sort()).toEqual(
@@ -928,6 +950,7 @@ describe("Milestone 3 Stage 3 — distributions and villains, fixed strings", ()
           { playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2026-08-15" },
           { playerId: "p2", displayName: "Player B", gameId: "g1", playedOn: "2026-08-15" },
         ],
+        games: [],
       });
       // One game, one instance — the ordinary (non-tied) shape, with a joint name.
       expect(facts!.instances).toBeNull();
@@ -1295,6 +1318,271 @@ describe("Milestone 3 Stage 4 — place, time, and the filters", () => {
       expect(facts!.holderNames).toBe("Player A, The Lake House & Sam, Player E's");
       expect(facts!.sample).toBe(
         "Player A — won 3 of 5 there, 1 of 17 elsewhere · Sam — won 4 of 6 there, 2 of 14 elsewhere",
+      );
+    });
+  });
+});
+
+describe("Milestone 4, second slice — the four personality stats (PRD criteria 294–319)", () => {
+  describe("looks like cheating (criteria 297–299)", () => {
+    it("title and unit are the founder's picks, verbatim", () => {
+      expect(LOOKS_LIKE_CHEATING_RECORD_TITLE).toBe("Looks like cheating");
+      expect(LOOKS_LIKE_CHEATING_RECORD_UNIT).toBe("points");
+    });
+
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE).toBe("Nobody's numbers look suspicious yet.");
+    });
+
+    it("looksLikeCheatingSampleSentence matches the founder's example exactly", () => {
+      expect(
+        looksLikeCheatingSampleSentence(
+          { wins: 9, games: 12, ratePercent: 75 },
+          { wins: 10, games: 36, ratePercent: 27.6 },
+        ),
+      ).toBe(
+        "Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).",
+      );
+    });
+
+    it("formatLooksLikeCheatingGap always shows a sign, one decimal — including a negative gap (criterion 298: no floor)", () => {
+      expect(formatLooksLikeCheatingGap(47.4)).toBe("+47.4");
+      expect(formatLooksLikeCheatingGap(0)).toBe("+0.0");
+      expect(formatLooksLikeCheatingGap(-5.2)).toBe("-5.2");
+    });
+
+    it("looksLikeCheatingDisplayFacts returns null when nobody has a holder", () => {
+      expect(looksLikeCheatingDisplayFacts({ gapPercentagePoints: null, holders: [] })).toBeNull();
+    });
+
+    function cheatingHolder() {
+      return {
+        playerId: "p1",
+        displayName: "Player B",
+        gamesPlayed: 12,
+        own: { wins: 9, games: 12, ratePercent: 75 },
+        others: { wins: 10, games: 36, ratePercent: 27.6 },
+        gapPercentagePoints: 47.4,
+      };
+    }
+
+    it("a single holder's sample never repeats their own name, and the claim carries every number", () => {
+      const facts = looksLikeCheatingDisplayFacts({ gapPercentagePoints: 47.4, holders: [cheatingHolder()] });
+      expect(facts).not.toBeNull();
+      expect(facts!.title).toBe("Looks like cheating");
+      expect(facts!.unit).toBe("points");
+      expect(facts!.holderNames).toBe("Player B");
+      expect(facts!.value).toBe("+47.4");
+      expect(facts!.sample).toBe(
+        "Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).",
+      );
+      expect(facts!.sample.startsWith("Player B")).toBe(false);
+      assertNoBannedWords(facts!.claim);
+    });
+
+    it("⚠️ criterion 299: joint holders each get their own name-prefixed sentence, joined by ' · '", () => {
+      const second = {
+        playerId: "p2",
+        displayName: "Player A",
+        gamesPlayed: 5,
+        own: { wins: 4, games: 5, ratePercent: 80 },
+        others: { wins: 2, games: 10, ratePercent: 20 },
+        gapPercentagePoints: 47.4,
+      };
+      const facts = looksLikeCheatingDisplayFacts({
+        gapPercentagePoints: 47.4,
+        holders: [second, cheatingHolder()],
+      });
+      expect(facts!.holderNames).toBe("Player A & Player B");
+      expect(facts!.sample).toBe(
+        "Player A — Wins 80.0% of their games (4 of 5) — the table wins 20.0% in those same games (2 of 10). · " +
+          "Player B — Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).",
+      );
+    });
+  });
+
+  describe("getting absolutely wrecked (criteria 300–303)", () => {
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(GETTING_WRECKED_NO_HOLDER_SENTENCE).toBe("Nobody's currently getting wrecked.");
+    });
+
+    it("gettingWreckedSampleSentence matches the founder's example (formatRecordDate's own rendering — a full 'short weekday, day month year')", () => {
+      expect(gettingWreckedSampleSentence(6, "2026-08-02")).toBe(
+        `Last place in every one of their last 6 games — since ${formatRecordDate("2026-08-02")}.`,
+      );
+      expect(gettingWreckedSampleSentence(6, "2026-08-02")).toContain("2 Aug 2026");
+    });
+
+    it("recordDisplayFacts: a single holder's 'since' date is the oldest game in the record's own games list", () => {
+      const facts = recordDisplayFacts({
+        key: "gettingWrecked",
+        value: 6,
+        holders: [{ playerId: "p1", displayName: "Player C", gamesPlayed: 9 }],
+        games: [
+          { id: "g1", playedOn: "2026-08-02" } as never,
+          { id: "g2", playedOn: "2026-08-09" } as never,
+        ],
+      });
+      expect(facts).not.toBeNull();
+      expect(facts!.title).toBe("Getting absolutely wrecked");
+      expect(facts!.unit).toBe("games in last place");
+      expect(facts!.sample).toBe(
+        `Last place in every one of their last 6 games — since ${formatRecordDate("2026-08-02")}.`,
+      );
+    });
+
+    it("⚠️ joint holders: each one's own 'since' date is read from their own streakOwners-tagged games, not the shared list's oldest", () => {
+      const facts = recordDisplayFacts({
+        key: "gettingWrecked",
+        value: 2,
+        holders: [
+          { playerId: "p1", displayName: "Bo", gamesPlayed: 5 },
+          { playerId: "p2", displayName: "Cy", gamesPlayed: 3 },
+        ],
+        // `record.games` arrives already oldest→newest (`streakDrillThrough`'s
+        // own ordering) — Bo's own earlier game must sort before the shared one.
+        games: [
+          { id: "g0", playedOn: "2025-12-01", streakOwner: "Bo", streakOwners: ["Bo"] } as never, // Bo's own earlier game only.
+          { id: "g1", playedOn: "2026-01-01", streakOwners: ["Bo", "Cy"] } as never, // Shared game — belongs to both.
+        ],
+      });
+      expect(facts!.sample).toBe(
+        `Bo — Last place in every one of their last 2 games — since ${formatRecordDate("2025-12-01")}. · ` +
+          `Cy — Last place in every one of their last 2 games — since ${formatRecordDate("2026-01-01")}.`,
+      );
+    });
+
+    it("⚠️ three+ joint holders: a game shared by only a strict subset of holders doesn't count toward a holder who wasn't part of it (regression for the wrong-too-early-date bug)", () => {
+      const facts = recordDisplayFacts({
+        key: "gettingWrecked",
+        value: 2,
+        holders: [
+          { playerId: "p1", displayName: "Amy", gamesPlayed: 5 },
+          { playerId: "p2", displayName: "Bo", gamesPlayed: 5 },
+          { playerId: "p3", displayName: "Cy", gamesPlayed: 3 },
+        ],
+        // Amy & Bo jointly finished last together in two older games (a
+        // strict subset — Cy wasn't in either), then all three shared a more
+        // recent game. Cy's own run is only that last, shared game — her
+        // "since" date must be its date, not the older Amy/Bo-only one.
+        games: [
+          { id: "g0", playedOn: "2025-11-01", streakOwners: ["Amy", "Bo"] } as never,
+          { id: "g1", playedOn: "2025-12-01", streakOwners: ["Amy", "Bo"] } as never,
+          { id: "g2", playedOn: "2026-01-01", streakOwners: ["Amy", "Bo", "Cy"] } as never,
+        ],
+      });
+      expect(facts!.sample).toBe(
+        `Amy — Last place in every one of their last 2 games — since ${formatRecordDate("2025-11-01")}. · ` +
+          `Bo — Last place in every one of their last 2 games — since ${formatRecordDate("2025-11-01")}. · ` +
+          `Cy — Last place in every one of their last 2 games — since ${formatRecordDate("2026-01-01")}.`,
+      );
+    });
+  });
+
+  describe("most clutch comeback (criteria 304–306)", () => {
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(CLUTCH_COMEBACK_NO_HOLDER_SENTENCE).toBe("Nobody's clawed one back yet.");
+    });
+
+    it("clutchComebackSampleSentence matches the founder's example (formatRecordDate's own rendering)", () => {
+      expect(clutchComebackSampleSentence(132, "2025-11-09")).toBe(
+        `Won it outright, finishing on 132 · ${formatRecordDate("2025-11-09")}.`,
+      );
+      expect(clutchComebackSampleSentence(132, "2025-11-09")).toContain("9 Nov 2025");
+    });
+
+    it("singleEventDisplayFacts: a single instance states the deficit-holder's own final score, read off the game's winning score", () => {
+      const facts = singleEventDisplayFacts({
+        key: "clutchComeback",
+        value: 71,
+        holders: [{ playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2025-11-09" }],
+        games: [{ id: "g1", winningScore: 132 } as never],
+      });
+      expect(facts).not.toBeNull();
+      expect(facts!.title).toBe("Most clutch comeback");
+      expect(facts!.unit).toBe("points down at hand 9");
+      expect(facts!.sample).toBe(`Won it outright, finishing on 132 · ${formatRecordDate("2025-11-09")}.`);
+      expect(facts!.instances).toBeNull();
+      assertNoBannedWords(facts!.claim);
+    });
+
+    it("⚠️ a tie (two different games) still renders the ordinary instance-list shape, unchanged", () => {
+      const facts = singleEventDisplayFacts({
+        key: "clutchComeback",
+        value: 20,
+        holders: [
+          { playerId: "p1", displayName: "Cy", gameId: "g1", playedOn: "2026-01-01" },
+          { playerId: "p2", displayName: "Eli", gameId: "g2", playedOn: "2026-01-08" },
+        ],
+        games: [
+          { id: "g1", winningScore: 80 } as never,
+          { id: "g2", winningScore: 80 } as never,
+        ],
+      });
+      expect(facts!.sample).toBeNull();
+      expect(facts!.instances).toHaveLength(2);
+      expect(facts!.instances![0]!.label).toBe("Cy");
+      expect(facts!.instances![1]!.label).toBe("Eli");
+    });
+  });
+
+  describe("the metronome (criteria 307–309)", () => {
+    it("title and unit are the founder's picks, verbatim (candidate 2 of 3, not 'Most consistent')", () => {
+      expect(METRONOME_RECORD_TITLE).toBe("The metronome");
+      expect(METRONOME_RECORD_UNIT).toBe("point range");
+    });
+
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(METRONOME_NO_HOLDER_SENTENCE).toBe("Nobody's earned a range yet — two games gets you in.");
+    });
+
+    it("metronomeSampleSentence matches the founder's example exactly, and keeps '1 game' honest", () => {
+      // QA bug fix, M4 second slice: "Best" states the LOWER score (lower is
+      // better, kickoff decision 1) and "worst" the higher — the founder's
+      // own worked example is "Best 58, worst 92" with 58 the smaller number,
+      // so the call is `metronomeSampleSentence(highest, lowest, games)`.
+      expect(metronomeSampleSentence(92, 58, 9)).toBe("Best 58, worst 92, from 9 games.");
+      expect(metronomeSampleSentence(50, 50, 1)).toBe("Best 50, worst 50, from 1 game.");
+    });
+
+    it("⚠️ QA bug fix, M4 second slice: 'Best' is always the numerically LOWER score, 'worst' the higher — they were swapped at the call site, printing the higher score under 'Best'", () => {
+      expect(metronomeSampleSentence(100, 40, 5)).toBe("Best 40, worst 100, from 5 games.");
+    });
+
+    it("metronomeDisplayFacts returns null when nobody has a range yet", () => {
+      expect(metronomeDisplayFacts({ range: null, holders: [] })).toBeNull();
+    });
+
+    it("⚠️ criterion 309: the sample always states the game count and both ends of the range — never optional, never hidden", () => {
+      const facts = metronomeDisplayFacts({
+        range: 34,
+        holders: [{ playerId: "p1", displayName: "Player E", gamesPlayed: 9, range: 34, highest: 92, lowest: 58 }],
+      });
+      expect(facts).not.toBeNull();
+      expect(facts!.value).toBe("34");
+      expect(facts!.sample).toBe("Best 58, worst 92, from 9 games.");
+      assertNoBannedWords(facts!.claim);
+    });
+
+    it("⚠️ a two-game holder is shown plainly, unhedged (criterion 308: no minimum-games floor)", () => {
+      const facts = metronomeDisplayFacts({
+        range: 2,
+        holders: [{ playerId: "p1", displayName: "Newbie", gamesPlayed: 2, range: 2, highest: 52, lowest: 50 }],
+      });
+      expect(facts!.sample).toBe("Best 50, worst 52, from 2 games.");
+    });
+
+    it("joint holders each get their own name-prefixed sentence, joined by ' · '", () => {
+      const facts = metronomeDisplayFacts({
+        range: 40,
+        holders: [
+          { playerId: "p1", displayName: "Amy", gamesPlayed: 3, range: 40, highest: 95, lowest: 55 },
+          { playerId: "p2", displayName: "Bo", gamesPlayed: 3, range: 40, highest: 90, lowest: 50 },
+        ],
+      });
+      expect(facts!.holderNames).toBe("Amy & Bo");
+      expect(facts!.sample).toBe(
+        "Amy — Best 55, worst 95, from 3 games. · Bo — Best 50, worst 90, from 3 games.",
       );
     });
   });

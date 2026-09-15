@@ -13,13 +13,16 @@ import {
   compareDisplayNames,
   handLabel,
   rosterDisplayName,
+  type CheatingHolder,
   type GridValidation,
   type HandLabel,
   type HomeAdvantageHolder,
+  type MetronomeHolder,
 } from "@/lib/scoring";
 import type {
   BoardRecord,
   BoardRecordKey,
+  RecordGame,
   SingleEventBoardRecord,
   SingleEventHolder,
   SingleEventRecordKey,
@@ -839,6 +842,9 @@ export const RECORD_TITLES: Record<BoardRecordKey, string> = {
   stalwart: "The stalwart",
   drought: "The drought",
   nearlyMan: "The nearly man",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15
+  // (`docs/DESIGN-SYSTEM.md`'s fixed-strings table, candidate 1 of 3).
+  gettingWrecked: "Getting absolutely wrecked",
 };
 /**
  * Record units, verbatim — plain-English, beside the number in `--num-lg`.
@@ -857,7 +863,14 @@ export const RECORD_UNITS: Record<BoardRecordKey, string> = {
   stalwart: "games played",
   drought: "games",
   nearlyMan: "second places",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15.
+  // ⚠️ Deliberately not "games in a row" (already this board's own unit for
+  // "most wins in a row") and not the mockup's "games running".
+  gettingWrecked: "games in last place",
 };
+
+/** "Getting absolutely wrecked"'s own no-holder sentence, verbatim (criteria 185, 312, 301: nobody currently has a qualifying run). */
+export const GETTING_WRECKED_NO_HOLDER_SENTENCE = "Nobody's currently getting wrecked.";
 
 /** Lowest average score to one decimal place (criterion 178); every other
  *  record's value is a plain integer count. */
@@ -914,17 +927,62 @@ export interface RecordDisplayFacts {
 }
 
 export function recordDisplayFacts(
-  record: Pick<BoardRecord, "key" | "value" | "holders">,
+  record: Pick<BoardRecord, "key" | "value" | "holders" | "games">,
 ): RecordDisplayFacts | null {
   if (record.value === null || record.holders.length === 0) return null;
 
-  return {
-    title: RECORD_TITLES[record.key],
-    unit: RECORD_UNITS[record.key],
-    holderNames: rosterDisplayName(record.holders.map((h) => h.displayName)),
-    value: formatRecordValue(record.key, record.value),
-    sample: record.key === "stalwart" ? null : recordSampleLine(record.holders),
-  };
+  const title = RECORD_TITLES[record.key];
+  const unit = RECORD_UNITS[record.key];
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const value = formatRecordValue(record.key, record.value);
+
+  if (record.key === "stalwart") {
+    return { title, unit, holderNames, value, sample: null };
+  }
+
+  if (record.key === "gettingWrecked") {
+    const streakLength = record.value;
+    const sample =
+      record.holders.length === 1
+        ? gettingWreckedSampleSentence(
+            streakLength,
+            gettingWreckedStartDate(record.games, record.holders[0]!.displayName),
+          )
+        : record.holders
+            .map(
+              (h) =>
+                `${h.displayName} — ${gettingWreckedSampleSentence(streakLength, gettingWreckedStartDate(record.games, h.displayName))}`,
+            )
+            .join(" · ");
+    return { title, unit, holderNames, value, sample };
+  }
+
+  return { title, unit, holderNames, value, sample: recordSampleLine(record.holders) };
+}
+
+/**
+ * "Getting absolutely wrecked"'s own "since {date}" (criteria 300, 303): the
+ * oldest game in this holder's own current run — `record.games` is already
+ * ordered oldest→newest (`streakDrillThrough`, the same drill-through this
+ * record shares with "most wins in a row" and the drought). When the record
+ * is jointly held over diverging runs, a game belongs to this holder if this
+ * holder is in its full owner set (`streakOwners`) — every holder that
+ * game's run belongs to, not just whichever single holder `streakOwner`
+ * names. With only two holders those two questions happen to have the same
+ * answer, but with three or more, a game can belong to a strict subset (say
+ * two of three) without belonging to every holder, so `streakOwners` (unset
+ * only when the record has a single holder, in which case every game is
+ * trivially theirs) is the one that must be checked, never `streakOwner`
+ * alone.
+ */
+function gettingWreckedStartDate(games: readonly RecordGame[], holderName: string): string {
+  const ownGames = games.filter((g) => !g.streakOwners || g.streakOwners.includes(holderName));
+  return ownGames[0]!.playedOn;
+}
+
+/** "Last place in every one of their last {n} games — since {date}." — verbatim, criteria 300, 303. */
+export function gettingWreckedSampleSentence(streakLength: number, since: string): string {
+  return `Last place in every one of their last ${streakLength} ${gamesNoun(streakLength)} — since ${formatRecordDate(since)}.`;
 }
 
 /** `docs/DESIGN-SYSTEM.md` § "the records board" — verbatim, criteria 185, 193. */
@@ -1040,6 +1098,9 @@ export const SINGLE_EVENT_RECORD_TITLES: Record<SingleEventRecordKey, string> = 
   catastrophe: "The catastrophe",
   cleanestSheet: "Cleanest sheet",
   biggestHammering: "Biggest hammering",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15
+  // (candidate 1 of 3, not "The great escape" or "Back from the dead").
+  clutchComeback: "Most clutch comeback",
 };
 
 /** Record units, verbatim — beside the number, same `--num-lg` treatment as the other seven cards. */
@@ -1049,7 +1110,12 @@ export const SINGLE_EVENT_RECORD_UNITS: Record<SingleEventRecordKey, string> = {
   catastrophe: "points in one hand",
   cleanestSheet: "zero-point hands",
   biggestHammering: "point margin",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15.
+  clutchComeback: "points down at hand 9",
 };
+
+/** "Most clutch comeback"'s own no-holder sentence, verbatim (criteria 185, 306, 312: nobody has ever overturned a hand-9 deficit into an outright win). */
+export const CLUTCH_COMEBACK_NO_HOLDER_SENTENCE = "Nobody's clawed one back yet.";
 
 /** Single-event sample line, one instance — verbatim, criterion 233: "on {date}", never "from {n} games". */
 export function singleEventSampleLine(playedOn: string): string {
@@ -1067,11 +1133,17 @@ export function singleEventInstanceRow(holderNames: string, playedOn: string): s
 export function catastropheInstanceRow(holderNames: string, hand: HandLabel, playedOn: string): string {
   return `${holderNames} — ${catastropheSampleLine(hand, playedOn)}`;
 }
+/** Most clutch comeback's own one-instance sample line, verbatim (criterion 306, founder's pick 2026-09-15): "Won it outright, finishing on {finalScore} · {date}." */
+export function clutchComebackSampleSentence(finalScore: number, playedOn: string): string {
+  return `Won it outright, finishing on ${finalScore} · ${formatRecordDate(playedOn)}.`;
+}
 
 /** One (deduplicated-by-game[, hand]) row behind a single-event record's card or drill-through. */
 interface SingleEventInstanceGroup {
   /** One holder's name, or a criterion-181 joint name when more than one holder shares this game (and, for the catastrophe, this hand) — biggest hammering's own documented case (component inventory, `RecordCard` — instance list). */
   label: string;
+  /** Most clutch comeback only (criterion 306): needed to look up the game's own winning score, which *is* this holder's own final score since they won it outright. */
+  gameId: string;
   playedOn: string;
   hand?: HandLabel;
 }
@@ -1086,15 +1158,15 @@ interface SingleEventInstanceGroup {
  * "never a ranking of the instances").
  */
 function groupSingleEventHolders(holders: readonly SingleEventHolder[]): SingleEventInstanceGroup[] {
-  const byKey = new Map<string, { displayNames: string[]; playedOn: string; hand?: HandLabel }>();
+  const byKey = new Map<string, { displayNames: string[]; gameId: string; playedOn: string; hand?: HandLabel }>();
   for (const h of holders) {
     const key = `${h.gameId}::${h.hand ?? ""}`;
     const existing = byKey.get(key);
     if (existing) existing.displayNames.push(h.displayName);
-    else byKey.set(key, { displayNames: [h.displayName], playedOn: h.playedOn, hand: h.hand });
+    else byKey.set(key, { displayNames: [h.displayName], gameId: h.gameId, playedOn: h.playedOn, hand: h.hand });
   }
   return [...byKey.values()]
-    .map((g) => ({ label: rosterDisplayName(g.displayNames), playedOn: g.playedOn, hand: g.hand }))
+    .map((g) => ({ label: rosterDisplayName(g.displayNames), gameId: g.gameId, playedOn: g.playedOn, hand: g.hand }))
     .sort(
       (a, b) =>
         compareDisplayNames(a.label, b.label) || (a.playedOn < b.playedOn ? -1 : a.playedOn > b.playedOn ? 1 : 0),
@@ -1134,10 +1206,22 @@ export interface SingleEventDisplayFacts {
  * `date` is the same value again, since the tied-instance row shows exactly
  * that string in its own date field.
  */
-function singleEventRowFacts(row: SingleEventInstanceGroup): { sentence: string; sample: string; date: string } {
+function singleEventRowFacts(
+  key: SingleEventRecordKey,
+  row: SingleEventInstanceGroup,
+  winningScoreByGameId: ReadonlyMap<string, number>,
+): { sentence: string; sample: string; date: string } {
   if (row.hand) {
     const withHand = catastropheSampleLine(row.hand, row.playedOn);
     return { sentence: catastropheInstanceRow(row.label, row.hand, row.playedOn), sample: withHand, date: withHand };
+  }
+  // Most clutch comeback (criterion 306, founder's pick 2026-09-15): the
+  // holder won this game outright, so the game's own winning score *is*
+  // their own final score — no new field needed on `SingleEventHolder`.
+  if (key === "clutchComeback") {
+    const finalScore = winningScoreByGameId.get(row.gameId)!;
+    const sample = clutchComebackSampleSentence(finalScore, row.playedOn);
+    return { sentence: `${row.label} — ${sample}`, sample, date: formatRecordDate(row.playedOn) };
   }
   return {
     sentence: singleEventInstanceRow(row.label, row.playedOn),
@@ -1152,11 +1236,17 @@ function singleEventRowFacts(row: SingleEventInstanceGroup): { sentence: string;
  * drill-through and `/stats` (criterion 241) can never independently drift on
  * what one of these five cards says.
  *
- * `null` when the record has no holder (criterion 185's rule, extended here —
- * unreachable over a non-empty archive, same as every one of Stage 1's five).
+ * `null` when the record has no holder (criterion 185's rule, extended here).
+ * For the original five single-event records this is unreachable over a
+ * non-empty archive, same as every one of Stage 1's five — but this function
+ * now also serves `clutchComeback` (Milestone 4, second slice), whose
+ * no-holder state is real and common: any archive can go a long time without
+ * a game anyone actually clawed back from behind at hand 9, so callers must
+ * handle `null` here, falling back to `CLUTCH_COMEBACK_NO_HOLDER_SENTENCE`
+ * rather than treating it as defensive-only dead code.
  */
 export function singleEventDisplayFacts(
-  record: Pick<SingleEventBoardRecord, "key" | "value" | "holders">,
+  record: Pick<SingleEventBoardRecord, "key" | "value" | "holders" | "games">,
 ): SingleEventDisplayFacts | null {
   if (record.value === null || record.holders.length === 0) return null;
 
@@ -1164,7 +1254,11 @@ export function singleEventDisplayFacts(
   const unit = SINGLE_EVENT_RECORD_UNITS[record.key];
   const value = String(record.value);
   const holderNames = rosterDisplayName([...new Set(record.holders.map((h) => h.displayName))]);
-  const rows = groupSingleEventHolders(record.holders).map((row) => ({ row, facts: singleEventRowFacts(row) }));
+  const winningScoreByGameId = new Map(record.games.map((g) => [g.id, g.winningScore]));
+  const rows = groupSingleEventHolders(record.holders).map((row) => ({
+    row,
+    facts: singleEventRowFacts(record.key, row, winningScoreByGameId),
+  }));
 
   if (rows.length === 1) {
     const { row, facts } = rows[0]!;
@@ -1545,3 +1639,151 @@ export function homeAdvantageDisplayFacts(record: {
 
   return { title, unit, holderNames, value, sample, claim };
 }
+
+/* ---------------------- Milestone 4, second slice: the four personality stats ---------------------- */
+/**
+ * `docs/DESIGN-SYSTEM.md` § "The four personality cards" — criterion 310 sets
+ * criterion 202's wording rule aside **in full** for these four cards, titles
+ * and every sentence, so these strings are written exactly as the founder
+ * picked them at the 2026-09-15 checkpoint, not run back through the
+ * flat/neutral voice every other record on this board uses. Criterion 311's
+ * honesty rule still applies in full — every sentence below states only
+ * counted quantities already in stored rows.
+ */
+
+/** "Looks like cheating" — the board's own fourth-animal card (criteria 297–299), title and unit verbatim (founder's pick, candidate 1 of 3). */
+export const LOOKS_LIKE_CHEATING_RECORD_TITLE = "Looks like cheating";
+export const LOOKS_LIKE_CHEATING_RECORD_UNIT = "points";
+/** No-holder sentence, verbatim (criteria 185, 312) — unreachable over any real, non-empty archive (`looksLikeCheatingDisplayFacts`'s own doc comment), kept anyway for the same defensive symmetry every other record's no-holder string has. */
+export const LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE = "Nobody's numbers look suspicious yet.";
+/** "Wins {rate}% of their games ({wins} of {games}) — the table wins {tableRate}% in those same games ({tableWins} of {tableGames})." — verbatim, criterion 299. */
+export function looksLikeCheatingSampleSentence(
+  own: { wins: number; games: number; ratePercent: number },
+  others: { wins: number; games: number; ratePercent: number },
+): string {
+  return `Wins ${own.ratePercent.toFixed(1)}% of their games (${own.wins} of ${own.games}) — the table wins ${others.ratePercent.toFixed(1)}% in those same games (${others.wins} of ${others.games}).`;
+}
+/** "+47.4" — signed to one decimal, same convention as home advantage's own gap (criterion 298: no floor, so a negative gap is possible and rendered plainly, unhedged). */
+export function formatLooksLikeCheatingGap(gapPercentagePoints: number): string {
+  const sign = gapPercentagePoints >= 0 ? "+" : "";
+  return `${sign}${gapPercentagePoints.toFixed(1)}`;
+}
+
+export interface LooksLikeCheatingDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical — every tied holder, "A, B & C" grammar (criterion 299/181). */
+  holderNames: string;
+  value: string;
+  /** A single holder's own two-sided sentence, or every holder's own sentence prefixed with their name and joined by " · " (criterion 299, the same joint grammar 254 established). */
+  sample: string;
+  claim: string;
+}
+
+/**
+ * `LooksLikeCheatingBoardRecord`'s display facts — the fourth-animal
+ * counterpart to `homeAdvantageDisplayFacts`, above, so the board, its
+ * drill-through and every string it prints can never independently drift.
+ * `null` when the archive has nobody to compare (criterion 297: unreachable
+ * over any real, non-empty archive, since every real game has at least
+ * `MIN_PLAYERS` seats — handled anyway, the same defensive symmetry every
+ * other display-facts function here uses).
+ */
+export function looksLikeCheatingDisplayFacts(record: {
+  gapPercentagePoints: number | null;
+  holders: readonly CheatingHolder[];
+}): LooksLikeCheatingDisplayFacts | null {
+  if (record.gapPercentagePoints === null || record.holders.length === 0) return null;
+
+  const title = LOOKS_LIKE_CHEATING_RECORD_TITLE;
+  const unit = LOOKS_LIKE_CHEATING_RECORD_UNIT;
+  const value = formatLooksLikeCheatingGap(record.gapPercentagePoints);
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const sample =
+    record.holders.length === 1
+      ? looksLikeCheatingSampleSentence(record.holders[0]!.own, record.holders[0]!.others)
+      : record.holders
+          .map((h) => `${h.displayName} — ${looksLikeCheatingSampleSentence(h.own, h.others)}`)
+          .join(" · ");
+  const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
+
+  return { title, unit, holderNames, value, sample, claim };
+}
+
+/** The metronome — the board's other fourth-animal card (criteria 307–309), title and unit verbatim (founder's pick, candidate 2 of 3 — not the plain "Most consistent"). */
+export const METRONOME_RECORD_TITLE = "The metronome";
+export const METRONOME_RECORD_UNIT = "point range";
+/** No-holder sentence, verbatim (criteria 185, 312, 308: nobody has played two or more games yet). */
+export const METRONOME_NO_HOLDER_SENTENCE = "Nobody's earned a range yet — two games gets you in.";
+/**
+ * "Best {high}, worst {low}, from {n} games." — verbatim, criterion 309: the
+ * whole honesty burden for a record with no minimum-games floor.
+ *
+ * ⚠️ **Lower is better in this game** (kickoff decision 1), the same
+ * convention `bestGameEver`/`worstGameEver` (`lib/scoring`) and the player
+ * page's own "Best game"/"Worst game" cards already use — so "Best" states
+ * this holder's own **lowest** final score and "worst" their **highest**,
+ * matching the founder's own worked example verbatim ("Best 58, worst 92" —
+ * 58 the lower number). QA bug, M4 second slice: the two were swapped at the
+ * call site, printing the numerically higher score under "Best".
+ */
+export function metronomeSampleSentence(highest: number, lowest: number, gamesPlayed: number): string {
+  return `Best ${lowest}, worst ${highest}, from ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
+}
+
+export interface MetronomeDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical — every tied holder, "A, B & C" grammar (criterion 309/181). */
+  holderNames: string;
+  value: string;
+  /** A single holder's own "best/worst/from N games" sentence, or every holder's own sentence prefixed with their name and joined by " · ". Never `null` — criterion 309 requires this stated on every card, not hidden behind an interaction. */
+  sample: string;
+  claim: string;
+}
+
+/**
+ * `MetronomeBoardRecord`'s display facts — same shape as
+ * `looksLikeCheatingDisplayFacts`, above. `null` when nobody in the archive
+ * has played two or more games (criterion 308: a spread needs two
+ * observations, which is the definition, not a floor).
+ */
+export function metronomeDisplayFacts(record: {
+  range: number | null;
+  holders: readonly MetronomeHolder[];
+}): MetronomeDisplayFacts | null {
+  if (record.range === null || record.holders.length === 0) return null;
+
+  const title = METRONOME_RECORD_TITLE;
+  const unit = METRONOME_RECORD_UNIT;
+  const value = String(record.range);
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const sample =
+    record.holders.length === 1
+      ? metronomeSampleSentence(record.holders[0]!.highest, record.holders[0]!.lowest, record.holders[0]!.gamesPlayed)
+      : record.holders
+          .map((h) => `${h.displayName} — ${metronomeSampleSentence(h.highest, h.lowest, h.gamesPlayed)}`)
+          .join(" · ");
+  const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
+
+  return { title, unit, holderNames, value, sample, claim };
+}
+
+/**
+ * Milestone 4, second slice's four personality records (criterion 312) each
+ * carry their own fixed no-holder sentence, verbatim, rather than the shared
+ * generic fallback every other record still gets (`BOARD_NO_HOLDER_SENTENCE`
+ * on the board, `RecordCard`'s own default single-event fallback) — one
+ * lookup, keyed by record key, so a caller building any of the four cards'
+ * props can read its sentence off this map instead of re-deriving it with a
+ * per-key ternary at each call site.
+ */
+export const NO_HOLDER_SENTENCE_BY_KEY: Record<
+  "looksLikeCheating" | "gettingWrecked" | "clutchComeback" | "metronome",
+  string
+> = {
+  looksLikeCheating: LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
+  gettingWrecked: GETTING_WRECKED_NO_HOLDER_SENTENCE,
+  clutchComeback: CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
+  metronome: METRONOME_NO_HOLDER_SENTENCE,
+};

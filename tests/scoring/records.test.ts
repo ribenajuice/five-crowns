@@ -11,11 +11,16 @@ import {
   biggestSingleHandDisasters,
   catastrophe,
   cleanestSheet,
+  clutchComebackInstances,
+  currentLastPlaceStreak,
   handsBledOn,
   headToHead,
   homeAdvantage,
   longestDrought,
   longestStreak,
+  looksLikeCheating,
+  metronome,
+  mostClutchComeback,
   nemesis,
   perHandMeans,
   roundsWon,
@@ -25,11 +30,15 @@ import {
   winningMargin,
   worstGameEver,
   zeroHandCountsByPlayerGame,
+  type CheatingCandidate,
+  type ClutchCandidate,
   type FinalScoreInstance,
   type GameHandScoreRow,
   type HammeringInstance,
   type HeadToHeadGame,
   type HomeAdvantageCandidate,
+  type LastPlaceGame,
+  type MetronomeCandidate,
   type NemesisCandidate,
   type SingleHandInstance,
   type StreakGame,
@@ -456,6 +465,78 @@ describe("longestDrought — criterion 212 (the streak rule, negated)", () => {
   });
 });
 
+describe("currentLastPlaceStreak — criteria 300–301 ('getting absolutely wrecked')", () => {
+  function g(gameId: string, playedOn: string, finishedLast: boolean): LastPlaceGame {
+    return { gameId, playedOn, createdAt: `${playedOn}T00:00:00Z`, finishedLast };
+  }
+
+  it("counts back from the most recent game until one game breaks it", () => {
+    const games = [
+      g("g1", "2026-01-01", true),
+      g("g2", "2026-01-08", false),
+      g("g3", "2026-01-15", true),
+      g("g4", "2026-01-22", true),
+      g("g5", "2026-01-29", true),
+    ];
+    const streak = currentLastPlaceStreak(games);
+    expect(streak).toEqual({ length: 3, gameIds: ["g3", "g4", "g5"] });
+  });
+
+  it("⚠️ is the CURRENT run, not the longest ever — a longer, older run doesn't win", () => {
+    const games = [
+      g("g1", "2026-01-01", true),
+      g("g2", "2026-01-08", true),
+      g("g3", "2026-01-15", true),
+      g("g4", "2026-01-22", true), // four in a row, ended by g5
+      g("g5", "2026-01-29", false),
+      g("g6", "2026-02-05", true),
+      g("g7", "2026-02-12", true), // only two in a row, but it's the trailing one
+    ];
+    expect(currentLastPlaceStreak(games)).toEqual({ length: 2, gameIds: ["g6", "g7"] });
+  });
+
+  it("⚠️ a run of exactly one game does not qualify — null, not a length-1 result", () => {
+    const games = [g("g1", "2026-01-01", true), g("g2", "2026-01-08", false), g("g3", "2026-01-15", true)];
+    expect(currentLastPlaceStreak(games)).toBeNull();
+  });
+
+  it("a player whose most recent game was NOT a last has no current run at all", () => {
+    const games = [g("g1", "2026-01-01", true), g("g2", "2026-01-08", true), g("g3", "2026-01-15", false)];
+    expect(currentLastPlaceStreak(games)).toBeNull();
+  });
+
+  it("a player who has never finished last has no current run", () => {
+    const games = [g("g1", "2026-01-01", false), g("g2", "2026-01-08", false)];
+    expect(currentLastPlaceStreak(games)).toBeNull();
+  });
+
+  it("a shared last extends the run exactly like a solo last — the caller decides `finishedLast`, this function just reads it", () => {
+    // A shared last is simply `finishedLast: true` on more than one row of the
+    // same game across different players — this function only ever sees one
+    // player's own rows, so there's nothing further for it to do with the
+    // sharing itself; it reads no differently from two solo lasts in a row.
+    const games = [g("g1", "2026-01-01", true), g("g2", "2026-01-08", true)];
+    expect(currentLastPlaceStreak(games)).toEqual({ length: 2, gameIds: ["g1", "g2"] });
+  });
+
+  it("re-sorts by playedOn then createdAt regardless of input order", () => {
+    const games = [g("g2", "2026-01-08", true), g("g1", "2026-01-01", true)];
+    expect(currentLastPlaceStreak(games)).toEqual({ length: 2, gameIds: ["g1", "g2"] });
+  });
+
+  it("createdAt breaks a tie on the same playedOn date", () => {
+    const games: LastPlaceGame[] = [
+      { gameId: "later", playedOn: "2026-01-01", createdAt: "2026-01-01T09:00:00Z", finishedLast: true },
+      { gameId: "earlier", playedOn: "2026-01-01", createdAt: "2026-01-01T08:00:00Z", finishedLast: true },
+    ];
+    expect(currentLastPlaceStreak(games)).toEqual({ length: 2, gameIds: ["earlier", "later"] });
+  });
+
+  it("an empty games array has no current run", () => {
+    expect(currentLastPlaceStreak([])).toBeNull();
+  });
+});
+
 describe("headToHead — criterion 197 (symmetric, one function)", () => {
   it("a solo win each way, over two shared games", () => {
     const games: HeadToHeadGame[] = [
@@ -766,6 +847,148 @@ describe("homeAdvantage — criteria 253–254", () => {
   });
 });
 
+describe("looksLikeCheating — criteria 297–299 (open question 15, option C)", () => {
+  function candidate(overrides: Partial<CheatingCandidate>): CheatingCandidate {
+    return {
+      playerId: "p-sam",
+      displayName: "Sam",
+      gamesPlayed: 0,
+      wins: 0,
+      otherWins: 0,
+      otherGames: 0,
+      ...overrides,
+    };
+  }
+
+  it("QA's own worked example: a heavy winner who plays rarely, against opponents who otherwise win constantly", () => {
+    // Sam: 4 wins in 5 games. The other seats in those same 5 games (3
+    // opponents each): 15 other-seat-games, only 1 other win.
+    const candidates: CheatingCandidate[] = [
+      candidate({ gamesPlayed: 5, wins: 4, otherWins: 1, otherGames: 15 }),
+    ];
+    const result = looksLikeCheating(candidates);
+    expect(result.holders).toHaveLength(1);
+    const holder = result.holders[0]!;
+    expect(holder.own).toEqual({ wins: 4, games: 5, ratePercent: 80 });
+    expect(holder.others).toEqual({ wins: 1, games: 15, ratePercent: 6.7 });
+    expect(holder.gapPercentagePoints).toBeCloseTo(73.3, 1);
+    expect(result.gapPercentagePoints).toBeCloseTo(73.3, 1);
+  });
+
+  it("⚠️ no 'gap must be positive' floor — the largest gap wins even when every candidate's own gap is negative", () => {
+    const candidates: CheatingCandidate[] = [
+      candidate({ playerId: "p-amy", displayName: "Amy", gamesPlayed: 4, wins: 0, otherWins: 6, otherGames: 12 }),
+      candidate({ playerId: "p-bo", displayName: "Bo", gamesPlayed: 4, wins: 1, otherWins: 9, otherGames: 12 }),
+    ];
+    const result = looksLikeCheating(candidates);
+    // Amy: 0% - 50% = -50. Bo: 25% - 75% = -50. A genuine tie, both negative.
+    expect(result.gapPercentagePoints).toBe(-50);
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Bo"]);
+  });
+
+  it("⚠️ a small archive can produce a 100%-against-0% gap, rendered plainly", () => {
+    const candidates: CheatingCandidate[] = [candidate({ gamesPlayed: 1, wins: 1, otherWins: 0, otherGames: 2 })];
+    const result = looksLikeCheating(candidates);
+    expect(result.holders[0]!.own.ratePercent).toBe(100);
+    expect(result.holders[0]!.others.ratePercent).toBe(0);
+    expect(result.holders[0]!.gapPercentagePoints).toBe(100);
+  });
+
+  it("a shared win is a full win on both sides of the gap", () => {
+    // Sam and one opponent share the win in every one of 2 games (2-player
+    // table): Sam's own rate is 2/2, the other seat's rate is also 2/2 —
+    // gap 0, not a false advantage for either side.
+    const candidates: CheatingCandidate[] = [candidate({ gamesPlayed: 2, wins: 2, otherWins: 2, otherGames: 2 })];
+    expect(looksLikeCheating(candidates).gapPercentagePoints).toBe(0);
+  });
+
+  it("joint holders: every player tied for the largest gap, alphabetical", () => {
+    const candidates: CheatingCandidate[] = [
+      candidate({ playerId: "p-zoe", displayName: "Zoe", gamesPlayed: 4, wins: 4, otherWins: 0, otherGames: 12 }),
+      candidate({ playerId: "p-amy", displayName: "Amy", gamesPlayed: 4, wins: 4, otherWins: 0, otherGames: 12 }),
+    ];
+    const result = looksLikeCheating(candidates);
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zoe"]);
+  });
+
+  it("a player with no games, or a defensive zero-other-games candidate, contributes no pair", () => {
+    const candidates: CheatingCandidate[] = [
+      candidate({ gamesPlayed: 0, wins: 0, otherWins: 0, otherGames: 0 }),
+      candidate({ playerId: "p-jo", displayName: "Jo", gamesPlayed: 3, wins: 1, otherWins: 0, otherGames: 0 }),
+    ];
+    expect(looksLikeCheating(candidates)).toEqual({ holders: [], gapPercentagePoints: null });
+  });
+
+  it("no candidates at all: the no-holder case", () => {
+    expect(looksLikeCheating([])).toEqual({ holders: [], gapPercentagePoints: null });
+  });
+});
+
+describe("metronome — criteria 307–309", () => {
+  function candidate(overrides: Partial<MetronomeCandidate>): MetronomeCandidate {
+    return { playerId: "p-sam", displayName: "Sam", finalScores: [], ...overrides };
+  }
+
+  it("the smallest range wins — the opposite direction from every other gap on the board", () => {
+    const candidates: MetronomeCandidate[] = [
+      candidate({ finalScores: [50, 90, 70] }), // range 40
+      candidate({ playerId: "p-jo", displayName: "Jo", finalScores: [60, 65] }), // range 5
+    ];
+    const result = metronome(candidates);
+    expect(result.range).toBe(5);
+    expect(result.holders).toEqual([
+      { playerId: "p-jo", displayName: "Jo", gamesPlayed: 2, range: 5, highest: 65, lowest: 60 },
+    ]);
+  });
+
+  it("⚠️ a spread needs two observations — a single-game player contributes no candidate, not a range of zero", () => {
+    const candidates: MetronomeCandidate[] = [candidate({ finalScores: [78] })];
+    expect(metronome(candidates)).toEqual({ range: null, holders: [] });
+  });
+
+  it("⚠️ no minimum-games floor — a two-game player can and will hold the record over a twenty-game one", () => {
+    const candidates: MetronomeCandidate[] = [
+      candidate({ playerId: "p-veteran", displayName: "Veteran", finalScores: Array.from({ length: 20 }, (_, i) => 40 + i) }), // range 19
+      candidate({ playerId: "p-newbie", displayName: "Newbie", finalScores: [55, 58] }), // range 3
+    ];
+    const result = metronome(candidates);
+    expect(result.range).toBe(3);
+    expect(result.holders[0]!.displayName).toBe("Newbie");
+    expect(result.holders[0]!.gamesPlayed).toBe(2);
+  });
+
+  it("states both ends of the range alongside the game count (criterion 309)", () => {
+    const candidates: MetronomeCandidate[] = [candidate({ finalScores: [100, 40, 70, 55] })];
+    const holder = metronome(candidates).holders[0]!;
+    expect(holder).toEqual({
+      playerId: "p-sam",
+      displayName: "Sam",
+      gamesPlayed: 4,
+      range: 60,
+      highest: 100,
+      lowest: 40,
+    });
+  });
+
+  it("joint holders: every player tied for the smallest range, alphabetical", () => {
+    const candidates: MetronomeCandidate[] = [
+      candidate({ playerId: "p-zoe", displayName: "Zoe", finalScores: [50, 60] }), // range 10
+      candidate({ playerId: "p-amy", displayName: "Amy", finalScores: [70, 80] }), // range 10
+    ];
+    const result = metronome(candidates);
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zoe"]);
+  });
+
+  it("a range of exactly zero (every score identical) is a real, valid holder", () => {
+    const candidates: MetronomeCandidate[] = [candidate({ finalScores: [60, 60, 60] })];
+    expect(metronome(candidates).range).toBe(0);
+  });
+
+  it("no candidates at all: the no-holder case", () => {
+    expect(metronome([])).toEqual({ range: null, holders: [] });
+  });
+});
+
 describe("perHandMeans — criterion 225", () => {
   it("SHEET_01 hand 1: the mean across all four players", () => {
     // Hand 1 running totals equal the handScores themselves: 28, 0, 23, 29.
@@ -1041,5 +1264,109 @@ describe("biggestHammering — criterion 232, imports Stage 2's winningMargin/se
     ];
     expect(winningMargin(allLevelScores)).toBeNull();
     expect(biggestHammering([])).toBeNull();
+  });
+});
+
+describe("clutchComebackInstances / mostClutchComeback — criteria 304–306", () => {
+  function row(playerId: string, gameId: string, runningTotalAtClutchHand: number, wonOutright: boolean): ClutchCandidate {
+    return { playerId, gameId, runningTotalAtClutchHand, wonOutright };
+  }
+
+  it("the founder's own formula: deficit at hand 9 against that game's own lowest, still won outright", () => {
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g2", 90, true), // 30 behind the leader at hand 9, but still won outright
+      row(PLAYER_B, "g2", 60, false), // the leader at hand 9
+    ];
+    const instances = clutchComebackInstances(candidates);
+    expect(instances).toEqual([{ playerId: PLAYER_A, gameId: "g2", deficit: 30 }]);
+    expect(mostClutchComeback(instances)).toEqual({ deficit: 30, instances });
+  });
+
+  it("the game's own leader at hand 9, who then wins outright, contributes no instance — they were never behind", () => {
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g1", 60, true), // leader at hand 9 (the game's own lowest) and the outright winner
+      row(PLAYER_B, "g1", 90, false),
+    ];
+    expect(clutchComebackInstances(candidates)).toEqual([]);
+  });
+
+  it("⚠️ a deficit of zero is not a comeback — level with the leader at hand 9 is excluded", () => {
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g1", 50, true),
+      row(PLAYER_B, "g1", 50, false), // tied with the winner at hand 9, but B didn't win the game
+    ];
+    expect(clutchComebackInstances(candidates)).toEqual([]);
+  });
+
+  it("⚠️ AMENDED 2026-09-15 (open question 18): a shared win does NOT count, the named exception to kickoff decision 1", () => {
+    // The player furthest behind at hand 9 finishes level at the top —
+    // `wonOutright: false` for both, since the caller (lib/board/queries.ts)
+    // computes it from `winnerIds.length === 1`. No comeback record at all
+    // for this game.
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g1", 90, false), // 30 behind at hand 9, but only shares the win
+      row(PLAYER_B, "g1", 60, false), // the leader at hand 9, also shares the win
+    ];
+    expect(clutchComebackInstances(candidates)).toEqual([]);
+    expect(mostClutchComeback(clutchComebackInstances(candidates))).toBeNull();
+  });
+
+  it("⚠️ the card is held by the next largest deficit that ended in an outright win, once the tied-win game is excluded", () => {
+    const candidates: ClutchCandidate[] = [
+      // g1: a 40-point deficit overturned, but only into a shared win — excluded.
+      row(PLAYER_A, "g1", 100, false),
+      row(PLAYER_B, "g1", 60, false),
+      // g2: a smaller, 20-point deficit, overturned into a real outright win.
+      row(PLAYER_C, "g2", 80, true),
+      row(PLAYER_D, "g2", 60, false),
+    ];
+    const instances = clutchComebackInstances(candidates);
+    expect(mostClutchComeback(instances)).toEqual({
+      deficit: 20,
+      instances: [{ playerId: PLAYER_C, gameId: "g2", deficit: 20 }],
+    });
+  });
+
+  it("joint holders: two different games, each won outright by a different player, tied on the same deficit", () => {
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g1", 80, true),
+      row(PLAYER_B, "g1", 60, false),
+      row(PLAYER_C, "g2", 90, true),
+      row(PLAYER_D, "g2", 70, false),
+    ];
+    const instances = clutchComebackInstances(candidates);
+    const result = mostClutchComeback(instances);
+    expect(result!.deficit).toBe(20);
+    expect(result!.instances.map((i) => i.gameId).sort()).toEqual(["g1", "g2"]);
+    expect(result!.instances.map((i) => i.playerId).sort()).toEqual([PLAYER_A, PLAYER_C].sort());
+  });
+
+  it("a game's own outright winner who was never behind contributes no instance at all", () => {
+    const candidates: ClutchCandidate[] = [
+      row(PLAYER_A, "g1", 40, true), // already the leader at hand 9
+      row(PLAYER_B, "g1", 70, false),
+      row(PLAYER_C, "g1", 90, false),
+    ];
+    expect(clutchComebackInstances(candidates)).toEqual([]);
+  });
+
+  it("no comeback has ever happened: the no-holder case", () => {
+    expect(mostClutchComeback([])).toBeNull();
+  });
+
+  it("⚠️ QA gap fix (criterion 319): the LARGER of two distinct, both-legitimate (outright-won) deficits wins — closes a mutation-testing hole where inverting mostClutchComeback's own extreme-selection direction passed every other test in this file unnoticed, because every other multi-instance case here is either a single instance or a tie", () => {
+    const candidates: ClutchCandidate[] = [
+      // g1: a modest 15-point deficit, overturned into a real outright win.
+      row(PLAYER_A, "g1", 75, true),
+      row(PLAYER_B, "g1", 60, false),
+      // g2: a much larger 50-point deficit, also overturned outright.
+      row(PLAYER_C, "g2", 110, true),
+      row(PLAYER_D, "g2", 60, false),
+    ];
+    const instances = clutchComebackInstances(candidates);
+    expect(mostClutchComeback(instances)).toEqual({
+      deficit: 50,
+      instances: [{ playerId: PLAYER_C, gameId: "g2", deficit: 50 }],
+    });
   });
 });

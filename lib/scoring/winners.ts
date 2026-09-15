@@ -62,3 +62,27 @@ export function winningScore(scores: readonly PlayerScore[]): number | null {
 export function isSharedWin(scores: readonly PlayerScore[]): boolean {
   return determineWinners(scores).length > 1;
 }
+
+/**
+ * Everyone holding the **highest** score — "finishing last" (Milestone 4,
+ * second slice, criterion 300: "getting absolutely wrecked"), the mirror of
+ * `determineWinners`. Same tie-handling rule, same "ignore anything not a
+ * finite number" guard, **shared lasts included** — the criterion's own
+ * words, "a shared last counts as last, the mirror of shared wins." Nothing
+ * elsewhere in this project already computes "who finished last", so this is
+ * a new definition, not a second implementation of one that exists.
+ */
+export function determineLastPlace(scores: readonly PlayerScore[]): string[] {
+  let highest = Number.NEGATIVE_INFINITY;
+
+  for (const entry of scores) {
+    if (!Number.isFinite(entry.score)) continue;
+    if (entry.score > highest) highest = entry.score;
+  }
+
+  if (!Number.isFinite(highest)) return [];
+
+  return scores
+    .filter((entry) => Number.isFinite(entry.score) && entry.score === highest)
+    .map((entry) => entry.playerId);
+}
