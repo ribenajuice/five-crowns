@@ -4404,8 +4404,12 @@ good)*
      behaviour (292).
 318. ⚠️ **No minimum-games floor anywhere**, decision 27 restated for the last time in this project
      and reconfirmed by the founder at the 2026-09-15 checkpoint (open question 17). **A player on a
-     single game can hold stats 1, 2 and 3**, and criterion 308's two-observation rule is the one
-     exception, for the reason stated there and no other.
+     single game can hold stats 1 and 3**. The two exceptions are **structural properties of their
+     own definitions, not floors**, for the reasons stated there and no others: criterion 301's *a
+     run of 1 is not a run* (stat 2 needs 2 games before a streak exists) and criterion 308's
+     two-observation rule (stat 4 needs 2 games before a spread exists). *(Corrected 2026-09-15 after
+     QA: this criterion previously read "stats 1, 2 and 3", which contradicted criterion 301 — the
+     code always implemented 301.)*
 319. **CI carries a real unit test for each of the four definitions**, in `lib/scoring`, with the
      hand-9 deficit, the last-place rule and the range each tested against a hand-built fixture whose
      answer was worked out on paper. ⚠️ **A deliberately broken definition fails the build** — QA
