@@ -6,6 +6,10 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 12] - 2026-09-15
+
+Milestone 4's second slice: the four personality stats. Live in production.
+
 ### Added
 
 - **Four new records join the board, taking it to seventeen: "Looks like cheating," "Getting
