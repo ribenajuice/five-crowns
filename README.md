@@ -34,8 +34,14 @@ venue now has its own page (games played, average score, and who's played there)
 a thirteenth record — "home advantage", naming whoever does best at one particular venue compared
 with everywhere else — `/stats` gains day-of-week and month-of-year breakdowns, and the games list
 can now be filtered down to one venue or one exact group of people. **Milestone 3 is now
-complete**: all four stages, plus the `/stats` analytics catalogue, are live in production. See
-`docs/STATUS.md`.
+complete**: all four stages, plus the `/stats` analytics catalogue, are live in production.
+**Milestone 4's second slice — the four personality stats — is also merged and live**: the board
+gains four more records, taking it to seventeen — "Looks like cheating" (whoever's win rate beats
+the table's by the widest margin among the opponents they've actually shared games with), "Getting
+absolutely wrecked" (the longest active run of finishing last), "Most clutch comeback" (the biggest
+deficit anyone's come back from at hand 9 to win a game outright), and "The metronome" (the
+smallest gap between anyone's best and worst game ever) — each tappable through to the exact games
+behind it, the same as every other record on the board. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
