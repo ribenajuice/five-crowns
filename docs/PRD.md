@@ -69,6 +69,30 @@ comparison printed beside the number.
 criterion 196 is no longer conditional), and **the personality stats stay in Milestone 4**
 (question 8 — no change anywhere). **Nothing in Milestone 3 Stage 1 is waiting on the founder.**
 
+⚠️ **Milestone 4's second slice was specced 2026-09-15** (criteria **294–319** — the four
+personality stats, closing out the milestone's named scope), adding questions **13–19**. ⚠️ **This is
+the one spec where the open questions are the point rather than the residue**: two of the four stats
+were given as a character rather than a number, and all four carry copy the founder reserved at
+question 8. Each has a stated default and **none blocks the build starting**, but **14 genuinely
+blocks shipping** — criterion 312 cannot render a string the founder has not written yet.
+
+⚠️ **Updated 2026-09-15, same day: the founder answered all seven.** **Criterion 202 is set aside in
+full for these four cards** — titles *and* every sentence, exactly as it is for the fun facts, which
+is further than the team recommended (question 13 — criterion 310 rewritten); **the wording arrives
+as designer candidates at a mockup checkpoint** (question 14 — criterion 312 is the one step still
+outstanding, and it is a checkpoint, not an open question); **all seventeen records live on the one
+board** (question 19 — criterion 296 final, ⚠️ **and question 12's "is it still readable in five
+seconds" stays open and explicitly deferred**); **"looks like they are cheating" is the biggest
+win-rate gap against the people at the same table** (question 15 — criterion 297 resolved to
+candidate **(C)**, ⚠️ **not the team's default**); **"getting absolutely wrecked" is the longest
+current last-place streak** (question 16 — criterion 300 resolved to **(A)**, ⚠️ **which forced a
+real correction to criterion 301 and retires no fun fact**, criterion 302); **most consistent keeps
+the founder's range and no floor** (question 17 — criteria 307–309 stand as specced); and **most
+clutch comeback keeps hand 9 but counts an outright win only** (question 18 — criterion 304
+rewritten, ⚠️ **a deliberate, named exception to kickoff decision 1's "ties are shared wins" rule,
+for this one record and nothing else**). **Nothing in Milestone 4 is waiting on the founder except
+the four cards' copy.**
+
 ## Open questions
 
 *Opened 2026-09-13 for Milestone 1 Stage 5. Both are the founder's to answer; neither blocks the
@@ -294,6 +318,160 @@ default is what the criteria already say.*
     unanswered: all twelve ship, the founder's four first, in the order documented in the design
     system** (criterion 235). *(Criterion 218 already asks QA to report how seven reads at 375px —
     that finding lands before you have to answer this.)*
+
+*Opened 2026-09-15 by the **Milestone 4 second slice** spec (criteria 294–319, the four personality
+stats). ⚠️ **All seven are the founder's, and this is the one spec in the project where that is not a
+formality**: two of the four stats were given as a character rather than a number, and all four
+carry wording the founder reserved at open question 8. Each has a stated default, so **none of them
+blocks the build starting** — but 13, 14 and 19 are the ones worth answering before a line is
+written, because they change what is on screen rather than how it reads.* ✅ **All seven were
+answered by the founder the same day, at a checkpoint before any branch opened — none of them is
+still open.** Kept here with their answers rather than deleted, per the house rule on preserving
+decision history; full reasoning in `docs/DECISIONS.md`. ⚠️ **One step is still outstanding and it is
+not a question**: criterion 312's four titles, sample statements and no-holder sentences do not
+exist until the ui-designer brings candidates to the mockup checkpoint and the founder picks
+(question 14's own answer), so the slice can be **built** before that and **shipped** only after.
+⚠️ **Question 12 is untouched by these answers and stays open** — the founder said so explicitly
+when answering 19.
+
+13. ✅ **Answered 2026-09-15: relaxed in full — treat all four cards exactly like the fun facts.**
+    ⚠️ **The founder went further than the team's recommendation**, which would have relaxed criterion
+    202 for the four titles and their framing while holding it for every sentence on the cards:
+    **202 is set aside for these four cards entirely — titles *and* card sentences** — on the same
+    reasoning the founder gave for the fun-fact pool (criterion 290), *"this is for fun among
+    friends"*. The team's distinction — a fun fact is one of eight and gone on the next refresh,
+    whereas these are permanent titled cards — was put to the founder and **overruled knowingly, not
+    missed**. ⚠️ **Three things are not part of the relaxation and stay absolute**: criterion 192's
+    bans (*checked, validated, verified, confirmed, correct*; *safe, protected, self-cancelling*),
+    criterion 311's honesty rule (no invented, rounded-up or exaggerated number; no probability,
+    significance, expectation, prediction or claim about *why*), and **202's own mechanical test** —
+    nothing ships that would not be printable **with the named player reading it over your
+    shoulder**, which is the founder's own stated boundary and the thing that keeps this from being a
+    blank cheque. ⚠️ **Scoped to these four cards only**: 202 governs the nemesis and every other
+    rivalry screen exactly as it did. Rewritten as criterion 310.
+    *The original question, for the record:* **does criterion 202 — "nothing characterises a player" —
+    apply to these four cards?** It was
+    written for the nemesis, amended to let banter into the nemesis's *title* (question 10), and then
+    set aside entirely for the fun facts on your own instruction that *"this is for fun among
+    friends"*. ⚠️ **We will not guess a third time.** The difference that makes this worth asking:
+    a fun fact is one of eight and is gone on the next refresh, whereas these are **permanent titled
+    cards a named friend sees every time they open the app** — and two of the four names you chose
+    (*looks like they are cheating*, *getting absolutely wrecked*) are themselves characterisations.
+    **Our recommendation: 202 relaxes for the four titles and their framing, and holds for every
+    sentence on the cards**, with 202's own test unchanged either way — nothing ships that would not
+    be printable with the named player reading it over your shoulder. **Default if unanswered: that
+    recommendation** (criterion 310).
+14. ✅ **Answered 2026-09-15: the designer brings candidates to the mockup checkpoint** — the team's
+    recommended default, and the nemesis card's process (question 10) repeated exactly. The founder
+    picks or redirects there rather than writing copy now. ⚠️ **This is the one part of the slice
+    still outstanding, and it is a checkpoint rather than an open question**: the four definitions
+    can be built and unit-tested (319) before a word exists, but **criterion 312 cannot render a
+    string that has not been written**, so nothing ships until the founder has picked. The promise
+    made at question 8 — *"their wording is yours whenever they are built"* — is kept by the
+    checkpoint, not by the spec.
+    *The original question, for the record:* **the words themselves are still yours, and we have not
+    written any.** Four titles, four sample
+    statements and four no-holder sentences. ⚠️ **We would rather show you options than ask you to
+    write copy from scratch**: the ui-designer brings a **short candidate list per card** to a mockup
+    checkpoint, exactly as the nemesis card was done, and you pick or redirect. **Default if
+    unanswered: nothing ships** — criterion 312 cannot render a string that does not exist, and this
+    is the one place where "the team's default" would break the promise made at question 8.
+15. ✅ **Answered 2026-09-15: option (C) — the biggest win-rate gap against the people at the same
+    table.** ⚠️ **Not the team's stated default (A)**, and the difference matters: the founder wanted
+    the card to be about *winning more than the people you played against*, not about going out clean
+    more often. **The definition that ships**: the largest gap between a player's own win rate and the
+    combined win rate of the other players **in the same games they played** — ⚠️ **that qualifier is
+    the whole constraint**, not an implementation note: the baseline is built from those games alone,
+    never the archive at large. Both rates and the counts under them are printed on the card.
+    Criterion 297 is rewritten as a settled definition, with (A) and (B) struck in place rather than
+    deleted; criterion 298's ban on claiming anything is improbable is unaffected.
+    *The original question, for the record:* **what counts as "looking like they are cheating"?** Your gloss was *"the one whose results are
+    suspiciously good"*, which is a character, not a number. Three honest ways to count it, all
+    already computable: **(A) goes out clean more than anyone** — the highest share of hands scored
+    zero across their career (distinct from cleanest sheet and the flatliner, both of which are
+    single-game); **(B) takes more hands than anyone** — the highest round-win rate; **(C) wins far
+    more than the people sitting next to them** — the biggest gap between their win rate and
+    everyone else's in the same games. ⚠️ **Whichever you pick, the card will not claim anything is
+    improbable** — no odds, no p-values, no "should have" (criterion 298). The suspicion is the
+    title's job. **Default if unanswered: (A).**
+16. ✅ **Answered 2026-09-15: option (A) — the longest current run of finishing last**, the stated
+    default. ⚠️ **And the founder answered the consequence too**: they confirmed that this does **not**
+    make the same joke as anything already in the fun-fact pool, so **no fun fact is retired** and
+    criterion 302's conditional removal does not trigger. The team checked the claim before recording
+    it as settled and agrees: **current drought** (283) counts games since a player last *won*, which
+    somebody finishing second every week accumulates without ever finishing last, and **the slump**
+    (285) compares a last-3 mean against an all-time mean, which is a comparison of *scores* and not
+    of finishing positions. ⚠️ **(A) also turned out to have no recency window to name**, which is a
+    correction to criterion 301 rather than a wording change — see there. The pool ships unchanged at
+    eight generators.
+    *The original question, for the record:* **what counts as "getting absolutely wrecked"?** Your gloss was *"the one currently taking the
+    beating"*, and **"currently" is the interesting word**. **(A) on the longest current run of
+    finishing last** (a shared last counts); **(B) furthest behind, lately** — the biggest average
+    gap between their score and the winning score over their last few games; **(C) furthest behind,
+    all time** — the same gap over their whole career, which always has a holder but drops the
+    "currently". ⚠️ **One thing to know before picking**: (B) is close kin to the fun-fact **slump**
+    you already shipped, and a run-of-losses reading is close kin to the **current drought** fact. If
+    you pick one of those, **we take the matching fun fact out of the pool** rather than have the
+    board make the same joke twice on one screen (criterion 302). **Default if unanswered: (A).**
+17. ✅ **Answered 2026-09-15: the range, exactly as worded — highest final score minus lowest — with
+    no floor.** The stated default, confirmed on both halves. The founder kept their own definition
+    over the two alternatives offered (**average distance from your own average**, and **standard
+    deviation**), and ⚠️ **kept the no-floor stance for the third time** (decision 27, question 6),
+    with eyes open: whoever has played fewest games will usually hold this, because two games have a
+    smaller spread than twenty. **The mitigation is the one already in use and nothing else** — the
+    card prints the holder's **game count and both ends of the range** (criterion 309). Criteria
+    307–309 stand as specced; only the conditional framing is removed.
+    *The original question, for the record:* **"most consistent — smallest spread between their best and worst": is a range really what you
+    want?** We have written your words down literally (criterion 307: highest final score minus
+    lowest). Two things to weigh. First, **a range is decided by exactly two nights** however many
+    you have played, so one disaster years ago costs you the record forever — the alternatives are
+    **average distance from your own average**, or **standard deviation**, both of which use every
+    game and neither of which is as easy to read on a card. Second, and more awkward: **with no
+    minimum-games floor anywhere in this project, whoever has played fewest games will usually hold
+    this**, because two games have a smaller spread than twenty. ⚠️ **We are not proposing a floor**
+    — you deleted floors twice, deliberately — but this is the record where that decision is most
+    visible, and the mitigation on the table is the one already in use: **print the game count and
+    both ends of the range on the card** (criterion 309). **Default if unanswered: your wording, the
+    range, with the sample stated.**
+18. ✅ **Answered 2026-09-15: hand 9 literally — and a shared win does *not* count.** Part (a) is the
+    stated default confirmed: **hand 9 as the founder wrote it**, not the largest deficit at any hand
+    that was overturned, which would usually land on an early hand and produce a bigger, less
+    meaningful number. Part (b) **reverses the team's answer**: a comeback is one player coming from
+    behind and taking it outright, and two players finishing level at the top is not that story, so
+    **only an outright win qualifies**. ⚠️ **This is a deliberate, named exception to kickoff decision
+    1 — "lowest total wins, ties are shared" — and it holds for this one record only.** It is **not**
+    a project-wide change: every other win-based number still treats a tie as a full win for both
+    players, including criterion 297's win-rate gap specced in this same slice, and criterion 187's
+    shared-win sweep is untouched. The exception is written into criterion 304 as an exception, in
+    those words, so nobody later reads it as a bug. ⚠️ **The visible cost, stated rather than
+    discovered**: this makes the no-holder case (185) slightly more likely in a small archive, which
+    criterion 306 already handles.
+    *The original question, for the record:* **most clutch comeback — is hand 9 exactly what you meant?** Your words were *"furthest behind at
+    hand 9, still won"*, and we have built it exactly that way: their running total at hand 9 minus
+    the leader's, biggest overturned deficit takes it. Two small things you may want to move:
+    **(a) hand 9 literally, or the largest deficit at *any* hand that was still overturned** (which
+    would usually be an early hand and a bigger, less meaningful number — we would keep 9);
+    **(b) does a shared win count as "still won"?** We say yes, consistent with the kickoff rule that
+    ties are shared. **Default if unanswered: hand 9 literally, shared wins count.**
+19. ✅ **Answered 2026-09-15: option (a) — they join the board. Seventeen cards.** The stated default
+    confirmed: all four sit with the other thirteen, because the board is where the personality of
+    the app belongs and is why the founder asked for these four in the first place. The alternative —
+    a **"Personality" section on `/stats`** with the board left at thirteen, one heading instead of
+    four rows — is recorded rather than deleted. Criterion 296 is final.
+    ⚠️ **This does not answer question 12, and the founder said so when answering this one**:
+    **whether seventeen — or even thirteen — is readable in five seconds is still open and is
+    explicitly deferred.** It is not a blocker for this slice; it is a question about ordering and
+    about whether any existing record should come off the board, and **deleting a record from the
+    board is deleting a row while moving one is reordering a list** either way.
+    *The original question, for the record:* **where do these four live — the board, or `/stats`?** The board is at thirteen cards and
+    question 12 already asked whether that is readable in five seconds. ⚠️ **These four take it to
+    seventeen.** Two shapes: **(a)** they join the board, which is where the personality of the app
+    belongs and why you asked for them; **(b)** they get a **"Personality" section on `/stats`** and
+    the board stays at thirteen, which costs one heading instead of four rows. ⚠️ **The stats are
+    identical either way** — this is purely where they render, and moving one later is moving a row.
+    **Default if unanswered: (a), the board** (criterion 296). ⚠️ **Question 12 is still unanswered
+    and these two are cheaper to answer together** — if any of the thirteen should come off the
+    board, this is the moment.
 
 ---
 
@@ -3843,8 +4021,14 @@ to run the milestone-closing audits over a finished set of screens.
 ### Milestone 4 — Personality and polish
 
 - "The player who looks like they are cheating", "the player getting absolutely wrecked", most
-  clutch comeback, most consistent.
+  clutch comeback, most consistent. ✅ **Specced 2026-09-15** as the **second slice**, criteria
+  294–319, below.
 - Whatever the old sheets teach us once they're all entered.
+
+*Delivered as slices rather than stages, deliberately — this is flavour, not foundations, and the
+founder's own words were "something like this can always be polished later." **First slice: fun
+facts** (281–293), shipped 2026-09-14. **Second slice: the four personality stats** (294–319),
+specced 2026-09-15.*
 
 ### Milestone 4, first slice — Fun facts
 
@@ -3916,6 +4100,353 @@ scoped to this feature only.
 **Founder calls already made, recorded so they aren't relitigated**: the tone relaxation (criterion
 290) and the mechanism itself (a random pick from a pool, not a fixed rotation or a single "fact of
 the day") were both the founder's own framing, given directly rather than proposed by the team.
+
+### Milestone 4, second slice — The four personality stats
+
+*Written 2026-09-15. Numbered from **294**, after Stage 4's reserved 250–280 and the fun-fact
+slice's 281–293, so nothing can collide. This closes out the named scope of Milestone 4: the four
+stats the founder put in the analytics catalogue under "the tone-setter for the whole section", and
+the last thing in this PRD that was only ever a placeholder name.*
+
+**What the founder already said, quoted rather than paraphrased** (catalogue section, above):
+
+- **"The player who looks like they are cheating"** — *the one whose results are suspiciously good.*
+- **"The player getting absolutely wrecked"** — *the one currently taking the beating.*
+- **Most clutch comeback** — *furthest behind at hand 9, still won.*
+- **Most consistent player** — *smallest spread between their best and worst.*
+
+⚠️ **Two of the four already have a mechanical definition and two do not.** Clutch comeback and
+most consistent were given as formulas in the founder's own words, and the criteria below simply
+write them down. The other two were given as *characters* — "suspiciously good", "taking the
+beating" — which is a tone, not a number, and there are three honest ways to count each. Those go
+to the founder as **open questions 15 and 16** with concrete candidates, exactly the way the nemesis
+card's naming went (open question 10), rather than being guessed here. ✅ **Both were answered
+2026-09-15**: the cheating stat is **(C)**, the win-rate gap against the people at the same table
+(⚠️ **not the team's default**), and the wrecked stat is **(A)**, the longest current last-place
+streak. **Criteria 297 and 300 below are settled definitions now, not candidate lists** — the
+candidates that lost are struck in place rather than deleted.
+
+⚠️ **The copy is reserved, unchanged.** Open question 8's condition holds: *"their wording is
+yours whenever they are built."* Nothing below proposes a display name, a title or a sentence. The
+team specs what is counted; the **ui-designer brings candidate titles and framings to a mockup
+checkpoint** and the founder picks (open question 14, ✅ **answered 2026-09-15: that is exactly how
+it will be done** — and it is the one part of this slice still outstanding). The placeholder names in this section are the
+founder's own words from the catalogue and are used here as **labels for the work**, not as shipped
+copy.
+
+**The user problems, one per stat** *(if a stat can't state one, it gets cut — none of these needed
+cutting, because all four are the founder's own asks)*
+
+> As a player, I want to see who the archive says has been improbably lucky, so that the thing we
+> all accuse each other of at the table has a number attached to it.
+
+> As a player, I want to see who is having the worst time of it right now, so that the archive
+> notices a bad run while it is still happening, not just in the all-time records.
+
+> As a player, I want the single greatest comeback in our history to be on the board, so that the
+> night someone was buried at hand 9 and still won is never forgotten or misremembered.
+
+> As a player, I want to know who is the steadiest, so that "never brilliant, never a disaster" is
+> recognised as its own kind of good rather than being invisible next to the extremes.
+
+**Shape, placement and reuse**
+
+294. **Four stats, in the board's existing record shape.** Each one is a record like the thirteen
+     already shipped — a title, its holder or holders by name, one number, its sample statement, and
+     a tap-through — reusing **181** (all joint holders listed, never "and N others"), **182** (every
+     number states its sample), **185** (a record nobody holds says so rather than vanishing) and
+     **186** (every record is checkable). ⚠️ **No new card family, no new page type and no new
+     drill-through format.**
+295. **Every definition is a pure function in `lib/scoring`, and reuses what exists.** ⚠️ **No second
+     implementation of anything already defined**: winners and shared wins (`determineWinners`,
+     `winningScore`), finishing above and head-to-head (`headToHead`, criterion 197–198), second
+     place and the margin (`secondPlace`, `winningMargin`, criteria 214–215), the average
+     (`averageFinalScore`), the round winner (`roundWinners`, criterion 175) and per-hand scores
+     (`deriveHandScores`). QA greps for a duplicate of each and fails the slice on one.
+296. **Placement, settled: the board, seventeen cards** *(open question 19, ✅ answered 2026-09-15 —
+     no longer the founder's call to make, it is made)*. The four sit on the board with the other
+     thirteen, taking it to **seventeen cards**, with their numbers also reachable from `/stats`.
+     *The alternative, recorded rather than deleted: a **"Personality" section on `/stats`** with
+     nothing added to the board, one heading instead of four rows — not chosen, because the board is
+     where the personality of the app belongs and is why these four were asked for.*
+     ⚠️ **Open question 12 is not resolved by this and is explicitly deferred**: whether seventeen —
+     or even thirteen — still reads in five seconds is still the founder's to answer, and answering
+     19 deliberately did not answer it. **It does not block this slice**; it is about order and about
+     whether any existing record comes off the board. **The stats themselves are identical either
+     way**; only where they render changes, and moving one later is moving a row.
+
+**Stat 1 — "the player who looks like they are cheating"** *(the one whose results are suspiciously
+good)*
+
+297. ~~⚠️ **The definition is open question 15. Three candidates, all computable from stored rows
+     today; the default is (A).**~~ ⚠️ **RESOLVED 2026-09-15 — the founder chose (C), not the team's
+     default (open question 15).** **The definition, settled: the largest gap between a player's own
+     win rate and the combined win rate of the *other* players in the same games they played**, stated
+     as both rates with the counts under them — *their wins over their games, against the other seats'
+     wins over those same games*.
+     - ⚠️ **"In the same games they played" is the whole of the constraint, not an implementation
+       note.** The baseline is built **only from the games the holder was actually in**: never the
+       archive at large, never games they did not play, never a career rate for the other players
+       computed elsewhere. A player who has played five of the archive's sixty games is compared
+       against what the people sitting next to them did **in those five**, and nothing else. QA
+       constructs the case — a heavy winner who plays rarely, in an archive where the same opponents
+       win constantly without them — and confirms the number moves only with those shared games.
+     - **A shared win is a full win on both sides of the gap** (kickoff decision 1, unchanged here —
+       ⚠️ criterion 304's outright-win exception is scoped to the comeback record and does **not**
+       reach this one).
+     - ⚠️ **A small archive can produce a 100%-against-0% gap**, and it is rendered plainly with the
+       sample beside it rather than suppressed or hedged — criterion 184's no-apologising rule,
+       which this slice does not get to reopen.
+     *The two candidates that lost, kept rather than deleted so the choice stays legible:*
+     - ~~**(A) Goes out clean more than anyone** — the highest share of *hands* scored zero across
+       every hand they have ever played (`round_score.score = 0`). States both counts: *"N of their
+       M hands scored nothing."* ⚠️ **Distinct from everything shipped**: cleanest sheet (criterion
+       231) is the most zeros in *one game*, the flatliner fun fact (282) is the longest *run* in one
+       game, and neither is a career rate.~~ *Not chosen: it measures going out clean, which is a
+       different accusation from winning more than the people at your table.*
+     - ~~**(B) Takes more hands than anyone** — the highest **round-win rate**: hands where they were a
+       round winner, over hands played, reusing `roundWinners` unchanged. ⚠️ **Shared round wins are
+       the common case** (several people go out clean in the early hands), so this rate runs high for
+       everybody and the card must print the raw counts beside it rather than a bare percentage.~~
+       *Not chosen: the rate runs high for everybody, so the gap between the top and the middle is
+       small and the card says little.*
+298. ⚠️ **It asserts no improbability.** The chosen definition is **two counted rates side by side**
+     and the card states counted quantities and nothing else: **no p-value, no odds, no "expected", no
+     "should have", no "unlikely", and no baseline the archive did not itself produce** — the other
+     seats' own record in the same games *is* such a baseline; anything modelled is not. The joke is
+     in the title the founder writes; the number underneath is flat. *(This is the no-modelling
+     non-goal — predictions, ratings, Elo, anything that models skill — reaching Milestone 4 intact.)*
+299. **Ties are joint holders** (181), the sample statement carries the holder's **own game count and
+     the win counts on both sides of the gap** (182) — ⚠️ *hand* counts were candidate (A)'s currency
+     and are not part of the chosen definition — and tapping lands on **exactly the games the number
+     was computed from** (186): that player's games, newest first, each row showing who won it, which
+     is both sides of the comparison in one list.
+
+**Stat 2 — "the player getting absolutely wrecked"** *(the one currently taking the beating)*
+
+300. ~~⚠️ **The definition is open question 16. Three candidates; the default is (A).**~~
+     ⚠️ **RESOLVED 2026-09-15 — (A), the stated default (open question 16).** **The definition,
+     settled: the longest *current* run of finishing last.** Counting back from that player's most
+     recent game in `played_on` order, the number of consecutive games in which they finished
+     **last** — the highest final score in that game, and **a shared last counts as last**, the
+     mirror of shared wins (kickoff decision 1, which holds here). **The run ends the moment one game
+     breaks it**, and the card states the **run length and the date it started**.
+     *The two candidates that lost, kept rather than deleted:*
+     - ~~**(B) Furthest behind, lately** — the largest **average gap between their final score and the
+       winning score** over their last **N** games (N a named constant, criterion 301). ⚠️ **The
+       points-behind-the-winner number is new**: biggest hammering (criterion 234) is
+       winner-to-runner-up in a single game, which is a different claim.~~ *Not chosen — and it was
+       the only candidate that ever needed a recency constant, which is why criterion 301 changed
+       shape when it lost.*
+     - ~~**(C) Furthest behind, all time** — the same average gap over **every** game they have played.
+       ⚠️ **This one changes the claim from "currently" to "always"**, which contradicts the founder's
+       own gloss; it is listed because it is the version that never goes quiet, and the founder may
+       prefer a card that always has a holder.~~ *Not chosen: it drops the "currently" that was the
+       interesting word in the founder's own gloss.*
+301. ⚠️ **"Currently" is a property of the definition, not a tunable window** *(reworked 2026-09-15
+     when (A) won — this is a correction, not a rewording)*. ~~If (A) or (B) wins, the recency rule is
+     a **named constant in `lib/scoring`**~~ ⚠️ **The chosen definition has no recency window, and
+     none is to be invented for it**: a run counted back from the most recent game until one game
+     breaks it is **already current by construction** — it is alive as of that player's latest game or
+     it is not a run at all. There is no `LAST_N_GAMES` here to name, tune, print or later "fix", and
+     **a criterion asserting one would be asserting a constant the definition has no use for**. *(The
+     struck wording was written for (A) and (B) together; only (B) — an average over a player's last
+     N games — ever had a window.)* What survives unchanged: **the span is still stated on the card in
+     words** — *"4 games running"*, with the date it started (300) — never left for the reader to
+     assume; ⚠️ **a run of 1 is not a run and its player is not the holder**; and where nobody
+     currently qualifies the record has **no holder and says so** (185). ⚠️ **QA fails the slice on a
+     named recency constant appearing in `lib/scoring` for this stat** — its presence would mean the
+     definition had drifted back towards (B).
+302. ✅ **Resolved 2026-09-15: no fun fact is retired, and the pool ships unchanged at eight
+     generators.** This criterion demanded the check be made at the checkpoint rather than silently in
+     the build, and it was: the founder confirmed that **the longest current last-place streak (300)
+     computes neither of the two numbers it is kin to**, and the team verified the claim before
+     recording it. **Current drought** (283) counts games since a player last *won* — somebody
+     finishing second every week accumulates one without ever finishing last — and **the slump** (285)
+     compares a last-3 mean against an all-time mean, which is a comparison of *scores*, not of
+     finishing positions. ⚠️ **The rule itself stands for any later change**: move this definition to
+     one that computes the same number as a fun fact and **the fun fact leaves the pool in the same
+     PR**, rather than the archive telling the same joke twice on one screen — at a checkpoint, never
+     silently in the build.
+303. **Ties, sample and drill-through as 299** — joint holders listed, the sample stated, and a tap
+     landing on exactly the games behind the number.
+
+**Stat 3 — Most clutch comeback** *(the founder's own formula, written down)*
+
+304. ⚠️ **The definition, literally as given: furthest behind at hand 9, still won.** For every
+     player in every game, take their **running total at hand 9** and subtract the **lowest running
+     total at hand 9** in that game — that is their deficit at hand 9. The record is the **largest
+     deficit that was still overturned**: the player must have **won that game outright**, and
+     ~~a **shared win counts** (kickoff decision 1)~~ ⚠️ **a shared win does not count** — see the
+     exception below. A deficit of **zero is not a comeback** — someone level with the leader at hand
+     9 is excluded, so the holder was genuinely behind.
+     ⚠️ **AMENDED 2026-09-15 (open question 18) — and this is a deliberate, named exception to
+     kickoff decision 1, not a contradiction of it.** Decision 1 says *"lowest total wins, ties are
+     shared"*, and **every other number in this project still obeys it** — most wins, the streaks,
+     the drought, the nemesis, criterion 187's shared-win sweep, and criterion 297's win-rate gap
+     specced three criteria above this one. **For this one record, and nothing else, a tie at the top
+     is not a win**: the founder's reasoning is that a comeback is one player coming from behind and
+     **taking it**, and two people finishing level is not that story. **The exception is scoped to
+     most clutch comeback alone and does not generalise**; it is written here in these words so that
+     nobody later reads it as a bug and "fixes" it back. ⚠️ **QA tests it explicitly**: in a
+     constructed game where the player furthest behind at hand 9 finishes **level at the top**, that
+     game yields **no comeback record at all**, and the card is held by the next largest deficit that
+     ended in an outright win.
+305. **Hand 9 is a named constant** (`CLUTCH_HAND`), the founder's own number, and it is **safe to
+     index**: every game is exactly 11 hands with every player present for all of them (kickoff
+     decision 2), so hand 9 exists in every game in the record and there is no partial-game case.
+     ✅ **Confirmed 2026-09-15 (open question 18, part (a)): hand 9 literally.** *The alternative
+     considered and rejected: the largest deficit at **any** hand that was still overturned, which
+     would usually land on an early hand and produce a bigger, less meaningful number.*
+306. **It is a single-event record**, built like best game ever and the catastrophe (criteria
+     232–233): it names the player, the deficit in points, the **date of the game**, and the final
+     score it ended on — **a date rather than a game count**, because one observation is not a
+     history. Tied deficits give **joint holders and both games** (181). ⚠️ **The two kinds of tie in
+     this record are different things and the copy must not blur them**: *joint holders* means **two
+     different games** that produced the **same deficit value**, each won **outright** by a different
+     player — both are real comebacks and both are shown, with both dates. A **tie for the win inside
+     a single game** is the case criterion 304 now excludes, and it never produces a holder at all.
+     If no comeback has ever happened — the leader at hand 9 has won every time, which a small
+     archive readily produces and which 304's outright-win rule makes **slightly more likely** than
+     it was — the record renders the **no-holder string** and crowns nobody (185). Tapping lands on
+     **that game**.
+
+**Stat 4 — Most consistent** *(the founder's own formula, written down)*
+
+307. ⚠️ **The definition, literally as given: the smallest spread between their best and worst.**
+     For each player, the **highest final score they have ever scored minus the lowest** — a range in
+     points, over their final scores, across every game they have played. The smallest range holds
+     the record. ✅ **Confirmed 2026-09-15 (open question 17): the range, in the founder's own
+     wording, unchanged.** It reuses the personal best/worst already on the player page (Stage 3).
+     *The alternatives put to the founder and not chosen: **average distance from your own average**
+     and **standard deviation**, both of which use every game rather than the two nights that decide
+     a range, and neither of which reads as easily on a card. ⚠️ The known consequence, accepted
+     rather than overlooked: **one disaster years ago costs a player this record forever.***
+308. ⚠️ **A spread needs two observations, and that is a definition, not a floor.** A player with
+     **fewer than 2 games has no spread at all** and is not a candidate — not withheld, not shown as
+     zero. ⚠️ **This is not a reintroduction of the minimum-games floor deleted project-wide on
+     2026-09-14** (decision 27): one number has no range the way one game has no head-to-head, and
+     the criterion states it so that nobody later "fixes" it by adding a 5-game threshold. **A player
+     on exactly 2 games can and will hold this record in a small archive**, and criterion 309 is what
+     makes that visible rather than hidden. ✅ **Confirmed 2026-09-15 (open question 17): no floor is
+     added here either.** The founder was shown the consequence in plain words — with no floor
+     anywhere in this project, *most consistent* will usually be held by whoever has played fewest
+     games, because two games have a smaller spread than twenty — and **kept the no-floor stance for
+     the third time** (decision 27, open question 6). **The mitigation is criterion 309 and nothing
+     else.**
+309. **The sample statement carries the whole honesty burden here** (182), ✅ **confirmed at the
+     2026-09-15 checkpoint as the only mitigation**: the card states the holder's **game count** and
+     **both ends of the range** — the best and the worst score the range is measured between — so a
+     two-game holder is self-evidently thin without the board apologising.
+     Ties are joint holders (181); tapping lands on **that player's games**, newest first.
+
+**The rules that still govern, restated because this slice is the one that would break them**
+
+310. ⚠️ **The wording rule, settled 2026-09-15 (open question 13): criterion 202 is set aside in full
+     for these four cards — titles *and* every sentence on them.** ~~The team's recommendation: 202
+     relaxes for the four titles and their framing and holds for every sentence of the cards
+     themselves.~~ ⚠️ **The founder went further than that and overruled it knowingly**, having been
+     shown the team's distinction — a fun fact is one of eight and gone on the next refresh, whereas
+     these are **permanent titled cards a named friend sees every time they open the app**. **These
+     four are written exactly like the fun facts** (criterion 290), on the founder's own standing
+     instruction that *"this is for fun among friends"*: a card may say a real, true, unflattering
+     thing about a named player, in its title **and** in its sentences. It is also the only reading
+     consistent with two of the four names being characterisations in the founder's own words —
+     *looks like they are cheating*, *getting absolutely wrecked*.
+     ⚠️ **Three things are outside the relaxation and stay absolute — QA fails the slice on any of
+     them:**
+     - **Criterion 192's bans**, unchanged and not in question: nothing describes a number as
+       *checked, validated, verified, confirmed* or *correct*, or a score as *safe*, *protected* or
+       *self-cancelling*.
+     - **Criterion 311's honesty rule**, unchanged: no invented, rounded-up or exaggerated number, and
+       no probability, significance, expectation, prediction or claim about *why*. **Tone relaxes;
+       honesty never does** — they are separate rules and only the first one moved.
+     - **Criterion 202's own mechanical test**, which survives intact and is the founder's own stated
+       boundary: QA reads every string and fails the slice on any sentence that would **not be
+       printable with the named player reading it over your shoulder**. A pointed title clears that
+       bar; telling somebody what to do about their number does not.
+     ⚠️ **Scope: these four cards only.** Criterion 202 governs the nemesis and every other rivalry
+     screen exactly as it did before this slice, and nothing here is a project-wide repeal.
+311. ⚠️ **The honesty rule does not relax, at all.** Separate from tone, and unchanged since criterion
+     290: **no invented, rounded-up or exaggerated number**; every card states only what is literally
+     true of the stored rows. Specifically here — **no probability, no significance, no expectation,
+     no skill model, no prediction, and no claim about *why* a number looks the way it does.** The
+     archive counts what happened; the argument stays the founder's.
+312. **Fixed strings, verbatim.** All four titles, their sample statements, their no-holder sentences
+     and any empty state are rendered **verbatim from the fixed-strings table** in
+     `docs/DESIGN-SYSTEM.md`, which gains a **Milestone 4 section** (the fun-fact slice added none,
+     so this slice creates it). ⚠️ **A paraphrase is a fail even where it uses no banned word**, the
+     same contract since Stage 5. ⚠️ **This is the one step in the slice still outstanding, and it is
+     a checkpoint rather than an open question** (question 14, answered 2026-09-15): the strings do
+     not exist until the **ui-designer brings a short candidate list per card to a mockup checkpoint
+     and the founder picks or redirects**, exactly as the nemesis card was done. The four definitions
+     and their unit tests (319) can be built before that lands; **nothing ships until after it**.
+313. ⚠️ **No schema change, a fifth time.** No table, no column, no index, no migration and no
+     backfill: QA confirms `lib/db/migrations/` is untouched and that every number above traces to
+     **`game.played_on`, `game_player.final_score` and `round_score.score` / `round_score.running_total`
+     alone** — all stored since Milestone 1, so **all four stats are retroactive over every game ever
+     entered**, including sheets typed in years from now.
+314. ⚠️ **Nothing is cached, and the sweep proves it.** No summary table, no stored total, no
+     materialised view, no scheduled recompute — every number is computed from stored rows at read
+     time (criterion 189, decision 3, and the 2026-09-10 database ADR). QA **deletes a game** and
+     **merges two players**, reloads, and finds **all four** of these stats have moved, alongside the
+     thirteen records the Stage 4 sweep already covers.
+315. **The query count does not grow with the archive or the group.** QA compares the queries behind
+     the four stats at **10 games and at 60** and at **4 players and at 8**, and finds the same
+     bounded number — ⚠️ **no per-player or per-game query in a loop**, and the fun-fact slice's own
+     lesson applies: if these read the same rows the board already fetches, they **share one fetch**
+     rather than issuing a second.
+316. **`npm run audit:a11y` covers all four** at **375px and 1280px**: no horizontal overflow, ≥44px
+     targets, visible focus, and ⚠️ **colour is never the only signal** for a joint holder, a
+     no-holder row, or a "currently" state.
+317. **An empty archive shows no personality stats at all** — not four empty cards, not zeros, not a
+     record crowned on nobody — consistent with criterion 191 and with the fun-fact slot's own
+     behaviour (292).
+318. ⚠️ **No minimum-games floor anywhere**, decision 27 restated for the last time in this project
+     and reconfirmed by the founder at the 2026-09-15 checkpoint (open question 17). **A player on a
+     single game can hold stats 1, 2 and 3**, and criterion 308's two-observation rule is the one
+     exception, for the reason stated there and no other.
+319. **CI carries a real unit test for each of the four definitions**, in `lib/scoring`, with the
+     hand-9 deficit, the last-place rule and the range each tested against a hand-built fixture whose
+     answer was worked out on paper. ⚠️ **A deliberately broken definition fails the build** — QA
+     inverts the hand-9 comparison and the range's min/max in turn and confirms CI goes red for each.
+
+**26 criteria for this slice, still numbered 294–319** — ⚠️ **the count and the range did not move**:
+the founder's seven answers struck rejected candidates in place and tightened wording, and added and
+removed no criterion. ✅ **All six of the criteria that were conditional on the founder are settled
+(2026-09-15)**: **297** is the win-rate gap against the people at the same table (question 15,
+candidate **(C)**, ⚠️ not the team's default), **300** is the longest current last-place streak
+(question 16, **(A)**) — which forced a real correction to **301**, since (A) has no recency window
+to name, and resolved **302** with **no fun fact retired**; **304** keeps hand 9 and now counts an
+**outright win only**, ⚠️ **a deliberate, named exception to kickoff decision 1 for this record and
+nothing else** (question 18); **296** puts all seventeen records on the one board (question 19);
+**307–309** keep the founder's range and no floor (question 17); and **310** sets criterion 202 aside
+in full for these four cards, titles *and* sentences alike (question 13). ⚠️ **One mechanical step
+remains, and it is not an open question**: **312** cannot render a single string until the
+ui-designer's candidates are picked at the mockup checkpoint (question 14), so this slice can be
+built and unit-tested before that and shipped only after. ⚠️ **The one to read hardest is still
+308** — with no floor anywhere in this project, *most consistent* will usually be held by whoever has
+played least, which the founder has now looked at directly and confirmed as the honest consequence of
+a rule they have chosen three times.
+
+**Explicitly out of scope for this slice** *(each a decision, not an oversight)*
+
+- **Any new dimension.** Nothing is captured. All four stats read rows Milestones 1–3 already store,
+  which is the whole reason they are cheap and the whole reason they are retroactive.
+- **Any summary table, cached total, materialised view or scheduled recompute.** Unchanged since the
+  2026-09-10 database ADR.
+- **Any probability, significance test, rating, Elo, handicap or prediction.** Criterion 311. "Looks
+  like they are cheating" is a joke in a title, never a claim the app makes with a number.
+- **Time windows on the board.** *"One screen. All-time."* The "currently" in stat 2 is a property of
+  that one stat's definition, not a filter, a toggle or a season view.
+- **A fifth personality stat.** The founder named four. Anything else is v2, including the obvious
+  temptations — most improved, worst finisher, best closer, the player who always wins at their own
+  house.
+- **Any stat that can be pinned, annotated, overridden or opted out of.** A record is a consequence
+  of the archive.
+- **Exporting or sharing a personality stat.** v2, unchanged.
+- **Changing the fun-fact pool at all.** Criterion 302's conditional removal was resolved at the
+  2026-09-15 checkpoint and **does not trigger** — the pool ships unchanged at eight generators.
 
 ### v2 and beyond (not now)
 
