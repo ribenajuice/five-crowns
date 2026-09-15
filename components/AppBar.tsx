@@ -16,10 +16,21 @@ interface AppBarProps {
   back?: { href: string; label: string };
   /**
    * Criterion 174, "Reaching these pages": on the game view, the title *is*
-   * the roster name, so the `h1` itself becomes an `EntityLink` to that
-   * roster's page — the one place in this app a page's own heading doubles
-   * as navigation. Keeps the title's existing size/weight, adding only the
+   * the roster name, so the `h1` itself becomes a link to that roster's page
+   * — the one place in this app a page's own heading doubles as navigation.
+   * Keeps the title's existing size/weight/colour, adding only the
    * underline (`docs/DESIGN-SYSTEM.md` § "Reaching these pages", point 2).
+   * ⚠️ **`EntityLink`'s own hit-slop technique, applied by hand rather than
+   * by using that component directly** — `-my-3.5 -mx-1 px-1 py-3.5` grows
+   * the invisible tap target to ≥44px tall without moving the visible line,
+   * the exact trick `EntityLink`'s own doc comment explains. Reusing
+   * `EntityLink` itself was rejected here: its `brand`/`muted`/`success`
+   * variants all recolour either the text or the underline, and this title
+   * needs to stay `text-inherit` — the same colour as an untappable heading
+   * — matching every other `AppBar` title on every other screen. QA gap
+   * found in Stage 4 review: without the padding/negative-margin pair, this
+   * link measured 34px tall at 1280px (a title long enough to sit on one
+   * line), below the 44px minimum — criteria 73, 272.
    */
   titleHref?: string;
 }
@@ -53,7 +64,10 @@ export function AppBar({ title, context, back, titleHref }: AppBarProps) {
         <div className="min-w-0">
           <h1 className="font-display text-xl font-bold">
             {titleHref ? (
-              <Link href={titleHref} className="text-inherit underline underline-offset-2">
+              <Link
+                href={titleHref}
+                className="-my-3.5 -mx-1 inline-block px-1 py-3.5 text-inherit underline underline-offset-2"
+              >
                 {title}
               </Link>
             ) : (

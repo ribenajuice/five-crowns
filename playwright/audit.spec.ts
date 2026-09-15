@@ -1041,7 +1041,10 @@ test("audit: place, time and the filters (M3 Stage 4)", async ({ page, baseURL, 
   const locationId = placeHref.split("/").filter(Boolean).pop();
   await page.goto(`/games?location=${locationId}`);
   await auditScreen(page, "/games?location= (filtered, matches)");
-  await expect(page.getByRole("button", { name: "Clear filter" })).toBeVisible();
+  // `ButtonLink` renders a real `<a>` (`components/Button.tsx`: "it is still
+  // a real <a>, so it navigates without JavaScript") — a link role, not a
+  // button role, even though it's styled like one.
+  await expect(page.getByRole("link", { name: "Clear filter" })).toBeVisible();
   await expect(page.getByText(/At Place Audit House/)).toBeVisible();
 
   // ---- The games list, a valid filter matching zero games (criterion 263) ----

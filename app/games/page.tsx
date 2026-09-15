@@ -30,8 +30,16 @@ import {
 export const dynamic = "force-dynamic";
 
 interface GamesPageSearchParams {
-  location?: string;
-  roster?: string;
+  location?: string | string[];
+  roster?: string | string[];
+}
+
+/** A repeated query param (`?location=a&location=b`) arrives as a `string[]`
+ *  from Next.js — treated as malformed rather than silently taking the
+ *  first value, so it 404s the same as any other malformed filter value
+ *  (criterion 263), instead of reaching the db layer as an array bind. */
+function singleValue(param: string | string[] | undefined): string | undefined {
+  return Array.isArray(param) ? undefined : param;
 }
 
 export default async function GamesPage({
@@ -40,7 +48,10 @@ export default async function GamesPage({
   searchParams: Promise<GamesPageSearchParams>;
 }) {
   await requireGroupSession();
-  const { location, roster } = await searchParams;
+  const raw = await searchParams;
+  if (Array.isArray(raw.location) || Array.isArray(raw.roster)) notFound();
+  const location = singleValue(raw.location);
+  const roster = singleValue(raw.roster);
 
   const hasFilterParams = location !== undefined || roster !== undefined;
   const resolvedFilter = hasFilterParams ? await resolveGamesFilter({ location, roster }) : undefined;

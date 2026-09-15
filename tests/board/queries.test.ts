@@ -1359,6 +1359,47 @@ describe("getBoard — home advantage (criteria 253–254)", () => {
     expect(board.homeAdvantage).toEqual({ gapPercentagePoints: null, holders: [] });
   });
 
+  it("⚠️ a one-game venue is shown holding the record in a small real archive, unhedged (criterion 254)", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    // Sam's only game at "New Place" is a win.
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "New Place",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 10 },
+        { playerId: players["Jo"]!, finalScore: 90 },
+      ],
+    });
+    // Sam's three games elsewhere are all losses — 0 of 3.
+    for (const playedOn of ["2026-02-01", "2026-02-08", "2026-02-15"]) {
+      await seedGame({
+        playedOn,
+        locationName: "Usual spot",
+        players: [
+          { playerId: players["Sam"]!, finalScore: 90 },
+          { playerId: players["Jo"]!, finalScore: 10 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const holder = board.homeAdvantage.holders.find(
+      (h) => h.displayName === "Sam" && h.locationName === "New Place",
+    )!;
+    expect(holder).toBeDefined();
+    expect(holder.here).toEqual({ wins: 1, games: 1, ratePercent: 100 });
+    expect(holder.elsewhere).toEqual({ wins: 0, games: 3, ratePercent: 0 });
+    expect(holder.gapPercentagePoints).toBe(100);
+    // ⚠️ Unhedged: this is the only holder, and the record's own gap is the
+    // maximum possible (100 points) — a real one-game venue winning outright
+    // in a tiny archive, exactly as decision 27 says it should.
+    expect(board.homeAdvantage.gapPercentagePoints).toBe(100);
+  });
+
   it("Stage 4 adds no query of its own (criteria 219, 248, 273)", async () => {
     const players = await createPlayers(["Sam", "Jo"]);
     const seedGame = createGameSeeder();

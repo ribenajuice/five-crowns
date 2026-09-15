@@ -154,3 +154,19 @@ describe("/games — an unknown, deleted or malformed filter value (criterion 26
     expect(listGames).not.toHaveBeenCalled();
   });
 });
+
+describe("/games — a repeated query param (criterion 263, security review nit)", () => {
+  it("404s a repeated ?location= or ?roster= rather than reaching the db layer as an array bind", async () => {
+    const { resolveGamesFilter, listGames } = await import("@/lib/games/queries");
+
+    const { default: GamesPage } = await import("@/app/games/page");
+    await expect(
+      GamesPage({ searchParams: Promise.resolve({ location: ["loc1", "loc2"] }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+    await expect(
+      GamesPage({ searchParams: Promise.resolve({ roster: ["r1", "r2"] }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+    expect(resolveGamesFilter).not.toHaveBeenCalled();
+    expect(listGames).not.toHaveBeenCalled();
+  });
+});

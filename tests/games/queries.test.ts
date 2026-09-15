@@ -3,11 +3,34 @@
  * photo (criterion 12's shape, reused here).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 import { createColumnPhoto, setUpDraft } from "../helpers/draft";
 import { SHEET_01, SHEET_02 } from "../fixtures/sheets";
+
+// ---------------------------------------------------------------------------
+// Query-count instrumentation (criterion 273) — same proxy pattern as
+// `tests/board/queries.test.ts`'s own proof for `getBoard()`.
+// ---------------------------------------------------------------------------
+let selectCallCount = 0;
+
+vi.mock("@/lib/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db")>();
+  return {
+    ...actual,
+    getDb: () => {
+      const real = actual.getDb();
+      return new Proxy(real, {
+        get(target, prop, _receiver) {
+          if (prop === "select") selectCallCount++;
+          const value = Reflect.get(target as object, prop);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    },
+  };
+});
 
 // See tests/games/save.test.ts for why `.data/photos` is never cleaned up here.
 beforeAll(async () => {
@@ -272,5 +295,86 @@ describe("resolveGamesFilter and listGames(filter) — criteria 262–263", () =
     expect(filtered.map((g) => g.playedOn)).toEqual(["2026-03-08", "2026-03-01"]);
     expect(filtered[0]).toHaveProperty("winners");
     expect(filtered[0]).toHaveProperty("winningScore");
+  });
+});
+
+describe("listGames(filter) — the query count does not grow with the archive or the venue count (criterion 273)", () => {
+  it("issues the same number of queries at 10 matching games and at 60", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+
+    const players = await createPlayers(["QCount Filt Amy", "QCount Filt Bo"]);
+    const seedGame = createGameSeeder();
+
+    async function seedAndCount(extraGames: number): Promise<number> {
+      for (let i = 0; i < extraGames; i++) {
+        await seedGame({
+          playedOn: `2026-05-${String((i % 27) + 1).padStart(2, "0")}`,
+          locationName: "QCount filter venue",
+          players: [
+            { playerId: players["QCount Filt Amy"]!, finalScore: 40 + i },
+            { playerId: players["QCount Filt Bo"]!, finalScore: 60 + i },
+          ],
+        });
+      }
+      const venueId = (await listPlaces()).find((p) => p.name === "QCount filter venue")!.id;
+      selectCallCount = 0;
+      await listGames({ location: { kind: "venue", id: venueId, name: "QCount filter venue" } });
+      return selectCallCount;
+    }
+
+    const queriesAt10 = await seedAndCount(10);
+    const queriesAt60 = await seedAndCount(50); // cumulative: 10 + 50 = 60 games total
+
+    expect(queriesAt10).toBeGreaterThan(0);
+    expect(queriesAt60).toBe(queriesAt10);
+  });
+
+  it("issues the same number of queries at 2 venues in the archive and at 6", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+
+    const players = await createPlayers(["QCount2 Amy", "QCount2 Bo"]);
+    const seedGame = createGameSeeder();
+
+    await seedGame({
+      playedOn: "2026-06-01",
+      locationName: "QCount2 filter venue",
+      players: [
+        { playerId: players["QCount2 Amy"]!, finalScore: 40 },
+        { playerId: players["QCount2 Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    async function addVenuesAndCount(newVenues: number): Promise<number> {
+      for (let i = 0; i < newVenues; i++) {
+        await seedGame({
+          playedOn: `2026-07-${String(i + 1).padStart(2, "0")}`,
+          locationName: `QCount2 other venue ${i}`,
+          players: [
+            { playerId: players["QCount2 Amy"]!, finalScore: 40 + i },
+            { playerId: players["QCount2 Bo"]!, finalScore: 60 + i },
+          ],
+        });
+      }
+      const venueId = (await listPlaces()).find((p) => p.name === "QCount2 filter venue")!.id;
+      selectCallCount = 0;
+      await listGames({ location: { kind: "venue", id: venueId, name: "QCount2 filter venue" } });
+      return selectCallCount;
+    }
+
+    const queriesAt2 = await addVenuesAndCount(1); // 1 (seeded above) + 1 = 2 venues total
+    const queriesAt6 = await addVenuesAndCount(4); // 2 + 4 = 6 venues total
+
+    expect(queriesAt2).toBeGreaterThan(0);
+    expect(queriesAt6).toBe(queriesAt2);
   });
 });
