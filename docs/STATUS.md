@@ -18,8 +18,8 @@
   ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14). **Stage 4** (suggested player-name
   matching, and permanent player/place merging) — the closing stage of Milestone 2 — is also merged and live
   ([PR #27](https://github.com/ribenajuice/five-crowns/pull/27), 2026-09-14). **Milestone 3 — the records board
-  and the analytics — is now in flight**, with its first three stages merged and live. Its full delivery spec is
-  written stage-by-stage in `docs/PRD.md` as each stage is built, the same way Milestone 2 was. **Stage 1**
+  and the analytics — is now complete and live in production**, all four stages merged. Its full delivery spec is
+  written stage-by-stage in `docs/PRD.md`, the same way Milestone 2 was. **Stage 1**
   ("the board, and the engine under it" — the app now opens on a records board instead of the games list) is
   merged and deployed ([PR #29](https://github.com/ribenajuice/five-crowns/pull/29), 2026-09-14). **Stage 2**
   ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two more board
@@ -29,14 +29,14 @@
   ([PR #32](https://github.com/ribenajuice/five-crowns/pull/32), 2026-09-14). **Stage 4** ("Place, time, and
   the filters" — a venue's own page, a "home advantage" board record, day-of-week and month breakdowns on
   `/stats`, and a location/roster filter on the games list) — **the fourth and final stage of Milestone 3** —
-  is built, QA'd (including the milestone-closing delete/merge sweep audit, criteria 275–280, proving every
-  number across all four M3 stages moves after a delete or merge), code-reviewed and security-reviewed, on
-  branch `feat/m3-stage4`, ready to open as a PR — not yet merged or deployed. ⚠️ **Milestone 3 is now fully
-  built across all four stages, though only the first three are merged to `main` so far** — Stage 4 merging
-  is what actually closes the milestone. **Milestone 4 is also now underway** — its first slice, "fun facts"
+  is merged and deployed ([PR #34](https://github.com/ribenajuice/five-crowns/pull/34), 2026-09-15), including
+  the milestone-closing delete/merge sweep audit (criteria 275–280), proving every number across all four M3
+  stages moves after a delete or merge. ✅ **Milestone 3 is now complete**: it opened 2026-09-14 with Stage 1
+  and closed 2026-09-15 with Stage 4 — all four stages, plus the `/stats` analytics catalogue, are live in
+  production. **Milestone 4 is also now underway** — its first slice, "fun facts"
   (a pool of eight programmatically-generated facts about the group's history, one shown at random on the
   board on every page load), is merged and deployed ([PR #33](https://github.com/ribenajuice/five-crowns/pull/33),
-  2026-09-14). It shipped independently of Milestone 3's remaining in-flight work.
+  2026-09-14).
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -44,9 +44,8 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: Milestone 3 Stage 4 (this branch, `feat/m3-stage4`) — built, QA'd, code-reviewed
-  and security-reviewed, not yet a PR. **Milestone 3's first three stages, and Milestone 4's first slice, are
-  all merged and live** — see below.
+- **Currently in flight**: nothing — **Milestone 3 is complete, all four stages merged and live, and
+  Milestone 4's first slice is merged and live too** — see below.
   - ✅ [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
     facts** (criteria 281–293). **Shipped 2026-09-14.** A fixed pool of eight independent fact generators — flatliner, current
     drought, the comeback nobody asked for, the slump, rivalry needle, overdue, a random old night, and
@@ -138,8 +137,9 @@
     reimplemented a display helper the board already exported) — both fixed. 1558 tests passing, lint and
     typecheck clean. Known follow-ups deliberately deferred, non-blocking, listed under "Known follow-ups"
     below. Merged and deployed.
-  - **Milestone 3 Stage 4** — "Place, time, and the filters" (criteria 250–280) — **the fourth and final
-    stage of Milestone 3**. Built on `feat/m3-stage4`; not yet a PR. Open question 9 (whether venue numbers
+  - ✅ [PR #34](https://github.com/ribenajuice/five-crowns/pull/34) — **Milestone 3 Stage 4**, "Place, time,
+    and the filters" (criteria 250–280) — **the fourth and final stage of Milestone 3**. **Shipped
+    2026-09-15, closing Milestone 3.** Open question 9 (whether venue numbers
     get a dedicated page, a filter, or both) was answered at the founder's checkpoint on 2026-09-15: **(c),
     both** — matching the spec's stated default, so nothing was struck. Ships a venue page at `/places/{id}`
     (win rate, average score, and a per-player table for that venue), a thirteenth board record — "home
@@ -158,7 +158,9 @@
     real bug (home advantage's tie-break) plus a redundant recomputation and two query-parallelization
     fixes. A security review found no blocking issues; one small robustness nit (a repeated filter query
     param 404'd where it should have) was found and fixed as a follow-up commit. Five small things
-    deliberately deferred as non-blocking — see "Known follow-ups" below. **Next**: open the PR.
+    deliberately deferred as non-blocking — see "Known follow-ups" below. Merged and deployed; verified
+    live: `/places/1`, `/stats` and a filtered games list (`?location=`, `?roster=`) all correctly 307 to
+    `/login`.
   - ✅ [PR #27](https://github.com/ribenajuice/five-crowns/pull/27) — **Milestone 2 Stage 4**, suggested
     player-name matching, and permanent player/place merging (criteria 148–166, 172–173). **Shipped 2026-09-14,
     closing Milestone 2.** The spec was already written 2026-09-10 (with 172–173 added 2026-09-14);
@@ -311,9 +313,10 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: open the PR for **Milestone 3 Stage 4** and get it reviewed and merged — the only thing left
-  to close Milestone 3. It is not stacked on any other open PR (there are none right now); it builds
-  directly on `main`, which already has Stages 1–3 and Milestone 4's fun-facts slice merged into it.
+- **Next up**: nothing queued right now — Milestone 3 is complete and there are no open PRs. The next
+  build work is scoping the rest of Milestone 4 ("Personality and polish" — the four remaining personality
+  stats named in `docs/PRD.md`, whose wording is the founder's to give whenever they're built) once the
+  founder's ready to kick it off.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.

@@ -6,6 +6,13 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 11] - 2026-09-15
+
+Fun facts on the board, and Milestone 3's closing stage: distributions, villains, place, time, and the
+filters. Live in production.
+
+### Added
+
 - **Five more records join the board, taking it to twelve**: best game ever and worst game ever (the
   lowest and highest final score anyone's ever posted), the catastrophe (the single worst hand anyone's
   ever scored), cleanest sheet (the most zero-point hands scored in one game), and biggest hammering

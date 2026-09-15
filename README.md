@@ -29,12 +29,13 @@ and roster averages; player and roster pages each gain their own averages too. *
 first slice — fun facts — is also merged and live**: the board now occasionally shows a fun fact
 about the group's history below the archive line — something like "it's been 7 games since Sam
 last won" or a quick retelling of a random past night — a different one each time the page loads.
-**Stage 4 — place, time, and the filters — is built and reviewed, on a branch, not yet merged or
-deployed, and completes Milestone 3's build**: every venue now has its own page (games played,
-average score, and who's played there), the board gains a thirteenth record — "home advantage",
-naming whoever does best at one particular venue compared with everywhere else — `/stats` gains
-day-of-week and month-of-year breakdowns, and the games list can now be filtered down to one venue
-or one exact group of people. See `docs/STATUS.md`.
+**Stage 4 — place, time, and the filters — is merged and live, completing Milestone 3**: every
+venue now has its own page (games played, average score, and who's played there), the board gains
+a thirteenth record — "home advantage", naming whoever does best at one particular venue compared
+with everywhere else — `/stats` gains day-of-week and month-of-year breakdowns, and the games list
+can now be filtered down to one venue or one exact group of people. **Milestone 3 is now
+complete**: all four stages, plus the `/stats` analytics catalogue, are live in production. See
+`docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
