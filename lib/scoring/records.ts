@@ -1115,7 +1115,13 @@ export function clutchComebackInstances(candidates: readonly ClutchCandidate[]):
 
   const instances: ComebackInstance[] = [];
   for (const rows of byGame.values()) {
-    const lowest = rows.reduce((min, r) => Math.min(min, r.runningTotalAtClutchHand), Number.POSITIVE_INFINITY);
+    // The game's own lowest running total at `CLUTCH_HAND` — the same
+    // lowest-wins minimum-finder `winningScore` already provides (and this
+    // file already uses elsewhere), reused rather than hand-rolled here, so
+    // a future tie-break or non-finite-score guard on it isn't silently
+    // missed in this one spot.
+    const lowest = winningScore(rows.map((r) => ({ playerId: r.playerId, score: r.runningTotalAtClutchHand })));
+    if (lowest === null) continue; // no rankable running total in this game
     for (const r of rows) {
       if (!r.wonOutright) continue;
       const deficit = r.runningTotalAtClutchHand - lowest;

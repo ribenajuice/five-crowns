@@ -176,6 +176,19 @@ export interface RecordGame {
    */
   streakOwner?: string;
   /**
+   * Joint-streak drill-through only: **every** holder this particular game's
+   * run belongs to, by display name, set whenever the record is held by more
+   * than one player — unlike `streakOwner` above (which is only set for the
+   * single-owner case, for the row annotation), this is the full owner set
+   * regardless of how many holders it has, so a caller can tell "this game is
+   * part of holder X's own run" apart from "this game merely isn't holder X's
+   * run alone" for *any* holder, not just when exactly one owns it. Needed
+   * because with 3+ joint holders, a game can belong to a strict subset (2 of
+   * 3, say) without belonging to every holder — `streakOwner` alone can't
+   * express that case (`gettingWreckedStartDate`, `lib/ui/copy.ts`).
+   */
+  streakOwners?: string[];
+  /**
    * A single-event drill-through only (criterion 234): that instance's own
    * number — the score, the zero count or the margin. Rendered beside the
    * row rather than relying on the record's shared `value`, because two
@@ -308,15 +321,16 @@ export interface BoardRecord {
 }
 
 /**
- * Home advantage (criteria 253–254, 268–269) — the board's thirteenth
- * record, and a third *different* animal from the other twelve: its holder
- * unit is a (player, venue) **pair**, not a unique player (like the seven
- * Stage 1/2 records) and not a (player, game[, hand]) instance (like Stage
- * 3's five) — so it gets its own field on `Board` rather than being forced
- * into either existing array's shape. `docs/DESIGN-SYSTEM.md`'s fixed card
- * order still places it **last**, after Stage 3's five, when a caller
- * concatenates `records`, `singleEventRecords` and this one into the
- * board's thirteen cards.
+ * Home advantage (criteria 253–254, 268–269) — a third *different* animal
+ * from the seven Stage 1/2 records and Stage 3's five single-event records:
+ * its holder unit is a (player, venue) **pair**, not a unique player (like
+ * the seven Stage 1/2 records) and not a (player, game[, hand]) instance
+ * (like Stage 3's five) — so it gets its own field on `Board` rather than
+ * being forced into either existing array's shape. The board has grown to
+ * seventeen cards (Milestone 4's second slice added four more): home
+ * advantage's own fixed position in `docs/DESIGN-SYSTEM.md`'s card order is
+ * followed by `looksLikeCheating`, `gettingWrecked`, `clutchComeback` and
+ * `metronome` — no longer last.
  */
 export interface HomeAdvantageBoardRecord {
   /** `null` iff `holders` is empty (criterion 254: nobody with a positive gap). */
@@ -630,18 +644,36 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     return compareNewestFirst(gamesById.get(a)!, gamesById.get(b)!);
   }
 
+  // Scoped to this one `getBoard()` call. Only ever reused for the plain,
+  // no-`extra` shape below — "looks like cheating" and the metronome each
+  // resolve every holder's *entire* game history through `toRecordGame`
+  // with no `extra`, so when two joint holders (or one holder for both
+  // records) share games, the normal case in a small, closed group, the
+  // same `gameId` would otherwise be independently re-resolved into an
+  // identical `RecordGame` two or three times per page load. Never used to
+  // cache an `extra`-annotated call (the streak, rounds-won and single-event
+  // drill-throughs) — those vary per caller, so caching by `gameId` alone
+  // could silently serve one caller's annotation to another.
+  const plainRecordGameCache = new Map<string, RecordGame>();
+
   function toRecordGame(
     gameId: string,
     extra: Pick<
       RecordGame,
-      "roundsWonByHolder" | "streakOwner" | "singleEventValue" | "singleEventHand"
+      "roundsWonByHolder" | "streakOwner" | "streakOwners" | "singleEventValue" | "singleEventHand"
     > = {},
   ): RecordGame {
+    const isPlain = Object.keys(extra).length === 0;
+    if (isPlain) {
+      const cached = plainRecordGameCache.get(gameId);
+      if (cached) return cached;
+    }
+
     const g = gamesById.get(gameId)!;
     const rows = gamePlayersByGame.get(gameId) ?? [];
     const winnerIds = new Set(winnerIdsByGame.get(gameId));
     const scores: PlayerScore[] = rows.map((r) => ({ playerId: r.playerId, score: r.finalScore }));
-    return {
+    const result: RecordGame = {
       id: g.id,
       playedOn: g.playedOn,
       createdAt: g.createdAt,
@@ -652,6 +684,9 @@ export async function getBoard(data?: BoardData): Promise<Board> {
       winningScore: winningScore(scores) ?? 0,
       ...extra,
     };
+
+    if (isPlain) plainRecordGameCache.set(gameId, result);
+    return result;
   }
 
   function holder(playerId: string): RecordHolder {
@@ -713,6 +748,20 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     gamesFor: (playerId: string) => string[],
   ): RecordGame[] {
     return unionGames(holderIds, gamesFor).sort(sortNewestFirst).map((id) => toRecordGame(id));
+  }
+
+  /**
+   * One holder's own full game history — every game they played, newest
+   * first — as `RecordGame`s. Shared by "looks like cheating" and the
+   * metronome (both below): each holder's drill-through there is simply
+   * every game they played, not a filtered subset like the streak or "most
+   * wins" drill-throughs above.
+   */
+  function holderOwnGamesNewestFirst(playerId: string): RecordGame[] {
+    return (gamesByPlayer.get(playerId) ?? [])
+      .map((g) => g.gameId)
+      .sort(sortNewestFirst)
+      .map((id) => toRecordGame(id));
   }
 
   // ----------------------------------------------------------------- most wins
@@ -1103,13 +1152,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
   const cheatingResult = looksLikeCheating(cheatingCandidates);
   const looksLikeCheatingRecord: LooksLikeCheatingBoardRecord = {
     gapPercentagePoints: cheatingResult.gapPercentagePoints,
-    holders: cheatingResult.holders.map((h) => ({
-      ...h,
-      games: (gamesByPlayer.get(h.playerId) ?? [])
-        .map((g) => g.gameId)
-        .sort(sortNewestFirst)
-        .map((id) => toRecordGame(id)),
-    })),
+    holders: cheatingResult.holders.map((h) => ({ ...h, games: holderOwnGamesNewestFirst(h.playerId) })),
   };
 
   // ================================================================
@@ -1127,13 +1170,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
   const metronomeResult = metronome(metronomeCandidates);
   const metronomeRecord: MetronomeBoardRecord = {
     range: metronomeResult.range,
-    holders: metronomeResult.holders.map((h) => ({
-      ...h,
-      games: (gamesByPlayer.get(h.playerId) ?? [])
-        .map((g) => g.gameId)
-        .sort(sortNewestFirst)
-        .map((id) => toRecordGame(id)),
-    })),
+    holders: metronomeResult.holders.map((h) => ({ ...h, games: holderOwnGamesNewestFirst(h.playerId) })),
   };
 
   return {
@@ -1184,7 +1221,7 @@ function streakDrillThrough(
   holderIds: readonly string[],
   streakByPlayer: Map<string, { length: number; gameIds: string[] }>,
   displayNameByPlayer: Map<string, string>,
-  toRecordGame: (gameId: string, extra?: Pick<RecordGame, "roundsWonByHolder" | "streakOwner">) => RecordGame,
+  toRecordGame: (gameId: string, extra?: Pick<RecordGame, "roundsWonByHolder" | "streakOwner" | "streakOwners">) => RecordGame,
   sortNewestFirst: (a: string, b: string) => number,
 ): RecordGame[] {
   // Keyed by playerId, like every sibling map in this module — never by
@@ -1202,12 +1239,14 @@ function streakDrillThrough(
 
   return gameIds.map((gameId) => {
     const owners = ownersByGame.get(gameId)!;
-    // Resolve to a display name only at this final point of output.
-    const streakOwner =
-      holderIds.length > 1 && owners.size === 1
-        ? displayNameByPlayer.get([...owners][0]!)!
-        : undefined;
-    return toRecordGame(gameId, streakOwner ? { streakOwner } : {});
+    // Resolve to display names only at this final point of output.
+    const ownerNames = [...owners].map((id) => displayNameByPlayer.get(id)!);
+    const streakOwner = holderIds.length > 1 && owners.size === 1 ? ownerNames[0]! : undefined;
+    // The full owner set, regardless of size — lets a caller tell whether
+    // *any* given holder's own run includes this game, not just whether
+    // exactly one holder does (see `RecordGame.streakOwners`'s doc comment).
+    const streakOwners = holderIds.length > 1 ? ownerNames : undefined;
+    return toRecordGame(gameId, { ...(streakOwner ? { streakOwner } : {}), ...(streakOwners ? { streakOwners } : {}) });
   });
 }
 

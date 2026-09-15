@@ -965,13 +965,18 @@ export function recordDisplayFacts(
  * oldest game in this holder's own current run — `record.games` is already
  * ordered oldest→newest (`streakDrillThrough`, the same drill-through this
  * record shares with "most wins in a row" and the drought). When the record
- * is jointly held over diverging runs, a game belongs to this holder if it
- * carries no `streakOwner` (shared by every holder) or carries this holder's
- * own name — the same `streakOwner` annotation the streak-holder row already
- * uses to tell two overlapping runs apart.
+ * is jointly held over diverging runs, a game belongs to this holder if this
+ * holder is in its full owner set (`streakOwners`) — every holder that
+ * game's run belongs to, not just whichever single holder `streakOwner`
+ * names. With only two holders those two questions happen to have the same
+ * answer, but with three or more, a game can belong to a strict subset (say
+ * two of three) without belonging to every holder, so `streakOwners` (unset
+ * only when the record has a single holder, in which case every game is
+ * trivially theirs) is the one that must be checked, never `streakOwner`
+ * alone.
  */
 function gettingWreckedStartDate(games: readonly RecordGame[], holderName: string): string {
-  const ownGames = games.filter((g) => !g.streakOwner || g.streakOwner === holderName);
+  const ownGames = games.filter((g) => !g.streakOwners || g.streakOwners.includes(holderName));
   return ownGames[0]!.playedOn;
 }
 
@@ -1231,8 +1236,14 @@ function singleEventRowFacts(
  * drill-through and `/stats` (criterion 241) can never independently drift on
  * what one of these five cards says.
  *
- * `null` when the record has no holder (criterion 185's rule, extended here —
- * unreachable over a non-empty archive, same as every one of Stage 1's five).
+ * `null` when the record has no holder (criterion 185's rule, extended here).
+ * For the original five single-event records this is unreachable over a
+ * non-empty archive, same as every one of Stage 1's five — but this function
+ * now also serves `clutchComeback` (Milestone 4, second slice), whose
+ * no-holder state is real and common: any archive can go a long time without
+ * a game anyone actually clawed back from behind at hand 9, so callers must
+ * handle `null` here, falling back to `CLUTCH_COMEBACK_NO_HOLDER_SENTENCE`
+ * rather than treating it as defensive-only dead code.
  */
 export function singleEventDisplayFacts(
   record: Pick<SingleEventBoardRecord, "key" | "value" | "holders" | "games">,
@@ -1757,3 +1768,22 @@ export function metronomeDisplayFacts(record: {
 
   return { title, unit, holderNames, value, sample, claim };
 }
+
+/**
+ * Milestone 4, second slice's four personality records (criterion 312) each
+ * carry their own fixed no-holder sentence, verbatim, rather than the shared
+ * generic fallback every other record still gets (`BOARD_NO_HOLDER_SENTENCE`
+ * on the board, `RecordCard`'s own default single-event fallback) — one
+ * lookup, keyed by record key, so a caller building any of the four cards'
+ * props can read its sentence off this map instead of re-deriving it with a
+ * per-key ternary at each call site.
+ */
+export const NO_HOLDER_SENTENCE_BY_KEY: Record<
+  "looksLikeCheating" | "gettingWrecked" | "clutchComeback" | "metronome",
+  string
+> = {
+  looksLikeCheating: LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
+  gettingWrecked: GETTING_WRECKED_NO_HOLDER_SENTENCE,
+  clutchComeback: CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
+  metronome: METRONOME_NO_HOLDER_SENTENCE,
+};

@@ -1644,6 +1644,57 @@ describe("getBoard — getting absolutely wrecked (criteria 300–303)", () => {
     expect(wrecked.value).toBe(2);
     expect(wrecked.holders.map((h) => h.displayName)).toEqual(["Bo", "Cy"]);
   });
+
+  it("⚠️ three+ joint holders, a strict subset sharing games: each game's full owner set is carried on `streakOwners`, not just a single `streakOwner`", async () => {
+    const players = await createPlayers(["Amy", "Bo", "Cy", "Dan"]);
+    const seedGame = createGameSeeder();
+    // Amy & Bo's own 2-game run — shared between exactly two of the three
+    // holders, never involving Cy.
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Amy"]!, finalScore: 90 },
+          { playerId: players["Bo"]!, finalScore: 90 },
+          { playerId: players["Dan"]!, finalScore: 10 },
+        ],
+      });
+    }
+    // Cy's own, entirely separate 2-game run — no game in common with Amy or Bo.
+    for (const playedOn of ["2026-02-01", "2026-02-08"]) {
+      await seedGame({
+        playedOn,
+        players: [
+          { playerId: players["Cy"]!, finalScore: 90 },
+          { playerId: players["Dan"]!, finalScore: 10 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const wrecked = board.records.find((r) => r.key === "gettingWrecked")!;
+    expect(wrecked.value).toBe(2);
+    expect(wrecked.holders.map((h) => h.displayName)).toEqual(["Amy", "Bo", "Cy"]);
+    expect(wrecked.games.map((g) => g.playedOn)).toEqual([
+      "2026-01-01",
+      "2026-01-08",
+      "2026-02-01",
+      "2026-02-08",
+    ]);
+    // The two Amy/Bo games carry both their names — a strict subset of the
+    // three holders — never a single `streakOwner`, since owning a game
+    // between two of three holders isn't the single-owner case.
+    expect(wrecked.games.map((g) => g.streakOwners)).toEqual([
+      ["Amy", "Bo"],
+      ["Amy", "Bo"],
+      ["Cy"],
+      ["Cy"],
+    ]);
+    expect(wrecked.games.map((g) => g.streakOwner)).toEqual([undefined, undefined, "Cy", "Cy"]);
+  });
 });
 
 describe("getBoard — most clutch comeback (criteria 304–306)", () => {

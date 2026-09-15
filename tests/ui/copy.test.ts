@@ -1431,7 +1431,7 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
       );
     });
 
-    it("⚠️ joint holders: each one's own 'since' date is read from their own streakOwner-tagged games, not the shared list's oldest", () => {
+    it("⚠️ joint holders: each one's own 'since' date is read from their own streakOwners-tagged games, not the shared list's oldest", () => {
       const facts = recordDisplayFacts({
         key: "gettingWrecked",
         value: 2,
@@ -1442,12 +1442,38 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
         // `record.games` arrives already oldest→newest (`streakDrillThrough`'s
         // own ordering) — Bo's own earlier game must sort before the shared one.
         games: [
-          { id: "g0", playedOn: "2025-12-01", streakOwner: "Bo" } as never, // Bo's own earlier game only.
-          { id: "g1", playedOn: "2026-01-01" } as never, // Shared game (no streakOwner) — belongs to both.
+          { id: "g0", playedOn: "2025-12-01", streakOwner: "Bo", streakOwners: ["Bo"] } as never, // Bo's own earlier game only.
+          { id: "g1", playedOn: "2026-01-01", streakOwners: ["Bo", "Cy"] } as never, // Shared game — belongs to both.
         ],
       });
       expect(facts!.sample).toBe(
         `Bo — Last place in every one of their last 2 games — since ${formatRecordDate("2025-12-01")}. · ` +
+          `Cy — Last place in every one of their last 2 games — since ${formatRecordDate("2026-01-01")}.`,
+      );
+    });
+
+    it("⚠️ three+ joint holders: a game shared by only a strict subset of holders doesn't count toward a holder who wasn't part of it (regression for the wrong-too-early-date bug)", () => {
+      const facts = recordDisplayFacts({
+        key: "gettingWrecked",
+        value: 2,
+        holders: [
+          { playerId: "p1", displayName: "Amy", gamesPlayed: 5 },
+          { playerId: "p2", displayName: "Bo", gamesPlayed: 5 },
+          { playerId: "p3", displayName: "Cy", gamesPlayed: 3 },
+        ],
+        // Amy & Bo jointly finished last together in two older games (a
+        // strict subset — Cy wasn't in either), then all three shared a more
+        // recent game. Cy's own run is only that last, shared game — her
+        // "since" date must be its date, not the older Amy/Bo-only one.
+        games: [
+          { id: "g0", playedOn: "2025-11-01", streakOwners: ["Amy", "Bo"] } as never,
+          { id: "g1", playedOn: "2025-12-01", streakOwners: ["Amy", "Bo"] } as never,
+          { id: "g2", playedOn: "2026-01-01", streakOwners: ["Amy", "Bo", "Cy"] } as never,
+        ],
+      });
+      expect(facts!.sample).toBe(
+        `Amy — Last place in every one of their last 2 games — since ${formatRecordDate("2025-11-01")}. · ` +
+          `Bo — Last place in every one of their last 2 games — since ${formatRecordDate("2025-11-01")}. · ` +
           `Cy — Last place in every one of their last 2 games — since ${formatRecordDate("2026-01-01")}.`,
       );
     });
