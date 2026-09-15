@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { GameRow } from "@/components/GameRow";
-import { getBoard, type BoardRecordKey, type SingleEventRecordKey } from "@/lib/board/queries";
+import {
+  getBoard,
+  type BoardRecordKey,
+  type RecordGame,
+  type SingleEventRecordKey,
+} from "@/lib/board/queries";
 import { compareNewestFirst } from "@/lib/scoring/chronology";
 import {
   RECORD_TITLES,
@@ -40,6 +45,13 @@ import {
  * non-empty archive, but the board's own shared path can theoretically
  * produce one) all render the app's ordinary 404 — there is nothing to
  * drill into, the same "made-up id" precedent `/players/[id]` already sets.
+ *
+ * Three render paths — ordinary board records, Stage 3's five single-event
+ * records, and Stage 4's home advantage — because each reads a different
+ * shape off `Board` and annotates its rows differently; all three share the
+ * actual rendering (the `AppBar` header and the `GameRow` list) through
+ * `renderDrillThroughShell` (code review, M3 Stage 3 follow-up), so only the
+ * part that's genuinely different per record family is written three times.
  */
 export const dynamic = "force-dynamic";
 
@@ -64,19 +76,21 @@ function isSingleEventRecordKey(value: string): value is SingleEventRecordKey {
   return (SINGLE_EVENT_RECORD_KEYS as readonly string[]).includes(value);
 }
 
-async function renderSingleEventDrillThrough(key: SingleEventRecordKey) {
-  const board = await getBoard();
-  if (board.empty) notFound();
-
-  const record = board.singleEventRecords.find((r) => r.key === key);
-  if (!record) notFound();
-
-  const facts = singleEventDisplayFacts(record);
-  if (!facts) notFound();
-
-  const context = facts.sample
-    ? `${facts.value} ${facts.unit}, ${facts.sample}`
-    : `${facts.value} ${facts.unit}`;
+/**
+ * The one piece every drill-through renders identically (code review, M3
+ * Stage 3 follow-up): the `AppBar` header (title via `drillThroughHeading`,
+ * context stating the claim), and the games list, one `GameRow` per game,
+ * each optionally annotated. The three render functions below differ only in
+ * *which* record they read, how they arrive at `games`, and what — if
+ * anything — `annotate` says about each one; this shell owns everything
+ * that's genuinely shared rather than three copies of the same JSX.
+ */
+function renderDrillThroughShell(
+  facts: { title: string; holderNames: string; value: string; unit: string; sample: string | null },
+  games: readonly RecordGame[],
+  annotate?: (game: RecordGame) => string | undefined,
+) {
+  const context = facts.sample ? `${facts.value} ${facts.unit}, ${facts.sample}` : `${facts.value} ${facts.unit}`;
 
   return (
     <>
@@ -87,7 +101,7 @@ async function renderSingleEventDrillThrough(key: SingleEventRecordKey) {
       />
       <main className="mx-auto w-full max-w-wide px-4 py-6">
         <div className="flex flex-col gap-2">
-          {record.games.map((g) => (
+          {games.map((g) => (
             <GameRow
               key={g.id}
               id={g.id}
@@ -96,16 +110,27 @@ async function renderSingleEventDrillThrough(key: SingleEventRecordKey) {
               rosterId={g.rosterId}
               rosterName={g.rosterName}
               winners={g.winners}
-              annotation={
-                g.singleEventValue !== undefined
-                  ? singleEventGameAnnotation(key, g.singleEventValue, g.singleEventHand)
-                  : undefined
-              }
+              annotation={annotate?.(g)}
             />
           ))}
         </div>
       </main>
     </>
+  );
+}
+
+async function renderSingleEventDrillThrough(key: SingleEventRecordKey) {
+  const board = await getBoard();
+  if (board.empty) notFound();
+
+  const record = board.singleEventRecords.find((r) => r.key === key);
+  if (!record) notFound();
+
+  const facts = singleEventDisplayFacts(record);
+  if (!facts) notFound();
+
+  return renderDrillThroughShell(facts, record.games, (g) =>
+    g.singleEventValue !== undefined ? singleEventGameAnnotation(key, g.singleEventValue, g.singleEventHand) : undefined,
   );
 }
 
@@ -127,38 +152,13 @@ async function renderHomeAdvantageDrillThrough() {
   const facts = homeAdvantageDisplayFacts(record);
   if (!facts) notFound();
 
-  const context = `${facts.value} ${facts.unit}, ${facts.sample}`;
-
   const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
   for (const holder of record.holders) {
     for (const g of holder.games) byId.set(g.id, g);
   }
   const games = [...byId.values()].sort(compareNewestFirst);
 
-  return (
-    <>
-      <AppBar
-        title={drillThroughHeading(facts.title, facts.holderNames)}
-        context={context}
-        back={{ href: "/", label: "Back to the board" }}
-      />
-      <main className="mx-auto w-full max-w-wide px-4 py-6">
-        <div className="flex flex-col gap-2">
-          {games.map((g) => (
-            <GameRow
-              key={g.id}
-              id={g.id}
-              playedOn={g.playedOn}
-              locationName={g.locationName}
-              rosterId={g.rosterId}
-              rosterName={g.rosterName}
-              winners={g.winners}
-            />
-          ))}
-        </div>
-      </main>
-    </>
-  );
+  return renderDrillThroughShell(facts, games);
 }
 
 export default async function RecordDrillThroughPage({
@@ -186,41 +186,11 @@ export default async function RecordDrillThroughPage({
   const facts = recordDisplayFacts(record);
   if (!facts) notFound();
 
-  const context = facts.sample ? `${facts.value} ${facts.unit}, ${facts.sample}` : `${facts.value} ${facts.unit}`;
-
-  return (
-    <>
-      <AppBar
-        title={drillThroughHeading(facts.title, facts.holderNames)}
-        context={context}
-        back={{ href: "/", label: "Back to the board" }}
-      />
-      <main className="mx-auto w-full max-w-wide px-4 py-6">
-        <div className="flex flex-col gap-2">
-          {record.games.map((g) => {
-            const annotation = g.streakOwner
-              ? streakHolderRowAnnotation(g.streakOwner)
-              : g.roundsWonByHolder && g.roundsWonByHolder.length > 0
-                ? g.roundsWonByHolder
-                    .map((r) => roundsWonRowAnnotation(r.displayName, r.rounds))
-                    .join(" · ")
-                : undefined;
-
-            return (
-              <GameRow
-                key={g.id}
-                id={g.id}
-                playedOn={g.playedOn}
-                locationName={g.locationName}
-                rosterId={g.rosterId}
-                rosterName={g.rosterName}
-                winners={g.winners}
-                annotation={annotation}
-              />
-            );
-          })}
-        </div>
-      </main>
-    </>
+  return renderDrillThroughShell(facts, record.games, (g) =>
+    g.streakOwner
+      ? streakHolderRowAnnotation(g.streakOwner)
+      : g.roundsWonByHolder && g.roundsWonByHolder.length > 0
+        ? g.roundsWonByHolder.map((r) => roundsWonRowAnnotation(r.displayName, r.rounds)).join(" · ")
+        : undefined,
   );
 }

@@ -346,6 +346,16 @@ export function headToHead(games: readonly HeadToHeadGame[]): HeadToHead {
   };
 }
 
+/**
+ * A fraction (0–1) as a percentage rounded to one decimal place — the one
+ * rounding formula both `nemesis()` (below) and `ratePercent()` (home
+ * advantage, further down) need, extracted so a future third caller can't
+ * quietly drift to a different rounding rule (code review, M3 Stage 4).
+ */
+function roundToOneDecimalPercent(fraction: number): number {
+  return Math.round(fraction * 1000) / 10;
+}
+
 /* ------------------------------------------------------------- nemesis (199) */
 
 export interface NemesisCandidate {
@@ -387,7 +397,7 @@ export interface NemesisResult {
  * joint holders, never silently tie-broken at a precision nobody can see.
  */
 export function nemesis(candidates: readonly NemesisCandidate[]): NemesisResult {
-  const withPercent = candidates.map((c) => ({ ...c, percent: Math.round(c.aboveRate * 1000) / 10 }));
+  const withPercent = candidates.map((c) => ({ ...c, percent: roundToOneDecimalPercent(c.aboveRate) }));
 
   let best = 0;
   for (const c of withPercent) {
@@ -588,7 +598,7 @@ export interface HomeAdvantageResult {
 }
 
 function ratePercent(wins: number, games: number): number {
-  return games === 0 ? 0 : Math.round((wins / games) * 1000) / 10;
+  return games === 0 ? 0 : roundToOneDecimalPercent(wins / games);
 }
 
 /**
@@ -622,14 +632,18 @@ export function homeAdvantage(candidates: readonly HomeAdvantageCandidate[]): Ho
       return { ...c, hereRate, elsewhereRate, gap };
     });
 
-  let best = 0;
-  for (const c of withGap) {
-    if (c.gap > best) best = c.gap;
-  }
-  if (best <= 0) return { holders: [], gapPercentagePoints: null };
+  // `pickExtreme` (below) is the same "find the max, keep every tied item"
+  // mechanism the five single-event records use — home advantage's own
+  // extreme reduces to the same shape once each candidate's two-sided
+  // comparison has already been collapsed to a single scalar `gap` above
+  // (code review, M3 Stage 4: this used to be a fourth hand-rolled copy).
+  // ⚠️ A gap of zero or less never holds the record, at any sample size (the
+  // guard `pickExtreme` itself has no opinion on, since it only knows "empty
+  // input" from "no holder") — checked separately, below.
+  const picked = pickExtreme(withGap, (c) => c.gap, (candidate, best) => candidate > best);
+  if (!picked || picked.value <= 0) return { holders: [], gapPercentagePoints: null };
 
-  const holders = withGap
-    .filter((c) => c.gap === best)
+  const holders = picked.items
     .map(
       (c): HomeAdvantageHolder => ({
         playerId: c.playerId,
@@ -646,7 +660,7 @@ export function homeAdvantage(candidates: readonly HomeAdvantageCandidate[]): Ho
         compareDisplayNames(a.displayName, b.displayName) || compareDisplayNames(a.locationName, b.locationName),
     );
 
-  return { holders, gapPercentagePoints: best };
+  return { holders, gapPercentagePoints: picked.value };
 }
 
 /* ---------------------------------------------- single-event records (228-232, 240) */
@@ -656,10 +670,15 @@ export function homeAdvantage(candidates: readonly HomeAdvantageCandidate[]): Ho
  * — never deduplicated by any field of `T`, which is exactly what a
  * single-event record needs (criterion 228: the same player can hold two
  * separate instances, one per game). The one assembly mechanism the five
- * records below and `biggestSingleHandDisasters` all share, so "find the
- * best and keep every tied item" is written once rather than five times —
- * the single-event counterpart to this module's own `bestHolders`-shaped
- * logic in `lib/board/queries.ts`, which is keyed by player instead.
+ * records below share, so "find the best and keep every tied item" is
+ * written once rather than five times — the single-event counterpart to this
+ * module's own `bestHolders`-shaped logic in `lib/board/queries.ts`, which is
+ * keyed by player instead. **`homeAdvantage()` (above) reuses this too**
+ * (code review, M3 Stage 4): its own "extreme" is a (player, venue) pair, but
+ * once each candidate's two-sided win-rate comparison is collapsed to a
+ * single `gap` scalar, it's the same "find the max, keep every tie" shape —
+ * declared below `homeAdvantage()` in this file but hoisted, same as every
+ * other function declaration here.
  */
 function pickExtreme<T>(
   items: readonly T[],

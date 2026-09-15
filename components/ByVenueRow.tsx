@@ -14,14 +14,13 @@
  * there is no venue page for it to lead to. Pass `locationId={null}` for
  * that row; the caller is responsible for ordering (games at that venue
  * descending, then alphabetically, "No location" always last).
+ *
+ * The win-rate and average blocks are `WinRateAndAverageStats`, shared
+ * verbatim with `VenuePlayerRow` (code review, M3 Stage 4 follow-up).
  */
 import { EntityLink } from "./EntityLink";
-import {
-  NO_DATA_VALUE,
-  ROSTER_MEMBER_AVERAGE_LABEL,
-  byRosterGamesCaption,
-  formatWinRatePercent,
-} from "@/lib/ui/copy";
+import { WinRateAndAverageStats } from "./WinRateAndAverageStats";
+import { byRosterGamesCaption } from "@/lib/ui/copy";
 
 export interface ByVenueRowProps {
   locationId: string | null;
@@ -53,20 +52,7 @@ export function ByVenueRow({
         </span>
         <span className="block text-sm text-text-muted">{byRosterGamesCaption(gamesPlayed)}</span>
       </span>
-      <span className="shrink-0 text-right text-sm">
-        <span className="tabular block text-base font-black">{formatWinRatePercent(winRate)}</span>
-        <span className="block text-text-muted">
-          {wins} of {gamesPlayed}
-        </span>
-      </span>
-      <span className="shrink-0 text-right text-sm">
-        <span className="block text-xs font-bold uppercase tracking-label text-text-muted">
-          {ROSTER_MEMBER_AVERAGE_LABEL}
-        </span>
-        <span className="tabular block text-base font-black">
-          {average !== null ? average.toFixed(1) : NO_DATA_VALUE}
-        </span>
-      </span>
+      <WinRateAndAverageStats wins={wins} gamesPlayed={gamesPlayed} winRate={winRate} average={average} />
     </li>
   );
 }

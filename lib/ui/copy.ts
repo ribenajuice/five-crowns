@@ -1122,6 +1122,31 @@ export interface SingleEventDisplayFacts {
 }
 
 /**
+ * One row's date-shaped facts, decided once by the single `row.hand` branch
+ * this function owns (code review, M3 Stage 3 follow-up: `singleEventDisplayFacts`
+ * used to re-branch on `row.hand` three separate times — the drill-through
+ * sentence, the single-instance sample line, and the tied-instance date
+ * field — for what is the same underlying choice: the catastrophe names its
+ * hand alongside the date, every other single-event record states the date
+ * alone). `sentence` and `sample` share one value for the catastrophe
+ * (`"{hand} · {date}"`, criterion 230) because there `catastropheInstanceRow`
+ * is just `"{label} — "` prepended to `catastropheSampleLine`'s own result;
+ * `date` is the same value again, since the tied-instance row shows exactly
+ * that string in its own date field.
+ */
+function singleEventRowFacts(row: SingleEventInstanceGroup): { sentence: string; sample: string; date: string } {
+  if (row.hand) {
+    const withHand = catastropheSampleLine(row.hand, row.playedOn);
+    return { sentence: catastropheInstanceRow(row.label, row.hand, row.playedOn), sample: withHand, date: withHand };
+  }
+  return {
+    sentence: singleEventInstanceRow(row.label, row.playedOn),
+    sample: singleEventSampleLine(row.playedOn),
+    date: formatRecordDate(row.playedOn),
+  };
+}
+
+/**
  * A `SingleEventBoardRecord`'s display facts — the single-event counterpart
  * to `recordDisplayFacts` above, built the same way so the board, its
  * drill-through and `/stats` (criterion 241) can never independently drift on
@@ -1139,35 +1164,23 @@ export function singleEventDisplayFacts(
   const unit = SINGLE_EVENT_RECORD_UNITS[record.key];
   const value = String(record.value);
   const holderNames = rosterDisplayName([...new Set(record.holders.map((h) => h.displayName))]);
-  const rows = groupSingleEventHolders(record.holders);
-
-  function rowSentence(row: SingleEventInstanceGroup): string {
-    return row.hand
-      ? catastropheInstanceRow(row.label, row.hand, row.playedOn)
-      : singleEventInstanceRow(row.label, row.playedOn);
-  }
+  const rows = groupSingleEventHolders(record.holders).map((row) => ({ row, facts: singleEventRowFacts(row) }));
 
   if (rows.length === 1) {
-    const row = rows[0]!;
-    const sample = row.hand
-      ? catastropheSampleLine(row.hand, row.playedOn)
-      : singleEventSampleLine(row.playedOn);
+    const { row, facts } = rows[0]!;
     return {
       title,
       unit,
       value,
       holderNames,
-      sample,
+      sample: facts.sample,
       instances: null,
-      claim: `${title}: ${row.label}, ${value} ${unit}, ${sample}`,
+      claim: `${title}: ${row.label}, ${value} ${unit}, ${facts.sample}`,
     };
   }
 
-  const instances: SingleEventInstance[] = rows.map((row) => ({
-    label: row.label,
-    date: row.hand ? catastropheSampleLine(row.hand, row.playedOn) : formatRecordDate(row.playedOn),
-  }));
-  const claim = `${title}: ${value} ${unit}. ${rows.map(rowSentence).join("; ")}`;
+  const instances: SingleEventInstance[] = rows.map(({ row, facts }) => ({ label: row.label, date: facts.date }));
+  const claim = `${title}: ${value} ${unit}. ${rows.map(({ facts }) => facts.sentence).join("; ")}`;
 
   return { title, unit, value, holderNames, sample: null, instances, claim };
 }

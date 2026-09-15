@@ -8,13 +8,16 @@
  * {games}", and their average final score at this venue — the identical
  * three-stat shape `ByVenueRow` uses, just naming a player at one venue
  * instead of a venue for one player (decision 29: one shared function, two
- * rendering contexts, neither the "real" one).
+ * rendering contexts, neither the "real" one). The win-rate and average
+ * blocks are `WinRateAndAverageStats`, shared verbatim with `ByVenueRow`
+ * (code review, M3 Stage 4 follow-up).
  *
  * ⚠️ **No ranking decoration** (criterion 261): the caller orders rows by
  * games here descending, then alphabetically, never by win rate or average.
  */
 import { EntityLink } from "./EntityLink";
-import { byRosterGamesCaption, ROSTER_MEMBER_AVERAGE_LABEL, formatWinRatePercent } from "@/lib/ui/copy";
+import { WinRateAndAverageStats } from "./WinRateAndAverageStats";
+import { byRosterGamesCaption } from "@/lib/ui/copy";
 
 export interface VenuePlayerRowProps {
   playerId: string;
@@ -41,18 +44,7 @@ export function VenuePlayerRow({
         </span>
         <span className="block text-sm text-text-muted">{byRosterGamesCaption(gamesPlayed)}</span>
       </span>
-      <span className="shrink-0 text-right text-sm">
-        <span className="tabular block text-base font-black">{formatWinRatePercent(winRate)}</span>
-        <span className="block text-text-muted">
-          {wins} of {gamesPlayed}
-        </span>
-      </span>
-      <span className="shrink-0 text-right text-sm">
-        <span className="block text-xs font-bold uppercase tracking-label text-text-muted">
-          {ROSTER_MEMBER_AVERAGE_LABEL}
-        </span>
-        <span className="tabular block text-base font-black">{average.toFixed(1)}</span>
-      </span>
+      <WinRateAndAverageStats wins={wins} gamesPlayed={gamesPlayed} winRate={winRate} average={average} />
     </li>
   );
 }
