@@ -29,6 +29,20 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
   been 7 games since Sam last won, maybe go easy on them" or a quick retelling of a random past
   night. It's different every time you load or refresh the page, sometimes teasing whoever's earned
   it, and it's tappable through to the game or player it's about wherever that makes sense.
+- **Every venue now has its own page.** Tap a place from the Places list to see its games played,
+  its average score, and a table of everyone who's ever played there — their games, wins, win rate
+  and average at that venue specifically.
+- **A new "Home advantage" record joins the board**, taking it to thirteen: whoever does best at one
+  particular venue compared with everywhere else, named alongside that venue, with both rates shown
+  side by side so you can see exactly how big — or small — the gap really is. Like every other
+  record, it shows up from your very first game at a place, even if that's the only game you've got
+  there.
+- **`/stats` now breaks scores down by day of the week and by month of the year** — two plain tables,
+  games played and average score for each of the seven days and each of the twelve months. They just
+  state the numbers; they don't claim you play better on any particular day.
+- **You can now filter the games list down to one venue or one exact group of people**, by adding
+  `?location=` or `?roster=` to its address — the two can be combined, and the link works the same
+  for anyone you share it with, every time it's opened.
 
 ## [Stage 10] - 2026-09-14
 

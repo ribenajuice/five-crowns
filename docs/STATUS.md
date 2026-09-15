@@ -18,19 +18,25 @@
   ([PR #25](https://github.com/ribenajuice/five-crowns/pull/25), 2026-09-14). **Stage 4** (suggested player-name
   matching, and permanent player/place merging) — the closing stage of Milestone 2 — is also merged and live
   ([PR #27](https://github.com/ribenajuice/five-crowns/pull/27), 2026-09-14). **Milestone 3 — the records board
-  and the analytics — is now in flight**, with its first two stages merged and live. Its full delivery spec is
+  and the analytics — is now in flight**, with its first three stages merged and live. Its full delivery spec is
   written stage-by-stage in `docs/PRD.md` as each stage is built, the same way Milestone 2 was. **Stage 1**
   ("the board, and the engine under it" — the app now opens on a records board instead of the games list) is
   merged and deployed ([PR #29](https://github.com/ribenajuice/five-crowns/pull/29), 2026-09-14). **Stage 2**
   ("Rivalry" — head-to-head records, nemesis, per-roster win rates, streaks in context, and two more board
   records) is also merged and deployed ([PR #30](https://github.com/ribenajuice/five-crowns/pull/30),
   2026-09-14). **Stage 3** ("Distributions and villains" — score averages, the eleven-hand trend,
-  hand-by-hand villains, and five more board records) is also built, QA'd and code-reviewed, on branch
-  `feat/m3-stage3`, ready to open as a PR — not yet merged or deployed. **Milestone 4 is also now underway
-  — its first slice, "fun facts" (a pool of eight programmatically-generated facts about the group's
-  history, one shown at random on the board on every page load), is built, QA'd, code-reviewed and
-  security-reviewed, on branch `feat/m4-fun-facts`, ready to open as a PR — not yet merged or deployed.**
-  This slice is independent of Milestone 3's own in-flight PRs and can merge before or after either of them.
+  hand-by-hand villains, and five more board records) is also merged and deployed
+  ([PR #32](https://github.com/ribenajuice/five-crowns/pull/32), 2026-09-14). **Stage 4** ("Place, time, and
+  the filters" — a venue's own page, a "home advantage" board record, day-of-week and month breakdowns on
+  `/stats`, and a location/roster filter on the games list) — **the fourth and final stage of Milestone 3** —
+  is built, QA'd (including the milestone-closing delete/merge sweep audit, criteria 275–280, proving every
+  number across all four M3 stages moves after a delete or merge), code-reviewed and security-reviewed, on
+  branch `feat/m3-stage4`, ready to open as a PR — not yet merged or deployed. ⚠️ **Milestone 3 is now fully
+  built across all four stages, though only the first three are merged to `main` so far** — Stage 4 merging
+  is what actually closes the milestone. **Milestone 4 is also now underway** — its first slice, "fun facts"
+  (a pool of eight programmatically-generated facts about the group's history, one shown at random on the
+  board on every page load), is merged and deployed ([PR #33](https://github.com/ribenajuice/five-crowns/pull/33),
+  2026-09-14). It shipped independently of Milestone 3's remaining in-flight work.
 - **Production URL**: https://fivecrowns.ribenajuice.xyz. Confirmed live post-deploy today (200, valid cert, all
   unauthenticated routes `/`, `/games`, `/admin` still correctly 307 to `/login` with no data or error leakage).
   Valid Amazon certificate, runs to 27 Mar 2027 and renews itself through the kept `_628746…fivecrowns` validation
@@ -38,11 +44,11 @@
   attached (SST blocks it by design; founder decision to keep one address, see DECISIONS.md). **If the domain ever
   breaks:** delete `/five-crowns/prod/app-domain` and `app-cert-arn` (ap-southeast-2) and deploy once, and the
   CloudFront URL answers again.
-- **Currently in flight**: [PR #32](https://github.com/ribenajuice/five-crowns/pull/32) (Milestone 3
-  Stage 3) and [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) (Milestone 4, fun facts) —
-  **Milestone 3's first two stages are merged and live.**
-  - [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
-    facts** (criteria 281–293). A fixed pool of eight independent fact generators — flatliner, current
+- **Currently in flight**: Milestone 3 Stage 4 (this branch, `feat/m3-stage4`) — built, QA'd, code-reviewed
+  and security-reviewed, not yet a PR. **Milestone 3's first three stages, and Milestone 4's first slice, are
+  all merged and live** — see below.
+  - ✅ [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
+    facts** (criteria 281–293). **Shipped 2026-09-14.** A fixed pool of eight independent fact generators — flatliner, current
     drought, the comeback nobody asked for, the slump, rivalry needle, overdue, a random old night, and
     collective trivia — each a pure function that returns one true fact or nothing. The board computes
     the whole pool fresh on every load and shows exactly one, picked at random; refresh, and you get
@@ -66,7 +72,7 @@
     branches) — the merge itself surfaced one more real bug, the shared `getBoardData()` query for
     `round_score` was missing the deterministic `ORDER BY` Stage 3's own code review had added, silently
     reintroducing the catastrophe drill-through's non-determinism — fixed during the rebase, all 1643
-    tests passing, lint and typecheck clean. **Next**: founder review/merge.
+    tests passing, lint and typecheck clean. Merged and deployed.
   - ✅ [PR #29](https://github.com/ribenajuice/five-crowns/pull/29) — **Milestone 3 Stage 1**, the records board
     (criteria 175–196). **Shipped 2026-09-14.** Milestone 3 had no detailed spec at all going in — only a
     bullet-point sketch — so product-manager wrote the actual delivery plan, proposing a 4-stage breakdown
@@ -104,8 +110,8 @@
     rebased state (the initial force-push didn't auto-retrigger a check run, so one was forced before merging
     — never merge on a check run against a since-superseded commit), then merged and deployed. Verified live:
     every rivalry route still correctly 307s to `/login`.
-  - **Milestone 3 Stage 3** — "Distributions and villains" (criteria 223–249). Built on `feat/m3-stage3`;
-    not yet a PR. Two small founder questions from Stage 3's prep work were answered at the
+  - ✅ **Milestone 3 Stage 3** — "Distributions and villains" (criteria 223–249). **Shipped 2026-09-14**
+    ([PR #32](https://github.com/ribenajuice/five-crowns/pull/32)). Two small founder questions from Stage 3's prep work were answered at the
     checkpoint, both as the stated defaults: none of the five records that read a final score as a number
     (best/worst game ever, biggest hammering, the catastrophe, every average) carry a caveat beyond their
     existing sample statement, and "cleanest sheet" stays a single-game record, not a career total. The
@@ -131,13 +137,28 @@
     dedup key) plus redundant recomputation (the board computed second place twice per game; `/stats` had
     reimplemented a display helper the board already exported) — both fixed. 1558 tests passing, lint and
     typecheck clean. Known follow-ups deliberately deferred, non-blocking, listed under "Known follow-ups"
-    below. **Next**: open the PR.
-  - [PR #32](https://github.com/ribenajuice/five-crowns/pull/32) — **Milestone 3 Stage 3** is now open,
-    rebased onto `main` after Stages 1-2 merged, CI green. Awaiting founder review/merge.
-  - Stage 4 is specced too (Place, time, and the filters, criteria 250–280), with
-    one question flagged as genuinely scope-determining rather than assumed: whether a venue gets its own
-    page, or just a filter on the games list (specced to the team's default of "both," struck in place if the
-    founder answers otherwise).
+    below. Merged and deployed.
+  - **Milestone 3 Stage 4** — "Place, time, and the filters" (criteria 250–280) — **the fourth and final
+    stage of Milestone 3**. Built on `feat/m3-stage4`; not yet a PR. Open question 9 (whether venue numbers
+    get a dedicated page, a filter, or both) was answered at the founder's checkpoint on 2026-09-15: **(c),
+    both** — matching the spec's stated default, so nothing was struck. Ships a venue page at `/places/{id}`
+    (win rate, average score, and a per-player table for that venue), a thirteenth board record — "home
+    advantage", naming the player and venue with the largest gap between win rate there and win rate
+    elsewhere, deliberately carrying no minimum-games floor, so a one-game venue can and will hold it in a
+    small archive, printed plainly rather than hedged — day-of-week and calendar-month breakdowns on
+    `/stats` (fixed tables, no best-day marker, no claim about when anyone plays best), a location/roster
+    filter on the games list (`?location=` and `?roster=`, combinable, shareable), by-venue sections on the
+    player page, and a "No location" containment row so a game with no venue is shown, not dropped, and
+    every by-venue table still sums to games actually played. QA drove the real app across all 31 criteria
+    and passed every one, including the **milestone-closing delete/merge sweep audit (criteria 275–280)** —
+    new to this stage, and the first time anything has proved that **every number across all four Milestone
+    3 stages** actually moves after a delete or merge: all thirteen board records and their drill-throughs,
+    every section of the player, roster and venue pages, the places index, and every table on `/stats`, all
+    re-checked after deleting a game and merging two players. `/code-review high` then found and fixed one
+    real bug (home advantage's tie-break) plus a redundant recomputation and two query-parallelization
+    fixes. A security review found no blocking issues; one small robustness nit (a repeated filter query
+    param 404'd where it should have) was found and fixed as a follow-up commit. Five small things
+    deliberately deferred as non-blocking — see "Known follow-ups" below. **Next**: open the PR.
   - ✅ [PR #27](https://github.com/ribenajuice/five-crowns/pull/27) — **Milestone 2 Stage 4**, suggested
     player-name matching, and permanent player/place merging (criteria 148–166, 172–173). **Shipped 2026-09-14,
     closing Milestone 2.** The spec was already written 2026-09-10 (with 172–173 added 2026-09-14);
@@ -290,11 +311,9 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: open PRs for **Milestone 3 Stages 1, 2 and 3** (Stage 1's should merge first, then Stage 2's,
-  since each later stage's branch is stacked on the one before it). After that, **Milestone 3 Stage 4 —
-  Place, time, and the filters** (criteria 250–280, already specced): whether a venue gets its own page, or
-  just a filter on the games list, is specced to the team's default of "both," to be struck in place if the
-  founder answers otherwise. Run `/feature Milestone 3 Stage 4` to start.
+- **Next up**: open the PR for **Milestone 3 Stage 4** and get it reviewed and merged — the only thing left
+  to close Milestone 3. It is not stacked on any other open PR (there are none right now); it builds
+  directly on `main`, which already has Stages 1–3 and Milestone 4's fun-facts slice merged into it.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -400,6 +419,16 @@
     `singleEventDisplayFacts` has grown some internal triple-branching as it's picked up more record types,
     and `formatRecordDate` is a fourth duplicate of date-formatting logic that already exists elsewhere in
     the codebase.
+  - **Milestone 3 Stage 4** (place, time, and the filters), flagged by `/code-review high` and deliberately
+    deferred as non-blocking: `homeAdvantage()` (`lib/scoring/records.ts`) hand-writes its own "find max,
+    collect ties" loop instead of reusing the existing `pickExtreme<T>` helper the five single-event records
+    already share. `components/VenuePlayerRow.tsx` duplicates `components/ByVenueRow.tsx` almost verbatim
+    (same row shape) — could be one shared component. `components/TimeSliceRow.tsx`'s own doc comment admits
+    it's "AverageRow's exact shape with the link removed" — genuine, self-acknowledged duplication.
+    `components/AppBar.tsx`'s touch-target fix hand-copies `EntityLink`'s hit-slop CSS constant instead of
+    adding a `text-inherit`-preserving variant to `EntityLink` itself (documented in the code with the
+    tradeoff explained). The new `ratePercent()` helper (`lib/scoring/records.ts`) reimplements the same
+    rounding formula `nemesis()` already computes inline, rather than sharing one rounding primitive.
 - **Milestone 0 verdict** (full findings in `docs/SPIKE-M0-READING.md`): reading gets **97% of cells** right, and
   monotonicity caught **0 of 9** misreads, so the human review screen is the entire quality control. Errors repeat
   deterministically, so don't build "transcribe twice and compare". ⚠️ **Corrected 2026-09-14**: the original

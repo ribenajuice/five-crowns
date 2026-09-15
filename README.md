@@ -20,17 +20,21 @@ shared a game with, a "Nemesis" card naming whoever most reliably finishes above
 by-roster breakdown of how they do within each exact group they've played with — plus their
 longest-ever winning streak next to its opposite, the drought. The board itself gains two more
 records, the drought and "the nearly man" (most second-place finishes), taking it to seven.
-**Stage 3 — distributions and villains — is also built and reviewed, on a branch, not yet merged
-or deployed**: the board grows to twelve records with five more — best and worst game ever, the
-catastrophe (the single worst hand anyone's scored), cleanest sheet, and biggest hammering (the
-largest winning margin in any game) — each one dated and tappable through to its exact game. A new
-"Stats" catalogue at `/stats` adds an eleven-hand trend, a hand-by-hand villains table, the ten
-biggest single-hand disasters, and player and roster averages; player and roster pages each gain
-their own averages too. **Milestone 4's first slice — fun facts — is also built and reviewed,
-on its own branch, not yet merged or deployed**: the board now occasionally shows a fun fact about
-the group's history below the archive line — something like "it's been 7 games since Sam last won"
-or a quick retelling of a random past night — a different one each time the page loads. See
-`docs/STATUS.md`.
+**Stage 3 — distributions and villains — is also merged and live**: the board grows to twelve
+records with five more — best and worst game ever, the catastrophe (the single worst hand anyone's
+scored), cleanest sheet, and biggest hammering (the largest winning margin in any game) — each one
+dated and tappable through to its exact game. A new "Stats" catalogue at `/stats` adds an
+eleven-hand trend, a hand-by-hand villains table, the ten biggest single-hand disasters, and player
+and roster averages; player and roster pages each gain their own averages too. **Milestone 4's
+first slice — fun facts — is also merged and live**: the board now occasionally shows a fun fact
+about the group's history below the archive line — something like "it's been 7 games since Sam
+last won" or a quick retelling of a random past night — a different one each time the page loads.
+**Stage 4 — place, time, and the filters — is built and reviewed, on a branch, not yet merged or
+deployed, and completes Milestone 3's build**: every venue now has its own page (games played,
+average score, and who's played there), the board gains a thirteenth record — "home advantage",
+naming whoever does best at one particular venue compared with everywhere else — `/stats` gains
+day-of-week and month-of-year breakdowns, and the games list can now be filtered down to one venue
+or one exact group of people. See `docs/STATUS.md`.
 
 **Adding a game:** tap **Add a game**, photograph the paper scoresheet (or pick one from your
 photos), turn it upright, then choose how to fill in the numbers: **Read the sheet** has the app
