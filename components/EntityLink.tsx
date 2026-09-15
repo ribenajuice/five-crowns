@@ -16,6 +16,12 @@
  *   to `--success` but *keeps* its underline, so "this is a link" and "this
  *   is the winner" stay two separate signals on the same text, never
  *   collapsed into one.
+ * - `inherit` — `text-inherit`, no colour override at all, for a heading
+ *   that doubles as a link (`AppBar`'s `titleHref`) and must read exactly
+ *   like every other, untappable `AppBar` title — colour never signals
+ *   tappability there, only the underline does. Added in the M3 Stage 4
+ *   code-review follow-up so `AppBar` could reuse this component's hit-slop
+ *   technique instead of hand-copying it (below).
  *
  * Every `EntityLink` gets a real ≥44px-tall tap target via padding (not by
  * resizing the visible text) — `py-3.5`/`-my-3.5` add invisible hit-slop
@@ -29,12 +35,13 @@
 
 import Link from "next/link";
 
-export type EntityLinkVariant = "brand" | "muted" | "success";
+export type EntityLinkVariant = "brand" | "muted" | "success" | "inherit";
 
 const VARIANT_CLASSES: Record<EntityLinkVariant, string> = {
   brand: "text-brand",
   muted: "text-text decoration-brand",
   success: "text-success",
+  inherit: "text-inherit",
 };
 
 interface EntityLinkProps {
