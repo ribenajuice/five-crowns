@@ -11,8 +11,13 @@ vi.mock("@/lib/auth/session", () => ({
 
 vi.mock("@/lib/locations/queries", () => ({
   listPlaces: vi.fn(async () => [
-    { id: "loc1", name: "Player C's House", gamesPlayed: 4 },
-    { id: "loc2", name: "The Deck", gamesPlayed: 3 },
+    {
+      id: "loc1",
+      name: "Player C's House",
+      gamesPlayed: 4,
+      tableAverage: { average: 52.3, gamesPlayed: 4, scoresCount: 16 },
+    },
+    { id: "loc2", name: "The Deck", gamesPlayed: 0, tableAverage: null },
   ]),
 }));
 
@@ -24,6 +29,18 @@ describe("/places", () => {
     expect(html).toContain("Player C");
     expect(html).toContain("The Deck");
     expect(html).not.toContain("Merged.");
+  });
+
+  it("⚠️ criterion 259: each row links to its own venue page and states its table average", async () => {
+    const { default: PlacesIndexPage } = await import("@/app/places/page");
+    const element = await PlacesIndexPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element);
+    expect(html).toContain('href="/places/loc1"');
+    expect(html).toContain("52.3");
+    expect(html).toContain("4 games");
+    expect(html).toContain("16 scores");
+    // A never-used venue: the no-data string, not a zero average.
+    expect(html).toContain('href="/places/loc2"');
   });
 
   it("⚠️ criteria 163–166: a successful merge's one-time banner names the loser and the survivor", async () => {

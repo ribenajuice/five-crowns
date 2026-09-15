@@ -3,6 +3,7 @@ import { AppBar } from "@/components/AppBar";
 import { AverageRow } from "@/components/AverageRow";
 import { DisasterRow } from "@/components/DisasterRow";
 import { HandTrendBars } from "@/components/HandTrendBars";
+import { TimeSliceRow } from "@/components/TimeSliceRow";
 import { VillainsTable } from "@/components/VillainsTable";
 import { getStatsPage, type DisasterRow as DisasterRowData } from "@/lib/stats/queries";
 import { HANDS_PER_GAME } from "@/lib/scoring";
@@ -16,8 +17,12 @@ import {
   HAND_TREND_HEADING,
   STATS_APPBAR_TITLE,
   STATS_BACK_LABEL,
+  STATS_DAY_OF_WEEK_HEADING,
+  STATS_DAY_OF_WEEK_SAMPLE_LINE,
   STATS_EMPTY_BODY,
   STATS_EMPTY_TITLE,
+  STATS_TIME_OF_YEAR_HEADING,
+  STATS_TIME_OF_YEAR_SAMPLE_LINE,
   VILLAINS_HEADING,
   VILLAINS_SAMPLE_LINE,
   handTrendSampleLine,
@@ -149,6 +154,48 @@ export default async function StatsPage() {
                     ))}
                   </ul>
                 </div>
+              </div>
+            </section>
+
+            {/*
+             * M3 Stage 4 (criteria 265–267): two plain time tables, placed
+             * after the existing four sections above — nothing above them
+             * moves. Neither claims anything: no best-day/worst-month
+             * marker, no reordering by the mean, every row always renders.
+             */}
+            <section>
+              <h2 className="mb-2 font-display text-lg font-bold">{STATS_DAY_OF_WEEK_HEADING}</h2>
+              <p className="mb-2 text-sm text-text-muted">{STATS_DAY_OF_WEEK_SAMPLE_LINE}</p>
+              <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+                <ul>
+                  {stats.dayOfWeek.map((row) => (
+                    <TimeSliceRow
+                      key={row.label}
+                      label={row.label}
+                      gamesPlayed={row.gamesPlayed}
+                      scoresCount={row.scoresCount}
+                      average={row.average}
+                    />
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mb-2 font-display text-lg font-bold">{STATS_TIME_OF_YEAR_HEADING}</h2>
+              <p className="mb-2 text-sm text-text-muted">{STATS_TIME_OF_YEAR_SAMPLE_LINE}</p>
+              <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+                <ul>
+                  {stats.timeOfYear.map((row) => (
+                    <TimeSliceRow
+                      key={row.label}
+                      label={row.label}
+                      gamesPlayed={row.gamesPlayed}
+                      scoresCount={row.scoresCount}
+                      average={row.average}
+                    />
+                  ))}
+                </ul>
               </div>
             </section>
           </div>

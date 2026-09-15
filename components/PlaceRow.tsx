@@ -4,17 +4,24 @@
  * `PlaceRow` — docs/DESIGN-SYSTEM.md § Component inventory (Stage 3, extended
  * Stage 4).
  *
- * Unlike `IndexRow`, **not** a `Link` — there's no place page for it to lead
- * to (criterion 140). Name, an optional muted caption on a never-used venue,
- * a right-aligned games-played count (0 renders like any other number), and
- * the row's own pencil `IconButton`.
+ * Stage 3: unlike `IndexRow`, **not** a `Link` — there was no place page for
+ * it to lead to (criterion 140). ⚠️ **Stage 4 gives it one** (criterion 259):
+ * the whole row is now a `Link` to `/places/{id}`, the same "stretched link,
+ * with a second independently-tappable control layered on top" construction
+ * `GameRow` already uses for its roster name — the pencil `IconButton` keeps
+ * its own `z-index` and 44px hit slop so opening the edit/merge chooser never
+ * also fires the row's navigation underneath it. The right-aligned figure is
+ * now that venue's table average with its dual sample (criteria 259, 252)
+ * rather than a bare games-played count; a never-used venue still shows
+ * `PLACES_UNUSED_CAPTION` and the no-data fixed string in its place.
  *
  * Stage 4 (`PlaceRowActions`, criterion 163): the pencil no longer jumps
  * straight to the rename `Field` — it opens a two-row chooser in the same
  * "reveal in place" slot ("Rename" / "Merge with another place…"), so
- * `PlaceRow` stays pixel-identical to Stage 3 at rest. Picking "Rename" swaps
- * to the unchanged Stage 3 `Field` editor below; picking "Merge…" navigates
- * to `/places/{id}/merge`, the dedicated "which place?" picker.
+ * `PlaceRow` stays pixel-identical to Stage 3 at rest, other than the new
+ * `Link`/average changes above. Picking "Rename" swaps to the unchanged
+ * Stage 3 `Field` editor below; picking "Merge…" navigates to
+ * `/places/{id}/merge`, the dedicated "which place?" picker.
  *
  * A `name_key` collision (criterion 146) is **refused, not warned**:
  * `PATCH /api/locations/{id}` 409s, and its own error message is already the
@@ -36,8 +43,8 @@ import { MergeIcon, PencilIcon } from "./icons";
 import { MAX_LOCATION_NAME_LENGTH } from "@/lib/ui/constants";
 import { requestLocationRename } from "@/lib/ui/rename-actions";
 import {
+  NO_DATA_VALUE,
   editPlaceAriaLabel,
-  gamesNoun,
   locationCollisionMergeButtonLabel,
   LOCATION_COLLISION_BODY,
   PLACES_UNUSED_CAPTION,
@@ -53,18 +60,27 @@ import {
   RENAME_HELPER_PLACE,
   RENAME_SAVE_BUSY_BUTTON,
   RENAME_SAVE_BUTTON,
+  rosterAverageSampleCaption,
 } from "@/lib/ui/copy";
+
+export interface PlaceRowTableAverage {
+  average: number;
+  gamesPlayed: number;
+  scoresCount: number;
+}
 
 export interface PlaceRowProps {
   id: string;
   name: string;
   gamesPlayed: number;
+  /** `null` for a never-used venue (criterion 259: the no-data string stands in, not a zero average). */
+  tableAverage?: PlaceRowTableAverage | null;
 }
 
 type Mode = "closed" | "choose" | "rename";
 type SaveState = "idle" | "saving" | "refused" | "error";
 
-export function PlaceRow({ id, name, gamesPlayed }: PlaceRowProps) {
+export function PlaceRow({ id, name, gamesPlayed, tableAverage = null }: PlaceRowProps) {
   const fieldId = useId();
   const [mode, setMode] = useState<Mode>("closed");
   const [displayName, setDisplayName] = useState(name);
@@ -132,24 +148,40 @@ export function PlaceRow({ id, name, gamesPlayed }: PlaceRowProps) {
 
   if (mode === "closed") {
     return (
-      <div className="flex min-h-13 items-center gap-3 rounded-[var(--radius)] border border-line bg-surface px-4 py-3">
-        <div className="min-w-0 flex-1">
+      <div className="relative flex min-h-13 items-center gap-3 rounded-[var(--radius)] border border-line bg-surface px-4 py-3">
+        {/* Criterion 259: the whole row is now a `Link` to the venue page —
+            the same stretched-link-plus-layered-control construction
+            `GameRow` uses for its roster name. Every other piece of content
+            in this row is `pointer-events-none` so a tap on it falls through
+            to this link, exactly as `GameRow`'s own comment documents. */}
+        <Link
+          href={`/places/${id}`}
+          aria-label={`Open ${displayName}`}
+          className="absolute inset-0 z-0 rounded-[var(--radius)]"
+        />
+        <div className="relative min-w-0 flex-1 pointer-events-none">
           <p className="font-display text-base font-bold">{displayName}</p>
           {gamesPlayed === 0 ? (
             <p className="mt-0.5 text-xs text-text-muted">{PLACES_UNUSED_CAPTION}</p>
           ) : null}
         </div>
-        <div className="mr-1 shrink-0 text-right">
-          <span className="tabular block text-base font-black">{gamesPlayed}</span>
-          <span className="block text-[10px] uppercase tracking-label text-text-muted">
-            {gamesNoun(gamesPlayed)}
-          </span>
+        <div className="relative mr-1 shrink-0 pointer-events-none text-right">
+          {tableAverage ? (
+            <>
+              <span className="tabular block text-base font-black">{tableAverage.average.toFixed(1)}</span>
+              <span className="block text-text-muted">
+                {rosterAverageSampleCaption(tableAverage.gamesPlayed, tableAverage.scoresCount)}
+              </span>
+            </>
+          ) : (
+            <span className="tabular block text-base font-black text-text-muted">{NO_DATA_VALUE}</span>
+          )}
         </div>
         <button
           type="button"
           onClick={openChooser}
           aria-label={editPlaceAriaLabel(displayName)}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] border border-line text-brand"
+          className="relative z-10 inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] border border-line bg-surface text-brand"
         >
           <PencilIcon />
         </button>

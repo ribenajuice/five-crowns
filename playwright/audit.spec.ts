@@ -922,3 +922,167 @@ test("audit: /stats and the player/roster pages' Stage 3 sections", async ({ pag
   await auditScreen(page, "/rosters/{id} (Stage 3 table average, per-member average)");
   await expect(page.getByText("Table average", { exact: true })).toBeVisible();
 });
+
+/**
+ * Milestone 3 Stage 4 — place, time, and the filters (PRD criterion 272:
+ * "npm run audit:a11y covers the venue page, the places index, the filtered
+ * games list, both time tables, the player page's by-venue section and the
+ * board's thirteenth row"). Saves games at a named venue so the venue page,
+ * the places index and the games-list filter all have real, non-empty data
+ * to audit against, plus a second, unlocated game with a distinct roster so
+ * a combined venue+roster filter has a real "zero matches" case to check.
+ */
+test("audit: place, time and the filters (M3 Stage 4)", async ({ page, baseURL, request }) => {
+  await loginAsGroup(page);
+
+  const cookies = await page.context().cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  async function saveGame(
+    playedOn: string,
+    columns: string[],
+    overrides: Record<number, number[]>,
+    newLocationName: string | null,
+  ) {
+    const uploadRes = await request.post(`${baseURL}/api/uploads`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { kind: "sheet", rotation: 0, width: 1200, height: 1600 },
+    });
+    if (!uploadRes.ok()) {
+      throw new Error(`POST /api/uploads failed: ${uploadRes.status()} ${await uploadRes.text()}`);
+    }
+    const { photoId, original, model } = await uploadRes.json();
+
+    const fixtureBytes = await readFile(path.join(FIXTURES_DIR, "sheet-01-four-players.jpg"));
+    for (const variant of [original, model]) {
+      const uploadUrl = /^https?:\/\//.test(variant.url) ? variant.url : `${baseURL}${variant.url}`;
+      await request.post(uploadUrl, {
+        multipart: {
+          ...variant.fields,
+          file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: fixtureBytes },
+        },
+      });
+    }
+
+    const draftState = {
+      version: 1,
+      photoId,
+      playedOn,
+      locationId: null,
+      newLocationName,
+      columns: columns.map((id, order) => ({
+        id,
+        order,
+        playerId: null,
+        newPlayerName: `Place Audit ${id}`,
+        sheetName: null,
+        activeReadingId: null,
+        readings: [],
+        manualEdits: Object.fromEntries((overrides[order] ?? []).map((v, i) => [String(i), v])),
+        crop: null,
+      })),
+    };
+    const draftRes = await request.post(`${baseURL}/api/drafts`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { photoId, state: draftState },
+    });
+    if (!draftRes.ok()) {
+      throw new Error(`POST /api/drafts failed: ${draftRes.status()} ${await draftRes.text()}`);
+    }
+    const { draftId } = await draftRes.json();
+
+    const saveRes = await request.post(`${baseURL}/api/games`, {
+      headers: { cookie: cookieHeader, "content-type": "application/json" },
+      data: { draftId, state: draftState },
+    });
+    if (!saveRes.ok()) {
+      throw new Error(`POST /api/games failed: ${saveRes.status()} ${await saveRes.text()}`);
+    }
+  }
+
+  // Two games at a named venue, same two-player roster — a real table
+  // average, a "Players here" table and a real games list to audit.
+  await saveGame(
+    "2026-03-01",
+    ["v1", "v2"],
+    { 0: [3, 8, 12, 17, 23, 30, 38, 47, 57, 68, 80], 1: [9, 18, 27, 36, 45, 54, 63, 72, 81, 90, 99] },
+    "Place Audit House",
+  );
+  await saveGame(
+    "2026-03-08",
+    ["v1", "v2"],
+    { 0: [4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54], 1: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110] },
+    "Place Audit House",
+  );
+  // A third game, no venue, a distinct roster — real ids for a combined
+  // venue+roster filter that's guaranteed to match zero games.
+  await saveGame(
+    "2026-03-15",
+    ["v3", "v4"],
+    { 0: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], 1: [6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66] },
+    null,
+  );
+
+  // ---- Places index (criteria 259, 272) ----
+  await page.goto("/places");
+  await auditScreen(page, "/places");
+  const placeLink = page.getByRole("link", { name: /Place Audit House/ });
+  await expect(placeLink).toBeVisible();
+  const placeHref = await placeLink.getAttribute("href");
+  if (!placeHref) throw new Error("Place Audit House's own venue page link was not found on /places");
+
+  // ---- The venue page (criteria 260–261, 272) ----
+  await page.goto(placeHref);
+  await auditScreen(page, "/places/{id}");
+  await expect(page.getByRole("heading", { name: "Players here" })).toBeVisible();
+  await expect(page.getByText("Table average", { exact: true })).toBeVisible();
+
+  // ---- The games list, filtered by venue — matches (criteria 262, 272) ----
+  const locationId = placeHref.split("/").filter(Boolean).pop();
+  await page.goto(`/games?location=${locationId}`);
+  await auditScreen(page, "/games?location= (filtered, matches)");
+  await expect(page.getByRole("button", { name: "Clear filter" })).toBeVisible();
+  await expect(page.getByText(/At Place Audit House/)).toBeVisible();
+
+  // ---- The games list, a valid filter matching zero games (criterion 263) ----
+  const rosterHrefBeforeFilter = await page.locator('a[href^="/rosters/"]').first().getAttribute("href");
+  await page.goto("/rosters");
+  const otherRosterLink = page.getByRole("link", { name: /Place Audit v3/ });
+  const otherRosterHref = await otherRosterLink.getAttribute("href");
+  if (otherRosterHref && rosterHrefBeforeFilter !== otherRosterHref) {
+    const otherRosterId = otherRosterHref.split("/").filter(Boolean).pop();
+    await page.goto(`/games?location=${locationId}&roster=${otherRosterId}`);
+    await auditScreen(page, "/games?location=&roster= (zero matches)");
+    await expect(page.getByText("No games match this filter.")).toBeVisible();
+  }
+
+  // ---- The player page's by-venue section (criteria 256–258, 272) ----
+  await page.goto("/players");
+  const venuePlayerLink = page.getByRole("link", { name: "Place Audit v1" });
+  await expect(venuePlayerLink).toBeVisible();
+  const venuePlayerHref = await venuePlayerLink.getAttribute("href");
+  if (!venuePlayerHref) throw new Error("Place Audit v1's own player page link was not found on /players");
+  await page.goto(venuePlayerHref);
+  await auditScreen(page, "/players/{id} (Stage 4 by-venue section)");
+  await expect(page.getByRole("heading", { name: "By venue" })).toBeVisible();
+  await expect(page.getByText("Place Audit House", { exact: true })).toBeVisible();
+
+  // ---- /stats' two time tables (criteria 265–267, 272) ----
+  await page.goto("/stats");
+  await auditScreen(page, "/stats (Stage 4 time tables)");
+  await expect(page.getByRole("heading", { name: "Day of the week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Time of year" })).toBeVisible();
+
+  // ---- The board at thirteen cards (criteria 270, 272) ----
+  await page.goto("/");
+  await auditScreen(page, "/ (records board, thirteen cards)");
+  await expect(page.getByText("Home advantage", { exact: true })).toBeVisible();
+  const homeAdvantageLink = page.locator('a[href="/records/homeAdvantage"]');
+  if (await homeAdvantageLink.count()) {
+    const href = await homeAdvantageLink.first().getAttribute("href");
+    if (href) {
+      await page.goto(href);
+      await auditScreen(page, "/records/homeAdvantage (drill-through)");
+    }
+  }
+});

@@ -143,4 +143,49 @@ describe("/stats — populated (criteria 237–242)", () => {
     expect(html).toContain("Back to the board");
     expect(html).toContain('href="/"');
   });
+
+  it("⚠️ criteria 265–267: day-of-week and time-of-year render every fixed row, with the no-data string at zero games, never a 0.0", async () => {
+    const { getStatsPage } = await import("@/lib/stats/queries");
+    vi.mocked(getStatsPage).mockResolvedValueOnce({
+      ...populatedStats(),
+      dayOfWeek: [
+        { label: "Monday", gamesPlayed: 2, scoresCount: 8, average: 54.1 },
+        { label: "Tuesday", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "Wednesday", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "Thursday", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "Friday", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "Saturday", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "Sunday", gamesPlayed: 0, scoresCount: 0, average: null },
+      ],
+      timeOfYear: [
+        { label: "January", gamesPlayed: 0, scoresCount: 0, average: null },
+        { label: "September", gamesPlayed: 2, scoresCount: 8, average: 63.5 },
+      ],
+    });
+
+    const { default: StatsPage } = await import("@/app/stats/page");
+    const html = renderToStaticMarkup(await StatsPage());
+
+    expect(html).toContain("Day of the week");
+    expect(html).toContain(
+      "Games played and the mean final score posted, by day of the week.",
+    );
+    expect(html).toContain("Monday");
+    expect(html).toContain("54.1");
+    expect(html).toContain("2 games · 8 scores");
+    expect(html).toContain("Wednesday");
+    expect(html).not.toMatch(/Wednesday[\s\S]{0,120}0\.0/);
+
+    expect(html).toContain("Time of year");
+    expect(html).toContain(
+      "Games played and the mean final score posted, by calendar month.",
+    );
+    expect(html).toContain("September");
+    expect(html).toContain("63.5");
+
+    // Criterion 267: no ranking decoration of any kind.
+    expect(html).not.toContain("🥇");
+    expect(html).not.toContain("best day");
+    expect(html).not.toContain("worst month");
+  });
 });

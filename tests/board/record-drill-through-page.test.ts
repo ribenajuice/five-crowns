@@ -452,3 +452,163 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
     expect(html).toContain("41 points in one hand · Kings");
   });
 });
+
+describe("/records/homeAdvantage — the board's thirteenth record's own drill-through (criteria 268–269)", () => {
+  function minimalRecords() {
+    return [
+      { key: "mostWins" as const, value: null, holders: [], games: [] },
+      { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+      { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+      { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+      { key: "stalwart" as const, value: null, holders: [], games: [] },
+    ];
+  }
+
+  it("states the whole claim including the elsewhere figure, and lists the holder's own games at that venue", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 41.7,
+        holders: [
+          {
+            playerId: "p1",
+            displayName: "Sam",
+            locationId: "loc1",
+            locationName: "Player E's",
+            here: { wins: 4, games: 6, ratePercent: 66.7 },
+            elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+            gapPercentagePoints: 41.7,
+            games: [
+              {
+                id: "g1",
+                playedOn: "2026-09-05",
+                locationName: "Player E's",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Sam"],
+                winningScore: 48,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "homeAdvantage" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Home advantage — Sam, Player E&#x27;s");
+    expect(html).toContain("+41.7 points, won 4 of 6 there, 2 of 14 elsewhere");
+    expect(html).toContain("/games/g1");
+  });
+
+  it("⚠️ criterion 269: a joint holder's pairs each drill through to their own venue's games, merged newest first", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 41.7,
+        holders: [
+          {
+            playerId: "p2",
+            displayName: "Player A",
+            locationId: "loc2",
+            locationName: "The Lake House",
+            here: { wins: 3, games: 5, ratePercent: 60 },
+            elsewhere: { wins: 1, games: 17, ratePercent: 5.9 },
+            gapPercentagePoints: 41.7,
+            games: [
+              {
+                id: "g2",
+                playedOn: "2026-08-01",
+                locationName: "The Lake House",
+                rosterId: "r2",
+                rosterName: "Sunday crew",
+                winners: ["Player A"],
+                winningScore: 30,
+              },
+            ],
+          },
+          {
+            playerId: "p1",
+            displayName: "Sam",
+            locationId: "loc1",
+            locationName: "Player E's",
+            here: { wins: 4, games: 6, ratePercent: 66.7 },
+            elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+            gapPercentagePoints: 41.7,
+            games: [
+              {
+                id: "g1",
+                playedOn: "2026-09-05",
+                locationName: "Player E's",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Sam"],
+                winningScore: 48,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "homeAdvantage" }) });
+    const html = renderToStaticMarkup(element);
+
+    // Both pairs' own games are present — one row, not padded, per pair.
+    expect(html).toContain("/games/g1");
+    expect(html).toContain("/games/g2");
+    // Newest first: g1 (2026-09-05) precedes g2 (2026-08-01).
+    expect(html.indexOf("/games/g1")).toBeLessThan(html.indexOf("/games/g2"));
+  });
+
+  it("a made-up key still checks the ordinary record keys, and 404s the same as before", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockClear();
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "notARealRecord" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+    expect(getBoard).not.toHaveBeenCalled();
+  });
+
+  it("an empty archive 404s rather than rendering a board of zeros", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "homeAdvantage" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+
+  it("⚠️ criterion 254: nobody with a positive gap 404s — there is nothing to drill into", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "homeAdvantage" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+});

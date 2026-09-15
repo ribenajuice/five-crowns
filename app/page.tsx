@@ -6,16 +6,25 @@ import { FunFactCard } from "@/components/FunFactCard";
 import { RecordCard, type RecordCardProps } from "@/components/RecordCard";
 import { StatsNavLink } from "@/components/StatsNavLink";
 import { getFunFacts, pickFunFact } from "@/lib/board/facts";
-import { getBoard, getBoardData, type BoardRecord, type SingleEventBoardRecord } from "@/lib/board/queries";
+import {
+  getBoard,
+  getBoardData,
+  type BoardRecord,
+  type HomeAdvantageBoardRecord,
+  type SingleEventBoardRecord,
+} from "@/lib/board/queries";
 import {
   BOARD_APPBAR_TITLE,
   BOARD_EMPTY_BODY,
   BOARD_EMPTY_TITLE,
+  HOME_ADVANTAGE_RECORD_TITLE,
+  HOME_ADVANTAGE_RECORD_UNIT,
   RECORD_TITLES,
   RECORD_UNITS,
   SINGLE_EVENT_RECORD_TITLES,
   SINGLE_EVENT_RECORD_UNITS,
   funFactDisplay,
+  homeAdvantageDisplayFacts,
   recordDisplayFacts,
   singleEventDisplayFacts,
 } from "@/lib/ui/copy";
@@ -80,6 +89,32 @@ function toSingleEventCardProps(record: SingleEventBoardRecord): RecordCardProps
   return { title, holderNames, value, unit, sample, href, claim, instances: instances ?? undefined };
 }
 
+/**
+ * A `RecordCard`'s props for the board's thirteenth card — home advantage
+ * (criteria 253–254, 268–270). No new component or visual variant: the
+ * ordinary `RecordCard` shape, reusing its existing slots (design system:
+ * "`RecordCard` — home advantage").
+ */
+function toHomeAdvantageCardProps(record: HomeAdvantageBoardRecord): RecordCardProps {
+  const href = "/records/homeAdvantage";
+  const facts = homeAdvantageDisplayFacts(record);
+
+  if (!facts) {
+    return {
+      title: HOME_ADVANTAGE_RECORD_TITLE,
+      holderNames: "",
+      value: null,
+      unit: HOME_ADVANTAGE_RECORD_UNIT,
+      sample: null,
+      href,
+      claim: HOME_ADVANTAGE_RECORD_TITLE,
+    };
+  }
+
+  const { title, unit, holderNames, value, sample, claim } = facts;
+  return { title, holderNames, value, unit, sample, href, claim };
+}
+
 export default async function Home() {
   await requireGroupSession();
 
@@ -121,7 +156,8 @@ export default async function Home() {
              * stalwart, then Stage 2's drought and nearly man (all already in
              * that order on `board.records`), then Stage 3's five, in the
              * order the PRD's own user stories introduce them (already the
-             * order `board.singleEventRecords` is returned in) — a plain
+             * order `board.singleEventRecords` is returned in), then Stage
+             * 4's home advantage last (criterion 270) — a plain
              * concatenation, never a re-sort.
              */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -131,6 +167,7 @@ export default async function Home() {
               {board.singleEventRecords.map((record) => (
                 <RecordCard key={record.key} {...toSingleEventCardProps(record)} />
               ))}
+              <RecordCard key="homeAdvantage" {...toHomeAdvantageCardProps(board.homeAdvantage)} />
             </div>
           </div>
         )}

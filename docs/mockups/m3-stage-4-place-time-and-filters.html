@@ -1,0 +1,659 @@
+<!doctype html>
+<title>Place, Time and Filters Mockups</title>
+<style>
+  /* ---------- Tokens (docs/DESIGN-SYSTEM.md, copied verbatim) ---------- */
+  :root {
+    --bg: #faf3e7;
+    --surface: #fffdf8;
+    --sunk: #f2e9d8;
+    --line: #e0d5c0;
+    --text: #23201b;
+    --text-muted: #6b6257;
+    --brand: #17457a;
+    --on-brand: #fffdf8;
+    --accent: #c1462f;
+    --accent-ink: #9c3520;
+    --success: #1f6b45;
+    --warn: #8a5a00;
+    --error: #b3261e;
+    --success-soft: #e2efe7;
+    --warn-soft: #f7ebd4;
+    --error-soft: #fbe4e1;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f; --surface: #211d17; --sunk: #2b251d; --line: #3a3328;
+      --text: #f3eada; --text-muted: #b0a390; --brand: #7fb3e8; --on-brand: #17140f;
+      --accent: #f0906e; --accent-ink: #f0906e; --success: #7ccfa0; --warn: #e5b45c; --error: #ff8b7e;
+      --success-soft: #1d2c23; --warn-soft: #2e2515; --error-soft: #33191a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f; --surface: #211d17; --sunk: #2b251d; --line: #3a3328;
+    --text: #f3eada; --text-muted: #b0a390; --brand: #7fb3e8; --on-brand: #17140f;
+    --accent: #f0906e; --accent-ink: #f0906e; --success: #7ccfa0; --warn: #e5b45c; --error: #ff8b7e;
+    --success-soft: #1d2c23; --warn-soft: #2e2515; --error-soft: #33191a;
+  }
+
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600&display=swap");
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.5;
+  }
+  .display { font-family: "Fraunces", Georgia, "Times New Roman", serif; }
+  .tabular { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  /* ---------- Mockup-only chrome ---------- */
+  .mock-topbar { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  .mock-topbar-inner { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .mock-topbar a { font-size: 13px; font-weight: 700; text-decoration: none; color: var(--brand); padding: 10px 4px; border-radius: 8px; }
+  .mock-brand { font-weight: 800; margin-right: 8px; font-size: 14px; }
+
+  .mock-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 96px; }
+  .mock-section { padding: 48px 0; border-top: 1px dashed var(--line); }
+  .mock-section:first-of-type { border-top: none; }
+  .mock-kicker { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
+  .mock-h1 { font-size: 30px; margin: 0 0 6px; }
+  .mock-h2 { font-size: 24px; margin: 0 0 6px; }
+  .mock-lede { color: var(--text-muted); max-width: 72ch; margin: 0 0 20px; }
+  .mock-note { background: var(--sunk); border-radius: var(--radius); padding: 12px 16px; font-size: 13.5px; color: var(--text); margin: 16px 0; }
+  .mock-note b { font-weight: 800; }
+  .mock-note.flag { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .chip-new { color: var(--success); background: var(--success-soft); border-color: transparent; }
+  .chip-open { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+  .chip-unchanged { color: var(--text-muted); background: var(--sunk); border-color: transparent; }
+
+  .frame-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame { width: min(375px, 100%); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--bg); box-shadow: 0 10px 30px -12px rgba(0,0,0,0.25); }
+  .frame-label { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
+  .frame-wide { width: 100%; max-width: 900px; }
+  .frame-body { padding: 0 0 16px; }
+
+  /* ---------- Real app components, reproduced ---------- */
+  .appbar { border-bottom: 1px solid var(--line); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+  .appbar-back { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand); flex-shrink: 0; margin-left: -10px; }
+  .appbar h2 { font-size: 22px; margin: 0; font-weight: 700; }
+  .appbar .ctx { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+
+  .p-main { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { font-size: 17px; margin: 0 0 4px; font-weight: 700; }
+  .card .sample { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-grid.two { grid-template-columns: 1fr 1fr; }
+  .stat-block { background: var(--sunk); border-radius: var(--radius); padding: 10px 12px; }
+  .label-xs { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .num-lg { display: block; font-size: 26px; font-weight: 800; margin-top: 2px; }
+  .num-sm { font-size: 15px; font-weight: 800; }
+  .sample-caption { display: block; font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+
+  .ghost-btn { display: flex; min-height: 44px; align-items: center; justify-content: center; border: 1px solid var(--brand); color: var(--brand); border-radius: var(--radius); font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; background: none; }
+  .primary-btn { display: flex; min-height: 44px; align-items: center; justify-content: center; background: var(--brand); color: var(--on-brand); border-radius: var(--radius); font-weight: 700; font-size: 15px; text-decoration: none; width: 100%; border: none; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row > * { flex: 1; }
+
+  .entity-link { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+  h4.section-heading { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+
+  /* game row */
+  .game-row { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .game-row .gdate { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 15px; }
+  .game-row .gmeta { font-size: 13px; color: var(--text-muted); }
+  .game-row .gwin { margin-left: auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; }
+  .game-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .chev { flex-shrink: 0; color: var(--brand); margin-top: 2px; }
+
+  /* board */
+  .board-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .record-card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; }
+  .record-card:hover { border-color: var(--brand); }
+  .record-card .rc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .record-card .rc-holders { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 17px; margin: 6px 0 6px; line-height: 1.25; }
+  .record-card .rc-value { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .record-card .rc-num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 800; }
+  .record-card .rc-unit { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .record-card .rc-sample { margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.35; }
+  .record-card.is-new { outline: 2px solid color-mix(in srgb, var(--success) 55%, transparent); outline-offset: -1px; }
+  .archive-line { background: var(--sunk); border-radius: var(--radius); padding: 12px 14px; font-size: 13.5px; color: var(--text-muted); }
+  @media (min-width: 480px) { .board-grid { grid-template-columns: 1fr 1fr; } }
+
+  /* averages / time-slice / venue-player rows (all AverageRow-shaped) */
+  .avg-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 9px 0; }
+  .avg-row:last-child { border-bottom: none; }
+  .avg-row .aname { flex: 1; min-width: 0; font-weight: 700; }
+  .avg-row .aname.plain { color: var(--text); text-decoration: none; }
+  .avg-row .asample { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+  .avg-row .aval { font-family: ui-monospace, monospace; font-weight: 800; font-size: 16px; white-space: nowrap; }
+  .avg-row .aval.nodata { color: var(--text-muted); font-weight: 700; }
+
+  /* three-stat row (ByVenueRow / VenuePlayerRow / roster member row) */
+  .stat-row-3 { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 10px 0; }
+  .stat-row-3:last-child { border-bottom: none; }
+  .stat-row-3 .r3name { flex: 1; min-width: 0; }
+  .stat-row-3 .r3name .rn { display: block; font-weight: 700; }
+  .stat-row-3 .r3name .rn.plain { color: var(--text); }
+  .stat-row-3 .r3name .rc { display: block; font-size: 12.5px; color: var(--text-muted); }
+  .stat-row-3 .r3stat { text-align: right; flex-shrink: 0; font-size: 13px; }
+  .stat-row-3 .r3stat .sv { display: block; font-family: ui-monospace, monospace; font-weight: 800; font-size: 16px; }
+  .stat-row-3 .r3stat .sc { display: block; color: var(--text-muted); }
+  .stat-row-3 .r3stat .lbl { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+
+  /* places index row */
+  .place-row { display: flex; align-items: center; gap: 12px; min-height: 52px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 16px; text-decoration: none; color: inherit; }
+  .place-row:hover { border-color: var(--brand); }
+  .place-row .pname { flex: 1; min-width: 0; font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 16px; }
+  .place-row .pcap { display: block; font-size: 12.5px; color: var(--text-muted); font-weight: 400; }
+  .place-row .pstat { text-align: right; flex-shrink: 0; font-size: 13px; }
+  .place-row .pstat .pv { display: block; font-family: ui-monospace, monospace; font-weight: 800; font-size: 17px; }
+  .place-row .pstat .pv.nodata { color: var(--text-muted); }
+  .place-row .pstat .ps { display: block; color: var(--text-muted); }
+  .place-pencil { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--radius); color: var(--brand); }
+
+  .icon-inline { display: inline-block; vertical-align: -3px; }
+</style>
+
+<header class="mock-topbar">
+  <div class="mock-topbar-inner">
+    <span class="mock-brand display">Five Crowns Ledger — Stage 4 mockups</span>
+    <a href="#venue-page">Venue page</a>
+    <a href="#by-venue">Player page — by venue</a>
+    <a href="#places-index">Places index</a>
+    <a href="#games-filter">Games list filter</a>
+    <a href="#time-tables">/stats — time tables</a>
+    <a href="#home-advantage">Board — home advantage</a>
+  </div>
+</header>
+
+<main class="mock-main">
+  <section class="mock-section" id="intro">
+    <span class="mock-kicker">Milestone 3 · Stage 4 — Place, time, and the filters</span>
+    <h1 class="mock-h1 display">Place, time, and the filters: mockups for sign-off</h1>
+    <p class="mock-lede">
+      Every screen below reuses Stage 1–3's components and tokens exactly — no new colour, no new
+      type scale, no new shape beyond what's called out explicitly. This is the <strong>last stage of
+      Milestone 3</strong>: after this, the board carries thirteen records and the catalogue is
+      complete. Data is realistic and invented (Player A–E, per the house rule on mockups), continuing
+      the same archive the Stage 2 and 3 mockups used (now 22 games, one venue added: "Player E's").
+      Chips: <span class="chip chip-new">New this stage</span>
+      <span class="chip chip-unchanged">Unchanged from earlier stages</span>.
+    </p>
+    <div class="mock-note">
+      <b>Open question 9 is already settled.</b> The founder confirmed <b>(c) — both a venue page and
+      a filter</b> on 2026-09-15 (<code>docs/DECISIONS.md</code>), before this document was written.
+      Nothing below is conditional the way Stage 2's nemesis wording was; criteria 260–261 are built
+      exactly as specced.
+    </div>
+  </section>
+
+  <!-- ============================= VENUE PAGE ============================= -->
+  <section class="mock-section" id="venue-page">
+    <span class="mock-kicker">Criteria 259–261</span>
+    <h2 class="mock-h2 display">The venue page — a new page type, mirroring player and roster</h2>
+    <p class="mock-lede">
+      Same skeleton as <code>/players/[id]</code> and <code>/rosters/[id]</code>: a stat row, then a
+      per-entity table, then that entity's games. Nothing here is a new layout idea, only a new
+      entity filling a shape that already exists twice.
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">/places/{id} — populated (criteria 259–261)</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-label="Back to places">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <h2 class="display">Player E&apos;s</h2>
+            </div>
+            <div class="p-main">
+              <div class="stat-grid two">
+                <div class="stat-block">
+                  <span class="label-xs">Games played</span>
+                  <span class="num-lg tabular">6</span>
+                </div>
+                <div class="stat-block">
+                  <span class="label-xs">Table average</span>
+                  <span class="num-lg tabular">52.3</span>
+                  <span class="sample-caption">6 games · 24 scores</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3 class="display">Players here</h3>
+                <p class="sample">Everyone who&apos;s played at Player E&apos;s, most games here first.</p>
+                <div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn entity-link">Sam</span><span class="rc">6 games</span></div>
+                    <div class="r3stat"><span class="sv">66.7%</span><span class="sc">4 of 6</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">48.5</span></div>
+                  </div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn entity-link">Player A</span><span class="rc">4 games</span></div>
+                    <div class="r3stat"><span class="sv">25.0%</span><span class="sc">1 of 4</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">57.1</span></div>
+                  </div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn entity-link">Player D</span><span class="rc">2 games</span></div>
+                    <div class="r3stat"><span class="sv">50.0%</span><span class="sc">1 of 2</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">53.0</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="section-heading">Player E&apos;s games</h4>
+                <div class="game-list">
+                  <div class="game-row">
+                    <div><p class="gdate">Sat 5 Sep 2026</p><p class="gmeta">Player A, Sam, Player D &amp; Player E</p></div>
+                    <p class="gwin">Sam</p>
+                  </div>
+                  <div class="game-row">
+                    <div><p class="gdate">Tue 18 Aug 2026</p><p class="gmeta">Player A, Sam &amp; Player E</p></div>
+                    <p class="gwin">Sam</p>
+                  </div>
+                  <div class="game-row">
+                    <div><p class="gdate">Sun 12 Jul 2026</p><p class="gmeta">Player A, Sam, Player D &amp; Player E</p></div>
+                    <p class="gwin">Player D</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="frame-label">/places/{id} — zero games (criterion 260)</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-label="Back to places">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <h2 class="display">The Rec Hall</h2>
+            </div>
+            <div class="p-main">
+              <div class="stat-grid" style="grid-template-columns:1fr;">
+                <div class="stat-block">
+                  <span class="label-xs">Games played</span>
+                  <span class="num-lg tabular">0</span>
+                </div>
+              </div>
+              <div class="card">
+                <h3 class="display">No games here yet.</h3>
+                <p class="sample" style="margin-bottom:0;">Nothing saved so far happened at The Rec Hall.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      A made-up or deleted venue id renders the app's own 404 screen, unchanged (M2 criterion 130). An
+      unauthenticated request 307s to <code>/login</code>, same as every other screen (M1 criterion 1).
+    </div>
+  </section>
+
+  <!-- ============================= PLAYER PAGE: BY VENUE ============================= -->
+  <section class="mock-section" id="by-venue">
+    <span class="mock-kicker">Criteria 256–258</span>
+    <h2 class="mock-h2 display">Player page: a new "By venue" section</h2>
+    <p class="mock-lede">
+      Sits directly below Stage 3's "Best and worst game" section, above the player's own games list —
+      nothing above it moves. The final row is always <b>"No location"</b>, so the rows always sum to
+      the player's own games-played total (criterion 258's containment invariant) — the same "No
+      location" label M1 already uses everywhere else a game has no venue.
+    </p>
+    <p class="frame-label">Player page, "By venue" section only — Sam, 9 games played</p>
+    <div class="frame-row">
+      <div>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="p-main">
+              <div class="card">
+                <h3 class="display">By venue</h3>
+                <p class="sample">Sam&apos;s wins, win rate and average score at each venue they&apos;ve played at.</p>
+                <div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn entity-link">Player E&apos;s</span><span class="rc">6 games</span></div>
+                    <div class="r3stat"><span class="sv">66.7%</span><span class="sc">4 of 6</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">48.5</span></div>
+                  </div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn entity-link">The Lake House</span><span class="rc">2 games</span></div>
+                    <div class="r3stat"><span class="sv">0.0%</span><span class="sc">0 of 2</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">61.5</span></div>
+                  </div>
+                  <div class="stat-row-3">
+                    <div class="r3name"><span class="rn plain">No location</span><span class="rc">1 game</span></div>
+                    <div class="r3stat"><span class="sv">100.0%</span><span class="sc">1 of 1</span></div>
+                    <div class="r3stat"><span class="lbl">avg</span><span class="sv">39.0</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="max-width:520px;">
+        <div class="mock-note">
+          <b>The containment invariant (criterion 258):</b> 6 + 2 + 1 = <b>9</b> — Sam's own
+          games-played total from the headline stat block at the top of the page. This is what makes
+          criterion 251's narrowing ("a game with no location is in no venue's numbers") provable
+          rather than just asserted: nothing is missing, nothing is double-counted, and the unlocated
+          game is visible in its own row rather than silently dropped.
+        </div>
+        <div class="mock-note">
+          <b>"No location" never links anywhere</b> — plain bold text, not an <code>EntityLink</code>.
+          It has no venue page, holds no home advantage, and never appears on the places index
+          (criterion 251). Colour is never the only signal that it's different from a real venue row —
+          the label itself says so.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= PLACES INDEX ============================= -->
+  <section class="mock-section" id="places-index">
+    <span class="mock-kicker">Criteria 259, decision on <code>PlaceRow</code></span>
+    <h2 class="mock-h2 display">Places index: rows become links, and gain an average</h2>
+    <p class="mock-lede">
+      Stage 3's <code>PlaceRow</code> was deliberately not a <code>Link</code> — there was nowhere for
+      it to lead. Now there is. The whole row opens the venue page; the pencil stays independently
+      tappable via its own hit slop, the same "stretched link plus a layered control" construction
+      <code>GameRow</code> already uses for its roster name.
+    </p>
+    <p class="frame-label">Places index — three rows: two used, one never used</p>
+    <div class="frame-row">
+      <div>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <a class="appbar-back" aria-label="Back to games">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </a>
+              <h2 class="display">Places</h2>
+            </div>
+            <div class="p-main">
+              <div class="game-list">
+                <a class="place-row" href="#venue-page">
+                  <div style="flex:1; min-width:0;">
+                    <span class="pname">Player E&apos;s</span>
+                  </div>
+                  <div class="pstat">
+                    <span class="pv tabular">52.3</span>
+                    <span class="ps">6 games · 24 scores</span>
+                  </div>
+                  <span class="place-pencil" aria-label="Edit Player E's">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </span>
+                </a>
+                <a class="place-row" href="#">
+                  <div style="flex:1; min-width:0;">
+                    <span class="pname">The Lake House</span>
+                  </div>
+                  <div class="pstat">
+                    <span class="pv tabular">61.5</span>
+                    <span class="ps">2 games · 8 scores</span>
+                  </div>
+                  <span class="place-pencil" aria-label="Edit The Lake House">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </span>
+                </a>
+                <a class="place-row" href="#">
+                  <div style="flex:1; min-width:0;">
+                    <span class="pname">The Rec Hall</span>
+                    <span class="pcap">Never used yet — still pickable when you save a game.</span>
+                  </div>
+                  <div class="pstat">
+                    <span class="pv nodata tabular">–</span>
+                  </div>
+                  <span class="place-pencil" aria-label="Edit The Rec Hall">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="max-width:480px;">
+        <div class="mock-note">
+          <b>Never-used venue:</b> the average renders as the <b>no-data fixed string</b>
+          (<code>NO_DATA_VALUE</code>, an en dash) rather than a false <code>0.0</code> — 0 games means
+          there is nothing to average, not an average of zero (criterion 259).
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= GAMES LIST FILTER ============================= -->
+  <section class="mock-section" id="games-filter">
+    <span class="mock-kicker">Criteria 262–264</span>
+    <h2 class="mock-h2 display">Games list: a venue and roster filter, URL-addressable</h2>
+    <p class="mock-lede">
+      <code>/games?location={id}</code>, <code>/games?roster={id}</code>, or both — the exact same
+      <code>GameRow</code> list, same ordering, same paging. Only the heading and one "Clear filter"
+      button are new; this is also the same list every board drill-through already renders through
+      (criterion 264).
+    </p>
+
+    <div class="frame-row">
+      <div>
+        <p class="frame-label">/games?location=player-es — filtered, matches</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <div>
+                <h2 class="display">Games</h2>
+                <p class="ctx">At Player E&apos;s · 6 games</p>
+              </div>
+            </div>
+            <div class="p-main">
+              <button class="ghost-btn" type="button">Clear filter</button>
+              <a class="primary-btn" href="#">Add a game</a>
+              <div class="game-list">
+                <div class="game-row">
+                  <div><p class="gdate">Sat 5 Sep 2026</p><p class="gmeta">Player A, Sam, Player D &amp; Player E</p></div>
+                  <p class="gwin">Sam</p>
+                </div>
+                <div class="game-row">
+                  <div><p class="gdate">Tue 18 Aug 2026</p><p class="gmeta">Player A, Sam &amp; Player E</p></div>
+                  <p class="gwin">Sam</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="frame-label">/games?location=rec-hall — valid filter, zero matches (criterion 263)</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <div>
+                <h2 class="display">Games</h2>
+                <p class="ctx">At The Rec Hall · 0 games</p>
+              </div>
+            </div>
+            <div class="p-main">
+              <button class="ghost-btn" type="button">Clear filter</button>
+              <a class="primary-btn" href="#">Add a game</a>
+              <div class="card">
+                <h3 class="display">No games match this filter.</h3>
+                <p class="sample" style="margin-bottom:0;">At The Rec Hall.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="frame-label">/games?location=player-es&amp;roster=abcd — combined filters</p>
+        <div class="frame">
+          <div class="frame-body">
+            <div class="appbar">
+              <div>
+                <h2 class="display">Games</h2>
+                <p class="ctx">At Player E&apos;s, with Player A, Sam, Player D &amp; Player E · 4 games</p>
+              </div>
+            </div>
+            <div class="p-main">
+              <button class="ghost-btn" type="button">Clear filter</button>
+              <a class="primary-btn" href="#">Add a game</a>
+              <div class="game-list">
+                <div class="game-row">
+                  <div><p class="gdate">Sat 5 Sep 2026</p><p class="gmeta">Player A, Sam, Player D &amp; Player E</p></div>
+                  <p class="gwin">Sam</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <b>An unknown, deleted or malformed <code>location</code>/<code>roster</code> value</b> renders
+      the app's own 404 screen — the same "made-up id" precedent every entity page already sets —
+      rather than a second empty-state shape, and <b>never</b> silently falls back to the unfiltered
+      list (criterion 263). <code>?location=none</code> filters to unlocated games; its own clause is
+      simply <b>"No location"</b>, with no "At" prefix, since that label is already complete.
+    </div>
+  </section>
+
+  <!-- ============================= /stats TIME TABLES ============================= -->
+  <section class="mock-section" id="time-tables">
+    <span class="mock-kicker">Criteria 265–267</span>
+    <h2 class="mock-h2 display">/stats gains two plain time tables</h2>
+    <p class="mock-lede">
+      Placed after the existing "Averages" section. Same shape as <code>AverageRow</code> with the
+      link removed — no crown, no best-day marker, no reordering by score, no line or trend. All seven
+      or twelve rows always render, in fixed calendar order, even at zero games.
+    </p>
+    <p class="frame-label">/stats — "Day of the week" and "Time of year" (excerpt, wide)</p>
+    <div class="frame-wide">
+      <div class="card">
+        <h3 class="display">Day of the week</h3>
+        <p class="sample">Games played and the mean final score posted, by day of the week.</p>
+        <div>
+          <div class="avg-row"><span class="aname plain">Monday</span><span class="asample">2 games · 8 scores</span><span class="aval tabular">54.1</span></div>
+          <div class="avg-row"><span class="aname plain">Tuesday</span><span class="asample">3 games · 11 scores</span><span class="aval tabular">49.8</span></div>
+          <div class="avg-row"><span class="aname plain">Wednesday</span><span class="asample">0 games · 0 scores</span><span class="aval nodata tabular">–</span></div>
+          <div class="avg-row"><span class="aname plain">Thursday</span><span class="asample">1 game · 4 scores</span><span class="aval tabular">61.0</span></div>
+          <div class="avg-row"><span class="aname plain">Friday</span><span class="asample">4 games · 15 scores</span><span class="aval tabular">52.7</span></div>
+          <div class="avg-row"><span class="aname plain">Saturday</span><span class="asample">8 games · 30 scores</span><span class="aval tabular">50.3</span></div>
+          <div class="avg-row"><span class="aname plain">Sunday</span><span class="asample">4 games · 15 scores</span><span class="aval tabular">55.9</span></div>
+        </div>
+      </div>
+      <div style="height:20px;"></div>
+      <div class="card">
+        <h3 class="display">Time of year</h3>
+        <p class="sample">Games played and the mean final score posted, by calendar month.</p>
+        <div>
+          <div class="avg-row"><span class="aname plain">January</span><span class="asample">0 games · 0 scores</span><span class="aval nodata tabular">–</span></div>
+          <div class="avg-row"><span class="aname plain">February</span><span class="asample">0 games · 0 scores</span><span class="aval nodata tabular">–</span></div>
+          <div class="avg-row"><span class="aname plain">…</span><span class="asample">(nine rows omitted for brevity in this mockup)</span><span class="aval tabular"></span></div>
+          <div class="avg-row"><span class="aname plain">July</span><span class="asample">3 games · 11 scores</span><span class="aval tabular">57.2</span></div>
+          <div class="avg-row"><span class="aname plain">August</span><span class="asample">6 games · 22 scores</span><span class="aval tabular">51.4</span></div>
+          <div class="avg-row"><span class="aname plain">September</span><span class="asample">2 games · 8 scores</span><span class="aval tabular">63.5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note flag">
+      <b>Never marked, never ranked.</b> No best-day or worst-month highlight, no colour, no sort by
+      score — every row is a fact, not a claim about when the group plays well (criterion 267, the
+      same "claims nothing" rule the eleven-hand trend already follows). The real screen renders all
+      twelve month rows; the ellipsis above is a mockup shortcut only.
+    </div>
+  </section>
+
+  <!-- ============================= BOARD: HOME ADVANTAGE ============================= -->
+  <section class="mock-section" id="home-advantage">
+    <span class="mock-kicker">Criteria 253–254, 268–270</span>
+    <h2 class="mock-h2 display">The board's thirteenth card: home advantage</h2>
+    <p class="mock-lede">
+      No new component — the ordinary <code>RecordCard</code>, reusing its existing holder/value/
+      sample slots with new copy grammar. It sits <b>last</b>, after Stage 3's five, keeping every
+      stage's cards contiguous.
+    </p>
+    <div class="frame-row">
+      <div style="width:min(340px,100%);">
+        <p class="frame-label">Ordinary case — a real pattern behind it</p>
+        <a class="record-card is-new" href="#">
+          <div class="rc-top"><span class="label-xs">Home advantage</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+          <p class="rc-holders">Sam, Player E&apos;s</p>
+          <div class="rc-value"><span class="rc-num">+41.7</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">won 4 of 6 there, 2 of 14 elsewhere</p>
+        </a>
+      </div>
+      <div style="width:min(340px,100%);">
+        <p class="frame-label">Degenerate case — a one-game venue, shown plainly (criterion 254)</p>
+        <a class="record-card is-new" href="#">
+          <div class="rc-top"><span class="label-xs">Home advantage</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+          <p class="rc-holders">Player D, The Rec Hall</p>
+          <div class="rc-value"><span class="rc-num">+100.0</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">won 1 of 1 there, 0 of 3 elsewhere</p>
+        </a>
+      </div>
+      <div style="width:min(340px,100%);">
+        <p class="frame-label">Joint holders — every pair on the highest gap (criterion 254)</p>
+        <a class="record-card is-new" href="#">
+          <div class="rc-top"><span class="label-xs">Home advantage</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+          <p class="rc-holders">Player A, The Lake House &amp; Sam, Player E&apos;s</p>
+          <div class="rc-value"><span class="rc-num">+41.7</span><span class="rc-unit">points</span></div>
+          <p class="rc-sample">Player A — won 3 of 5 there, 1 of 17 elsewhere · Sam — won 4 of 6 there, 2 of 14 elsewhere</p>
+        </a>
+      </div>
+    </div>
+
+    <p class="frame-label" style="margin-top:24px;">Drill-through — the ordinary board-record pattern, unchanged</p>
+    <div class="frame">
+      <div class="frame-body">
+        <div class="appbar">
+          <a class="appbar-back" aria-label="Back to the board">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+          </a>
+          <div>
+            <h2 class="display">Home advantage — Sam, Player E&apos;s</h2>
+            <p class="ctx">+41.7 points, won 4 of 6 there, 2 of 14 elsewhere</p>
+          </div>
+        </div>
+        <div class="p-main">
+          <div class="game-list">
+            <div class="game-row">
+              <div><p class="gdate">Sat 5 Sep 2026</p><p class="gmeta">Player A, Sam, Player D &amp; Player E</p></div>
+              <p class="gwin">Sam</p>
+            </div>
+            <div class="game-row">
+              <div><p class="gdate">Tue 18 Aug 2026</p><p class="gmeta">Player A, Sam &amp; Player E</p></div>
+              <p class="gwin">Sam</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note flag">
+      <b>Legibility at thirteen cards is a founder review point, not a QA pass</b> (criterion 270,
+      following criterion 218's finding at seven and 235's at twelve). Nothing has been collapsed,
+      tabbed or hidden behind a "show more" — that would reintroduce the withholding the founder
+      rejected at Stage 1, spatially instead of numerically. If thirteen reads as too many at 375px,
+      cutting or reordering a card is a one-line change here plus a documentation edit, never a
+      rebuild.
+    </div>
+  </section>
+</main>
