@@ -6,6 +6,23 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+### Added
+
+- **Four new records join the board, taking it to seventeen: "Looks like cheating," "Getting
+  absolutely wrecked," "Most clutch comeback," and "The metronome."** "Looks like cheating" names
+  whoever's win rate beats the table's by the widest margin, counted only across the games they've
+  actually shared with those specific opponents — never the archive at large — with both win rates
+  and their game counts shown side by side. "Getting absolutely wrecked" names whoever's on the
+  longest active run of finishing last, stated as a number of games and the date the run started —
+  it ends the moment they finish anywhere else, and a shared last place still counts as last.
+  "Most clutch comeback" is the single biggest deficit anyone has come back from at hand 9 to win a
+  game outright — a tied win at the top doesn't count here, on purpose, because that's a different
+  story to one player coming from behind and taking it alone. "The metronome" names whoever has the
+  smallest gap between their best and worst game ever, shown with their game count and both scores
+  — there's no minimum number of games to qualify, so someone on only their second-ever game can
+  hold it. Like every other record on the board, all four are tappable through to the exact games
+  behind the number.
+
 ## [Stage 11] - 2026-09-15
 
 Fun facts on the board, and Milestone 3's closing stage: distributions, villains, place, time, and the
