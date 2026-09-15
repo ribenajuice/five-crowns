@@ -38,12 +38,14 @@ import Link from "next/link";
 
 import { Banner } from "./Banner";
 import { buttonClasses, destructiveButtonClasses } from "./Button";
+import { EntityLink } from "./EntityLink";
 import { Field } from "./Field";
 import { MergeIcon, PencilIcon } from "./icons";
 import { MAX_LOCATION_NAME_LENGTH } from "@/lib/ui/constants";
 import { requestLocationRename } from "@/lib/ui/rename-actions";
 import {
   NO_DATA_VALUE,
+  SEE_ONLY_THESE_GAMES_LABEL,
   editPlaceAriaLabel,
   locationCollisionMergeButtonLabel,
   LOCATION_COLLISION_BODY,
@@ -163,7 +165,17 @@ export function PlaceRow({ id, name, gamesPlayed, tableAverage = null }: PlaceRo
           <p className="font-display text-base font-bold">{displayName}</p>
           {gamesPlayed === 0 ? (
             <p className="mt-0.5 text-xs text-text-muted">{PLACES_UNUSED_CAPTION}</p>
-          ) : null}
+          ) : (
+            // Stage 4 follow-up: a second, independently-tappable link to
+            // `/games?location={id}` — the same layered-over-the-stretched-link
+            // construction this row already uses for its pencil button above,
+            // just an inline `EntityLink` rather than an icon button.
+            <p className="relative z-10 mt-0.5 pointer-events-auto">
+              <EntityLink href={`/games?location=${id}`} variant="muted" className="text-xs">
+                {SEE_ONLY_THESE_GAMES_LABEL}
+              </EntityLink>
+            </p>
+          )}
         </div>
         <div className="relative mr-1 shrink-0 pointer-events-none text-right">
           {tableAverage ? (

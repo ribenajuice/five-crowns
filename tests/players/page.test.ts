@@ -569,6 +569,12 @@ describe("/players/{id} — By roster section (M3 Stage 2, criteria 207–210)",
     expect(html).toContain("/rosters/r1");
     expect(html).toContain("80.0%");
     expect(html).toContain("4 of 5");
+
+    // Stage 4 follow-up: each roster row also links straight into that
+    // roster's own filtered games list, not just its roster page.
+    expect(html).toContain("See only these games");
+    expect(html).toContain("/games?roster=r1");
+    expect(html).toContain("/games?roster=r2");
   });
 
   it("no by-roster section renders for a player with no roster rows (defensive — never reachable with real games)", async () => {

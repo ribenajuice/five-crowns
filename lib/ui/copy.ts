@@ -1450,6 +1450,15 @@ export function gamesFilterZeroMatchesBody(clauses: readonly string[]): string {
   return `${clauses.join(", ")}.`;
 }
 
+/**
+ * Stage 4 follow-up — the entry points into `?location=`/`?roster=` (design
+ * system: "Games filter, entry points"). One fixed label for both: `PlaceRow`
+ * (places index) links to `/games?location={id}`, `ByRosterRow` (player
+ * page, "By roster") links to `/games?roster={id}` — the same words either
+ * way, since both are the identical "narrow the games list to just this" action.
+ */
+export const SEE_ONLY_THESE_GAMES_LABEL = "See only these games";
+
 /** `/stats` — day of the week and time of year (criteria 265–267). */
 export const STATS_DAY_OF_WEEK_HEADING = "Day of the week";
 export const STATS_DAY_OF_WEEK_SAMPLE_LINE =

@@ -51,4 +51,20 @@ describe("PlaceRow, at rest", () => {
     // The chooser's rows aren't rendered until the pencil is tapped.
     expect(html).not.toContain("Merge with another place");
   });
+
+  it("Stage 4 follow-up: a used venue links straight into its own filtered games list", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 2 }),
+    );
+    expect(html).toContain("See only these games");
+    expect(html).toContain('href="/games?location=loc1"');
+  });
+
+  it("Stage 4 follow-up: a never-used venue gets no link into an always-empty filtered list", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 0, tableAverage: null }),
+    );
+    expect(html).not.toContain("See only these games");
+    expect(html).not.toContain("/games?location=loc1");
+  });
 });
