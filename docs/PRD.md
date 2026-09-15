@@ -51,6 +51,18 @@ something concrete to bite on. **None of the three blocks anything** — Stage 2
 thing built, and each has a stated default. ⚠️ **Stage 3 defines no second place of its own**: its
 *biggest hammering* record uses **Stage 2's criterion 214** and nothing else.
 
+⚠️ **Milestone 3 Stage 4 was specced the same day as well** (criteria **250–280**, the last stage's,
+including the **milestone-closing audits at 275–280**), which makes **Milestone 3 fully specced at
+criterion level with nothing reserved after 280**. It **adds no new question** and **un-parks
+question 9**, which is now live: Stage 4 is written to its stated default **(c)**, and ⚠️ **it is
+the only answer in this milestone that costs a screen rather than a sentence** — **(a)** strikes
+criteria **260 and 261** in place and changes nothing else. **It still blocks nothing**: Stage 2 is
+next in the build order and Stage 3 after it, so the answer is wanted before Stage 4 starts.
+⚠️ **Stage 4's one hard call is criterion 254** — home advantage carries **no minimum-games floor**,
+consistent with the founder's answer to question 6 and with Stage 2's refusal to floor the nemesis,
+which means a one-game venue will usually hold it in a small archive, with both sides of the
+comparison printed beside the number.
+
 ⚠️ **Updated 2026-09-14, same day: the founder answered 6, 8, and the part of 7 Stage 1 needed.**
 **The board now shows records from game one under an early-days line** instead of withholding them
 (question 6 — criteria 182–185 rewritten), **the stalwart is adopted permanently** (question 7 —
@@ -216,7 +228,17 @@ still do not block anything.**
    forward. ⚠️ **Their wording is yours whenever they are built** — "the player who looks like they
    are cheating" is a joke about a named friend on a screen that friend will read, and the team
    should not be inventing that tone on your behalf. **Default if unanswered: they stay in M4.**
-9. **What does "location as a filter" mean on screen?** Milestone 2 shipped a **places index** —
+9. ✅ **Resolved 2026-09-15, at the founder's own checkpoint, before this branch opened.** *(Raised
+   2026-09-14 with the milestone; brought to the founder 2026-09-15 with Stage 4's spec, criteria
+   250–280.)* **The founder confirmed (c)** — a venue page *and* a filter — matching the stated
+   default, so nothing is struck: the venue page at `/places/{id}` (260) and its per-player table
+   (261) are both built, alongside the player page's by-venue section (256–258), home advantage
+   (253–254, 268–269), the day-of-week and month tables (265–267) and the games-list filters
+   (262–264). This was the only answer in Milestone 3 that changes what gets built rather than how
+   it reads — a per-venue page is a new page type with its own empty state, 404 and navigation,
+   where a filter alone would have been a query string on a list that already exists — which is why
+   it was checkpointed rather than assumed.
+   *The original question, for the record:* **what does "location as a filter" mean on screen?** Milestone 2 shipped a **places index** —
    every venue with its games-played count — but **no per-venue page**. M3 has to put the venue
    numbers somewhere, and there are three honest shapes: **(a) a filter on the games list**
    ("show me Player E's nights"), with the venue stats living on the analytics screens; **(b) a
@@ -2344,8 +2366,10 @@ build contract, not the decision document. Everything above it still governs —
 constraint, the "no second read" prohibition, the no-accounts stance, and the rule that heuristics
 warn and humans decide. **Four founder questions frame it** (open questions 3, 6, 7, 9 above), and
 **Stage 2's spec added a fifth** (question 10, the nemesis's tone) **and Stage 3's added two more**
-(questions 11 and 12, the cleanest-sheet reading and the board's legibility at twelve records); each
-has a stated default, so **nothing here waits on an answer to start**.*
+(questions 11 and 12, the cleanest-sheet reading and the board's legibility at twelve records);
+**Stage 4's added none** and un-parked question 9. Each has a stated default, so **nothing here waits
+on an answer to start** — though question 9 is the one whose answer changes a screen rather than a
+sentence, and it is wanted before Stage 4 begins.*
 
 ⚠️ **M1's risk was a bad read. M2's was a change nobody can take back. M3's is different again: a
 number that is wrong, confident, and quoted at the table.** Every screen in this milestone turns
@@ -2519,6 +2543,85 @@ shared-module habit exists to prevent.
     ⚠️ **A one-row list is not a bug**: it keeps one pattern across twelve records, and the row is
     the ordinary `GameRow` whose link reaches the game and its photo — which is the whole mitigation.
 
+*Decisions 25–33 were added 2026-09-14 with **Stage 4's** criteria, the last stage's, written the
+same day as 11–24 and immediately after them. They are the team's and the architect's. ⚠️ **The one
+genuinely founder-shaped thing in this stage is open question 9**, which decision 31 specs to its
+stated default and names the exact criteria that fall away if the founder answers otherwise —
+because it is the only open question in this milestone that changes **what gets built** rather than
+how it reads.*
+
+25. ⚠️ **A venue slice is an existing aggregate scoped by `location_id`. It is not a new definition.**
+    Wins are M1's (lowest total, ties shared), a player's average is criterion 178's function, and a
+    venue's table average is criterion 224's function with a different set of games handed to it.
+    **The only genuinely new definition in this stage is home advantage** (criterion 253) and the
+    calendar derivation behind the time slices (criterion 255). Everything else is a `WHERE` clause
+    over code that already exists, which is the whole reason this stage is last and cheap.
+26. ⚠️ **A game with no location belongs to no venue, and criterion 188 is narrowed exactly once,
+    here.** 188 says every game counts towards every number and names "a game with no location" as
+    counting alike — written before any number was scoped to a place, where it cannot hold: a game
+    whose venue nobody remembers is not evidence about any venue. **The narrowing is made visible
+    rather than footnoted**: every by-venue table carries a final **"No location"** row, using M1's
+    own existing label (criterion 69), so the rows still sum to the games actually played and the
+    unattributed games are on screen rather than silently missing. That row is **not a venue** — it
+    holds no home advantage, it has no venue page, and it is not in the places index. *(This is the
+    same shape as criterion 233's narrowing of 182: a named, once-only narrowing of a Stage 1 rule
+    where the rule cannot mean what it says, not a second honesty system.)*
+27. ⚠️ **Home advantage has no minimum-games floor, and it is not an exception.** The original PRD
+    sketch said it "needs enough games at that venue to mean anything", which was written when the
+    board withheld. The founder deleted every floor project-wide on 2026-09-14 (open question 6), and
+    Stage 2 already faced this exact temptation and refused it — *"a minimum number of shared games
+    before a nemesis is named — rejected as a re-introduction of the withholding the founder
+    deleted"*. The same answer holds here, for the same reason: **the sample statement does the
+    work**, and *"won 1 of 1 at Player E's, 3 of 12 elsewhere"* is self-evidently thin without the
+    board having to say so. ⚠️ **What replaces a floor is three definitional guards, none of which is
+    a sample threshold**: a player with **no other venue** has no gap and cannot hold it; a gap of
+    **zero or less** never holds it, at any sample size (criterion 199's rule for a zero above-rate,
+    applied to the same problem); and **both sides of the comparison are printed**, so the record
+    cannot be read without reading its sample. ⚠️ **The honest warning, stated rather than buried**:
+    in a small archive a one-game venue will usually *win* this record, because a 100% rate beats any
+    real pattern. That is a true statement about a two-game archive and it is rendered as one, the
+    same way *most wins in a row — Sam, 1* is (criterion 184).
+28. **Home advantage is one direction only — the biggest *positive* gap.** The catalogue asks
+    "a genuine home advantage, **or** a venue they are reliably terrible at", and the second half is
+    answered by the by-venue table showing the numbers, not by a fourteenth card. ⚠️ **No "away
+    disadvantage" record is built**: the board is already at thirteen and open question 12 is live.
+29. **Per-player-by-venue lives on both the player page and the venue page, from one shared
+    function.** Exactly the pattern Stage 2 used for per-roster win rates (decision 15, criteria
+    208–209): the numbers are gathered on the person on their page and on the place on its page, both
+    screens read one function, and a criterion asserts they agree to the decimal place. Neither is
+    the "real" one.
+30. ⚠️ **The time slices are two plain tables and they claim nothing.** Day of week and calendar month
+    get **games played and the mean score posted**, and no sentence anywhere says where or when
+    anyone plays best — decision 21's rule for the eleven-hand trend, applied to the same kind of
+    number. **Months, not seasons**: the founder is in Australia, so a "winter" label is wrong for
+    half the archive and a season is a definition to argue about, while a month is what the date
+    already says. ⚠️ **No per-player cross-tab.** Six players against twelve months is a 72-cell
+    table on a 375px screen, and the catalogue's "already bought and paid for" framing is a statement
+    about cost, not a licence to build a matrix. It stays cheap, and it stays retroactive if the
+    founder ever asks for it.
+31. ⚠️ **Open question 9 is specced to its stated default — (c), a venue page *and* a filter — and
+    the cut line is named rather than implied.** This is the only open question in Milestone 3 whose
+    answer changes what gets built: a per-venue page is a new screen type, a filter alone is not.
+    **If the founder answers (a) — a filter only — criteria 260 and 261 are struck in place** like
+    147 and never renumbered, the venue-level numbers move to a places section on `/stats`, and
+    **nothing else in this stage changes**: the player page's by-venue section (256–258), home
+    advantage (253–254, 268–269), the time slices and the games-list filters are all independent of
+    the answer. ⚠️ **It is raised at this checkpoint, not assumed silently**, because "where a filter
+    lives is something you will use weekly and we will not."
+32. ⚠️ **"Location as a filter across the analytics" *is* the venue page and the by-venue sections.**
+    There is no global filter control on `/stats` or on the board. A venue selector sitting above
+    twelve records and a dozen aggregates would multiply every number in the milestone by every
+    venue, put the board's all-time promise ("One screen. All-time.") in tension with itself, and
+    need a sample statement per cell. **The filter is on the games list, where a filter is a list of
+    games; the analytics are sliced by having a page per place.**
+33. **The milestone-closing audits are real criteria in this stage, not a checklist item.** M2's
+    167–171 land as **275–279** with M3 numbers, plus **280** for the two promises no single stage
+    can prove: that `lib/db/migrations/` is untouched across all four stages, and that a delete and a
+    merge move **every** number in the milestone, not just the current stage's. ⚠️ **Playwright
+    moving into PR CI (decision 10) lands here too** — its own revisit-if was "when M3's analytics
+    screens land" — but it stays an engineering change and **carries no product criterion**, exactly
+    as decision 10 said it would.
+
 #### User stories
 
 **The board**
@@ -2645,25 +2748,74 @@ shared-module habit exists to prevent.
   used and not re-derived. A game everybody finished level on has no second place, so it cannot
   hold this record.
 
-**The rest of the catalogue** *(detailed when its stage is specced — Stage 4)*
+**Place, time and the filters** *(Stage 4 — written 2026-09-14 with its criteria, 250–280)*
 
 > As a player, I want to know whether we really do play differently at a particular house, so that
 > the venue argument has a number attached to it.
+
+- A venue's own number: how many games have been played there, and **what a score posted there
+  averages** — a fact about the table, not about a person, the same shape as a roster's table
+  average.
+- Then, per person: **games, wins, win rate and average at that venue**, so "we play differently at
+  Player E's" is a row you can point at.
+- ⚠️ **A game with no location is in no venue's numbers.** It is not dropped and not hidden — it is
+  shown as its own row, labelled the way the games list already labels it, so the rows still add up
+  to the games actually played.
+
+> As a player, I want my own page to say where I play well, so that I do not have to visit five
+> venue pages to find out.
+
+- One section on my player page, **one row per venue I have played at**: games, wins, win rate,
+  average score there — the same shape as the by-roster section, and the same numbers the venue page
+  shows from its own side.
+- The rows, plus the games with no location, **add up to my games played**. Nothing is quietly
+  missing.
+
+> As a player, I want the board to name whoever has a genuine home ground, so that "you only ever
+> win at your own place" can be settled.
+
+- **Home advantage** — the biggest gap between one player's win rate at one venue and their win rate
+  at every other venue they play at, stated as **both sides of the comparison**: won 4 of 6 there,
+  2 of 14 elsewhere.
+- ⚠️ **A player who has only ever played at one venue has no gap at all** — there is nothing to
+  compare against — and nobody holds this record for being no better at home than away.
+- ⚠️ **It is one number about two places, and the screen says how thin both sides are.** A player on
+  one game at one venue can hold it, and the card makes that obvious rather than hiding it.
+
+> As a player, I want to know whether Sunday games really are sharper, so that the day-of-the-week
+> argument has a number attached to it.
+
+- Two plain tables: **games and average score by day of the week**, and **games and average score by
+  calendar month**. Nothing was captured for these; they come off the date already stored.
+- ⚠️ **Neither table tells me anything.** It does not say I play best on Sundays, or that anyone
+  falls apart in December. It shows the numbers and the argument stays mine — exactly as the
+  eleven-hand trend does.
+
+> As a player, I want to pull the games list down to one venue or one set of people, so that "show me
+> our nights at Player E's" is one tap rather than scrolling.
+
+- The games list filters **by venue and by roster**, together or separately, from the list itself.
+- The filtered list is **a real address** — it can be reloaded, bookmarked and sent to someone in the
+  group, and it comes back the same.
+- It is the **same list, same rows, same order** — filtering it is not a report, and it is the same
+  screen every record on the board already drills through to.
 
 #### Acceptance criteria
 
 *Numbering continues from Milestone 2's 174, so a criterion number means one thing across the whole
 project. Executable by QA on a scratch environment with a seeded archive, except where a criterion
 names production or the founder's own phone. **Stage 1's criteria are 175–196**, **Stage 2's are
-197–222** and **Stage 3's are 223–249**, each written before its build starts, the way M2 wrote its
-stages' criteria before the stage ran; **Stage 4 continues from 250** when it is specced.
+197–222**, **Stage 3's are 223–249** and **Stage 4's are 250–280**, each written before its build
+starts, the way M2 wrote its stages' criteria before the stage ran. **The milestone is now fully
+specced at criterion level; nothing after 280 is reserved.**
 ⚠️ **Numbers are allocated in writing order and never re-ordered afterwards** — a criterion number is
 an identifier, not a position in the plan, which is the same rule that keeps 147 struck rather than
-reused. Stages 1, 2 and 3 were specced in that order on 2026-09-14 and are built in that order too.
+reused. Stages 1–4 were specced in that order on 2026-09-14 and are built in that order too.
 ⚠️ **M2's closing criteria 167–171** (wording audit, the a11y pass, real unit tests in CI, the
 permanent secret-free check, running cost unchanged) **are re-run over every screen this milestone
-adds**, and are restated with their own M3 numbers when the last stage is specced — no number is
-reserved for them now.*
+adds**, and are restated with their own M3 numbers as **criteria 275–279** in Stage 4, the last
+stage — plus **280**, a milestone-level pass over the two structural promises (no schema, nothing
+cached) that no single stage can prove on its own.*
 
 **The definitions everything else is built on**
 
@@ -3221,6 +3373,317 @@ and the margin are Stage 2's, at 214–215.
 - **Any second read, any new check on a final score, and any wording that implies one exists.** Open
   question 3 may add a *caveat*; it may not add a claim.
 
+---
+
+**Stage 4 — Place, time, and the filters: the criteria, 250–280**
+
+*Written 2026-09-14, the same day as Stages 1–3's and immediately after them, before any of Stages
+2–4 starts. Build order is unchanged: Stage 2 ships next, then 3, then this. **This is the last
+stage of Milestone 3**, so it carries the milestone-closing audits (275–280) as well as its own
+work. Four notes before the list:*
+
+- ⚠️ **This stage captures nothing either, and it is the stage that proves the bargain.** Every game
+  already carries `location_id` (nullable) and `played_on` (a date), captured in Milestone 1
+  *specifically so this stage would be possible* — see "capture dimensions early, build reports
+  whenever". **Day-of-week and time-of-year need no new field at all**; they are derivations from a
+  column that has been filled in since the first saved game, and they apply to the whole archive the
+  moment they exist. No table, no column, no migration, no backfill. Criterion 274 makes it testable.
+- ⚠️ **Almost nothing here is a new definition** (decision 25). A venue's numbers are Stage 1's and
+  Stage 3's aggregates handed a different set of games. **The two genuinely new definitions are
+  home advantage (253) and the calendar derivation (255)**, and both are written out in full because
+  both have a trap in them.
+- ⚠️ **One founder answer changes this stage's scope, and it is flagged rather than assumed.**
+  **Open question 9** — what "location as a filter" means on screen — is specced below to its stated
+  default, **(c): a venue page and a filter**. If the founder answers **(a), a filter only**,
+  **criteria 260 and 261 are struck in place** and nothing else moves (decision 31). ⚠️ **This is the
+  only place in Milestone 3 where an unanswered question costs a screen rather than a sentence**,
+  which is why it is called out here and at the checkpoint rather than left to the default quietly.
+- ⚠️ **This is the stage where criterion 188 stops being literally true, once, on purpose.** "Every
+  game counts towards every number" cannot hold for a number scoped to a place when a game has no
+  place. **Criterion 251 is that narrowing**, made visible with a "No location" row rather than an
+  asterisk — the same move criterion 233 made on 182, and the only other one in this milestone.
+
+*⚠️ **Stage 1's criteria 181, 182, 185, 186, 188, 189, 190, 192, 193, 194 and 195 govern everything
+below and are not restated as new scope**; **Stage 2's 200 (no minimum sample) and 208–210 (the
+by-roster pattern this stage mirrors) govern too**; **Stage 3's 223–224 (the average and the table
+average) and 233 (a single-event record states a date) likewise.** Criterion 271 is where QA re-runs
+them over this stage's screens.*
+
+**The definitions this stage is built on**
+
+250. ⚠️ **A venue slice is an existing aggregate scoped by `location_id`, and no second
+     implementation is written.** A player's wins at a venue use M1's winner rule (lowest total,
+     **ties shared**, counting **in full for each** co-winner); a player's average at a venue uses
+     **criterion 178's function**; a venue's table average uses **criterion 224's function**; a
+     win rate is wins ÷ games to **one decimal place**, as everywhere else. QA greps the codebase for
+     a second mean, a second win-rate calculation or a second winner rule and finds none.
+251. ⚠️ **A game with no location belongs to no venue, and this is the one narrowing of criterion
+     188 in the milestone** (decision 26). Such a game is in **no** venue's numbers and in **no**
+     player's by-venue venue rows — but it is **not hidden**: every by-venue table on any screen
+     carries a final **"No location"** row, using M1's existing label (criterion 69), stating that
+     row's games, wins, win rate and average exactly as a venue row does. ⚠️ **That row is not a
+     venue**: it never holds home advantage (253), it has no venue page, and it does not appear in
+     the places index. QA seeds an archive containing at least one located and one unlocated game
+     and confirms the unlocated game appears **only** in the "No location" row, and that no venue's
+     game count includes it.
+252. **A venue's table average** is criterion 224's definition with the venue's games: the mean of
+     **every final score posted at that venue by anyone**, to one decimal place, stated with **both**
+     numbers behind it — the games and the scores (a four-player venue over 5 games averages 20
+     scores, and the screen says so). ⚠️ **It is a fact about the place, not about a person**, the
+     same way a roster's table average is a fact about the table.
+253. ⚠️ **Home advantage, precisely — the one new definition in this stage.** For every
+     **(player P, venue V)** pair where P has played at least one game at V:
+     - **`rate_here`** = P's wins at V ÷ P's games at V, one decimal place.
+     - **`rate_elsewhere`** = P's wins at **every other venue with a known location** ÷ P's games at
+       those venues, one decimal place. ⚠️ **Games with no location are in neither side** (251): a
+       game whose venue nobody remembers is not evidence about any venue, including "elsewhere".
+     - **The gap** = `rate_here − rate_elsewhere`, expressed in **percentage points to one decimal**
+       — ⚠️ **never rendered with a `%` sign**, which would read as a relative change rather than a
+       difference of two rates.
+     **The record is held by the (player, venue) pair with the largest gap**, and the card states
+     **both sides with their own samples**: "won 4 of 6 at Player E's, 2 of 14 elsewhere". Wins are
+     M1's and a shared win counts in full on whichever side it falls. QA constructs a player with
+     3 wins from 4 games at one venue and 1 win from 8 at two others and hand-checks the arithmetic
+     against the card.
+254. ⚠️ **Home advantage: no floor, three definitional guards, and the degenerate cases.** There is
+     **no minimum number of games at a venue** and none anywhere else in this stage — the sample
+     statement carries it, per the founder's answer to open question 6 and Stage 2's criterion 200
+     (decision 27). What stands in place of a floor, each of which QA constructs and runs:
+     - **A player who has played at only one known venue has no gap** and contributes no pair at all
+       — there is nothing to compare against. They are absent from this record, and **no sentence
+       anywhere counts them as set aside**, because nothing was withheld from them.
+     - **A gap of zero or less never holds the record**, at any sample size — the same rule criterion
+       199 applies to an above-rate of zero. Where **no pair has a positive gap**, the card renders
+       the **no-holder sentence** (185, verbatim per 193) and crowns nobody.
+     - **Joint holders are every pair on the highest gap**, listed alphabetically by player name then
+       venue name, each with its own two-sided sample (181). The same player may appear twice with
+       two venues; two players may appear with the same venue. ⚠️ **Ties are judged on the gap as
+       displayed, to one decimal place**, so two cards showing the same number are always both
+       holders — a pair absent from a record whose printed number it matches reads as a bug.
+     - ⚠️ **A one-game venue is shown holding it, and is not apologised for.** QA seeds a player who
+       has won their single game at a new venue and lost elsewhere, confirms they hold the record
+       with "won 1 of 1 at … , 0 of 3 elsewhere" beside it, and **fails the build on any hedge,
+       footnote, grey-out or suppression added beyond that sentence** (criterion 184's rule, same
+       reasoning).
+255. ⚠️ **Day of week and calendar month are derived from the stored `played_on` date with no
+     timezone conversion.** `played_on` is a calendar date, not an instant: the weekday and the month
+     are read from the `YYYY-MM-DD` value itself, **never by constructing a timestamp** whose
+     UTC-versus-local interpretation can move a Saturday game to Friday. QA seeds a game dated a
+     known Sunday, loads the tables with the browser set to **UTC, to Australia/Adelaide and to
+     America/Los_Angeles**, and finds it under Sunday in all three. Unit tests assert the derivation
+     over dates either side of a month boundary and over a leap day.
+
+**Per-player by venue**
+
+256. **A player page gains a by-venue section**, mirroring Stage 2's by-roster section (208): one row
+     per venue that player has played at, showing the venue's name, **games played there, wins, win
+     rate to one decimal place, and their average final score there**, each with its sample stated
+     through Stage 1's shared component (182). The **"No location" row** (251) is last. ⚠️ **Stage
+     2's head-to-head and by-roster sections and Stage 3's three additions are untouched** — this
+     section is added around them, and **M2 criterion 133's headline numbers do not move, change
+     meaning or change position** (criterion 207's requirement, still binding).
+257. **The two sides cannot disagree.** For any player and any venue they have played at, the numbers
+     on the **venue page** (261) and in that player's **by-venue row** are the same figures to the
+     same decimal place, from **one shared function** (decision 29). QA checks one venue containing a
+     **shared win** from both directions. *(Under open question 9's option (a) this comparison is
+     against the places section of `/stats` instead; the requirement is unchanged.)*
+258. ⚠️ **The containment invariant, which is what makes 251 provable.** A player's **by-venue rows
+     plus their "No location" row sum exactly to their games played** (M2 criterion 133), with no
+     game counted twice and none missing — the same invariant Stage 2's criterion 210 asserts for
+     rosters. QA seeds a player with games at two venues and one game with no location and checks the
+     three rows against the headline total.
+
+**The venue numbers on screen, and the filters**
+
+259. **The places index gains each venue's numbers.** M2 criterion 140's list of every location with
+     its games played now also shows **that venue's table average** (252) with its sample, and each
+     row **links to that venue's page** — *or, under open question 9's option (a), to the games list
+     filtered to that venue (262), which is the whole of what (a) means on this screen*.
+     ⚠️ **A location that has never been used still appears**,
+     showing 0 games and the **no-data fixed string** rather than a zero average, and is still
+     pickable on the review screen (140 unchanged).
+260. ⚠️ **Open question 9, default (c) — a venue page exists at `/places/{id}`**, mirroring the player
+     and roster pages: the venue's name, its games played, its **table average** (252), then the
+     per-player table (261), then **that venue's games newest first** in the games list's own row
+     format. An unauthenticated request 307s to `/login` with **no fragment of the record in the
+     response** (M1 criterion 1), a made-up or deleted venue id renders the app's own 404 screen
+     (M2 criterion 130), and a venue with zero games renders an empty state rather than a page of
+     zeros. ⚠️ **Struck in place, never renumbered, if the founder answers (a)** (decision 31).
+261. ⚠️ **Open question 9, default (c) — the venue page's per-player table.** One row per player who
+     has played at that venue: **games there, wins, win rate and average**, each with its sample,
+     ordered by games descending then alphabetically, each row linking to that player's page. ⚠️ **No
+     ranking decoration** — no crown, no medal, no 1st/2nd/3rd (criterion 242's precedent): these are
+     facts listed together, not a podium. ⚠️ **Struck in place with 260 if the founder answers (a)**,
+     in which case this table lives in a places section on `/stats` and criterion 257's comparison is
+     made against it there.
+262. **The games list gains a venue filter and a roster filter**, the last thing M1 and M2 both
+     deferred to this milestone. ⚠️ **They are URL-addressable and shareable**: `/games?location={id}`
+     and `/games?roster={id}`, **combinable**, reloadable, and identical after a reload. A heading
+     states the active filter or filters by name **and the number of games matching**; clearing is
+     **one tap** and returns the unfiltered list. `?location=none` filters to games with no location
+     (251). Order, row format and paging are **unchanged** (M1 criterion 69).
+263. ⚠️ **A filter that cannot be applied never silently shows everything.** An unknown, deleted or
+     malformed `location` or `roster` value renders the app's own 404 or an explicit empty state
+     naming what was asked for — ⚠️ **it does not fall back to the unfiltered list**, which would be
+     the screen quietly answering a different question than the one asked. A valid filter matching
+     **zero** games renders an empty state naming the filter, not an error and not a blank page. QA
+     runs all four cases.
+264. ⚠️ **The filter and the drill-through are the same list, and the pattern does not fork.** Every
+     record's drill-through (186) and every filtered games list render through **one component with
+     one row format and one ordering**; QA confirms a venue page's game list, a `?location=` filtered
+     list and a board drill-through are visibly and structurally the same list under different
+     headings (decision 7, extended).
+
+**The time slices**
+
+265. **Day of the week.** `/stats` gains a table of **seven rows, Monday through Sunday in that fixed
+     order**, each showing **games played on that day** and **the mean final score posted on that
+     day** (223's function, one decimal) with its sample — the games and the scores behind it. ⚠️ **A
+     day with no games shows 0 and the no-data fixed string, and is not omitted** — a table whose
+     rows appear and disappear is harder to read than one with a zero in it.
+266. **Time of year.** `/stats` gains a second table of **twelve rows, January through December in
+     that fixed order**, same shape, same sample statement, same treatment of an empty row. ⚠️
+     **Calendar months, not seasons or quarters** (decision 30) — the founder is in Australia, so a
+     season label would be wrong for half the archive, and a month needs no definition anyone can
+     argue with.
+267. ⚠️ **Neither time table claims anything.** No copy says where or when anyone plays best or worst;
+     **no best-day or worst-month marker**, no highlight, no ordering by score, no line, curve, fit,
+     trend arrow or projection — decision 21's rule for the eleven-hand trend, applied to the same
+     kind of number (decision 30). ⚠️ **No per-player cross-tab is built**, on either table. QA reads
+     every string on both and fails the stage on any sentence that draws a conclusion from them.
+
+**The board gains its thirteenth row**
+
+268. **Home advantage on the board**: the holder or holders by name **with the venue named**, the gap
+     in **percentage points** to one decimal (never a `%` sign, per 253), and **both sides of the
+     comparison with their own samples** — "Sam, Player E's: +41.7 points — won 4 of 6 there, 2 of 14
+     elsewhere". ⚠️ **This is criterion 182's sample statement, not a caveat**, and it is the whole
+     of the disclosure: no extra hedge, no early-days duplicate, no per-record footnote (184). Where
+     nobody qualifies it renders the no-holder sentence (185, verbatim per 193).
+269. **Its drill-through lands on the holder's games at that venue**, newest first, in the games
+     list's own row format, under a heading stating **the whole claim including the elsewhere
+     figure** — criterion 186's pattern, unchanged, and the same list criterion 262 builds. QA counts
+     the rows against the "x of y there" figure on the card. ⚠️ **A joint holder's pairs each drill
+     through to their own venue's games**, and a one-row list is correct and not padded (decision 24).
+270. **The board carries thirteen cards after this stage and still works at 375px.** Stage 1 left
+     five, Stage 2 seven (218), Stage 3 twelve (235), and home advantage makes thirteen. QA loads the
+     board at 375px and 1280px with all thirteen present: no horizontal overflow, one column on a
+     phone, and the order **matching the fixed order documented in `docs/DESIGN-SYSTEM.md`**.
+     ⚠️ **Legibility at thirteen is a founder review point, not a QA pass** — this is the count open
+     question 12 was really about, and **cutting a card remains the founder's call and costs one
+     deletion**, informed by criterion 218's finding at seven and 235's at twelve.
+
+**Continuing rules, re-run rather than restated**
+
+271. ⚠️ **Stages 1–3's rules govern every screen this stage adds, and QA re-runs each of them here**:
+     **181** (all joint holders listed, never "and N others" — including a home advantage held by two
+     (player, venue) pairs), **182** (every number states its sample, including both sides of 253's
+     comparison), **185** (a record with no holder says so rather than vanishing), **186** (every
+     record is checkable by tapping it), **188** (every game counts towards every number — **as
+     narrowed by 251 for venue-scoped numbers only**, and QA confirms the narrowing reaches no
+     other number: the archive count, the time tables and every Stage 1–3 record still include
+     unlocated games), **189** (nothing cached), **192** (the wording ban, including *safe*,
+     *protected* and *self-cancelling*, read across every new string on the board, `/stats`, the
+     player page, the venue page, the places index, the filtered games list and the new
+     drill-through), **193** (the new record title, the filter headings, the no-data string and the
+     no-holder sentence rendered **verbatim** from the design system's Milestone 3 fixed-strings
+     table — a paraphrase is a fail), **200** (no minimum sample anywhere) and **195** (no schema
+     change). ⚠️ **Criterion 202's rule reaches this stage too**: home advantage names a friend and a
+     friend's house, so every string must be printable with the named player reading it over your
+     shoulder, and nothing characterises the player or the venue.
+272. **`npm run audit:a11y` covers the venue page, the places index, the filtered games list, both
+     time tables, the player page's by-venue section and the board's thirteenth row** at 375px and
+     1280px: no horizontal overflow, ≥44px targets, visible focus. ⚠️ **Colour is never the only
+     signal** for an active filter, a "No location" row, a joint holder or a no-holder row, and
+     **an active filter is stated in text**, not only shown as a chip colour or a pressed state.
+273. **The query count does not grow with the archive, the group or the number of venues.** QA
+     compares the venue page's, the player page's, `/stats`' and the filtered games list's database
+     queries at **10 games and at 60**, at **4 players and at 8**, and at **2 venues and at 6**, and
+     finds the same bounded number each time — ⚠️ **no per-venue, per-player, per-day or per-month
+     query in a loop**; seven days times twelve months times six players is an aggregate, not a
+     sequence of queries (criteria 190, 221 and 248, extended).
+274. ⚠️ **No schema change, a fourth time.** Stage 4 adds no table, no column and no migration: QA
+     confirms `lib/db/migrations/` is untouched and every number above traces to `game.location_id`,
+     `game.played_on`, `game_player.final_score` or `round_score.score` — **all four stored since
+     Milestone 1**. *(Restated rather than inherited from 195, 219 and 246 because a venue slice and a
+     date slice are exactly the things a future session would be tempted to give a summary table.)*
+
+**Closing Milestone 3**
+
+*⚠️ **These six are the milestone's, not the stage's.** They are M2's closing criteria 167–171
+restated with M3 numbers as the acceptance-criteria preamble promised, plus one (280) for the two
+structural promises no single stage can prove on its own. They are run **after Stage 4 merges**, over
+every screen Milestone 3 added, and **Milestone 3 is not done until all six pass.***
+
+275. **Wording audit over every screen in the milestone**, run the same three ways Stage 5
+     established (mechanical grep, verbatim check against the fixed-strings table, read-through of
+     what the table doesn't cover) and covering ⚠️ **every empty state, no-holder row, filter
+     heading, drill-through heading and honesty line** added by Stages 1–4. The banned set is M1's
+     (*checked, validated, verified, confirmed, correct, looks right, all good*) **plus M3's own**
+     (*safe, protected, self-cancelling* — criterion 192) **plus Stage 2's characterisation ban**
+     (criterion 202: nothing calls anyone weak, hopeless, dominated, owned, a victim or a walkover;
+     nothing says a player can't or never will; nothing advises anyone what to do about it).
+     ⚠️ **The early-days line, the trend's honesty line and the nemesis card's title are read
+     hardest**, as the three strings most likely to have drifted into reassurance or into a joke at
+     someone's expense across four stages.
+276. **`npm run audit:a11y` is extended to every screen in the milestone** and passes at 375px and
+     1280px: no horizontal overflow, ≥44px targets, visible focus, ⚠️ **colour never the only
+     signal** anywhere in M3, and **the eleven-hand trend's text equivalent** (criterion 247) still
+     present. The board is checked at **all thirteen records** and `/stats` at its full length.
+277. **CI stays green with real unit tests over every definition this milestone added**, in
+     `lib/scoring`: the round winner (175), the streak (177) and the drought (212), the average
+     (178), head-to-head (197) and the above-rate (198), nemesis's zero rule (199), second place
+     (214) and the margin (215), the per-hand mean (225), the venue slice (250), **home advantage
+     including its three guards (253–254)** and the calendar derivation (255). ⚠️ **A deliberately
+     broken definition fails the build** — QA inverts the second-place rule and the timezone-free
+     date derivation in turn and confirms CI goes red for each. *(Playwright moving into PR CI lands
+     in this milestone too, per spec decision 10 — an engineering change, deliberately not a
+     criterion.)*
+278. ⚠️ **Permanent, restated for M3**: **no secret of any kind is written to the database by anything
+     in this milestone**, and the score download stays secret-free by construction. M3 writes
+     **nothing at all** — QA confirms no screen or route added in Stages 1–4 performs a write, and a
+     `npm run db:backup` dump taken after the milestone contains no API key and no password hash.
+279. **Running cost is unchanged.** M3 adds no AWS resource, no scheduled job, no external service and
+     no new external call; expected running cost stays about **A$0.65/month**, effectively all
+     Anthropic usage. QA confirms nothing new appears in `sst.config.ts`'s resource list.
+280. ⚠️ **The milestone's two structural promises, proved in one pass rather than per stage.**
+     - **No schema change anywhere in Milestone 3.** `lib/db/migrations/` is byte-identical to its
+       state when Stage 1 started — no table, no column, no index, no migration, no backfill across
+       all four stages (195, 219, 246 and 274, in one check).
+     - **Nothing is cached anywhere in Milestone 3.** QA **deletes a game** and **merges two
+       players**, reloads, and finds **every** number in the milestone has moved: all thirteen board
+       records and their drill-throughs, every section of the player page, the roster page, the venue
+       page, the places index, and every table on `/stats`. ⚠️ **One sweep over the whole milestone**,
+       because each stage could only ever check its own screens and the failure this guards against
+       is a stale number on a screen whose stage has already shipped.
+
+**31 criteria for Stage 4, numbered 250–280**, of which **six (275–280) close the milestone** and
+**two (260 and 261) are conditional on open question 9** and will be struck in place — never
+renumbered — if the founder answers (a). ⚠️ **The one to read hardest at the checkpoint is 254**
+(home advantage has no floor, and a one-game venue will usually win it in a small archive — decided
+on the same reasoning that deleted every other floor, and the one place in this milestone where the
+absence of a floor visibly changes who holds a record). **251 is the only other narrowing of a Stage
+1 rule in the milestone**, after 233.
+
+**Explicitly out of scope for Stage 4** *(each a decision, not an oversight)*
+
+- **Any new dimension.** Notably **time of day**: `played_on` is a date and there is no clock time
+  anywhere in the record, so "do we play worse after 10pm" is unanswerable and stays that way.
+  Adding it would be a capture change, which this milestone does not make.
+- **Seasons, quarters, hemispheres or holiday detection.** Christmas is a December row (decision 30).
+- **Per-player day-of-week or month cross-tabs.** Proportionality, not cost — and retroactive
+  whenever the founder does ask for it.
+- **A board record for the venue someone is reliably terrible at.** The by-venue table shows it;
+  the board is at thirteen (decision 28).
+- **Any global venue or date filter on `/stats` or on the board.** The filter is on the games list;
+  the analytics are sliced by having a page per place (decision 32). *"One screen. All-time."*
+- **Any claim about why a venue's or a day's numbers differ.** The numbers are shown; the argument
+  stays the founder's (decisions 21 and 30).
+- **Distance, travel, weather, table size, or anything not stored.**
+- **Free-text locations.** Unchanged from M1: a location is a thing picked from a list.
+- **A minimum-games floor, anywhere.** Deleted project-wide on 2026-09-14 and not quietly
+  reintroduced under another name for home advantage (decision 27).
+
 #### The stages
 
 *Four PRs, each reviewed as it lands. The order is **the board first, then the catalogue in the
@@ -3314,24 +3777,45 @@ boring.
 
 ---
 
-**Stage 4 — Place, time, and the filters** *(sketch — full criteria written when the stage starts)*
+**Stage 4 — Place, time, and the filters** *(specced 2026-09-14 — criteria 250–280, in the Stage 4
+criteria block above. Nothing built; Stages 2 and 3 ship first.)*
 
-*Scope*: win rates and average scores **by venue**; per-player performance by venue; **day-of-week
-and time-of-year** slices, free from the date already stored; **location and roster as filters** on
-the games list and across the analytics — shape per **open question 9**.
+*Scope*: win rates, averages and a **table average by venue**; **per-player performance by venue**,
+on the player page and on the venue's own page from one shared function; **day-of-week and
+time-of-year** slices, free from the date already stored; **location and roster as filters on the
+games list**, URL-addressable and shareable — shape per **open question 9**, specced to its default.
 
 *The board gains*: **home advantage** — the biggest gap between a player's win rate at one venue and
-everywhere else, **with the venue's own game count stated beside it** — the same sample rule as
-every other record, since there is no withholding to obey *(amended 2026-09-14)*. ⚠️ **This is the
-thirteenth card**, and the one open question 12 is really counting towards.
+their win rate at every other venue, stated as **both sides of the comparison with their own
+samples** ("won 4 of 6 there, 2 of 14 elsewhere"), since there is no withholding to obey
+*(amended 2026-09-14)*. ⚠️ **This is the thirteenth card**, and the one open question 12 is really
+counting towards.
+
+*Acceptance criteria*: **250–280**.
+
+⚠️ **Two things in this stage are the founder's, and they are different in kind.** **Open question 9
+changes what gets built**: specced to its default **(c)** — a venue page *and* a filter — with
+**criteria 260 and 261 struck in place** if the answer is **(a), a filter only**, and nothing else
+moving. **Open question 12 changes what stays**: the board reaching thirteen cards, where cutting one
+is deleting a row.
 
 *Then, closing the milestone*: the wording audit, the a11y pass extended to every new screen, CI with
-real unit tests over the new definitions, the permanent secret-free check and a confirmation that the
-AWS footprint did not grow — M2's 167–171, restated with M3 numbers. ⚠️ **No separate stage**: M3 is
-already live, and each stage deploys as it merges.
+real unit tests over every new definition, the permanent secret-free check and a confirmation that
+the AWS footprint did not grow — M2's 167–171, restated with M3 numbers as **criteria 275–279**, plus
+**280**, one pass proving no schema changed and nothing is cached **anywhere in the milestone**.
+⚠️ **No separate stage**: M3 is already live, and each stage deploys as it merges.
+
+*What the founder sees*: **the archive starts answering "where" and "when", not just "who".** The
+games list finally filters, so "show me our nights at Player E's" is one tap and a link you can send
+someone. ⚠️ **Two things to review hardest**: whether a venue deserves a page of its own (open
+question 9 — the only answer in this milestone that costs a screen), and **home advantage holding no
+minimum-games floor** (criterion 254), which in a small archive means a one-game venue will usually
+win it. That is the same call that deleted every other floor, applied where it shows up most
+visibly — and the card states both sides so it cannot be read without its sample.
 
 *Why last*: it is the only part of the catalogue with a real unanswered product question in front of
-it, and the only board record that needs another screen's numbers to exist first.
+it, the only board record that needs another screen's numbers to exist first, and the natural place
+to run the milestone-closing audits over a finished set of screens.
 
 #### Explicitly out of scope for Milestone 3
 
