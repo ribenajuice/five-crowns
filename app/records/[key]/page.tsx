@@ -15,6 +15,8 @@ import {
   SINGLE_EVENT_RECORD_TITLES,
   drillThroughHeading,
   homeAdvantageDisplayFacts,
+  looksLikeCheatingDisplayFacts,
+  metronomeDisplayFacts,
   recordDisplayFacts,
   roundsWonRowAnnotation,
   singleEventDisplayFacts,
@@ -32,26 +34,33 @@ import {
  * just reading `board.singleEventRecords` instead of `board.records` and
  * stating a date rather than a game count.
  *
- * One dynamic route for all twelve records rather than near-identical pages,
- * the same reasoning `/players/[id]` and `/rosters/[id]` already use for "one
- * page shape, many entities" — `getBoard()` is re-read on every visit
- * (criterion 189: nothing is cached), and its own row order is used as-is:
- * newest-first for most records, oldest→newest for the streak (criterion
- * 186's own wording) — this page never re-sorts what the backend already
- * ordered.
+ * One dynamic route for all seventeen records rather than near-identical
+ * pages, the same reasoning `/players/[id]` and `/rosters/[id]` already use
+ * for "one page shape, many entities" — `getBoard()` is re-read on every
+ * visit (criterion 189: nothing is cached), and its own row order is used
+ * as-is: newest-first for most records, oldest→newest for the streak
+ * (criterion 186's own wording) — this page never re-sorts what the backend
+ * already ordered.
  *
  * A made-up key, an empty archive, or a record with no holder (not reachable
- * by any of Stage 1's five, Stage 2's two or Stage 3's five over a
- * non-empty archive, but the board's own shared path can theoretically
- * produce one) all render the app's ordinary 404 — there is nothing to
- * drill into, the same "made-up id" precedent `/players/[id]` already sets.
+ * by any of Stage 1's five, Stage 2's two, Stage 3's five or M4 second
+ * slice's four over a non-empty archive, but the board's own shared path can
+ * theoretically produce one) all render the app's ordinary 404 — there is
+ * nothing to drill into, the same "made-up id" precedent `/players/[id]`
+ * already sets.
  *
- * Three render paths — ordinary board records, Stage 3's five single-event
- * records, and Stage 4's home advantage — because each reads a different
- * shape off `Board` and annotates its rows differently; all three share the
+ * Five render paths — ordinary board records, Stage 3's five single-event
+ * records (plus M4's clutch comeback, folded into the same shape), Stage 4's
+ * home advantage, and M4 second slice's own two fourth-animal records
+ * ("looks like cheating", the metronome) — because each reads a different
+ * shape off `Board` and annotates its rows differently; all five share the
  * actual rendering (the `AppBar` header and the `GameRow` list) through
  * `renderDrillThroughShell` (code review, M3 Stage 3 follow-up), so only the
- * part that's genuinely different per record family is written three times.
+ * part that's genuinely different per record family is written more than
+ * once. "Getting absolutely wrecked" needs no render path of its own — it
+ * fits `board.records`' own shape unchanged and falls through to the
+ * ordinary board-record path at the bottom of this function, same as every
+ * one of Stage 1 and 2's seven.
  */
 export const dynamic = "force-dynamic";
 
@@ -161,6 +170,56 @@ async function renderHomeAdvantageDrillThrough() {
   return renderDrillThroughShell(facts, games);
 }
 
+/**
+ * "Looks like cheating"'s own drill-through (criterion 299) — the same
+ * fourth-animal pattern as home advantage above: a holder's own games,
+ * merged and deduplicated across every tied holder, newest first. Unlike
+ * home advantage's (player, venue) pairs, each holder here is a unique
+ * player, so there is only ever one `games` list per holder to merge — the
+ * merge step still matters for a tie, where two holders' own game lists can
+ * overlap (they played each other).
+ */
+async function renderLooksLikeCheatingDrillThrough() {
+  const board = await getBoard();
+  if (board.empty) notFound();
+
+  const record = board.looksLikeCheating;
+  const facts = looksLikeCheatingDisplayFacts(record);
+  if (!facts) notFound();
+
+  const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
+  for (const holder of record.holders) {
+    for (const g of holder.games) byId.set(g.id, g);
+  }
+  const games = [...byId.values()].sort(compareNewestFirst);
+
+  return renderDrillThroughShell(facts, games);
+}
+
+/**
+ * The metronome's own drill-through (criterion 309) — "tapping lands on that
+ * player's games": each holder's own `games` is their **whole** game history
+ * (`MetronomeBoardRecord`'s own doc comment), not just the two games at
+ * either end of the range, merged and deduplicated across every tied holder
+ * the same way as the two record families above.
+ */
+async function renderMetronomeDrillThrough() {
+  const board = await getBoard();
+  if (board.empty) notFound();
+
+  const record = board.metronome;
+  const facts = metronomeDisplayFacts(record);
+  if (!facts) notFound();
+
+  const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
+  for (const holder of record.holders) {
+    for (const g of holder.games) byId.set(g.id, g);
+  }
+  const games = [...byId.values()].sort(compareNewestFirst);
+
+  return renderDrillThroughShell(facts, games);
+}
+
 export default async function RecordDrillThroughPage({
   params,
 }: {
@@ -171,6 +230,12 @@ export default async function RecordDrillThroughPage({
 
   if (key === "homeAdvantage") {
     return renderHomeAdvantageDrillThrough();
+  }
+  if (key === "looksLikeCheating") {
+    return renderLooksLikeCheatingDrillThrough();
+  }
+  if (key === "metronome") {
+    return renderMetronomeDrillThrough();
   }
   if (isSingleEventRecordKey(key)) {
     return renderSingleEventDrillThrough(key);

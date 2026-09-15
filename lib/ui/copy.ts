@@ -13,13 +13,16 @@ import {
   compareDisplayNames,
   handLabel,
   rosterDisplayName,
+  type CheatingHolder,
   type GridValidation,
   type HandLabel,
   type HomeAdvantageHolder,
+  type MetronomeHolder,
 } from "@/lib/scoring";
 import type {
   BoardRecord,
   BoardRecordKey,
+  RecordGame,
   SingleEventBoardRecord,
   SingleEventHolder,
   SingleEventRecordKey,
@@ -921,17 +924,57 @@ export interface RecordDisplayFacts {
 }
 
 export function recordDisplayFacts(
-  record: Pick<BoardRecord, "key" | "value" | "holders">,
+  record: Pick<BoardRecord, "key" | "value" | "holders" | "games">,
 ): RecordDisplayFacts | null {
   if (record.value === null || record.holders.length === 0) return null;
 
-  return {
-    title: RECORD_TITLES[record.key],
-    unit: RECORD_UNITS[record.key],
-    holderNames: rosterDisplayName(record.holders.map((h) => h.displayName)),
-    value: formatRecordValue(record.key, record.value),
-    sample: record.key === "stalwart" ? null : recordSampleLine(record.holders),
-  };
+  const title = RECORD_TITLES[record.key];
+  const unit = RECORD_UNITS[record.key];
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const value = formatRecordValue(record.key, record.value);
+
+  if (record.key === "stalwart") {
+    return { title, unit, holderNames, value, sample: null };
+  }
+
+  if (record.key === "gettingWrecked") {
+    const streakLength = record.value;
+    const sample =
+      record.holders.length === 1
+        ? gettingWreckedSampleSentence(
+            streakLength,
+            gettingWreckedStartDate(record.games, record.holders[0]!.displayName),
+          )
+        : record.holders
+            .map(
+              (h) =>
+                `${h.displayName} — ${gettingWreckedSampleSentence(streakLength, gettingWreckedStartDate(record.games, h.displayName))}`,
+            )
+            .join(" · ");
+    return { title, unit, holderNames, value, sample };
+  }
+
+  return { title, unit, holderNames, value, sample: recordSampleLine(record.holders) };
+}
+
+/**
+ * "Getting absolutely wrecked"'s own "since {date}" (criteria 300, 303): the
+ * oldest game in this holder's own current run — `record.games` is already
+ * ordered oldest→newest (`streakDrillThrough`, the same drill-through this
+ * record shares with "most wins in a row" and the drought). When the record
+ * is jointly held over diverging runs, a game belongs to this holder if it
+ * carries no `streakOwner` (shared by every holder) or carries this holder's
+ * own name — the same `streakOwner` annotation the streak-holder row already
+ * uses to tell two overlapping runs apart.
+ */
+function gettingWreckedStartDate(games: readonly RecordGame[], holderName: string): string {
+  const ownGames = games.filter((g) => !g.streakOwner || g.streakOwner === holderName);
+  return ownGames[0]!.playedOn;
+}
+
+/** "Last place in every one of their last {n} games — since {date}." — verbatim, criteria 300, 303. */
+export function gettingWreckedSampleSentence(streakLength: number, since: string): string {
+  return `Last place in every one of their last ${streakLength} ${gamesNoun(streakLength)} — since ${formatRecordDate(since)}.`;
 }
 
 /** `docs/DESIGN-SYSTEM.md` § "the records board" — verbatim, criteria 185, 193. */
@@ -1079,11 +1122,17 @@ export function singleEventInstanceRow(holderNames: string, playedOn: string): s
 export function catastropheInstanceRow(holderNames: string, hand: HandLabel, playedOn: string): string {
   return `${holderNames} — ${catastropheSampleLine(hand, playedOn)}`;
 }
+/** Most clutch comeback's own one-instance sample line, verbatim (criterion 306, founder's pick 2026-09-15): "Won it outright, finishing on {finalScore} · {date}." */
+export function clutchComebackSampleSentence(finalScore: number, playedOn: string): string {
+  return `Won it outright, finishing on ${finalScore} · ${formatRecordDate(playedOn)}.`;
+}
 
 /** One (deduplicated-by-game[, hand]) row behind a single-event record's card or drill-through. */
 interface SingleEventInstanceGroup {
   /** One holder's name, or a criterion-181 joint name when more than one holder shares this game (and, for the catastrophe, this hand) — biggest hammering's own documented case (component inventory, `RecordCard` — instance list). */
   label: string;
+  /** Most clutch comeback only (criterion 306): needed to look up the game's own winning score, which *is* this holder's own final score since they won it outright. */
+  gameId: string;
   playedOn: string;
   hand?: HandLabel;
 }
@@ -1098,15 +1147,15 @@ interface SingleEventInstanceGroup {
  * "never a ranking of the instances").
  */
 function groupSingleEventHolders(holders: readonly SingleEventHolder[]): SingleEventInstanceGroup[] {
-  const byKey = new Map<string, { displayNames: string[]; playedOn: string; hand?: HandLabel }>();
+  const byKey = new Map<string, { displayNames: string[]; gameId: string; playedOn: string; hand?: HandLabel }>();
   for (const h of holders) {
     const key = `${h.gameId}::${h.hand ?? ""}`;
     const existing = byKey.get(key);
     if (existing) existing.displayNames.push(h.displayName);
-    else byKey.set(key, { displayNames: [h.displayName], playedOn: h.playedOn, hand: h.hand });
+    else byKey.set(key, { displayNames: [h.displayName], gameId: h.gameId, playedOn: h.playedOn, hand: h.hand });
   }
   return [...byKey.values()]
-    .map((g) => ({ label: rosterDisplayName(g.displayNames), playedOn: g.playedOn, hand: g.hand }))
+    .map((g) => ({ label: rosterDisplayName(g.displayNames), gameId: g.gameId, playedOn: g.playedOn, hand: g.hand }))
     .sort(
       (a, b) =>
         compareDisplayNames(a.label, b.label) || (a.playedOn < b.playedOn ? -1 : a.playedOn > b.playedOn ? 1 : 0),
@@ -1146,10 +1195,22 @@ export interface SingleEventDisplayFacts {
  * `date` is the same value again, since the tied-instance row shows exactly
  * that string in its own date field.
  */
-function singleEventRowFacts(row: SingleEventInstanceGroup): { sentence: string; sample: string; date: string } {
+function singleEventRowFacts(
+  key: SingleEventRecordKey,
+  row: SingleEventInstanceGroup,
+  winningScoreByGameId: ReadonlyMap<string, number>,
+): { sentence: string; sample: string; date: string } {
   if (row.hand) {
     const withHand = catastropheSampleLine(row.hand, row.playedOn);
     return { sentence: catastropheInstanceRow(row.label, row.hand, row.playedOn), sample: withHand, date: withHand };
+  }
+  // Most clutch comeback (criterion 306, founder's pick 2026-09-15): the
+  // holder won this game outright, so the game's own winning score *is*
+  // their own final score — no new field needed on `SingleEventHolder`.
+  if (key === "clutchComeback") {
+    const finalScore = winningScoreByGameId.get(row.gameId)!;
+    const sample = clutchComebackSampleSentence(finalScore, row.playedOn);
+    return { sentence: `${row.label} — ${sample}`, sample, date: formatRecordDate(row.playedOn) };
   }
   return {
     sentence: singleEventInstanceRow(row.label, row.playedOn),
@@ -1168,7 +1229,7 @@ function singleEventRowFacts(row: SingleEventInstanceGroup): { sentence: string;
  * unreachable over a non-empty archive, same as every one of Stage 1's five).
  */
 export function singleEventDisplayFacts(
-  record: Pick<SingleEventBoardRecord, "key" | "value" | "holders">,
+  record: Pick<SingleEventBoardRecord, "key" | "value" | "holders" | "games">,
 ): SingleEventDisplayFacts | null {
   if (record.value === null || record.holders.length === 0) return null;
 
@@ -1176,7 +1237,11 @@ export function singleEventDisplayFacts(
   const unit = SINGLE_EVENT_RECORD_UNITS[record.key];
   const value = String(record.value);
   const holderNames = rosterDisplayName([...new Set(record.holders.map((h) => h.displayName))]);
-  const rows = groupSingleEventHolders(record.holders).map((row) => ({ row, facts: singleEventRowFacts(row) }));
+  const winningScoreByGameId = new Map(record.games.map((g) => [g.id, g.winningScore]));
+  const rows = groupSingleEventHolders(record.holders).map((row) => ({
+    row,
+    facts: singleEventRowFacts(record.key, row, winningScoreByGameId),
+  }));
 
   if (rows.length === 1) {
     const { row, facts } = rows[0]!;
@@ -1552,6 +1617,120 @@ export function homeAdvantageDisplayFacts(record: {
       ? homeAdvantageSampleSentence(record.holders[0]!.here, record.holders[0]!.elsewhere)
       : record.holders
           .map((h) => `${h.displayName} — ${homeAdvantageSampleSentence(h.here, h.elsewhere)}`)
+          .join(" · ");
+  const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
+
+  return { title, unit, holderNames, value, sample, claim };
+}
+
+/* ---------------------- Milestone 4, second slice: the four personality stats ---------------------- */
+/**
+ * `docs/DESIGN-SYSTEM.md` § "The four personality cards" — criterion 310 sets
+ * criterion 202's wording rule aside **in full** for these four cards, titles
+ * and every sentence, so these strings are written exactly as the founder
+ * picked them at the 2026-09-15 checkpoint, not run back through the
+ * flat/neutral voice every other record on this board uses. Criterion 311's
+ * honesty rule still applies in full — every sentence below states only
+ * counted quantities already in stored rows.
+ */
+
+/** "Looks like cheating" — the board's own fourth-animal card (criteria 297–299), title and unit verbatim (founder's pick, candidate 1 of 3). */
+export const LOOKS_LIKE_CHEATING_RECORD_TITLE = "Looks like cheating";
+export const LOOKS_LIKE_CHEATING_RECORD_UNIT = "points";
+/** "Wins {rate}% of their games ({wins} of {games}) — the table wins {tableRate}% in those same games ({tableWins} of {tableGames})." — verbatim, criterion 299. */
+export function looksLikeCheatingSampleSentence(
+  own: { wins: number; games: number; ratePercent: number },
+  others: { wins: number; games: number; ratePercent: number },
+): string {
+  return `Wins ${own.ratePercent.toFixed(1)}% of their games (${own.wins} of ${own.games}) — the table wins ${others.ratePercent.toFixed(1)}% in those same games (${others.wins} of ${others.games}).`;
+}
+/** "+47.4" — signed to one decimal, same convention as home advantage's own gap (criterion 298: no floor, so a negative gap is possible and rendered plainly, unhedged). */
+export function formatLooksLikeCheatingGap(gapPercentagePoints: number): string {
+  const sign = gapPercentagePoints >= 0 ? "+" : "";
+  return `${sign}${gapPercentagePoints.toFixed(1)}`;
+}
+
+export interface LooksLikeCheatingDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical — every tied holder, "A, B & C" grammar (criterion 299/181). */
+  holderNames: string;
+  value: string;
+  /** A single holder's own two-sided sentence, or every holder's own sentence prefixed with their name and joined by " · " (criterion 299, the same joint grammar 254 established). */
+  sample: string;
+  claim: string;
+}
+
+/**
+ * `LooksLikeCheatingBoardRecord`'s display facts — the fourth-animal
+ * counterpart to `homeAdvantageDisplayFacts`, above, so the board, its
+ * drill-through and every string it prints can never independently drift.
+ * `null` when the archive has nobody to compare (criterion 297: unreachable
+ * over any real, non-empty archive, since every real game has at least
+ * `MIN_PLAYERS` seats — handled anyway, the same defensive symmetry every
+ * other display-facts function here uses).
+ */
+export function looksLikeCheatingDisplayFacts(record: {
+  gapPercentagePoints: number | null;
+  holders: readonly CheatingHolder[];
+}): LooksLikeCheatingDisplayFacts | null {
+  if (record.gapPercentagePoints === null || record.holders.length === 0) return null;
+
+  const title = LOOKS_LIKE_CHEATING_RECORD_TITLE;
+  const unit = LOOKS_LIKE_CHEATING_RECORD_UNIT;
+  const value = formatLooksLikeCheatingGap(record.gapPercentagePoints);
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const sample =
+    record.holders.length === 1
+      ? looksLikeCheatingSampleSentence(record.holders[0]!.own, record.holders[0]!.others)
+      : record.holders
+          .map((h) => `${h.displayName} — ${looksLikeCheatingSampleSentence(h.own, h.others)}`)
+          .join(" · ");
+  const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
+
+  return { title, unit, holderNames, value, sample, claim };
+}
+
+/** The metronome — the board's other fourth-animal card (criteria 307–309), title and unit verbatim (founder's pick, candidate 2 of 3 — not the plain "Most consistent"). */
+export const METRONOME_RECORD_TITLE = "The metronome";
+export const METRONOME_RECORD_UNIT = "point range";
+/** "Best {high}, worst {low}, from {n} games." — verbatim, criterion 309: the whole honesty burden for a record with no minimum-games floor. */
+export function metronomeSampleSentence(highest: number, lowest: number, gamesPlayed: number): string {
+  return `Best ${highest}, worst ${lowest}, from ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
+}
+
+export interface MetronomeDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical — every tied holder, "A, B & C" grammar (criterion 309/181). */
+  holderNames: string;
+  value: string;
+  /** A single holder's own "best/worst/from N games" sentence, or every holder's own sentence prefixed with their name and joined by " · ". Never `null` — criterion 309 requires this stated on every card, not hidden behind an interaction. */
+  sample: string;
+  claim: string;
+}
+
+/**
+ * `MetronomeBoardRecord`'s display facts — same shape as
+ * `looksLikeCheatingDisplayFacts`, above. `null` when nobody in the archive
+ * has played two or more games (criterion 308: a spread needs two
+ * observations, which is the definition, not a floor).
+ */
+export function metronomeDisplayFacts(record: {
+  range: number | null;
+  holders: readonly MetronomeHolder[];
+}): MetronomeDisplayFacts | null {
+  if (record.range === null || record.holders.length === 0) return null;
+
+  const title = METRONOME_RECORD_TITLE;
+  const unit = METRONOME_RECORD_UNIT;
+  const value = String(record.range);
+  const holderNames = rosterDisplayName(record.holders.map((h) => h.displayName));
+  const sample =
+    record.holders.length === 1
+      ? metronomeSampleSentence(record.holders[0]!.highest, record.holders[0]!.lowest, record.holders[0]!.gamesPlayed)
+      : record.holders
+          .map((h) => `${h.displayName} — ${metronomeSampleSentence(h.highest, h.lowest, h.gamesPlayed)}`)
           .join(" · ");
   const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
 

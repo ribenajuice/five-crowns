@@ -11,6 +11,8 @@ import {
   getBoardData,
   type BoardRecord,
   type HomeAdvantageBoardRecord,
+  type LooksLikeCheatingBoardRecord,
+  type MetronomeBoardRecord,
   type SingleEventBoardRecord,
 } from "@/lib/board/queries";
 import {
@@ -19,12 +21,18 @@ import {
   BOARD_EMPTY_TITLE,
   HOME_ADVANTAGE_RECORD_TITLE,
   HOME_ADVANTAGE_RECORD_UNIT,
+  LOOKS_LIKE_CHEATING_RECORD_TITLE,
+  LOOKS_LIKE_CHEATING_RECORD_UNIT,
+  METRONOME_RECORD_TITLE,
+  METRONOME_RECORD_UNIT,
   RECORD_TITLES,
   RECORD_UNITS,
   SINGLE_EVENT_RECORD_TITLES,
   SINGLE_EVENT_RECORD_UNITS,
   funFactDisplay,
   homeAdvantageDisplayFacts,
+  looksLikeCheatingDisplayFacts,
+  metronomeDisplayFacts,
   recordDisplayFacts,
   singleEventDisplayFacts,
 } from "@/lib/ui/copy";
@@ -115,6 +123,60 @@ function toHomeAdvantageCardProps(record: HomeAdvantageBoardRecord): RecordCardP
   return { title, holderNames, value, unit, sample, href, claim };
 }
 
+/**
+ * A `RecordCard`'s props for "looks like cheating" (criteria 297–299) — the
+ * board's own fourth-animal card, same treatment as home advantage: no new
+ * component or visual variant, the ordinary `RecordCard` shape reusing its
+ * existing slots with new copy grammar (design system, "The four personality
+ * cards").
+ */
+function toLooksLikeCheatingCardProps(record: LooksLikeCheatingBoardRecord): RecordCardProps {
+  const href = "/records/looksLikeCheating";
+  const facts = looksLikeCheatingDisplayFacts(record);
+
+  if (!facts) {
+    return {
+      title: LOOKS_LIKE_CHEATING_RECORD_TITLE,
+      holderNames: "",
+      value: null,
+      unit: LOOKS_LIKE_CHEATING_RECORD_UNIT,
+      sample: null,
+      href,
+      claim: LOOKS_LIKE_CHEATING_RECORD_TITLE,
+    };
+  }
+
+  const { title, unit, holderNames, value, sample, claim } = facts;
+  return { title, holderNames, value, unit, sample, href, claim };
+}
+
+/**
+ * A `RecordCard`'s props for the metronome (criteria 307–309) — the board's
+ * other fourth-animal card. Criterion 309 requires the holder's own game
+ * count and both ends of the range stated plainly on the card, not hidden:
+ * `metronomeDisplayFacts`'s `sample` carries all three and is never optional
+ * here (unlike the stalwart's documented exception), so it always renders.
+ */
+function toMetronomeCardProps(record: MetronomeBoardRecord): RecordCardProps {
+  const href = "/records/metronome";
+  const facts = metronomeDisplayFacts(record);
+
+  if (!facts) {
+    return {
+      title: METRONOME_RECORD_TITLE,
+      holderNames: "",
+      value: null,
+      unit: METRONOME_RECORD_UNIT,
+      sample: null,
+      href,
+      claim: METRONOME_RECORD_TITLE,
+    };
+  }
+
+  const { title, unit, holderNames, value, sample, claim } = facts;
+  return { title, holderNames, value, unit, sample, href, claim };
+}
+
 export default async function Home() {
   await requireGroupSession();
 
@@ -131,6 +193,20 @@ export default async function Home() {
   // pool's own first query, so this is skipped entirely on that path rather
   // than run only to be thrown away (criterion 293's bounded-query stance).
   const fact = board.empty ? null : pickFunFact(await getFunFacts(data));
+
+  // M4 second slice: "getting absolutely wrecked" and "most clutch comeback"
+  // fit the pre-existing `records`/`singleEventRecords` shapes unchanged, so
+  // `getBoard()` returns them in place — last in each array, alongside the
+  // records those arrays already held (`lib/board/queries.ts`'s own doc
+  // comment). That in-place position is *not* this slice's board order (it
+  // would land them ahead of Stage 3's five and home advantage), so both are
+  // pulled out here and rendered in their own designated spot below, after
+  // home advantage — the frontend's own job, since `getBoard()` "doesn't
+  // impose an order across them itself" (same module comment).
+  const gettingWreckedRecord = board.empty ? null : board.records.find((r) => r.key === "gettingWrecked")!;
+  const clutchComebackRecord = board.empty
+    ? null
+    : board.singleEventRecords.find((r) => r.key === "clutchComeback")!;
 
   return (
     <>
@@ -153,21 +229,33 @@ export default async function Home() {
             <StatsNavLink />
             {/*
              * Criterion 235's fixed order: the founder's four, then the
-             * stalwart, then Stage 2's drought and nearly man (all already in
-             * that order on `board.records`), then Stage 3's five, in the
-             * order the PRD's own user stories introduce them (already the
-             * order `board.singleEventRecords` is returned in), then Stage
-             * 4's home advantage last (criterion 270) — a plain
-             * concatenation, never a re-sort.
+             * stalwart, then Stage 2's drought and nearly man, then Stage 3's
+             * four remaining single-event records (best/worst game ever, the
+             * catastrophe, cleanest sheet, biggest hammering), then Stage 4's
+             * home advantage, then M4 second slice's four personality stats
+             * appended after it, in the PRD's own order — "looks like
+             * cheating," "getting absolutely wrecked," most clutch comeback,
+             * the metronome (design system, "the board gains four more rows").
+             * "Getting absolutely wrecked" and "most clutch comeback" are
+             * pulled out of `board.records`/`board.singleEventRecords` above
+             * and rendered here instead, in their own designated spot.
              */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {board.records.map((record) => (
-                <RecordCard key={record.key} {...toCardProps(record)} />
-              ))}
-              {board.singleEventRecords.map((record) => (
-                <RecordCard key={record.key} {...toSingleEventCardProps(record)} />
-              ))}
+              {board.records
+                .filter((record) => record.key !== "gettingWrecked")
+                .map((record) => (
+                  <RecordCard key={record.key} {...toCardProps(record)} />
+                ))}
+              {board.singleEventRecords
+                .filter((record) => record.key !== "clutchComeback")
+                .map((record) => (
+                  <RecordCard key={record.key} {...toSingleEventCardProps(record)} />
+                ))}
               <RecordCard key="homeAdvantage" {...toHomeAdvantageCardProps(board.homeAdvantage)} />
+              <RecordCard key="looksLikeCheating" {...toLooksLikeCheatingCardProps(board.looksLikeCheating)} />
+              <RecordCard key="gettingWrecked" {...toCardProps(gettingWreckedRecord!)} />
+              <RecordCard key="clutchComeback" {...toSingleEventCardProps(clutchComebackRecord!)} />
+              <RecordCard key="metronome" {...toMetronomeCardProps(board.metronome)} />
             </div>
           </div>
         )}

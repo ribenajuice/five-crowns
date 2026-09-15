@@ -67,11 +67,12 @@ function minimalBoard(): Board {
       { key: "lowestAverageScore", value: 40, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
       { key: "mostRoundsWon", value: 5, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
       { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+      { key: "gettingWrecked", value: null, holders: [], games: [] },
     ],
     homeAdvantage: { gapPercentagePoints: null, holders: [] },
     looksLikeCheating: { gapPercentagePoints: null, holders: [] },
     metronome: { range: null, holders: [] },
-    singleEventRecords: [],
+    singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
   };
 }
 
@@ -101,7 +102,7 @@ describe("/ — early days (criteria 182, 183)", () => {
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       earlyDays: true,
       records: [
         {
@@ -134,6 +135,7 @@ describe("/ — early days (criteria 182, 183)", () => {
           holders: [holder("Player A", 3), holder("Player C", 3), holder("Player D", 3)],
           games: [game("g1", "2026-01-01")],
         },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 
@@ -173,7 +175,7 @@ describe("/ — early days (criteria 182, 183)", () => {
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       earlyDays: true,
       records: [
         {
@@ -187,6 +189,7 @@ describe("/ — early days (criteria 182, 183)", () => {
         { key: "mostWinsInARow", value: null, holders: [], games: [] },
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 
@@ -206,7 +209,7 @@ describe("/ — early days (criteria 182, 183)", () => {
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       earlyDays: true,
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
@@ -214,6 +217,7 @@ describe("/ — early days (criteria 182, 183)", () => {
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 
@@ -234,7 +238,7 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       earlyDays: false,
       records: [
         {
@@ -247,6 +251,7 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
         { key: "lowestAverageScore", value: 68.4, holders: [holder("Player B", 10)], games: [game("g3", "2026-01-01")] },
         { key: "mostRoundsWon", value: 20, holders: [holder("Player A", 10)], games: [game("g4", "2026-01-01")] },
         { key: "stalwart", value: 10, holders: [holder("Player A", 10)], games: [game("g5", "2026-01-01")] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 
@@ -279,6 +284,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
@@ -290,6 +296,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
           holders: [singleEventHolder("Player B", "g1", "2026-09-05")],
           games: [game("g1", "2026-09-05")],
         },
+        { key: "clutchComeback", value: null, holders: [], games: [] },
       ],
     });
 
@@ -321,6 +328,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
@@ -335,6 +343,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
           ],
           games: [game("g1", "2026-08-28"), game("g2", "2026-07-12")],
         },
+        { key: "clutchComeback", value: null, holders: [], games: [] },
       ],
     });
 
@@ -363,6 +372,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
@@ -374,6 +384,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
           holders: [singleEventHolder("Player E", "g1", "2026-09-05", "Kings")],
           games: [game("g1", "2026-09-05")],
         },
+        { key: "clutchComeback", value: null, holders: [], games: [] },
       ],
     });
 
@@ -395,13 +406,14 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
         { key: "mostWinsInARow", value: null, holders: [], games: [] },
         { key: "lowestAverageScore", value: null, holders: [], games: [] },
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 
@@ -420,8 +432,13 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
       { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
       { key: "stalwart" as const, value: null, holders: [], games: [] },
+      { key: "gettingWrecked" as const, value: null, holders: [], games: [] },
     ];
   }
+
+  const minimalSingleEventRecords = () => [
+    { key: "clutchComeback" as const, value: null, holders: [], games: [] },
+  ];
 
   it("renders the ordinary card: the player, the venue named, the gap in points, both sides of the sample", async () => {
     const { getBoard } = await import("@/lib/board/queries");
@@ -430,7 +447,7 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       archiveGameCount: 20,
       earlyDays: false,
       records: minimalRecords(),
-      singleEventRecords: [],
+      singleEventRecords: minimalSingleEventRecords(),
       homeAdvantage: {
         gapPercentagePoints: 41.7,
         holders: [
@@ -469,7 +486,7 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       archiveGameCount: 20,
       earlyDays: false,
       records: minimalRecords(),
-      singleEventRecords: [],
+      singleEventRecords: minimalSingleEventRecords(),
       homeAdvantage: {
         gapPercentagePoints: 41.7,
         holders: [
@@ -514,7 +531,7 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       archiveGameCount: 20,
       earlyDays: false,
       records: minimalRecords(),
-      singleEventRecords: [],
+      singleEventRecords: minimalSingleEventRecords(),
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
@@ -534,7 +551,7 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       archiveGameCount: 20,
       earlyDays: false,
       records: minimalRecords(),
-      singleEventRecords: [],
+      singleEventRecords: minimalSingleEventRecords(),
       homeAdvantage: {
         gapPercentagePoints: 100,
         holders: [
@@ -562,6 +579,161 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
   });
 });
 
+describe("/ — the four personality stats, appended after home advantage (M4 second slice, criteria 294–319)", () => {
+  function minimalRecords(extra: import("@/lib/board/queries").BoardRecord) {
+    return [
+      { key: "mostWins" as const, value: null, holders: [], games: [] },
+      { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+      { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+      { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+      { key: "stalwart" as const, value: null, holders: [], games: [] },
+      extra,
+    ];
+  }
+
+  it("renders all four with no holder, and no crash, when nobody holds any of them yet (criterion 185)", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords({ key: "gettingWrecked", value: null, holders: [], games: [] }),
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Looks like cheating");
+    expect(html).toContain("Getting absolutely wrecked");
+    expect(html).toContain("Most clutch comeback");
+    expect(html).toContain("The metronome");
+    // Every no-holder card renders the same fixed sentence.
+    expect((html.match(/Nobody&#x27;s done this yet\./g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("renders every holder, with the founder's own sentence shapes, and links to its own drill-through", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords({
+        key: "gettingWrecked",
+        value: 6,
+        holders: [holder("Player C", 9)],
+        games: [game("g1", "2026-08-02")],
+      }),
+      singleEventRecords: [
+        {
+          key: "clutchComeback",
+          value: 71,
+          holders: [{ playerId: "p1", displayName: "Player A", gameId: "g1", playedOn: "2025-11-09" }],
+          games: [game("g1", "2025-11-09", { winningScore: 132 })],
+        },
+      ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: {
+        gapPercentagePoints: 47.4,
+        holders: [
+          {
+            playerId: "p2",
+            displayName: "Player B",
+            gamesPlayed: 12,
+            own: { wins: 9, games: 12, ratePercent: 75 },
+            others: { wins: 10, games: 36, ratePercent: 27.6 },
+            gapPercentagePoints: 47.4,
+            games: [game("g2", "2026-01-01")],
+          },
+        ],
+      },
+      metronome: {
+        range: 34,
+        holders: [
+          {
+            playerId: "p3",
+            displayName: "Player E",
+            gamesPlayed: 9,
+            range: 34,
+            highest: 92,
+            lowest: 58,
+            games: [game("g3", "2026-02-01")],
+          },
+        ],
+      },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Looks like cheating");
+    expect(html).toContain("Player B");
+    expect(html).toContain("+47.4");
+    expect(html).toContain(
+      "Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).",
+    );
+    expect(html).toContain("/records/looksLikeCheating");
+
+    expect(html).toContain("Getting absolutely wrecked");
+    expect(html).toContain("Player C");
+    expect(html).toContain("Last place in every one of their last 6 games");
+    expect(html).toContain("/records/gettingWrecked");
+
+    expect(html).toContain("Most clutch comeback");
+    expect(html).toContain("Player A");
+    expect(html).toContain("Won it outright, finishing on 132");
+    expect(html).toContain("/records/clutchComeback");
+
+    expect(html).toContain("The metronome");
+    expect(html).toContain("Player E");
+    // Criterion 309: the game count and both ends of the range are plainly on the card.
+    expect(html).toContain("Best 92, worst 58, from 9 games.");
+    expect(html).toContain("/records/metronome");
+
+    // The board's fixed order: home advantage, then cheating, wrecked, comeback, metronome.
+    const order = ["Home advantage", "Looks like cheating", "Getting absolutely wrecked", "Most clutch comeback", "The metronome"];
+    const indices = order.map((title) => html.indexOf(`>${title}<`));
+    for (const i of indices) expect(i).toBeGreaterThan(-1);
+    for (let i = 1; i < indices.length; i++) expect(indices[i]!).toBeGreaterThan(indices[i - 1]!);
+  });
+
+  it("⚠️ the board carries exactly seventeen cards, in the same responsive grid as before — no new wrapper, no layout change", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords({ key: "gettingWrecked", value: null, holders: [], games: [] }),
+      singleEventRecords: [
+        { key: "bestGameEver", value: null, holders: [], games: [] },
+        { key: "worstGameEver", value: null, holders: [], games: [] },
+        { key: "catastrophe", value: null, holders: [], games: [] },
+        { key: "cleanestSheet", value: null, holders: [], games: [] },
+        { key: "biggestHammering", value: null, holders: [], games: [] },
+        { key: "clutchComeback", value: null, holders: [], games: [] },
+      ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    // One grid wrapper, unchanged class list (`sm:grid-cols-2`, `gap-3`).
+    expect((html.match(/grid grid-cols-1 gap-3 sm:grid-cols-2/g) ?? []).length).toBe(1);
+    // Five founder's + stalwart + drought/nearlyMan aren't in this minimal
+    // fixture, but every card that *is* present renders exactly once — the
+    // count below is records(6) + singleEventRecords(6) + homeAdvantage(1) +
+    // looksLikeCheating(1) + metronome(1) = 15 titles; this fixture omits
+    // drought/nearlyMan, so it isn't the real seventeen, only a layout check.
+    expect((html.match(/text-xs font-bold uppercase tracking-label text-text-muted/g) ?? []).length).toBe(15);
+  });
+});
+
 describe("/ — every card links to its own drill-through", () => {
   it("each record's href is /records/{key}", async () => {
     const { getBoard } = await import("@/lib/board/queries");
@@ -571,7 +743,7 @@ describe("/ — every card links to its own drill-through", () => {
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
       looksLikeCheating: { gapPercentagePoints: null, holders: [] },
       metronome: { range: null, holders: [] },
-      singleEventRecords: [],
+      singleEventRecords: [{ key: "clutchComeback", value: null, holders: [], games: [] }],
       earlyDays: false,
       records: [
         { key: "mostWins", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
@@ -579,6 +751,7 @@ describe("/ — every card links to its own drill-through", () => {
         { key: "lowestAverageScore", value: 40, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
         { key: "mostRoundsWon", value: 5, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
         { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
+        { key: "gettingWrecked", value: null, holders: [], games: [] },
       ],
     });
 

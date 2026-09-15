@@ -718,3 +718,260 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
     ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
   });
 });
+
+describe("/records/looksLikeCheating — the fourth-animal drill-through (M4 second slice, criteria 297–299)", () => {
+  function minimalRecords() {
+    return [
+      { key: "mostWins" as const, value: null, holders: [], games: [] },
+      { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+      { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+      { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+      { key: "stalwart" as const, value: null, holders: [], games: [] },
+      { key: "gettingWrecked" as const, value: null, holders: [], games: [] },
+    ];
+  }
+
+  it("states the whole claim including the table's own rate, and lists exactly the holder's own games", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [{ key: "clutchComeback" as const, value: null, holders: [], games: [] }],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+      looksLikeCheating: {
+        gapPercentagePoints: 47.4,
+        holders: [
+          {
+            playerId: "p1",
+            displayName: "Player B",
+            gamesPlayed: 12,
+            own: { wins: 9, games: 12, ratePercent: 75 },
+            others: { wins: 10, games: 36, ratePercent: 27.6 },
+            gapPercentagePoints: 47.4,
+            games: [
+              {
+                id: "g1",
+                playedOn: "2026-09-05",
+                createdAt: "2026-09-05T00:00:00.000Z",
+                locationName: "The Deck",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Player B"],
+                winningScore: 90,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "looksLikeCheating" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Looks like cheating — Player B");
+    expect(html).toContain(
+      "+47.4 points, Wins 75.0% of their games (9 of 12) — the table wins 27.6% in those same games (10 of 36).",
+    );
+    expect(html).toContain("/games/g1");
+  });
+
+  it("⚠️ joint holders: each one's own games are merged, deduplicated and sorted newest first", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+      looksLikeCheating: {
+        gapPercentagePoints: 47.4,
+        holders: [
+          {
+            playerId: "p2",
+            displayName: "Player A",
+            gamesPlayed: 5,
+            own: { wins: 4, games: 5, ratePercent: 80 },
+            others: { wins: 2, games: 10, ratePercent: 20 },
+            gapPercentagePoints: 47.4,
+            games: [
+              {
+                id: "g2",
+                playedOn: "2026-08-01",
+                createdAt: "2026-08-01T00:00:00.000Z",
+                locationName: null,
+                rosterId: "r2",
+                rosterName: "Sunday crew",
+                winners: ["Player A"],
+                winningScore: 60,
+              },
+            ],
+          },
+          {
+            playerId: "p1",
+            displayName: "Player B",
+            gamesPlayed: 12,
+            own: { wins: 9, games: 12, ratePercent: 75 },
+            others: { wins: 10, games: 36, ratePercent: 27.6 },
+            gapPercentagePoints: 47.4,
+            games: [
+              {
+                id: "g1",
+                playedOn: "2026-09-05",
+                createdAt: "2026-09-05T00:00:00.000Z",
+                locationName: null,
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Player B"],
+                winningScore: 90,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "looksLikeCheating" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("/games/g1");
+    expect(html).toContain("/games/g2");
+    expect(html.indexOf("/games/g1")).toBeLessThan(html.indexOf("/games/g2"));
+  });
+
+  it("nobody holds it yet — 404s, there is nothing to drill into", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "looksLikeCheating" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+
+  it("an empty archive 404s rather than rendering a board of zeros", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "looksLikeCheating" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+});
+
+describe("/records/metronome — the other fourth-animal drill-through (M4 second slice, criteria 307–309)", () => {
+  function minimalRecords() {
+    return [
+      { key: "mostWins" as const, value: null, holders: [], games: [] },
+      { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+      { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+      { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+      { key: "stalwart" as const, value: null, holders: [], games: [] },
+      { key: "gettingWrecked" as const, value: null, holders: [], games: [] },
+    ];
+  }
+
+  it("⚠️ criterion 309: lands on the holder's whole game history, not just the two games at either end of the range", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [{ key: "clutchComeback" as const, value: null, holders: [], games: [] }],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: {
+        range: 34,
+        holders: [
+          {
+            playerId: "p1",
+            displayName: "Player E",
+            gamesPlayed: 3,
+            range: 34,
+            highest: 92,
+            lowest: 58,
+            games: [
+              {
+                id: "g2",
+                playedOn: "2026-02-01",
+                createdAt: "2026-02-01T00:00:00.000Z",
+                locationName: "The Deck",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Player E"],
+                winningScore: 92,
+              },
+              {
+                id: "g1",
+                playedOn: "2026-01-01",
+                createdAt: "2026-01-01T00:00:00.000Z",
+                locationName: "The Deck",
+                rosterId: "r1",
+                rosterName: "Thursday crew",
+                winners: ["Player A"],
+                winningScore: 100,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    const element = await RecordPage({ params: Promise.resolve({ key: "metronome" }) });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("The metronome — Player E");
+    expect(html).toContain("34 point range, Best 92, worst 58, from 3 games.");
+    // Both of the holder's games render — not only the two at the range's own ends.
+    expect(html).toContain("/games/g1");
+    expect(html).toContain("/games/g2");
+    expect(html.indexOf("/games/g2")).toBeLessThan(html.indexOf("/games/g1"));
+  });
+
+  it("nobody has a range yet — 404s, there is nothing to drill into", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
+    });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "metronome" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+
+  it("an empty archive 404s rather than rendering a board of zeros", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+
+    const { default: RecordPage } = await import("@/app/records/[key]/page");
+    await expect(
+      RecordPage({ params: Promise.resolve({ key: "metronome" }) }),
+    ).rejects.toBeInstanceOf(hoisted.NotFoundSignal);
+  });
+});
