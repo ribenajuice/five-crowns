@@ -65,6 +65,8 @@ describe("/stats — populated (criteria 237–242)", () => {
         { rosterId: "r1", displayName: "Sunday crew", average: 64.8, gamesPlayed: 9, scoresCount: 40 },
         { rosterId: "r2", displayName: "Player A, B, C & D", average: 51.0, gamesPlayed: 5, scoresCount: 20 },
       ],
+      dayOfWeek: [],
+      timeOfYear: [],
     };
   }
 

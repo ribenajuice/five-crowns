@@ -148,3 +148,129 @@ describe("getGame — criterion 70", () => {
     expect(detail!.closeUps).toEqual([]);
   });
 });
+
+/* ======================================================================
+ * Stage 4 — the games list's venue and roster filter (criteria 262–264).
+ * ====================================================================== */
+
+describe("resolveGamesFilter and listGames(filter) — criteria 262–263", () => {
+  beforeAll(async () => {
+    await teardownTestDb();
+    await setupTestDb();
+  });
+
+  it("resolves a real venue and roster, and combines both into one filter", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["Filt Amy", "Filt Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Filter venue",
+      players: [
+        { playerId: players["Filt Amy"]!, finalScore: 40 },
+        { playerId: players["Filt Bo"]!, finalScore: 60 },
+      ],
+    });
+    // A second game, same roster, no location — must not match the venue filter.
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Filt Amy"]!, finalScore: 40 },
+        { playerId: players["Filt Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    const { listGames, resolveGamesFilter } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+    const venueId = (await listPlaces()).find((p) => p.name === "Filter venue")!.id;
+
+    const games = await listGames();
+    const rosterId = games.find((g) => g.locationName === "Filter venue")!.rosterId;
+
+    const resolved = await resolveGamesFilter({ location: venueId, roster: rosterId });
+    expect(resolved).not.toBeNull();
+    expect(resolved!.location).toEqual({ kind: "venue", id: venueId, name: "Filter venue" });
+    expect(resolved!.roster!.id).toBe(rosterId);
+
+    const filtered = await listGames({ location: resolved!.location, rosterId: resolved!.roster!.id });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]!.locationName).toBe("Filter venue");
+  });
+
+  it("`location=none` filters to games with no location (criterion 251)", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["NoLoc Amy", "NoLoc Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-02-01",
+      players: [
+        { playerId: players["NoLoc Amy"]!, finalScore: 40 },
+        { playerId: players["NoLoc Bo"]!, finalScore: 60 },
+      ],
+      // No locationName — deliberately unlocated.
+    });
+
+    const { listGames, resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ location: "none" });
+    expect(resolved).toEqual({ location: { kind: "none" } });
+
+    const filtered = await listGames({ location: resolved!.location });
+    expect(filtered.every((g) => g.locationName === null)).toBe(true);
+    expect(filtered.some((g) => g.playedOn === "2026-02-01")).toBe(true);
+  });
+
+  it("⚠️ an unknown location id resolves to null — the caller's own 404 signal, never a silent fallback", async () => {
+    const { resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ location: "00000000-0000-0000-0000-000000000000" });
+    expect(resolved).toBeNull();
+  });
+
+  it("⚠️ an unknown roster id resolves to null", async () => {
+    const { resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ roster: "00000000-0000-0000-0000-000000000000" });
+    expect(resolved).toBeNull();
+  });
+
+  it("a valid filter matching zero games returns an empty list, not an error", async () => {
+    // A brand-new, never-used location.
+    const { getDb } = await import("@/lib/db");
+    const { location } = await import("@/lib/db/schema");
+    const { randomUUID } = await import("node:crypto");
+    const id = randomUUID();
+    await getDb()
+      .insert(location)
+      .values({ id, name: "Unused filter venue", slug: `unused-filter-${id.slice(-8)}`, nameKey: "unused filter venue" });
+
+    const { listGames } = await import("@/lib/games/queries");
+    const filtered = await listGames({ location: { kind: "venue", id, name: "Unused filter venue" } });
+    expect(filtered).toEqual([]);
+  });
+
+  it("order, row format and paging are unchanged when a filter is applied", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["Order Amy", "Order Bo"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-03-01", "2026-03-08"]) {
+      await seedGame({
+        playedOn,
+        locationName: "Order venue",
+        players: [
+          { playerId: players["Order Amy"]!, finalScore: 40 },
+          { playerId: players["Order Bo"]!, finalScore: 60 },
+        ],
+      });
+    }
+
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+    const venueId = (await listPlaces()).find((p) => p.name === "Order venue")!.id;
+
+    const filtered = await listGames({ location: { kind: "venue", id: venueId, name: "Order venue" } });
+    expect(filtered.map((g) => g.playedOn)).toEqual(["2026-03-08", "2026-03-01"]);
+    expect(filtered[0]).toHaveProperty("winners");
+    expect(filtered[0]).toHaveProperty("winningScore");
+  });
+});

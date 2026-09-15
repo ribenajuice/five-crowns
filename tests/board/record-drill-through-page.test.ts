@@ -34,6 +34,7 @@ function holder(displayName: string, gamesPlayed: number) {
 const BOARD_WITH_MOST_WINS = {
   empty: false as const,
   archiveGameCount: 5,
+  homeAdvantage: { gapPercentagePoints: null, holders: [] },
   singleEventRecords: [],
   earlyDays: true,
   records: [
@@ -132,6 +133,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [
@@ -172,6 +174,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 6,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -211,6 +214,7 @@ describe("/records/{key} — a real record", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 4,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -272,6 +276,7 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
     const boardWithEveryRecordHeld = {
       empty: false as const,
       archiveGameCount: 5,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: (Object.keys(RECORD_TITLES) as (keyof typeof RECORD_TITLES)[]).map((key) => ({
@@ -318,6 +323,7 @@ const BOARD_WITH_WORST_GAME_EVER = {
     { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
     { key: "stalwart" as const, value: null, holders: [], games: [] },
   ],
+  homeAdvantage: { gapPercentagePoints: null, holders: [] },
   singleEventRecords: [
     {
       key: "worstGameEver" as const,
@@ -392,6 +398,7 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
     const { getBoard } = await import("@/lib/board/queries");
     vi.mocked(getBoard).mockResolvedValueOnce({
       ...BOARD_WITH_WORST_GAME_EVER,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [{ key: "worstGameEver" as const, value: null, holders: [], games: [] }],
     });
 
@@ -414,6 +421,7 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
         { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
         { key: "stalwart" as const, value: null, holders: [], games: [] },
       ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [
         {
           key: "catastrophe" as const,

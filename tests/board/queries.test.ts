@@ -1212,6 +1212,182 @@ describe("getBoard — Stage 3 adds no query of its own (criterion 248)", () => 
   });
 });
 
+/* ======================================================================
+ * Stage 4 — home advantage, the board's thirteenth record (criteria 253–254).
+ * ====================================================================== */
+
+describe("getBoard — home advantage (criteria 253–254)", () => {
+  it("crowns the (player, venue) pair with the largest gap, both sides sampled", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    // Sam: 3 of 4 at "Player E's", 1 of 8 spread across two other venues.
+    for (const [i, playedOn] of ["2026-01-01", "2026-01-08", "2026-01-15", "2026-01-22"].entries()) {
+      await seedGame({
+        playedOn,
+        locationName: "Player E's",
+        players: [
+          { playerId: players["Sam"]!, finalScore: i === 3 ? 90 : 10 },
+          { playerId: players["Jo"]!, finalScore: i === 3 ? 10 : 90 },
+        ],
+      });
+    }
+    // One of these four is a Sam win (lowest score), the other three are
+    // Jo's — Sam's "elsewhere" sample (below) needs exactly 1 win of 8.
+    for (const [i, playedOn] of ["2026-02-01", "2026-02-08", "2026-02-15", "2026-02-22"].entries()) {
+      await seedGame({
+        playedOn,
+        locationName: "Jo's",
+        players: [
+          { playerId: players["Sam"]!, finalScore: i === 0 ? 10 : 90 },
+          { playerId: players["Jo"]!, finalScore: i === 0 ? 90 : 10 },
+        ],
+      });
+    }
+    for (const playedOn of ["2026-03-01", "2026-03-08", "2026-03-15", "2026-03-22"]) {
+      await seedGame({
+        playedOn,
+        locationName: "Neutral ground",
+        players: [
+          { playerId: players["Sam"]!, finalScore: 90 },
+          { playerId: players["Jo"]!, finalScore: 10 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.homeAdvantage.gapPercentagePoints).toBeCloseTo(62.5, 1);
+    // ⚠️ In a two-player universe every game's winner is the other player's
+    // loss, so Jo's own numbers can mirror Sam's into an identical gap — a
+    // real joint-holder case (pure-function coverage in
+    // `tests/scoring/records.test.ts`), not a bug. This test only checks
+    // Sam's own pair carries the right two-sided sample.
+    const holder = board.homeAdvantage.holders.find(
+      (h) => h.displayName === "Sam" && h.locationName === "Player E's",
+    )!;
+    expect(holder).toBeDefined();
+    expect(holder.here).toEqual({ wins: 3, games: 4, ratePercent: 75 });
+    expect(holder.elsewhere).toEqual({ wins: 1, games: 8, ratePercent: 12.5 });
+    // Drill-through: exactly Sam's own games at "Player E's", newest first.
+    expect(holder.games).toHaveLength(4);
+    expect(holder.games.map((g) => g.playedOn)).toEqual([
+      "2026-01-22",
+      "2026-01-15",
+      "2026-01-08",
+      "2026-01-01",
+    ]);
+    expect(holder.games.every((g) => g.locationName === "Player E's")).toBe(true);
+  });
+
+  it("⚠️ a game with no location is in neither side of the comparison (criterion 251)", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Player E's",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 10 },
+        { playerId: players["Jo"]!, finalScore: 90 },
+      ],
+    });
+    // No location — must count towards neither "here" nor "elsewhere".
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 90 },
+        { playerId: players["Jo"]!, finalScore: 10 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-15",
+      locationName: "Somewhere else",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 90 },
+        { playerId: players["Jo"]!, finalScore: 10 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    const holder = board.homeAdvantage.holders.find((h) => h.displayName === "Sam")!;
+    // Sam's "elsewhere" is exactly the one located game at "Somewhere else" —
+    // the unlocated game contributes to neither side.
+    expect(holder.elsewhere).toEqual({ wins: 0, games: 1, ratePercent: 0 });
+  });
+
+  it("⚠️ a player with only one known venue has no gap and contributes no pair", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-01-01", "2026-01-08"]) {
+      await seedGame({
+        playedOn,
+        locationName: "Player E's",
+        players: [
+          { playerId: players["Sam"]!, finalScore: 10 },
+          { playerId: players["Jo"]!, finalScore: 90 },
+        ],
+      });
+    }
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.homeAdvantage.holders.some((h) => h.displayName === "Sam")).toBe(false);
+  });
+
+  it("⚠️ nobody with a positive gap: the no-holder case, verbatim shape", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    // Every game has no location — no venue evidence exists at all.
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 10 },
+        { playerId: players["Jo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    const board = await getBoard();
+    if (board.empty) throw new Error("unreachable");
+
+    expect(board.homeAdvantage).toEqual({ gapPercentagePoints: null, holders: [] });
+  });
+
+  it("Stage 4 adds no query of its own (criteria 219, 248, 273)", async () => {
+    const players = await createPlayers(["Sam", "Jo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Player E's",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 10 },
+        { playerId: players["Jo"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      locationName: "Jo's",
+      players: [
+        { playerId: players["Sam"]!, finalScore: 90 },
+        { playerId: players["Jo"]!, finalScore: 10 },
+      ],
+    });
+
+    const { getBoard } = await import("@/lib/board/queries");
+    selectCallCount = 0;
+    const board = await getBoard();
+    expect(selectCallCount).toBe(3);
+    if (board.empty) throw new Error("unreachable");
+    expect(board.homeAdvantage.holders.length).toBeGreaterThan(0);
+  });
+});
+
 describe("getBoard — Stage 3's records are nothing cached (criterion 246, restating 189)", () => {
   it("reflects a deleted game on the very next call", async () => {
     const players = await createPlayers(["Amy", "Bo"]);

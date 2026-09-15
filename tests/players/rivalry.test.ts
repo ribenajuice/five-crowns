@@ -619,3 +619,107 @@ describe("fetching game facts once and threading them through (code review fix)"
     expect(threadedQueries * 3).toBe(standaloneQueries);
   });
 });
+
+/* ======================================================================
+ * Stage 4 — by venue (criteria 256–258).
+ * ====================================================================== */
+
+describe("getPlayerVenueStats — criteria 256, 258", () => {
+  it("one row per venue, games/wins/rate/average restricted to that venue", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Amy's",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      locationName: "Amy's",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 60 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-15",
+      locationName: "Bo's",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 90 },
+        { playerId: players["Bo"]!, finalScore: 40 },
+      ],
+    });
+
+    const { getPlayerVenueStats } = await import("@/lib/players/rivalry");
+    const rows = await getPlayerVenueStats(players["Amy"]!);
+
+    // Ordered by games there descending, "No location" always last.
+    expect(rows.map((r) => r.locationName)).toEqual(["Amy's", "Bo's", null]);
+
+    const amys = rows.find((r) => r.locationName === "Amy's")!;
+    expect(amys.gamesPlayed).toBe(2);
+    expect(amys.wins).toBe(2);
+    expect(amys.average).toBe(50);
+
+    const noLocation = rows.find((r) => r.locationName === null)!;
+    expect(noLocation.gamesPlayed).toBe(0);
+    expect(noLocation.average).toBeNull();
+  });
+
+  it("⚠️ criterion 258: by-venue rows plus the 'No location' row sum exactly to games played", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Amy's",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-08",
+      locationName: "Bo's",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 90 },
+        { playerId: players["Bo"]!, finalScore: 40 },
+      ],
+    });
+    await seedGame({
+      playedOn: "2026-01-15",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 90 },
+        { playerId: players["Bo"]!, finalScore: 40 },
+      ],
+      // No locationName — deliberately unlocated.
+    });
+
+    const { getPlayerVenueStats, getPlayerGameFacts } = await import("@/lib/players/rivalry");
+    const rows = await getPlayerVenueStats(players["Amy"]!);
+    const totalGamesPlayed = (await getPlayerGameFacts(players["Amy"]!)).length;
+
+    expect(rows.reduce((sum, r) => sum + r.gamesPlayed, 0)).toBe(totalGamesPlayed);
+    expect(rows.find((r) => r.locationName === null)!.gamesPlayed).toBe(1);
+  });
+
+  it("a player whose only games have no location still gets the section, with only the 'No location' row", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 90 },
+      ],
+    });
+
+    const { getPlayerVenueStats } = await import("@/lib/players/rivalry");
+    const rows = await getPlayerVenueStats(players["Amy"]!);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.locationId).toBeNull();
+    expect(rows[0]!.gamesPlayed).toBe(1);
+  });
+});

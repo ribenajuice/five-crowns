@@ -338,6 +338,63 @@ describe("getStatsPage — nothing is cached (criterion 246, restating 189)", ()
   });
 });
 
+describe("getStatsPage — day of the week and time of year (criteria 265–267)", () => {
+  it("always renders all seven/twelve rows, and computes the mean over every posted final score", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    // 2026-09-14 is a known Monday.
+    await seedGame({
+      playedOn: "2026-09-14",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    const { getStatsPage } = await import("@/lib/stats/queries");
+    const page = await getStatsPage();
+    if (page.empty) throw new Error("unreachable");
+
+    expect(page.dayOfWeek).toHaveLength(7);
+    expect(page.timeOfYear).toHaveLength(12);
+
+    const monday = page.dayOfWeek.find((r) => r.label === "Monday")!;
+    expect(monday.gamesPlayed).toBe(1);
+    expect(monday.scoresCount).toBe(2);
+    expect(monday.average).toBe(50);
+
+    const tuesday = page.dayOfWeek.find((r) => r.label === "Tuesday")!;
+    expect(tuesday.gamesPlayed).toBe(0);
+    expect(tuesday.average).toBeNull();
+
+    const september = page.timeOfYear.find((r) => r.label === "September")!;
+    expect(september.gamesPlayed).toBe(1);
+    expect(september.average).toBe(50);
+
+    const january = page.timeOfYear.find((r) => r.label === "January")!;
+    expect(january.gamesPlayed).toBe(0);
+    expect(january.average).toBeNull();
+  });
+
+  it("adds no query of its own — reads playedOn/finalScore off rows already fetched", async () => {
+    const players = await createPlayers(["Amy", "Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-09-14",
+      players: [
+        { playerId: players["Amy"]!, finalScore: 40 },
+        { playerId: players["Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    const { getStatsPage } = await import("@/lib/stats/queries");
+    selectCallCount = 0;
+    const page = await getStatsPage();
+    expect(selectCallCount).toBe(3);
+    expect(page.empty).toBe(false);
+  });
+});
+
 describe("getStatsPage — the query count does not grow with the archive (criterion 248)", () => {
   async function countQueriesAt(gameCount: number): Promise<number> {
     const players = await createPlayers(["Amy", "Bo", "Cy", "Dee"]);

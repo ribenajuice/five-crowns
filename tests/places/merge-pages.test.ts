@@ -45,11 +45,11 @@ describe("/places/{id}/merge — which place?", () => {
 
   it("lists every other place with its own games-played count, excluding self", async () => {
     const { getPlace, listPlaces } = await import("@/lib/locations/queries");
-    vi.mocked(getPlace).mockResolvedValueOnce({ id: "loc1", name: "The Deck (typo)", gamesPlayed: 1 });
+    vi.mocked(getPlace).mockResolvedValueOnce({ id: "loc1", name: "The Deck (typo)", gamesPlayed: 1, tableAverage: null });
     vi.mocked(listPlaces).mockResolvedValueOnce([
-      { id: "loc1", name: "The Deck (typo)", gamesPlayed: 1 },
-      { id: "loc2", name: "The Deck", gamesPlayed: 2 },
-      { id: "loc3", name: "Player C's House", gamesPlayed: 4 },
+      { id: "loc1", name: "The Deck (typo)", gamesPlayed: 1, tableAverage: null },
+      { id: "loc2", name: "The Deck", gamesPlayed: 2, tableAverage: null },
+      { id: "loc3", name: "Player C's House", gamesPlayed: 4, tableAverage: null },
     ]);
 
     const { default: Page } = await import("@/app/places/[id]/merge/page");
@@ -62,8 +62,8 @@ describe("/places/{id}/merge — which place?", () => {
 
   it("⚠️ renders the empty state when nobody else exists", async () => {
     const { getPlace, listPlaces } = await import("@/lib/locations/queries");
-    vi.mocked(getPlace).mockResolvedValueOnce({ id: "loc1", name: "The Deck", gamesPlayed: 2 });
-    vi.mocked(listPlaces).mockResolvedValueOnce([{ id: "loc1", name: "The Deck", gamesPlayed: 2 }]);
+    vi.mocked(getPlace).mockResolvedValueOnce({ id: "loc1", name: "The Deck", gamesPlayed: 2, tableAverage: null });
+    vi.mocked(listPlaces).mockResolvedValueOnce([{ id: "loc1", name: "The Deck", gamesPlayed: 2, tableAverage: null }]);
 
     const { default: Page } = await import("@/app/places/[id]/merge/page");
     const element = await Page({ params: Promise.resolve({ id: "loc1" }) });
@@ -96,8 +96,8 @@ describe("/places/{id}/merge/{otherId} — MergeConfirmScreen", () => {
     const { getPlace } = await import("@/lib/locations/queries");
     vi.mocked(getPlace).mockImplementation(async (id: string) =>
       id === "loc1"
-        ? { id: "loc1", name: "The Deck (typo)", gamesPlayed: 1 }
-        : { id: "loc2", name: "The Deck", gamesPlayed: 2 },
+        ? { id: "loc1", name: "The Deck (typo)", gamesPlayed: 1, tableAverage: null }
+        : { id: "loc2", name: "The Deck", gamesPlayed: 2, tableAverage: null },
     );
 
     const { default: Page } = await import("@/app/places/[id]/merge/[otherId]/page");
