@@ -939,7 +939,8 @@ describe("/records/metronome — the other fourth-animal drill-through (M4 secon
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("The metronome — Player E");
-    expect(html).toContain("34 point range, Best 92, worst 58, from 3 games.");
+    // QA bug fix, M4 second slice: "Best" is the lower (better) score.
+    expect(html).toContain("34 point range, Best 58, worst 92, from 3 games.");
     // Both of the holder's games render — not only the two at the range's own ends.
     expect(html).toContain("/games/g1");
     expect(html).toContain("/games/g2");

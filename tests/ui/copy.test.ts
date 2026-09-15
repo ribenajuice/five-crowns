@@ -151,8 +151,12 @@ import {
   venueZeroGamesBody,
 } from "@/lib/ui/copy";
 import {
+  CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
+  GETTING_WRECKED_NO_HOLDER_SENTENCE,
+  LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
   LOOKS_LIKE_CHEATING_RECORD_TITLE,
   LOOKS_LIKE_CHEATING_RECORD_UNIT,
+  METRONOME_NO_HOLDER_SENTENCE,
   METRONOME_RECORD_TITLE,
   METRONOME_RECORD_UNIT,
   clutchComebackSampleSentence,
@@ -1326,6 +1330,10 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
       expect(LOOKS_LIKE_CHEATING_RECORD_UNIT).toBe("points");
     });
 
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE).toBe("Nobody's numbers look suspicious yet.");
+    });
+
     it("looksLikeCheatingSampleSentence matches the founder's example exactly", () => {
       expect(
         looksLikeCheatingSampleSentence(
@@ -1394,6 +1402,10 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
   });
 
   describe("getting absolutely wrecked (criteria 300–303)", () => {
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(GETTING_WRECKED_NO_HOLDER_SENTENCE).toBe("Nobody's currently getting wrecked.");
+    });
+
     it("gettingWreckedSampleSentence matches the founder's example (formatRecordDate's own rendering — a full 'short weekday, day month year')", () => {
       expect(gettingWreckedSampleSentence(6, "2026-08-02")).toBe(
         `Last place in every one of their last 6 games — since ${formatRecordDate("2026-08-02")}.`,
@@ -1442,6 +1454,10 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
   });
 
   describe("most clutch comeback (criteria 304–306)", () => {
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(CLUTCH_COMEBACK_NO_HOLDER_SENTENCE).toBe("Nobody's clawed one back yet.");
+    });
+
     it("clutchComebackSampleSentence matches the founder's example (formatRecordDate's own rendering)", () => {
       expect(clutchComebackSampleSentence(132, "2025-11-09")).toBe(
         `Won it outright, finishing on 132 · ${formatRecordDate("2025-11-09")}.`,
@@ -1490,9 +1506,21 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
       expect(METRONOME_RECORD_UNIT).toBe("point range");
     });
 
+    it("⚠️ criterion 312: its own no-holder sentence, verbatim — not the board's shared generic one", () => {
+      expect(METRONOME_NO_HOLDER_SENTENCE).toBe("Nobody's earned a range yet — two games gets you in.");
+    });
+
     it("metronomeSampleSentence matches the founder's example exactly, and keeps '1 game' honest", () => {
-      expect(metronomeSampleSentence(58, 92, 9)).toBe("Best 58, worst 92, from 9 games.");
+      // QA bug fix, M4 second slice: "Best" states the LOWER score (lower is
+      // better, kickoff decision 1) and "worst" the higher — the founder's
+      // own worked example is "Best 58, worst 92" with 58 the smaller number,
+      // so the call is `metronomeSampleSentence(highest, lowest, games)`.
+      expect(metronomeSampleSentence(92, 58, 9)).toBe("Best 58, worst 92, from 9 games.");
       expect(metronomeSampleSentence(50, 50, 1)).toBe("Best 50, worst 50, from 1 game.");
+    });
+
+    it("⚠️ QA bug fix, M4 second slice: 'Best' is always the numerically LOWER score, 'worst' the higher — they were swapped at the call site, printing the higher score under 'Best'", () => {
+      expect(metronomeSampleSentence(100, 40, 5)).toBe("Best 40, worst 100, from 5 games.");
     });
 
     it("metronomeDisplayFacts returns null when nobody has a range yet", () => {
@@ -1506,7 +1534,7 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
       });
       expect(facts).not.toBeNull();
       expect(facts!.value).toBe("34");
-      expect(facts!.sample).toBe("Best 92, worst 58, from 9 games.");
+      expect(facts!.sample).toBe("Best 58, worst 92, from 9 games.");
       assertNoBannedWords(facts!.claim);
     });
 
@@ -1515,7 +1543,7 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
         range: 2,
         holders: [{ playerId: "p1", displayName: "Newbie", gamesPlayed: 2, range: 2, highest: 52, lowest: 50 }],
       });
-      expect(facts!.sample).toBe("Best 52, worst 50, from 2 games.");
+      expect(facts!.sample).toBe("Best 50, worst 52, from 2 games.");
     });
 
     it("joint holders each get their own name-prefixed sentence, joined by ' · '", () => {
@@ -1528,7 +1556,7 @@ describe("Milestone 4, second slice — the four personality stats (PRD criteria
       });
       expect(facts!.holderNames).toBe("Amy & Bo");
       expect(facts!.sample).toBe(
-        "Amy — Best 95, worst 55, from 3 games. · Bo — Best 90, worst 50, from 3 games.",
+        "Amy — Best 55, worst 95, from 3 games. · Bo — Best 50, worst 90, from 3 games.",
       );
     });
   });

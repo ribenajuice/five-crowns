@@ -1353,4 +1353,20 @@ describe("clutchComebackInstances / mostClutchComeback — criteria 304–306", 
   it("no comeback has ever happened: the no-holder case", () => {
     expect(mostClutchComeback([])).toBeNull();
   });
+
+  it("⚠️ QA gap fix (criterion 319): the LARGER of two distinct, both-legitimate (outright-won) deficits wins — closes a mutation-testing hole where inverting mostClutchComeback's own extreme-selection direction passed every other test in this file unnoticed, because every other multi-instance case here is either a single instance or a tie", () => {
+    const candidates: ClutchCandidate[] = [
+      // g1: a modest 15-point deficit, overturned into a real outright win.
+      row(PLAYER_A, "g1", 75, true),
+      row(PLAYER_B, "g1", 60, false),
+      // g2: a much larger 50-point deficit, also overturned outright.
+      row(PLAYER_C, "g2", 110, true),
+      row(PLAYER_D, "g2", 60, false),
+    ];
+    const instances = clutchComebackInstances(candidates);
+    expect(mostClutchComeback(instances)).toEqual({
+      deficit: 50,
+      instances: [{ playerId: PLAYER_C, gameId: "g2", deficit: 50 }],
+    });
+  });
 });

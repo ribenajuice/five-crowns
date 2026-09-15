@@ -77,20 +77,32 @@ function minimalBoard(): Board {
 }
 
 describe("/ — empty archive (criterion 191)", () => {
-  it("renders the empty state, BoardNav still reachable, and no record card", async () => {
-    const { getBoard } = await import("@/lib/board/queries");
-    vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
+  it(
+    "renders the empty state, BoardNav still reachable, and no record card",
+    async () => {
+      const { getBoard } = await import("@/lib/board/queries");
+      vi.mocked(getBoard).mockResolvedValueOnce({ empty: true });
 
-    const { default: Home } = await import("@/app/page");
-    const element = await Home();
-    const html = renderToStaticMarkup(element);
+      const { default: Home } = await import("@/app/page");
+      const element = await Home();
+      const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No games yet.");
-    expect(html).toContain("Once you save one, the board will show who&#x27;s who.");
-    expect(html).toContain("Add a game");
-    expect(html).toContain("Games");
-    expect(html).not.toContain("games in the record");
-  });
+      expect(html).toContain("No games yet.");
+      expect(html).toContain("Once you save one, the board will show who&#x27;s who.");
+      expect(html).toContain("Add a game");
+      expect(html).toContain("Games");
+      expect(html).not.toContain("games in the record");
+    },
+    // QA fix: this is the first test in the file to `import("@/app/page")` —
+    // a cold transform-and-load of the board page's whole module graph
+    // (every card component, `lib/board/queries`, `lib/ui/copy`'s 1700+
+    // lines) under `fileParallelism`'s full worker concurrency. Observed
+    // flaking past the 5s default under load with no code defect behind
+    // it — the assertions themselves run in milliseconds once the import
+    // resolves. A flaky test is a bug (this project's own QA rule); the fix
+    // here is a longer allowance for the one-time cold import, not a retry.
+    20_000,
+  );
 });
 
 describe("/ — early days (criteria 182, 183)", () => {
@@ -611,8 +623,13 @@ describe("/ — the four personality stats, appended after home advantage (M4 se
     expect(html).toContain("Getting absolutely wrecked");
     expect(html).toContain("Most clutch comeback");
     expect(html).toContain("The metronome");
-    // Every no-holder card renders the same fixed sentence.
-    expect((html.match(/Nobody&#x27;s done this yet\./g) ?? []).length).toBeGreaterThanOrEqual(4);
+    // QA bug fix, M4 second slice: criterion 312 fixes each of these four
+    // its own no-holder sentence — they are NOT the shared generic
+    // "Nobody's done this yet." every other record's no-holder card uses.
+    expect(html).toContain("Nobody&#x27;s numbers look suspicious yet.");
+    expect(html).toContain("Nobody&#x27;s currently getting wrecked.");
+    expect(html).toContain("Nobody&#x27;s clawed one back yet.");
+    expect(html).toContain("Nobody&#x27;s earned a range yet");
   });
 
   it("renders every holder, with the founder's own sentence shapes, and links to its own drill-through", async () => {
@@ -689,8 +706,9 @@ describe("/ — the four personality stats, appended after home advantage (M4 se
 
     expect(html).toContain("The metronome");
     expect(html).toContain("Player E");
-    // Criterion 309: the game count and both ends of the range are plainly on the card.
-    expect(html).toContain("Best 92, worst 58, from 9 games.");
+    // Criterion 309: the game count and both ends of the range are plainly on
+    // the card. QA bug fix, M4 second slice: "Best" is the lower (better) score.
+    expect(html).toContain("Best 58, worst 92, from 9 games.");
     expect(html).toContain("/records/metronome");
 
     // The board's fixed order: home advantage, then cheating, wrecked, comeback, metronome.

@@ -19,10 +19,14 @@ import {
   BOARD_APPBAR_TITLE,
   BOARD_EMPTY_BODY,
   BOARD_EMPTY_TITLE,
+  CLUTCH_COMEBACK_NO_HOLDER_SENTENCE,
+  GETTING_WRECKED_NO_HOLDER_SENTENCE,
   HOME_ADVANTAGE_RECORD_TITLE,
   HOME_ADVANTAGE_RECORD_UNIT,
+  LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
   LOOKS_LIKE_CHEATING_RECORD_TITLE,
   LOOKS_LIKE_CHEATING_RECORD_UNIT,
+  METRONOME_NO_HOLDER_SENTENCE,
   METRONOME_RECORD_TITLE,
   METRONOME_RECORD_UNIT,
   RECORD_TITLES,
@@ -59,7 +63,22 @@ function toCardProps(record: BoardRecord): RecordCardProps {
 
   if (!facts) {
     const title = RECORD_TITLES[record.key];
-    return { title, holderNames: "", value: null, unit: RECORD_UNITS[record.key], sample: null, href, claim: title };
+    // Criterion 312: "getting absolutely wrecked" has its own fixed
+    // no-holder sentence, not this shared builder's generic fallback — every
+    // other record through this path (`toCardProps`) still gets
+    // `RecordCard`'s own default.
+    const noHolderSentence =
+      record.key === "gettingWrecked" ? GETTING_WRECKED_NO_HOLDER_SENTENCE : undefined;
+    return {
+      title,
+      holderNames: "",
+      value: null,
+      unit: RECORD_UNITS[record.key],
+      sample: null,
+      href,
+      claim: title,
+      noHolderSentence,
+    };
   }
 
   const { title, unit, holderNames, value, sample } = facts;
@@ -82,6 +101,11 @@ function toSingleEventCardProps(record: SingleEventBoardRecord): RecordCardProps
 
   if (!facts) {
     const title = SINGLE_EVENT_RECORD_TITLES[record.key];
+    // Criterion 312: "most clutch comeback" has its own fixed no-holder
+    // sentence — every other single-event record through this shared builder
+    // still gets `RecordCard`'s own generic default.
+    const noHolderSentence =
+      record.key === "clutchComeback" ? CLUTCH_COMEBACK_NO_HOLDER_SENTENCE : undefined;
     return {
       title,
       holderNames: "",
@@ -90,6 +114,7 @@ function toSingleEventCardProps(record: SingleEventBoardRecord): RecordCardProps
       sample: null,
       href,
       claim: title,
+      noHolderSentence,
     };
   }
 
@@ -143,6 +168,7 @@ function toLooksLikeCheatingCardProps(record: LooksLikeCheatingBoardRecord): Rec
       sample: null,
       href,
       claim: LOOKS_LIKE_CHEATING_RECORD_TITLE,
+      noHolderSentence: LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE,
     };
   }
 
@@ -170,6 +196,7 @@ function toMetronomeCardProps(record: MetronomeBoardRecord): RecordCardProps {
       sample: null,
       href,
       claim: METRONOME_RECORD_TITLE,
+      noHolderSentence: METRONOME_NO_HOLDER_SENTENCE,
     };
   }
 

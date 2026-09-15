@@ -35,6 +35,14 @@
  * chevron for a plain italic sentence, never styled as a warning — not
  * reachable by any of Stage 1's five records over a non-empty archive, but
  * handled here because the board renders through one shared path regardless.
+ *
+ * ⚠️ **`noHolderSentence`** (M4 second slice, QA fix): the generic
+ * `BOARD_NO_HOLDER_SENTENCE` remains the default for every record that has
+ * never had a bespoke no-holder line, but criterion 312 fixes four of its own
+ * — "Nobody's numbers look suspicious yet.", "Nobody's currently getting
+ * wrecked.", "Nobody's clawed one back yet." and "Nobody's earned a range
+ * yet — two games gets you in." — verbatim, not this shared fallback. The
+ * caller passes its own record's string when it has one.
  */
 import Link from "next/link";
 
@@ -59,6 +67,8 @@ export interface RecordCardProps {
   claim: string;
   /** The instance-list variant (M3 Stage 3) — see this file's own doc comment. `undefined`/empty renders the ordinary card. */
   instances?: readonly RecordCardInstance[];
+  /** This record's own fixed no-holder sentence (criterion 312), when it has one. Falls back to `BOARD_NO_HOLDER_SENTENCE` — see this file's own doc comment. */
+  noHolderSentence?: string;
 }
 
 export function RecordCard({
@@ -70,6 +80,7 @@ export function RecordCard({
   href,
   claim,
   instances,
+  noHolderSentence,
 }: RecordCardProps) {
   if (value === null) {
     return (
@@ -78,7 +89,7 @@ export function RecordCard({
           {title}
         </span>
         <p className="mt-2 font-display text-base italic text-text-muted">
-          {BOARD_NO_HOLDER_SENTENCE}
+          {noHolderSentence ?? BOARD_NO_HOLDER_SENTENCE}
         </p>
       </div>
     );

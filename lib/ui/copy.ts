@@ -869,6 +869,9 @@ export const RECORD_UNITS: Record<BoardRecordKey, string> = {
   gettingWrecked: "games in last place",
 };
 
+/** "Getting absolutely wrecked"'s own no-holder sentence, verbatim (criteria 185, 312, 301: nobody currently has a qualifying run). */
+export const GETTING_WRECKED_NO_HOLDER_SENTENCE = "Nobody's currently getting wrecked.";
+
 /** Lowest average score to one decimal place (criterion 178); every other
  *  record's value is a plain integer count. */
 export function formatRecordValue(key: BoardRecordKey, value: number): string {
@@ -1105,6 +1108,9 @@ export const SINGLE_EVENT_RECORD_UNITS: Record<SingleEventRecordKey, string> = {
   // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15.
   clutchComeback: "points down at hand 9",
 };
+
+/** "Most clutch comeback"'s own no-holder sentence, verbatim (criteria 185, 306, 312: nobody has ever overturned a hand-9 deficit into an outright win). */
+export const CLUTCH_COMEBACK_NO_HOLDER_SENTENCE = "Nobody's clawed one back yet.";
 
 /** Single-event sample line, one instance — verbatim, criterion 233: "on {date}", never "from {n} games". */
 export function singleEventSampleLine(playedOn: string): string {
@@ -1637,6 +1643,8 @@ export function homeAdvantageDisplayFacts(record: {
 /** "Looks like cheating" — the board's own fourth-animal card (criteria 297–299), title and unit verbatim (founder's pick, candidate 1 of 3). */
 export const LOOKS_LIKE_CHEATING_RECORD_TITLE = "Looks like cheating";
 export const LOOKS_LIKE_CHEATING_RECORD_UNIT = "points";
+/** No-holder sentence, verbatim (criteria 185, 312) — unreachable over any real, non-empty archive (`looksLikeCheatingDisplayFacts`'s own doc comment), kept anyway for the same defensive symmetry every other record's no-holder string has. */
+export const LOOKS_LIKE_CHEATING_NO_HOLDER_SENTENCE = "Nobody's numbers look suspicious yet.";
 /** "Wins {rate}% of their games ({wins} of {games}) — the table wins {tableRate}% in those same games ({tableWins} of {tableGames})." — verbatim, criterion 299. */
 export function looksLikeCheatingSampleSentence(
   own: { wins: number; games: number; ratePercent: number },
@@ -1694,9 +1702,22 @@ export function looksLikeCheatingDisplayFacts(record: {
 /** The metronome — the board's other fourth-animal card (criteria 307–309), title and unit verbatim (founder's pick, candidate 2 of 3 — not the plain "Most consistent"). */
 export const METRONOME_RECORD_TITLE = "The metronome";
 export const METRONOME_RECORD_UNIT = "point range";
-/** "Best {high}, worst {low}, from {n} games." — verbatim, criterion 309: the whole honesty burden for a record with no minimum-games floor. */
+/** No-holder sentence, verbatim (criteria 185, 312, 308: nobody has played two or more games yet). */
+export const METRONOME_NO_HOLDER_SENTENCE = "Nobody's earned a range yet — two games gets you in.";
+/**
+ * "Best {high}, worst {low}, from {n} games." — verbatim, criterion 309: the
+ * whole honesty burden for a record with no minimum-games floor.
+ *
+ * ⚠️ **Lower is better in this game** (kickoff decision 1), the same
+ * convention `bestGameEver`/`worstGameEver` (`lib/scoring`) and the player
+ * page's own "Best game"/"Worst game" cards already use — so "Best" states
+ * this holder's own **lowest** final score and "worst" their **highest**,
+ * matching the founder's own worked example verbatim ("Best 58, worst 92" —
+ * 58 the lower number). QA bug, M4 second slice: the two were swapped at the
+ * call site, printing the numerically higher score under "Best".
+ */
 export function metronomeSampleSentence(highest: number, lowest: number, gamesPlayed: number): string {
-  return `Best ${highest}, worst ${lowest}, from ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
+  return `Best ${lowest}, worst ${highest}, from ${gamesPlayed} ${gamesNoun(gamesPlayed)}.`;
 }
 
 export interface MetronomeDisplayFacts {
