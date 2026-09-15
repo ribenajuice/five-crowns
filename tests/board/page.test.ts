@@ -69,6 +69,8 @@ function minimalBoard(): Board {
       { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
     ],
     homeAdvantage: { gapPercentagePoints: null, holders: [] },
+    looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+    metronome: { range: null, holders: [] },
     singleEventRecords: [],
   };
 }
@@ -97,6 +99,8 @@ describe("/ — early days (criteria 182, 183)", () => {
       empty: false,
       archiveGameCount: 3,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -167,6 +171,8 @@ describe("/ — early days (criteria 182, 183)", () => {
       empty: false,
       archiveGameCount: 3,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -198,6 +204,8 @@ describe("/ — early days (criteria 182, 183)", () => {
       empty: false,
       archiveGameCount: 2,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -224,6 +232,8 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
       empty: false,
       archiveGameCount: 10,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [
@@ -271,6 +281,8 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [
         {
           key: "worstGameEver",
@@ -311,6 +323,8 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [
         {
           key: "bestGameEver",
@@ -351,6 +365,8 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [
         {
           key: "catastrophe",
@@ -377,6 +393,8 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
       archiveGameCount: 20,
       earlyDays: false,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
@@ -428,6 +446,8 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: Home } = await import("@/app/page");
@@ -475,6 +495,8 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: Home } = await import("@/app/page");
@@ -494,6 +516,8 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
       records: minimalRecords(),
       singleEventRecords: [],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: Home } = await import("@/app/page");
@@ -526,6 +550,8 @@ describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: Home } = await import("@/app/page");
@@ -543,6 +569,8 @@ describe("/ — every card links to its own drill-through", () => {
       empty: false,
       archiveGameCount: 12,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [

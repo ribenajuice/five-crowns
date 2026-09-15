@@ -273,6 +273,58 @@ export function longestDrought(games: readonly StreakGame[]): Streak {
   return longestStreak(games.map((game) => ({ ...game, won: !game.won })));
 }
 
+/* ------------------------------------------- current last-place streak (300-301) */
+
+/** One game a player played, in enough shape to place it in sequence and know if they finished last in it. */
+export interface LastPlaceGame {
+  gameId: string;
+  playedOn: string;
+  createdAt: string;
+  /** Whether this player held this game's own outright *highest* score (`determineLastPlace`, `./winners.ts`) — shared lasts count, the mirror of a shared win. */
+  finishedLast: boolean;
+}
+
+export interface CurrentLastPlaceStreak {
+  /** This run's own length — "N games running" (criterion 300). Same field name as `Streak.length` so this is a drop-in for `streakDrillThrough` (`lib/board/queries.ts`), which only reads `{ length, gameIds }`. */
+  length: number;
+  /** This run's own games, oldest → newest — the order it was actually played in, same convention `longestStreak` uses. */
+  gameIds: string[];
+}
+
+/**
+ * "Getting absolutely wrecked" (criteria 300–301): the longest **current**
+ * run of finishing last, counted back from this player's own most recent
+ * game until one game breaks it. ⚠️ **Not `longestStreak`'s "longest ever"**
+ * — a ten-game run of lasts that ended three games ago doesn't qualify, no
+ * matter how long it was; only the unbroken tail ending at this player's own
+ * latest game counts. There is no recency window here to name or tune
+ * (criterion 301): a trailing run is current by construction, and this
+ * simply stops walking backward the moment it finds a game that wasn't a
+ * last.
+ *
+ * `games` must be **every game this player played** — nothing else — the
+ * same contract `longestStreak` has; re-sorted here so caller order never
+ * matters.
+ *
+ * ⚠️ **A run of exactly one game does not qualify** (criterion 301, the
+ * criterion's own words: "a run of 1 is not a run and its player is not the
+ * holder") — `null` is returned rather than a length-1 result. A player who
+ * has never finished last, or whose most recent game wasn't a last, also
+ * gets `null`.
+ */
+export function currentLastPlaceStreak(games: readonly LastPlaceGame[]): CurrentLastPlaceStreak | null {
+  const sorted = [...games].sort(compareOldestFirst);
+
+  const gameIds: string[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (!sorted[i]!.finishedLast) break;
+    gameIds.unshift(sorted[i]!.gameId);
+  }
+
+  if (gameIds.length < 2) return null;
+  return { length: gameIds.length, gameIds };
+}
+
 /* ------------------------------------------------------- head-to-head (197-198) */
 
 /** One game both players were in, already resolved to what head-to-head needs from it. */
@@ -663,6 +715,175 @@ export function homeAdvantage(candidates: readonly HomeAdvantageCandidate[]): Ho
   return { holders, gapPercentagePoints: picked.value };
 }
 
+/* ------------------------------------------------- looks like cheating (297-299) */
+
+/** One player's own tallies, restricted to the games they actually played — the input `looksLikeCheating` below is built from. */
+export interface CheatingCandidate {
+  playerId: string;
+  displayName: string;
+  /** This player's own games — the denominator on their own side of the gap (criterion 297: "in the same games they played", never the archive at large). */
+  gamesPlayed: number;
+  /** Their own wins across those same games — shared wins count in full (criterion 297, kickoff decision 1, unchanged here — ⚠️ unlike criterion 304's own named exception for the comeback record below, that exception does not reach this one). */
+  wins: number;
+  /** Every *other* seat's own win, summed across those same games — shared wins count in full for them too. */
+  otherWins: number;
+  /** Every other seat's own game-count, summed across those same games — the sum, across `gamesPlayed` games, of "how many other players were in this one", so it can exceed `gamesPlayed` itself once any game had more than two players. */
+  otherGames: number;
+}
+
+export interface CheatingSide {
+  wins: number;
+  games: number;
+  /** One decimal of a percentage — the precision the gap itself is compared and reported at (same convention as `nemesis`/`homeAdvantage`, above). */
+  ratePercent: number;
+}
+
+export interface CheatingHolder {
+  playerId: string;
+  displayName: string;
+  /** This holder's own game count — never the archive's (criterion 182). */
+  gamesPlayed: number;
+  own: CheatingSide;
+  others: CheatingSide;
+  /** `own.ratePercent - others.ratePercent`, one decimal — the winning gap (criterion 299). */
+  gapPercentagePoints: number;
+}
+
+export interface CheatingResult {
+  /** Every player tied for the largest gap, alphabetical (criterion 181). Empty iff `gapPercentagePoints` is `null`. */
+  holders: CheatingHolder[];
+  gapPercentagePoints: number | null;
+}
+
+/**
+ * "Looks like cheating" (criterion 297, open question 15 — option **C**): the
+ * player with the largest gap between their own win rate and the *combined*
+ * win rate of the other seats, **measured only across the games they
+ * actually played together** — never the archive at large, never a career
+ * rate for the other players computed elsewhere. Both sides are pooled
+ * fractions over the same denominator-family (the holder's own games, and
+ * every other seat's own games within them), exactly the two numbers
+ * criterion 299 asks the card to state: *"their wins over their games,
+ * against the other seats' wins over those same games."*
+ *
+ * ⚠️ **No "gap must be positive" floor** — unlike `nemesis`'s above-rate or
+ * `homeAdvantage`'s gap (both of which exclude zero or below), criterion 297
+ * states no such exclusion for this record: the largest gap wins, whatever
+ * its sign, for as long as there is at least one candidate.
+ *
+ * A candidate with `otherGames === 0` contributes nothing — unreachable for a
+ * real game (`MIN_PLAYERS` is 2, so any game a player is in has at least one
+ * other seat), kept only for the same defensive symmetry `homeAdvantage`
+ * uses for "no other venue."
+ *
+ * Ties are judged on the gap **as displayed**, to one decimal of a
+ * percentage point — `homeAdvantage`'s own tie-judging convention, applied
+ * here to the same kind of two-sided rate comparison.
+ */
+export function looksLikeCheating(candidates: readonly CheatingCandidate[]): CheatingResult {
+  const withGap = candidates
+    .filter((c) => c.gamesPlayed > 0 && c.otherGames > 0)
+    .map((c) => {
+      const ownRate = ratePercent(c.wins, c.gamesPlayed);
+      const othersRate = ratePercent(c.otherWins, c.otherGames);
+      const gap = Math.round((ownRate - othersRate) * 10) / 10;
+      return { ...c, ownRate, othersRate, gap };
+    });
+
+  const picked = pickExtreme(withGap, (c) => c.gap, (candidate, best) => candidate > best);
+  if (!picked) return { holders: [], gapPercentagePoints: null };
+
+  const holders = picked.items
+    .map(
+      (c): CheatingHolder => ({
+        playerId: c.playerId,
+        displayName: c.displayName,
+        gamesPlayed: c.gamesPlayed,
+        own: { wins: c.wins, games: c.gamesPlayed, ratePercent: c.ownRate },
+        others: { wins: c.otherWins, games: c.otherGames, ratePercent: c.othersRate },
+        gapPercentagePoints: c.gap,
+      }),
+    )
+    .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
+
+  return { holders, gapPercentagePoints: picked.value };
+}
+
+/* --------------------------------------------------------- the metronome (307-309) */
+
+/** One player's own final scores, career-wide — the input `metronome` below is built from. */
+export interface MetronomeCandidate {
+  playerId: string;
+  displayName: string;
+  /** Every `game_player.final_score` this player has ever posted — order doesn't matter. */
+  finalScores: readonly number[];
+}
+
+export interface MetronomeHolder {
+  playerId: string;
+  displayName: string;
+  /** `finalScores.length` — stated beside the range so a thin sample (as small as two games, criterion 308) reads honestly rather than being hidden (criterion 309). */
+  gamesPlayed: number;
+  /** `highest - lowest`. */
+  range: number;
+  /** The higher end of the range — the two numbers criterion 309 asks the card to state alongside the count. */
+  highest: number;
+  lowest: number;
+}
+
+export interface MetronomeResult {
+  /** `null` iff `holders` is empty — only reachable when nobody in the archive has played two or more games. */
+  range: number | null;
+  /** Every player tied for the smallest range, alphabetical (criterion 181). */
+  holders: MetronomeHolder[];
+}
+
+/**
+ * The metronome (criteria 307–309): the smallest range between a player's own
+ * highest and lowest ever `final_score`. ⚠️ **The smallest range wins** — the
+ * one gap on the board where lower is the record, not higher.
+ *
+ * ⚠️ **No minimum-games floor** (criterion 308, decision 27, confirmed for
+ * the third time) — **a spread needs two observations, and that is a
+ * definition, not a floor**: a player with fewer than two games is filtered
+ * out below because they have no range at all, not because of a threshold
+ * this function imposes. A player on exactly two games can, and in a small
+ * archive will, hold this record — criterion 309's `gamesPlayed` alongside
+ * `highest`/`lowest` on every holder is the board's one stated mitigation,
+ * not a gate.
+ */
+export function metronome(candidates: readonly MetronomeCandidate[]): MetronomeResult {
+  const withRange = candidates
+    .filter((c) => c.finalScores.length >= 2)
+    .map((c) => {
+      let highest = c.finalScores[0]!;
+      let lowest = c.finalScores[0]!;
+      for (const score of c.finalScores) {
+        if (score > highest) highest = score;
+        if (score < lowest) lowest = score;
+      }
+      return { ...c, highest, lowest, range: highest - lowest };
+    });
+
+  const picked = pickExtreme(withRange, (c) => c.range, (candidate, best) => candidate < best);
+  if (!picked) return { range: null, holders: [] };
+
+  const holders = picked.items
+    .map(
+      (c): MetronomeHolder => ({
+        playerId: c.playerId,
+        displayName: c.displayName,
+        gamesPlayed: c.finalScores.length,
+        range: c.range,
+        highest: c.highest,
+        lowest: c.lowest,
+      }),
+    )
+    .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
+
+  return { range: picked.value, holders };
+}
+
 /* ---------------------------------------------- single-event records (228-232, 240) */
 
 /**
@@ -833,4 +1054,96 @@ export interface BiggestHammering {
 export function biggestHammering(instances: readonly HammeringInstance[]): BiggestHammering | null {
   const picked = pickExtreme(instances, (i) => i.margin, (candidate, best) => candidate > best);
   return picked && { margin: picked.value, instances: picked.items };
+}
+
+/* ------------------------------------------------ most clutch comeback (304-306) */
+
+/**
+ * Hand 9 — the founder's own number (criterion 305), literal, not "any hand".
+ * Safe to index unconditionally: every game is exactly `HANDS_PER_GAME` (11)
+ * hands with every player present for all of them (kickoff decision 2), so
+ * hand `CLUTCH_HAND` exists in every game in the record and there is no
+ * partial-game case to guard against.
+ */
+export const CLUTCH_HAND = 9;
+
+/** One player's own running total at `CLUTCH_HAND` in one game, plus whether they went on to win that game **outright** — everything `clutchComebackInstances` needs per (player, game). */
+export interface ClutchCandidate {
+  playerId: string;
+  gameId: string;
+  /** Their `round_score.running_total` at `CLUTCH_HAND` — equivalently, the sum of their `round_score.score` for hands 1 through `CLUTCH_HAND` (criterion 313: both columns trace to the same stored numbers). */
+  runningTotalAtClutchHand: number;
+  /**
+   * Whether this player was this game's **sole** winner. ⚠️ **A shared win is
+   * `false` here, and only here** — criterion 304's deliberate, named
+   * exception to kickoff decision 1 ("lowest total wins, ties are shared"),
+   * scoped to this record alone: "a comeback is one player coming from
+   * behind and taking it, and two people finishing level is not that story."
+   * Every other definition in this file still shares a win in full; this
+   * field must be computed by the caller from `determineWinners` having
+   * length exactly 1, never re-derived here.
+   */
+  wonOutright: boolean;
+}
+
+/** One player's own deficit at `CLUTCH_HAND` in a game they went on to win outright — most clutch comeback's own unit. */
+export interface ComebackInstance {
+  playerId: string;
+  gameId: string;
+  /** Their own running total at `CLUTCH_HAND` minus that game's own lowest — always > 0 here (criterion 304: level with the leader is not a comeback). */
+  deficit: number;
+}
+
+/**
+ * Every qualifying comeback in the archive (criterion 304): for each game,
+ * each *outright* winner's own deficit at `CLUTCH_HAND` against that game's
+ * own lowest running total at that hand — the game's outright winner(s) who
+ * were themselves already in the lead at `CLUTCH_HAND` (deficit of zero)
+ * contribute nothing, and neither does a game with no outright winner at all
+ * (a shared win, `wonOutright: false` for everyone in it, per criterion
+ * 304's exception). Feeds `mostClutchComeback`, below; the one place this
+ * record computes a deficit, so nothing downstream can reinterpret it
+ * differently.
+ */
+export function clutchComebackInstances(candidates: readonly ClutchCandidate[]): ComebackInstance[] {
+  const byGame = new Map<string, ClutchCandidate[]>();
+  for (const c of candidates) {
+    const arr = byGame.get(c.gameId) ?? [];
+    arr.push(c);
+    byGame.set(c.gameId, arr);
+  }
+
+  const instances: ComebackInstance[] = [];
+  for (const rows of byGame.values()) {
+    const lowest = rows.reduce((min, r) => Math.min(min, r.runningTotalAtClutchHand), Number.POSITIVE_INFINITY);
+    for (const r of rows) {
+      if (!r.wonOutright) continue;
+      const deficit = r.runningTotalAtClutchHand - lowest;
+      if (deficit <= 0) continue; // criterion 304: level with the leader at hand 9 is not a comeback
+      instances.push({ playerId: r.playerId, gameId: r.gameId, deficit });
+    }
+  }
+  return instances;
+}
+
+export interface MostClutchComeback {
+  deficit: number;
+  /** Every (player, game) pair at that deficit — ⚠️ **two different games**, each won outright by a different player (criterion 306); never a tie for the win inside one game, which criterion 304 already excludes before this function ever sees it. */
+  instances: ComebackInstance[];
+}
+
+/**
+ * Most clutch comeback (criteria 304–306): the largest deficit at
+ * `CLUTCH_HAND` that was still overturned into an outright win —
+ * `pickExtreme`'s own O(n) pattern, same as the other single-event records
+ * above. A single-event record, built like best game ever and the
+ * catastrophe: it names the player, the deficit, and (via the caller's own
+ * `RecordGame`) the date and the final score the game ended on. `null` if no
+ * comeback has ever happened — the leader at `CLUTCH_HAND` has won every
+ * time, which criterion 304's outright-win rule makes slightly more likely
+ * in a small archive.
+ */
+export function mostClutchComeback(instances: readonly ComebackInstance[]): MostClutchComeback | null {
+  const picked = pickExtreme(instances, (i) => i.deficit, (candidate, best) => candidate > best);
+  return picked && { deficit: picked.value, instances: picked.items };
 }

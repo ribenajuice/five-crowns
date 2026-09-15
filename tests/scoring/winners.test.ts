@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  determineLastPlace,
   determineWinners,
   finalScore,
   isSharedWin,
@@ -90,5 +91,58 @@ describe("determineWinners — degenerate input", () => {
     expect(
       determineWinners([{ playerId: "Player A", score: Number.NaN }]),
     ).toEqual([]);
+  });
+});
+
+describe("determineLastPlace — criterion 300 ('getting absolutely wrecked'), the mirror of determineWinners", () => {
+  it("picks the single highest score, mirroring determineWinners picking the single lowest", () => {
+    const scores = [
+      { playerId: "Player A", score: 50 },
+      { playerId: "Player B", score: 80 },
+      { playerId: "Player C", score: 110 },
+    ];
+    expect(determineLastPlace(scores)).toEqual(["Player C"]);
+    // The opposite of determineWinners on the exact same input.
+    expect(determineWinners(scores)).toEqual(["Player A"]);
+  });
+
+  it("a shared last counts as last, the mirror of a shared win", () => {
+    const scores = [
+      { playerId: "Player A", score: 50 },
+      { playerId: "Player B", score: 110 },
+      { playerId: "Player C", score: 110 },
+    ];
+    expect(determineLastPlace(scores)).toEqual(["Player B", "Player C"]);
+  });
+
+  it("returns every player when the whole table ties", () => {
+    const all = [
+      { playerId: "Player A", score: 90 },
+      { playerId: "Player B", score: 90 },
+      { playerId: "Player C", score: 90 },
+    ];
+    expect(determineLastPlace(all)).toHaveLength(3);
+  });
+
+  it("keeps last-place players in the sheet's column order", () => {
+    const reversed = [
+      { playerId: "Player C", score: 110 },
+      { playerId: "Player B", score: 110 },
+      { playerId: "Player A", score: 50 },
+    ];
+    expect(determineLastPlace(reversed)).toEqual(["Player C", "Player B"]);
+  });
+
+  it("ignores an incomplete column: it cannot finish last any more than it can win", () => {
+    const partial = [
+      { playerId: "Player A", score: Number.NaN },
+      { playerId: "Player B", score: 109 },
+    ];
+    expect(determineLastPlace(partial)).toEqual(["Player B"]);
+  });
+
+  it("has no last place when nobody played, or every score is unusable", () => {
+    expect(determineLastPlace([])).toEqual([]);
+    expect(determineLastPlace([{ playerId: "Player A", score: Number.NaN }])).toEqual([]);
   });
 });

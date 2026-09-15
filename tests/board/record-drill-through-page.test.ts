@@ -35,6 +35,8 @@ const BOARD_WITH_MOST_WINS = {
   empty: false as const,
   archiveGameCount: 5,
   homeAdvantage: { gapPercentagePoints: null, holders: [] },
+  looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+  metronome: { range: null, holders: [] },
   singleEventRecords: [],
   earlyDays: true,
   records: [
@@ -136,6 +138,8 @@ describe("/records/{key} — a real record", () => {
       empty: false,
       archiveGameCount: 12,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [
@@ -178,6 +182,8 @@ describe("/records/{key} — a real record", () => {
       empty: false,
       archiveGameCount: 6,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -219,6 +225,8 @@ describe("/records/{key} — a real record", () => {
       empty: false,
       archiveGameCount: 4,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -283,6 +291,8 @@ describe("/records/{key} — RECORD_KEYS can never drift from RECORD_TITLES (cod
       empty: false as const,
       archiveGameCount: 5,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: (Object.keys(RECORD_TITLES) as (keyof typeof RECORD_TITLES)[]).map((key) => ({
@@ -331,6 +341,8 @@ const BOARD_WITH_WORST_GAME_EVER = {
     { key: "stalwart" as const, value: null, holders: [], games: [] },
   ],
   homeAdvantage: { gapPercentagePoints: null, holders: [] },
+  looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+  metronome: { range: null, holders: [] },
   singleEventRecords: [
     {
       key: "worstGameEver" as const,
@@ -407,6 +419,8 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
     vi.mocked(getBoard).mockResolvedValueOnce({
       ...BOARD_WITH_WORST_GAME_EVER,
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [{ key: "worstGameEver" as const, value: null, holders: [], games: [] }],
     });
 
@@ -430,6 +444,8 @@ describe("/records/{key} — a single-event record (M3 Stage 3, criteria 233–2
         { key: "stalwart" as const, value: null, holders: [], games: [] },
       ],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
       singleEventRecords: [
         {
           key: "catastrophe" as const,
@@ -507,6 +523,8 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: RecordPage } = await import("@/app/records/[key]/page");
@@ -573,6 +591,8 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: RecordPage } = await import("@/app/records/[key]/page");
@@ -645,6 +665,8 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
           },
         ],
       },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: RecordPage } = await import("@/app/records/[key]/page");
@@ -686,6 +708,8 @@ describe("/records/homeAdvantage — the board's thirteenth record's own drill-t
       records: minimalRecords(),
       singleEventRecords: [],
       homeAdvantage: { gapPercentagePoints: null, holders: [] },
+      looksLikeCheating: { gapPercentagePoints: null, holders: [] },
+      metronome: { range: null, holders: [] },
     });
 
     const { default: RecordPage } = await import("@/app/records/[key]/page");

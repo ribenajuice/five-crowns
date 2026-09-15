@@ -839,6 +839,9 @@ export const RECORD_TITLES: Record<BoardRecordKey, string> = {
   stalwart: "The stalwart",
   drought: "The drought",
   nearlyMan: "The nearly man",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15
+  // (`docs/DESIGN-SYSTEM.md`'s fixed-strings table, candidate 1 of 3).
+  gettingWrecked: "Getting absolutely wrecked",
 };
 /**
  * Record units, verbatim — plain-English, beside the number in `--num-lg`.
@@ -857,6 +860,10 @@ export const RECORD_UNITS: Record<BoardRecordKey, string> = {
   stalwart: "games played",
   drought: "games",
   nearlyMan: "second places",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15.
+  // ⚠️ Deliberately not "games in a row" (already this board's own unit for
+  // "most wins in a row") and not the mockup's "games running".
+  gettingWrecked: "games in last place",
 };
 
 /** Lowest average score to one decimal place (criterion 178); every other
@@ -1040,6 +1047,9 @@ export const SINGLE_EVENT_RECORD_TITLES: Record<SingleEventRecordKey, string> = 
   catastrophe: "The catastrophe",
   cleanestSheet: "Cleanest sheet",
   biggestHammering: "Biggest hammering",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15
+  // (candidate 1 of 3, not "The great escape" or "Back from the dead").
+  clutchComeback: "Most clutch comeback",
 };
 
 /** Record units, verbatim — beside the number, same `--num-lg` treatment as the other seven cards. */
@@ -1049,6 +1059,8 @@ export const SINGLE_EVENT_RECORD_UNITS: Record<SingleEventRecordKey, string> = {
   catastrophe: "points in one hand",
   cleanestSheet: "zero-point hands",
   biggestHammering: "point margin",
+  // Milestone 4, second slice (criterion 312) — the founder's pick, 2026-09-15.
+  clutchComeback: "points down at hand 9",
 };
 
 /** Single-event sample line, one instance — verbatim, criterion 233: "on {date}", never "from {n} games". */
