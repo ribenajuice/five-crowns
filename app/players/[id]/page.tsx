@@ -8,6 +8,7 @@ import {
   getPlayerHeadToHead,
   getPlayerRosterStats,
   getPlayerStreaks,
+  getPlayerVenueStats,
   nemesisFromHeadToHead,
   type HeadToHeadRow as HeadToHeadRowData,
 } from "@/lib/players/rivalry";
@@ -16,6 +17,7 @@ import { AppBar } from "@/components/AppBar";
 import { Banner } from "@/components/Banner";
 import { ButtonLink } from "@/components/Button";
 import { ByRosterRow } from "@/components/ByRosterRow";
+import { ByVenueRow } from "@/components/ByVenueRow";
 import { GameRow } from "@/components/GameRow";
 import { HandTrendBars } from "@/components/HandTrendBars";
 import { HeadToHeadRow } from "@/components/HeadToHeadRow";
@@ -28,6 +30,7 @@ import {
   MERGE_ENTRY_POINT_LABEL,
   MERGE_SUCCESS_TITLE,
   NEMESIS_CARD_TITLE,
+  NO_LOCATION_ROW,
   PERSONAL_GAME_CARD_BEST_LABEL,
   PERSONAL_GAME_CARD_WORST_LABEL,
   PERSONAL_RECORD_DROUGHT_TITLE,
@@ -38,6 +41,8 @@ import {
   PLAYER_BEST_WORST_GAME_HEADING,
   PLAYER_BY_ROSTER_HEADING,
   PLAYER_BY_ROSTER_SAMPLE_LINE,
+  PLAYER_BY_VENUE_HEADING,
+  PLAYER_BY_VENUE_SAMPLE_LINE,
   PLAYER_HAND_PROFILE_HEADING,
   PLAYER_HEAD_TO_HEAD_EMPTY_SENTENCE,
   PLAYER_HEAD_TO_HEAD_HEADING,
@@ -222,11 +227,12 @@ function nemesisFacts(playerId: string, rows: readonly HeadToHeadRowData[]): Nem
  */
 async function renderPopulatedBody(playerId: string, player: PlayerPageData) {
   const facts = await getPlayerGameFacts(playerId);
-  const [headToHeadRows, rosterStats, streaks, distributions] = await Promise.all([
+  const [headToHeadRows, rosterStats, streaks, distributions, venueStats] = await Promise.all([
     getPlayerHeadToHead(playerId, facts),
     getPlayerRosterStats(playerId, facts),
     getPlayerStreaks(playerId, facts),
     getPlayerDistributions(playerId, facts),
+    getPlayerVenueStats(playerId, facts),
   ]);
   const nemesis = nemesisFacts(playerId, headToHeadRows);
 
@@ -387,6 +393,33 @@ async function renderPopulatedBody(playerId: string, player: PlayerPageData) {
               )}`}
             />
           ) : null}
+        </div>
+      </div>
+
+      {/*
+       * M3 Stage 4 (criteria 256–258): "By venue" — directly below Stage 3's
+       * "Best and worst game" section, above this player's own games list,
+       * so nothing above it moves. Always rendered (never a missing
+       * section): `venueStats` always carries at least the "No location"
+       * row, even for a player whose only games have no location.
+       */}
+      <div>
+        <h2 className="mb-1 font-display text-lg font-bold">{PLAYER_BY_VENUE_HEADING}</h2>
+        <p className="mb-2 text-sm text-text-muted">{PLAYER_BY_VENUE_SAMPLE_LINE}</p>
+        <div className="rounded-[var(--radius)] border border-line bg-surface p-4">
+          <ul>
+            {venueStats.map((v) => (
+              <ByVenueRow
+                key={v.locationId ?? "no-location"}
+                locationId={v.locationId}
+                locationName={v.locationName ?? NO_LOCATION_ROW}
+                gamesPlayed={v.gamesPlayed}
+                wins={v.wins}
+                winRate={v.winRate}
+                average={v.average}
+              />
+            ))}
+          </ul>
         </div>
       </div>
 

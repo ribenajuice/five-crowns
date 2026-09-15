@@ -135,6 +135,21 @@ import {
   villainsRowSampleCaption,
 } from "@/lib/ui/copy";
 import type { FunFact } from "@/lib/scoring/facts";
+import type { ResolvedGamesFilter } from "@/lib/games/queries";
+import {
+  formatHomeAdvantageGap,
+  gamesFilterClauseRoster,
+  gamesFilterClauseVenue,
+  gamesFilterClauses,
+  gamesFilterContext,
+  gamesFilterZeroMatchesBody,
+  homeAdvantageDisplayFacts,
+  homeAdvantageHolderLine,
+  homeAdvantageSampleSentence,
+  venueGamesHeading,
+  venuePlayersSampleLine,
+  venueZeroGamesBody,
+} from "@/lib/ui/copy";
 
 const BANNED_WORDS = [
   "checked",
@@ -1169,6 +1184,118 @@ describe("Milestone 4, first slice — fun facts (PRD criteria 281–293)", () =
       expect(flatlinerSentence(flatlinerFact)).toContain("exactly nothing");
       expect(comebackSentence(comebackFact)).toContain("Dev");
       expect(comebackSentence(comebackFact)).toContain("gave up 44 points");
+    });
+  });
+});
+
+describe("Milestone 3 Stage 4 — place, time, and the filters", () => {
+  it("venueGamesHeading/venuePlayersSampleLine/venueZeroGamesBody name the venue", () => {
+    expect(venueGamesHeading("Player E's")).toBe("Player E's's games");
+    expect(venuePlayersSampleLine("Player E's")).toBe(
+      "Everyone who's played at Player E's, most games here first.",
+    );
+    expect(venueZeroGamesBody("The Rec Hall")).toBe("Nothing saved so far happened at The Rec Hall.");
+  });
+
+  describe("gamesFilterClauses / gamesFilterContext / gamesFilterZeroMatchesBody (criteria 262–264)", () => {
+    it("a venue-only filter reads 'At {venue}'", () => {
+      const filter: ResolvedGamesFilter = { location: { kind: "venue", id: "loc1", name: "Player E's" } };
+      expect(gamesFilterClauses(filter)).toEqual(["At Player E's"]);
+      expect(gamesFilterContext(gamesFilterClauses(filter), 6)).toBe("At Player E's · 6 games");
+    });
+
+    it("`?location=none` reads the bare 'No location' clause, with no 'At' prefix", () => {
+      const filter: ResolvedGamesFilter = { location: { kind: "none" } };
+      expect(gamesFilterClauses(filter)).toEqual(["No location"]);
+    });
+
+    it("a roster-only filter capitalises 'With {roster}'", () => {
+      const filter: ResolvedGamesFilter = { roster: { id: "r1", name: "Player A & Player B" } };
+      expect(gamesFilterClauses(filter)).toEqual(["With Player A & Player B"]);
+    });
+
+    it("combined filters: the venue clause first, the roster clause lower-cased", () => {
+      const filter: ResolvedGamesFilter = {
+        location: { kind: "venue", id: "loc1", name: "Player E's" },
+        roster: { id: "r1", name: "Player A & Player B" },
+      };
+      expect(gamesFilterClauses(filter)).toEqual(["At Player E's", "with Player A & Player B"]);
+    });
+
+    it("gamesFilterZeroMatchesBody states the clause without the count", () => {
+      expect(gamesFilterZeroMatchesBody(["At The Rec Hall"])).toBe("At The Rec Hall.");
+      expect(gamesFilterZeroMatchesBody(["At Player E's", "with Player A & Player B"])).toBe(
+        "At Player E's, with Player A & Player B.",
+      );
+    });
+
+    it("gamesFilterClauseVenue/gamesFilterClauseRoster match the fixed templates verbatim", () => {
+      expect(gamesFilterClauseVenue("The Deck")).toBe("At The Deck");
+      expect(gamesFilterClauseRoster("Thursday crew", true)).toBe("With Thursday crew");
+      expect(gamesFilterClauseRoster("Thursday crew", false)).toBe("with Thursday crew");
+    });
+  });
+
+  describe("home advantage (criteria 253–254, 268–269)", () => {
+    it("formatHomeAdvantageGap always signs the value, one decimal, never a % sign", () => {
+      expect(formatHomeAdvantageGap(41.7)).toBe("+41.7");
+      expect(formatHomeAdvantageGap(41.7)).not.toContain("%");
+      expect(formatHomeAdvantageGap(100)).toBe("+100.0");
+    });
+
+    it("homeAdvantageHolderLine / homeAdvantageSampleSentence are the verbatim templates", () => {
+      expect(homeAdvantageHolderLine("Sam", "Player E's")).toBe("Sam, Player E's");
+      expect(
+        homeAdvantageSampleSentence({ wins: 4, games: 6 }, { wins: 2, games: 14 }),
+      ).toBe("won 4 of 6 there, 2 of 14 elsewhere");
+    });
+
+    it("homeAdvantageDisplayFacts returns null when nobody has a positive gap", () => {
+      expect(homeAdvantageDisplayFacts({ gapPercentagePoints: null, holders: [] })).toBeNull();
+    });
+
+    function oneHolder() {
+      return {
+        playerId: "p1",
+        displayName: "Sam",
+        locationId: "loc1",
+        locationName: "Player E's",
+        here: { wins: 4, games: 6, ratePercent: 66.7 },
+        elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+        gapPercentagePoints: 41.7,
+      };
+    }
+
+    it("a single holder's sample never repeats their own name", () => {
+      const facts = homeAdvantageDisplayFacts({ gapPercentagePoints: 41.7, holders: [oneHolder()] });
+      expect(facts).not.toBeNull();
+      expect(facts!.title).toBe("Home advantage");
+      expect(facts!.unit).toBe("points");
+      expect(facts!.holderNames).toBe("Sam, Player E's");
+      expect(facts!.value).toBe("+41.7");
+      expect(facts!.sample).toBe("won 4 of 6 there, 2 of 14 elsewhere");
+      expect(facts!.sample.startsWith("Sam")).toBe(false);
+      assertNoBannedWords(facts!.claim);
+    });
+
+    it("⚠️ criterion 254: joint holders each get their own name-prefixed two-sided sentence, joined by ' · '", () => {
+      const second = {
+        playerId: "p2",
+        displayName: "Player A",
+        locationId: "loc2",
+        locationName: "The Lake House",
+        here: { wins: 3, games: 5, ratePercent: 60 },
+        elsewhere: { wins: 1, games: 17, ratePercent: 5.9 },
+        gapPercentagePoints: 41.7,
+      };
+      const facts = homeAdvantageDisplayFacts({
+        gapPercentagePoints: 41.7,
+        holders: [second, oneHolder()],
+      });
+      expect(facts!.holderNames).toBe("Player A, The Lake House & Sam, Player E's");
+      expect(facts!.sample).toBe(
+        "Player A — won 3 of 5 there, 1 of 17 elsewhere · Sam — won 4 of 6 there, 2 of 14 elsewhere",
+      );
     });
   });
 });

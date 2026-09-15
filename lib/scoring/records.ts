@@ -473,6 +473,182 @@ export function handsBledOn(means: readonly HandMean[]): HandsBledOn | null {
   return { mean: best, hands: means.filter((m) => m.mean === best).map((m) => m.label) };
 }
 
+/* ---------------------------------------------------- venue breakdown (250, 256-257, 259, 261) */
+
+/** One player's own participation in one game, tagged with that game's venue — the input a venue breakdown is built from. */
+export interface VenueParticipation {
+  /** `null` for a game with no location — never folded into a real venue's own numbers (criterion 251). */
+  locationId: string | null;
+  locationName: string | null;
+  playerId: string;
+  finalScore: number;
+  /** Whether this player held this game's own outright lowest score (M1's win, ties shared). */
+  won: boolean;
+}
+
+export interface VenueBreakdownRow {
+  locationId: string | null;
+  locationName: string | null;
+  playerId: string;
+  gamesPlayed: number;
+  wins: number;
+  /** `wins / gamesPlayed`, a fraction 0–1 — format to one decimal of a percentage at render time. */
+  winRate: number;
+  /** This player's own average final score at this venue (criterion 178's function, restricted). */
+  average: number;
+}
+
+/**
+ * A venue slice, defined once (criterion 250) and read from two directions
+ * (decision 29): grouped by (venue, player), never a second mean or a second
+ * win-rate calculation anywhere else in the app. A player's own by-venue rows
+ * (`lib/players/rivalry.ts`'s `getPlayerVenueStats`) call this with one
+ * player's own participations, which — because `playerId` never varies in
+ * that input — yields one row per venue for that player. A venue's own
+ * per-player table (`lib/locations/queries.ts`'s `getVenuePage`) calls this
+ * with one venue's own participations, which — because `locationId` never
+ * varies there — yields one row per player at that venue. Same function,
+ * different scoping at the call site; neither caller is "the real one."
+ *
+ * `won` must already be resolved per game (M1's winner rule, ties shared) by
+ * the caller — this function only tallies, it never determines a winner
+ * itself (criterion 250: no second winner rule).
+ */
+export function venueBreakdown(rows: readonly VenueParticipation[]): VenueBreakdownRow[] {
+  const byKey = new Map<
+    string,
+    { locationId: string | null; locationName: string | null; playerId: string; scores: number[]; wins: number }
+  >();
+
+  for (const row of rows) {
+    const key = `${row.locationId ?? ""}::${row.playerId}`;
+    const entry = byKey.get(key) ?? {
+      locationId: row.locationId,
+      locationName: row.locationName,
+      playerId: row.playerId,
+      scores: [],
+      wins: 0,
+    };
+    entry.scores.push(row.finalScore);
+    if (row.won) entry.wins += 1;
+    byKey.set(key, entry);
+  }
+
+  return [...byKey.values()].map((entry) => {
+    const avg = averageFinalScore(entry.scores)!;
+    return {
+      locationId: entry.locationId,
+      locationName: entry.locationName,
+      playerId: entry.playerId,
+      gamesPlayed: entry.scores.length,
+      wins: entry.wins,
+      winRate: entry.scores.length > 0 ? entry.wins / entry.scores.length : 0,
+      average: avg.average,
+    };
+  });
+}
+
+/* ------------------------------------------------------- home advantage (253-254) */
+
+/** One (player, venue) pair's raw tallies — the input `homeAdvantage` below is built from. */
+export interface HomeAdvantageCandidate {
+  playerId: string;
+  displayName: string;
+  locationId: string;
+  locationName: string;
+  hereWins: number;
+  hereGames: number;
+  /** Every *other* known venue's games/wins combined (criterion 253: unlocated games are in neither side). */
+  elsewhereWins: number;
+  elsewhereGames: number;
+}
+
+export interface HomeAdvantageSide {
+  wins: number;
+  games: number;
+  /** One decimal of a percentage — the precision ties are judged at (criterion 254). */
+  ratePercent: number;
+}
+
+export interface HomeAdvantageHolder {
+  playerId: string;
+  displayName: string;
+  locationId: string;
+  locationName: string;
+  here: HomeAdvantageSide;
+  elsewhere: HomeAdvantageSide;
+  /** `here.ratePercent - elsewhere.ratePercent`, one decimal, always > 0 (criterion 254: zero or below never holds it). */
+  gapPercentagePoints: number;
+}
+
+export interface HomeAdvantageResult {
+  /** Every (player, venue) pair tied for the highest gap, alphabetical by player then venue (criterion 254). Empty iff `gapPercentagePoints` is `null`. */
+  holders: HomeAdvantageHolder[];
+  gapPercentagePoints: number | null;
+}
+
+function ratePercent(wins: number, games: number): number {
+  return games === 0 ? 0 : Math.round((wins / games) * 1000) / 10;
+}
+
+/**
+ * Home advantage (criteria 253–254) — the (player, venue) pair with the
+ * largest gap between a player's own win rate at that venue and their win
+ * rate everywhere else they're known to have played. ⚠️ **No minimum-games
+ * floor, at either sample size** (decision 27) — three guards stand in its
+ * place, the same *shape* `nemesis()` (above) uses for an above-rate of zero,
+ * not the same function:
+ *
+ * - A candidate with no games at any *other* known venue (`elsewhereGames ===
+ *   0`) contributes no pair at all — there is nothing to compare against, and
+ *   they are simply absent, not a withheld case.
+ * - A gap of zero or less never holds the record, at any sample size —
+ *   `nemesis`'s own "zero never wins" rule, applied to a difference instead
+ *   of a rate.
+ * - **Ties are judged on the gap as displayed**, to one decimal of a
+ *   percentage point, exactly like `nemesis`'s own above-rate comparison —
+ *   two pairs whose printed gap matches are always joint holders.
+ *
+ * Joint holders are every (player, venue) pair on the highest gap, sorted
+ * alphabetically by player then venue (criterion 254).
+ */
+export function homeAdvantage(candidates: readonly HomeAdvantageCandidate[]): HomeAdvantageResult {
+  const withGap = candidates
+    .filter((c) => c.elsewhereGames > 0)
+    .map((c) => {
+      const hereRate = ratePercent(c.hereWins, c.hereGames);
+      const elsewhereRate = ratePercent(c.elsewhereWins, c.elsewhereGames);
+      const gap = Math.round((hereRate - elsewhereRate) * 10) / 10;
+      return { ...c, hereRate, elsewhereRate, gap };
+    });
+
+  let best = 0;
+  for (const c of withGap) {
+    if (c.gap > best) best = c.gap;
+  }
+  if (best <= 0) return { holders: [], gapPercentagePoints: null };
+
+  const holders = withGap
+    .filter((c) => c.gap === best)
+    .map(
+      (c): HomeAdvantageHolder => ({
+        playerId: c.playerId,
+        displayName: c.displayName,
+        locationId: c.locationId,
+        locationName: c.locationName,
+        here: { wins: c.hereWins, games: c.hereGames, ratePercent: c.hereRate },
+        elsewhere: { wins: c.elsewhereWins, games: c.elsewhereGames, ratePercent: c.elsewhereRate },
+        gapPercentagePoints: c.gap,
+      }),
+    )
+    .sort(
+      (a, b) =>
+        compareDisplayNames(a.displayName, b.displayName) || compareDisplayNames(a.locationName, b.locationName),
+    );
+
+  return { holders, gapPercentagePoints: best };
+}
+
 /* ---------------------------------------------- single-event records (228-232, 240) */
 
 /**

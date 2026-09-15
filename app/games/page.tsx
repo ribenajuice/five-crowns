@@ -1,27 +1,84 @@
+import { notFound } from "next/navigation";
+
 import { requireGroupSession } from "@/lib/auth/session";
+import { listGames, resolveGamesFilter } from "@/lib/games/queries";
 import { AppBar } from "@/components/AppBar";
 import { ButtonLink } from "@/components/Button";
 import { GameRow } from "@/components/GameRow";
 import { IndexNav } from "@/components/IndexNav";
 import { StatsNavLink } from "@/components/StatsNavLink";
-import { listGames } from "@/lib/games/queries";
+import {
+  GAMES_FILTER_CLEAR_BUTTON,
+  GAMES_FILTER_ZERO_MATCHES_TITLE,
+  gamesFilterClauses,
+  gamesFilterContext,
+  gamesFilterZeroMatchesBody,
+} from "@/lib/ui/copy";
 
 /**
  * The games list — newest first: date, venue or "No location", roster name,
  * and the winner or winners (PRD criterion 69). Empty state offers "add a
  * game" rather than rendering blank (criterion 72).
+ *
+ * M3 Stage 4 (criteria 262–264): `?location=`/`?roster=`, URL-addressable and
+ * combinable, narrow which rows this same list fetches — never how a row
+ * renders, and never a second list format (this is the identical component
+ * every board drill-through and the venue page's own games list already
+ * render through). An unknown, deleted or malformed value 404s rather than
+ * silently falling back to the unfiltered list (criterion 263).
  */
 export const dynamic = "force-dynamic";
 
-export default async function GamesPage() {
+interface GamesPageSearchParams {
+  location?: string | string[];
+  roster?: string | string[];
+}
+
+/** A repeated query param (`?location=a&location=b`) arrives as a `string[]`
+ *  from Next.js — treated as malformed rather than silently taking the
+ *  first value, so it 404s the same as any other malformed filter value
+ *  (criterion 263), instead of reaching the db layer as an array bind. */
+function singleValue(param: string | string[] | undefined): string | undefined {
+  return Array.isArray(param) ? undefined : param;
+}
+
+export default async function GamesPage({
+  searchParams,
+}: {
+  searchParams: Promise<GamesPageSearchParams>;
+}) {
   await requireGroupSession();
-  const games = await listGames();
+  const raw = await searchParams;
+  if (Array.isArray(raw.location) || Array.isArray(raw.roster)) notFound();
+  const location = singleValue(raw.location);
+  const roster = singleValue(raw.roster);
+
+  const hasFilterParams = location !== undefined || roster !== undefined;
+  const resolvedFilter = hasFilterParams ? await resolveGamesFilter({ location, roster }) : undefined;
+  if (hasFilterParams && !resolvedFilter) notFound();
+
+  const clauses = resolvedFilter ? gamesFilterClauses(resolvedFilter) : [];
+  const isFiltered = clauses.length > 0;
+
+  const games = await listGames(
+    resolvedFilter
+      ? { location: resolvedFilter.location, rosterId: resolvedFilter.roster?.id }
+      : undefined,
+  );
 
   return (
     <>
-      <AppBar title="Games" context="Five Crowns Ledger" />
+      <AppBar
+        title="Games"
+        context={isFiltered ? gamesFilterContext(clauses, games.length) : "Five Crowns Ledger"}
+      />
       <main className="mx-auto w-full max-w-read px-4 py-6">
         <div className="flex flex-col gap-4">
+          {isFiltered ? (
+            <ButtonLink href="/games" variant="ghost" fullWidth>
+              {GAMES_FILTER_CLEAR_BUTTON}
+            </ButtonLink>
+          ) : null}
           <ButtonLink href="/games/new">Add a game</ButtonLink>
           {/* Criterion 174: always rendered, even against the empty state below —
               the three index pages are worth reaching before the archive has a
@@ -30,7 +87,12 @@ export default async function GamesPage() {
           {/* Criterion 236: reachable in one tap from the games list too, same
               "always reachable" precedent as IndexNav above it. */}
           <StatsNavLink />
-          {games.length === 0 ? (
+          {isFiltered && games.length === 0 ? (
+            <div className="rounded-[var(--radius)] border border-line bg-surface p-6">
+              <p className="mb-2 font-bold">{GAMES_FILTER_ZERO_MATCHES_TITLE}</p>
+              <p className="text-text-muted">{gamesFilterZeroMatchesBody(clauses)}</p>
+            </div>
+          ) : games.length === 0 ? (
             <div className="rounded-[var(--radius)] border border-line bg-surface p-6">
               <p className="mb-2 font-bold">Nothing in the book yet.</p>
               <p className="text-text-muted">

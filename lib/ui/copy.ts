@@ -15,6 +15,7 @@ import {
   rosterDisplayName,
   type GridValidation,
   type HandLabel,
+  type HomeAdvantageHolder,
 } from "@/lib/scoring";
 import type {
   BoardRecord,
@@ -24,6 +25,7 @@ import type {
   SingleEventRecordKey,
 } from "@/lib/board/queries";
 import type { FunFact } from "@/lib/scoring/facts";
+import type { ResolvedGamesFilter } from "@/lib/games/queries";
 
 export const CAMERA_BUTTON_LABEL = "Take a photo";
 export const GALLERY_BUTTON_LABEL = "Choose a photo";
@@ -61,6 +63,9 @@ export const PASSING_STATEMENT =
 export const TOO_FEW_PLAYERS_MESSAGE =
   "Add at least two players before this can be saved.";
 export const NO_LOCATION_GAMES_LIST = "No location";
+
+/** A stat with no games behind it — a never-used venue's average, an empty day/month row (docs/DESIGN-SYSTEM.md's fixed-strings table). Never a `0.0`. */
+export const NO_DATA_VALUE = "–";
 
 /**
  * The daily upload cap (security review, not in the design system's fixed
@@ -1381,4 +1386,149 @@ export function funFactDisplay(fact: FunFact): FunFactDisplay {
     case "collectiveTrivia":
       return { sentence: collectiveTriviaSentence(fact), href: null };
   }
+}
+
+/* ------------------------------ Milestone 3 Stage 4: place, time, filters */
+
+/** `docs/DESIGN-SYSTEM.md` fixed-strings table — venue page. */
+export const VENUE_PAGE_BACK_LABEL = "Back to places";
+export const VENUE_PLAYERS_HEADING = "Players here";
+export function venuePlayersSampleLine(venue: string): string {
+  return `Everyone who's played at ${venue}, most games here first.`;
+}
+/** "{Venue}'s games" — the same `{Entity}'s games` template `playerGamesHeading`/`rosterGamesHeading` already use. */
+export function venueGamesHeading(venue: string): string {
+  return `${venue}'s games`;
+}
+export const VENUE_ZERO_GAMES_TITLE = "No games here yet.";
+export function venueZeroGamesBody(venue: string): string {
+  return `Nothing saved so far happened at ${venue}.`;
+}
+
+/** Player page, "By venue" section (criteria 256–258). */
+export const PLAYER_BY_VENUE_HEADING = "By venue";
+export const PLAYER_BY_VENUE_SAMPLE_LINE =
+  "This player's wins, win rate and average score at each venue they've played at.";
+
+/** Games list filter (criteria 262–264). */
+export function gamesFilterClauseVenue(venue: string): string {
+  return `At ${venue}`;
+}
+/** "with {roster}" (lower-case, combined) / "With {roster}" (capitalised, sole clause). */
+export function gamesFilterClauseRoster(roster: string, soleClause: boolean): string {
+  return soleClause ? `With ${roster}` : `with ${roster}`;
+}
+/**
+ * The active filter's own clause(s), in fixed order (venue/no-location, then
+ * roster) — `[]` when neither `?location=` nor `?roster=` was supplied, the
+ * page's own signal to render the plain, unfiltered screen. The roster
+ * clause capitalises itself only when it's the sole clause (design system,
+ * "Games filter clause — roster").
+ */
+export function gamesFilterClauses(filter: ResolvedGamesFilter): string[] {
+  const clauses: string[] = [];
+  if (filter.location) {
+    clauses.push(
+      filter.location.kind === "none"
+        ? NO_LOCATION_GAMES_LIST
+        : gamesFilterClauseVenue(filter.location.name),
+    );
+  }
+  if (filter.roster) {
+    clauses.push(gamesFilterClauseRoster(filter.roster.name, clauses.length === 0));
+  }
+  return clauses;
+}
+/** "{Clause}[, {clause}] · {n} games" — the filtered `AppBar`'s own context line. */
+export function gamesFilterContext(clauses: readonly string[], gameCount: number): string {
+  return `${clauses.join(", ")} · ${gameCount} ${gamesNoun(gameCount)}`;
+}
+export const GAMES_FILTER_CLEAR_BUTTON = "Clear filter";
+export const GAMES_FILTER_ZERO_MATCHES_TITLE = "No games match this filter.";
+/** "{Clause}[, {clause}]." — the zero-matches card's own body line. */
+export function gamesFilterZeroMatchesBody(clauses: readonly string[]): string {
+  return `${clauses.join(", ")}.`;
+}
+
+/**
+ * Stage 4 follow-up — the entry points into `?location=`/`?roster=` (design
+ * system: "Games filter, entry points"). One fixed label for both: `PlaceRow`
+ * (places index) links to `/games?location={id}`, `ByRosterRow` (player
+ * page, "By roster") links to `/games?roster={id}` — the same words either
+ * way, since both are the identical "narrow the games list to just this" action.
+ */
+export const SEE_ONLY_THESE_GAMES_LABEL = "See only these games";
+
+/** `/stats` — day of the week and time of year (criteria 265–267). */
+export const STATS_DAY_OF_WEEK_HEADING = "Day of the week";
+export const STATS_DAY_OF_WEEK_SAMPLE_LINE =
+  "Games played and the mean final score posted, by day of the week.";
+export const STATS_TIME_OF_YEAR_HEADING = "Time of year";
+export const STATS_TIME_OF_YEAR_SAMPLE_LINE =
+  "Games played and the mean final score posted, by calendar month.";
+
+/** Home advantage — the board's thirteenth record (criteria 253–254, 268–270). */
+export const HOME_ADVANTAGE_RECORD_TITLE = "Home advantage";
+/** Percentage points — never a `%` sign (criterion 253). */
+export const HOME_ADVANTAGE_RECORD_UNIT = "points";
+/** "{Player}, {Venue}" — one holder's own line, joined with every other tied pair via `rosterDisplayName`'s existing "A, B & C" grammar. */
+export function homeAdvantageHolderLine(displayName: string, locationName: string): string {
+  return `${displayName}, ${locationName}`;
+}
+/** "won {n} of {m} there, {p} of {q} elsewhere" — verbatim, criterion 253. */
+export function homeAdvantageSampleSentence(
+  here: { wins: number; games: number },
+  elsewhere: { wins: number; games: number },
+): string {
+  return `won ${here.wins} of ${here.games} there, ${elsewhere.wins} of ${elsewhere.games} elsewhere`;
+}
+/** "+41.7" — the gap, always positive (criterion 254), signed to one decimal. */
+export function formatHomeAdvantageGap(gapPercentagePoints: number): string {
+  return `+${gapPercentagePoints.toFixed(1)}`;
+}
+
+export interface HomeAdvantageDisplayFacts {
+  title: string;
+  unit: string;
+  /** Alphabetical by player then venue — every tied pair, "A, B & C" grammar. */
+  holderNames: string;
+  value: string;
+  /** A single holder's own two-sided sentence, or every holder's own sentence prefixed with their name and joined by " · " (criterion 254). */
+  sample: string;
+  claim: string;
+}
+
+/**
+ * `HomeAdvantageBoardRecord`'s display facts — the home-advantage counterpart
+ * to `recordDisplayFacts`/`singleEventDisplayFacts` above, so the board, its
+ * drill-through and every string it prints can never independently drift.
+ * `null` when nobody has a positive gap (criterion 254's no-holder case).
+ *
+ * Takes the plain `HomeAdvantageHolder` shape rather than
+ * `HomeAdvantageBoardRecord["holders"]` itself (which also carries each
+ * pair's own `games`, irrelevant here) — `HomeAdvantageBoardRecord` still
+ * satisfies this parameter structurally, so every real call site is
+ * unaffected.
+ */
+export function homeAdvantageDisplayFacts(record: {
+  gapPercentagePoints: number | null;
+  holders: readonly HomeAdvantageHolder[];
+}): HomeAdvantageDisplayFacts | null {
+  if (record.gapPercentagePoints === null || record.holders.length === 0) return null;
+
+  const title = HOME_ADVANTAGE_RECORD_TITLE;
+  const unit = HOME_ADVANTAGE_RECORD_UNIT;
+  const value = formatHomeAdvantageGap(record.gapPercentagePoints);
+  const holderNames = rosterDisplayName(
+    record.holders.map((h) => homeAdvantageHolderLine(h.displayName, h.locationName)),
+  );
+  const sample =
+    record.holders.length === 1
+      ? homeAdvantageSampleSentence(record.holders[0]!.here, record.holders[0]!.elsewhere)
+      : record.holders
+          .map((h) => `${h.displayName} — ${homeAdvantageSampleSentence(h.here, h.elsewhere)}`)
+          .join(" · ");
+  const claim = `${title}: ${holderNames}, ${value} ${unit}, ${sample}`;
+
+  return { title, unit, holderNames, value, sample, claim };
 }

@@ -5,18 +5,22 @@
  * averages tables (every player's, every roster's). Best/worst game ever
  * also render here (criterion 241), from the **same** `bestGameEver` /
  * `worstGameEver` functions the board is built on — never a second
- * implementation — so the two screens cannot disagree.
+ * implementation — so the two screens cannot disagree. Stage 4 adds two more
+ * plain tables, day of the week and time of year (criteria 265–267).
  *
  * `getStatsPage()` is this module's one entry point: **three bounded
  * queries** (every game, every `game_player` row, every `round_score` row)
  * — the identical shape `lib/board/queries.ts`'s `getBoard()` uses, so this
- * page's own query count does not grow with the archive either (criterion
- * 248). No `roster_member` query: a roster's games are, by construction,
+ * page's own query count does not grow with the archive either (criteria
+ * 248, 273). No `roster_member` query: a roster's games are, by construction,
  * every game whose `rosterId` matches (exact-set matching,
  * `lib/games/save.ts`), so grouping the already-fetched `game_player` rows
  * by their game's `rosterId` **is** that roster's own score list — gathered,
  * not rebuilt, the same shape spec decision 15 already established for
- * per-roster win rates.
+ * per-roster win rates. Stage 4's two time tables are built the same way:
+ * `gamePlayerRows` (query 2) tagged with each game's own `playedOn` (already
+ * in `gamesById`, from query 1) is all `dayOfWeekTable`/`timeOfYearTable`
+ * (`lib/scoring/calendar.ts`) need — no third table, no fourth query.
  *
  * ⚠️ **Nothing here is cached, precomputed or summarised** (criterion 246,
  * restating 189): a delete, an edit or a merge is reflected on the very next
@@ -34,15 +38,19 @@ import {
   bestGameEver,
   biggestSingleHandDisasters,
   compareDisplayNames,
+  dayOfWeekTable,
   handLabel,
   handsBledOn,
   perHandMeans,
   rosterDisplayName,
+  timeOfYearTable,
   worstGameEver,
   type FinalScoreInstance,
   type GameHandScoreRow,
   type HandLabel,
   type HandMean,
+  type TimeSliceInput,
+  type TimeSliceRow,
 } from "@/lib/scoring";
 import { toSingleEventHolder, type SingleEventHolder, type SingleEventHolderContext } from "@/lib/board/queries";
 
@@ -122,6 +130,10 @@ export type StatsPage =
       playerAverages: PlayerAverageRow[];
       /** Criterion 242 — every roster's own table average. Alphabetical. */
       rosterAverages: RosterAverageRow[];
+      /** Criterion 265 — seven rows, Monday through Sunday, always all present. */
+      dayOfWeek: TimeSliceRow[];
+      /** Criterion 266 — twelve rows, January through December, always all present. */
+      timeOfYear: TimeSliceRow[];
     };
 
 /**
@@ -309,6 +321,19 @@ export async function getStatsPage(): Promise<StatsPage> {
     })
     .sort((a, b) => compareDisplayNames(a.displayName, b.displayName));
 
+  // ----------------------------------------------------------- time slices
+  // Stage 4 (criteria 265–266): no new query — every input is already `game`
+  // (query 1) and `game_player` (query 2)'s own rows, joined in memory via
+  // `gamesById`. Criterion 255: `dayOfWeekTable`/`timeOfYearTable` derive the
+  // weekday/month straight off `played_on`'s stored string, no `Date` built.
+  const timeSliceRows: TimeSliceInput[] = gamePlayerRows.map((r) => ({
+    gameId: r.gameId,
+    playedOn: gamesById.get(r.gameId)!.playedOn,
+    finalScore: r.finalScore,
+  }));
+  const dayOfWeek = dayOfWeekTable(timeSliceRows);
+  const timeOfYear = timeOfYearTable(timeSliceRows);
+
   return {
     empty: false,
     trend,
@@ -318,5 +343,7 @@ export async function getStatsPage(): Promise<StatsPage> {
     disasters,
     playerAverages,
     rosterAverages,
+    dayOfWeek,
+    timeOfYear,
   };
 }

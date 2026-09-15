@@ -42,6 +42,14 @@
 > 4's own scope line both name venue/date slices as Stage 4 work) — so nothing below documents them
 > either. Everything on this page for Stage 3 is settled; there is no open founder choice like Stage
 > 2's nemesis titles.
+>
+> **Milestone 3 Stage 4** ("Place, time, and the filters" — the venue page, the games list's venue
+> and roster filter, home advantage as the board's thirteenth row, the player page's new by-venue
+> section, and `/stats`' day-of-week and month tables) again adds screens rather than a new
+> direction — mockups at `docs/mockups/m3-stage-4-place-time-and-filters.html`, published at
+> <https://claude.ai/code/artifact/8388d93d-012a-4840-9592-ebacad5f83e9>. **Open question 9 was already answered (c), both a venue page and a
+> filter, before this document was written** (`docs/DECISIONS.md`, 2026-09-15) — so nothing on this
+> page is conditional, unlike Stage 2's nemesis wording. This is the last stage of Milestone 3.
 
 ## Direction
 
@@ -157,7 +165,7 @@ the digit; this is a correctness feature, not typography.
 | `GameRow`, streak-holder annotation (M3 Stage 1) | records board drill-through, joint streak only | When "most wins in a row" is jointly held by players whose qualifying games differ, each row gets a small line naming whose run it belongs to — **"{Player}'s streak game"** — otherwise a list of games with nothing else in common would read as one continuous run it isn't |
 | `HeadToHeadRow` (M3 Stage 2) | player page, "Head-to-head" section | One row per opponent shared at least one game with (criterion 203): the opponent's name as the row's own tappable link (`EntityLink`-styled), a right-aligned "{n} games together" caption, then a three-across mini-stat row in the same label/value shape `StatBlock` already uses at smaller scale — **Wins** (`{mine}–{theirs}`, criterion 197's shared-win-counts-for-both figures), **My win rate** (criterion 197, one decimal place) and **Above me** (the opponent's above-rate, criterion 198, one decimal place). The whole row is the tap target to that pair's shared games (criterion 204, reusing Stage 1's drill-through), same "stretched link" construction as `PlayerGameRow`. Rows order by games together descending, then alphabetically (criterion 203) — never by win rate or above-rate, which would read as a ranking this stat explicitly isn't |
 | `NemesisCard` (M3 Stage 2) | player page, directly under "Head-to-head" | Same visual grammar as `RecordCard` — uppercase label, the opponent's name in the display face, one sentence of detail, a chevron tap target through to that opponent's `HeadToHeadRow` — but personal rather than board-wide: no per-holder sample line (there's only ever one subject, the page it's on), no joint-holder list rendered here even though criterion 199 allows joint nemeses (multiple names simply join with "&", same list grammar as everywhere else). **A player with no nemesis** (criterion 201 — every above-rate is zero, or no shared games at all) renders the `RecordCard` no-holder variant verbatim: the value and chevron drop, the fixed sentence **"Nobody's done this yet."** (`BOARD_NO_HOLDER_SENTENCE`, reused rather than a second string invented for the same shape) takes their place. ⚠️ **The label, the opponent-name line and the detail sentence are the one thing on this page not fixed yet** — see *The nemesis card* below |
-| `ByRosterRow` (M3 Stage 2) | player page, "By roster" section | Mirrors the roster page's own per-member `<li>` (criterion 208's "read one shared function," criterion 209's "cannot disagree") from the other direction: the roster's name as an `EntityLink` to its roster page with a muted "{n} games" caption beneath, right-aligned win rate (`--num`, one decimal) over a "{wins} of {games}" caption — pixel-identical stat shape to the roster page's member row, just naming the roster instead of the member. Rows carry no ranking or reordering by rate; they read in whatever order the player's rosters naturally list (by most games in that roster, descending, ties alphabetical by roster name — the same "games together" ordering logic `HeadToHeadRow` uses, generalised) |
+| `ByRosterRow` (M3 Stage 2, **updated Stage 4 follow-up**) | player page, "By roster" section | Mirrors the roster page's own per-member `<li>` (criterion 208's "read one shared function," criterion 209's "cannot disagree") from the other direction: the roster's name as an `EntityLink` to its roster page with a muted "{n} games" caption beneath, right-aligned win rate (`--num`, one decimal) over a "{wins} of {games}" caption — pixel-identical stat shape to the roster page's member row, just naming the roster instead of the member. Rows carry no ranking or reordering by rate; they read in whatever order the player's rosters naturally list (by most games in that roster, descending, ties alphabetical by roster name — the same "games together" ordering logic `HeadToHeadRow` uses, generalised). ⚠️ **Stage 4 follow-up**: a third line — **"See only these games"**, a small `EntityLink` to `/games?roster={rosterId}` — no layering needed, since this `<li>` was never itself a whole-row `Link` |
 | `PersonalRecordCard` (M3 Stage 2) | player page, "Streak, in context" section | Two side by side (`grid-template-columns: 1fr 1fr` from 0px — this is two numbers, not a scrolling list, so it never needs to stack): **"Longest winning streak"** and **"The drought"**, each `StatBlock`-shaped with an added chevron and tap target through to that player's own qualifying games. Deliberately not `RecordCard` reused outright — a holder-name line would repeat "you," which is redundant on a player's own page — and deliberately not bare `StatBlock` — these need the tap-through `RecordCard` has and `StatBlock` doesn't. ⚠️ **The drought's own drill-through order needs the same sign-off Stage 1 flagged for the streak** (criterion 186's note, restated here rather than assumed): a run reads as a run in the order it was played, so both cards' drill-throughs render **oldest → newest**, the one deliberate exception to "newest first" this project makes, on both cards for the same reason |
 | `GameRow` | games list | Date · venue · roster · winner(s) |
 | `ScoreTable` | game view | Running totals as written, toggle for derived hands |
@@ -184,7 +192,11 @@ the digit; this is a correctness feature, not typography.
 | `IndexNav` (Stage 3) | games list, directly under "Add a game" | Criterion 174's answer to "all three index pages reachable from the games list": three equal-width `ghost`-shaped tiles in a row (`grid-template-columns: repeat(3, 1fr)`), each ≥48px tall — **Players**, **Rosters**, **Places** — an inline SVG glyph above or beside the label, brand-coloured, never an icon alone (the label is always visible text, so this isn't an icon-only control). Always present, never conditional on the games list having content, because the three index pages are worth reaching even from the empty state |
 | `IndexRow` (Stage 3) | players index, rosters index | The whole row is a `Link` (unlike `PlaceRow` below, which isn't one) — 52px+ tall, `PickList`-row shaped: a name in the display face, an optional muted second line (a roster's member list), and a right-aligned games-played count in the same uppercase-label-over-`--num`-value shape `StatBlock` uses. Players index: name only. Rosters index: name plus its members on a second line |
 | `StatBlock` (Stage 3) | player page, roster page | The admin usage panel's own label/value shape (`docs/DESIGN-SYSTEM.md` § "Admin panel — usage and spend"), formalised as a named, reusable unit now that a third screen needs it: uppercase `--text-xs` label, a `--num`-sized tabular value, and — wherever criterion 133 requires it — a muted one-line **sample-size caption** underneath (*"4 of 9 games"*). Three sit in a row (`grid-template-columns: repeat(3, 1fr)`) at the top of the player page; the roster page uses a single one for "Games played," since its per-member numbers get their own list, below |
-| `PlaceRow` (Stage 3) | places index | Unlike `IndexRow`, **not** a `Link` — there's no place page for it to lead to. Name, an optional muted caption on a never-used venue, a right-aligned games-played count (0 renders like any other number), and the row's `RenameControl` trigger |
+| `PlaceRow` (Stage 3, **updated M3 Stage 4**) | places index | Stage 3: unlike `IndexRow`, **not** a `Link` — there was no place page for it to lead to. ⚠️ **Stage 4 gives it one** (criterion 259): the whole row is now a `Link` to `/places/{id}`, the same "stretched link, with a second independently-tappable control layered on top" construction `GameRow` already uses for its roster name — `PlaceRowActions`' pencil `IconButton` keeps its own `z-index` and 44px hit slop so opening the edit/merge chooser never also fires the row's navigation underneath it. The right-aligned figure changes from a bare games-played count to **that venue's table average with its dual sample** (criteria 259, 252) — `{average}` over `"{games} games · {scores} scores"`, the same shape `ROSTER_TABLE_AVERAGE_LABEL` already uses on the roster page. **A never-used venue is unchanged from Stage 3**: `PLACES_UNUSED_CAPTION` and a **no-data fixed string** (`NO_DATA_VALUE`, "–") stand in for the average rather than a zero (criterion 259). ⚠️ **Stage 4 follow-up**: a used venue gets a third layered link — **"See only these games"**, a small `EntityLink` to `/games?location={id}`, same layering trick as the pencil button, one row taller than before |
+| `ByVenueRow` (M3 Stage 4) | player page, "By venue" section | Mirrors `ByRosterRow`'s shape with a third figure added — the same way the roster page's own member row gained an "avg" column in Stage 3: the venue's name as an `EntityLink` to `/places/{id}` with a muted "{n} games" caption beneath, a right-aligned win rate over a "{wins} of {games}" caption, and a third right-aligned stat — that player's average final score at that venue — in the same `--num`/`--text-xs`-label shape. ⚠️ **The final row is "No location"** (criterion 251): the same four figures, but the name renders as plain bold text, never an `EntityLink` — there is no venue page for it to lead to. Rows before it order by games at that venue descending, then alphabetically; "No location" is always last and always rendered, whether or not it holds any games, because a missing row would break the containment invariant's own visibility (criterion 258) |
+| `VenuePlayerRow` (M3 Stage 4) | venue page, "Players here" section | The venue-page mirror of the roster page's own per-member row (Stage 3's wins/rate/avg shape, § "The roster page gains two things"): a player's name as an `EntityLink` to their player page, games at this venue as a muted caption, win rate over "{wins} of {games}", and their average final score at this venue — the identical three-stat shape, just naming a player at one venue instead of a member within one roster (decision 29: one shared function, two rendering contexts, neither the "real" one). ⚠️ **No ranking decoration** (criterion 261): rows order by games here descending, then alphabetically, never by win rate or average |
+| `TimeSliceRow` (M3 Stage 4) | `/stats`, "Day of the week" and "Time of year" | `AverageRow`'s exact shape with the link removed: a fixed label (a weekday or month name, never a player or roster) where the name sits, a dual sample caption beneath it ("{games} games · {scores} scores", criterion 224's convention, reused rather than invented), and the mean final score right-aligned in tabular type — or the **no-data fixed string** (`NO_DATA_VALUE`, "–") when that row has no games, never a `0.0` (criteria 265–266). ⚠️ **No ranking decoration of any kind** — no crown, medal, best-day or worst-month marker, no colour, no reordering by the mean (criterion 267): all seven or twelve rows always render, in fixed calendar order, whether or not they have any games in them |
+| `RecordCard` — home advantage (M3 Stage 4, criteria 253–254, 268–269) | records board, thirteenth card; its drill-through | ⚠️ **No new component or visual variant** — this is the ordinary `RecordCard` shape (above), reusing its existing `holderNames`/`value`/`unit`/`sample` slots with new copy grammar rather than a new prop shape. `holderNames` is the player's name and the venue's name together, comma-joined — **"Sam, Player E's"** (criterion 268's own example) — naming the venue on the card without a second name line. `value`/`unit` is the gap, always positive (criterion 254: never holds the record at zero or below), signed to one decimal — **"+41.7"** / **"points"** (percentage points; criterion 253: **never a `%` sign**, which would read as a relative change rather than a difference of two rates). `sample` is the two-sided sentence as one line — **"won {n} of {m} there, {p} of {q} elsewhere"** — "there" rather than repeating the venue's name a second time, since the holder line already names it. **Joint holders** (criterion 254) generalise the existing joint-holder grammar one level: `holderNames` joins every tied (player, venue) pair with the same "A, B & C" list grammar every joint list in this app already uses (alphabetical by player then venue), and `sample` states each pair's own two-sided sentence prefixed with that pair's own player name, joined by " · " — `recordSampleLine`'s existing "{Holder} — from {n} games · {Holder} — from {n} games" shape, generalised from one clause per holder to one two-sided sentence per holder. The **no-holder case** renders the ordinary `RecordCard` no-holder variant verbatim, same as every other record. The drill-through (criterion 269) is the ordinary board-record drill-through, unchanged: `drillThroughHeading(title, holderNames)` as the `AppBar` title, `"{value} {unit}, {sample}"` as its context line — the exact pattern `app/records/[key]/page.tsx` already uses for every other record, so this needed no new code path, only new strings |
 | `RenameControl` (Stage 3) | roster page (its own name); places index (per row) | A `ghost` **"Rename"** link that reveals a `Field` in place — no separate screen, same "reveal the form in place" convention `AdminKeyPanel`'s "Replace key" already established. Roster page: one control, above the stats, for the roster's own name. Places index: one per row, opened by a 44×44 pencil `IconButton` (**Stage 4: `aria-label="Edit {place}"`, changed from "Rename {place}"** — see `PlaceRowActions` below) rather than a text link, because the row has no spare width for a label. Both share the same footer shape — `Cancel` (`ghost`) then **"Save name"** (`primary`) — and the same non-blocking-warning-vs-blocking-refusal split described under *Renaming* below |
 | `SuggestedMatchPill` (Stage 4) | review screen, `ActiveColumnCard` header | The **only** new visual signal a pre-selected suggestion gets: a `Pill tone="neutral"` reading **"Suggested"**, shown beside the column's player name only while that column's assignment came from criterion 172's auto-match and has not yet been touched by the founder. Cleared the instant the founder opens that column's name control and picks anything — including re-picking the same player — same "their own action retires the model's doubt" reasoning `ReadHint` already established for cells. Never blocks anything, never requires a tap to dismiss: the column is already assigned for the save gate (criterion 172) whether or not this pill is showing |
 | `ReadAsCaption` (Stage 4) | review screen, `ActiveColumnCard` header | A small `text-muted` line directly under the column's player name — **"Read as {sheetName}."** — present on **every** column once a transcription exists (criterion 153), not only suggested or mismatched ones. An unassigned column doesn't get one: its heading already *is* the handwritten name, so there's nothing separate to echo |
@@ -971,7 +983,121 @@ the digit; this is a correctness feature, not typography.
   *"day-of-week and time-of-year"* cuts explicitly. Nothing in this document's Stage 3 section
   describes such a table, and none should be built against a Stage 3 criterion number, because none
   exists. They belong in Stage 4's own mockup and its own section of this document, written when
-  Stage 4's criteria are.
+  Stage 4's criteria are. ⚠️ **That stage is this one** — the six sections below are that promised
+  write-up.
+
+- **A venue page exists at `/places/{id}` (M3 Stage 4, criteria 259–261, open question 9's answer
+  (c)).** `AppBar` (title the venue's name, back arrow labelled **"Back to places"**). Mirrors the
+  player and roster pages' own shape exactly — a stat row, then a per-entity table, then that
+  entity's games — rather than inventing a fourth layout for a fourth entity type.
+  - **Two `StatBlock`s in a row**, the identical pairing the roster page already uses for "Games
+    played" beside "Table average": **"Games played"** and **"Table average"** (criterion 252,
+    reusing `ROSTER_TABLE_AVERAGE_LABEL` rather than a new label — a table average is the same fact
+    about a roster's games or a venue's games either way), stated with **both** numbers behind it —
+    *"{games} games · {scores} scores"*.
+  - **"Players here"** section: one `VenuePlayerRow` (component inventory, above) per player who has
+    played at that venue, ordered by games there descending then alphabetically, each linking to that
+    player's page — **no ranking decoration** (criterion 261: no crown, no medal, no 1st/2nd/3rd,
+    matching `AveragesTable`'s own precedent). A one-line sample statement sits above the list:
+    *"Everyone who's played at {venue}, most games here first."*
+  - **That venue's games**, heading **"{Venue}'s games"** (the same `{Entity}'s games` template the
+    player and roster pages already use), newest first, in the plain unmodified `GameRow` list —
+    **the same component and ordering criterion 264 requires the filtered list and every
+    drill-through to share**, so this is not a fourth list format.
+  - **A venue with zero games** (criterion 260) renders neither the per-player table nor the games
+    list: the "Games played" `StatBlock` alone (no "Table average" block — there is no sample to
+    state an average against, the same reasoning the player page's own zero-games layout already
+    uses), followed by a `Card`: **"No games here yet."** / *"Nothing saved so far happened at
+    {venue}."* Not an error, not a page of zeros.
+  - **A made-up or deleted venue id** renders the app's own 404 screen, same as a made-up player or
+    roster id (M2 criterion 130). **An unauthenticated request** 307s to `/login` with no fragment of
+    the record in the response (M1 criterion 1), same as every other screen.
+
+- **The player page gains a by-venue section (M3 Stage 4, criteria 256–258).** One `ByVenueRow`
+  (component inventory, above) per venue that player has played at, plus the **"No location"** row
+  last, under the heading **"By venue"** — placed directly below Stage 3's "Best and worst game"
+  section and above the player's own games list, so nothing above it moves, is re-explained, or
+  changes position (the same discipline criterion 207 established for Stage 2 against Stage 1, and
+  243 for Stage 3 against Stage 2). A one-line sample statement sits above the list: *"This player's
+  wins, win rate and average score at each venue they've played at."* ⚠️ **The numbers here and on
+  that venue's own page must be pixel-identical** (criterion 257, decision 29) — both read one shared
+  function, so this section can never be a second place a rounding difference sneaks into. **A
+  player whose only games have no location** still gets this section: it renders with the "No
+  location" row alone, never a missing section (the same "own empty state, never a vanished heading"
+  discipline criterion 203 already established for head-to-head).
+
+- **The games list gains a venue and roster filter (M3 Stage 4, criteria 262–264).**
+  `/games?location={id}`, `/games?roster={id}`, or both combined — URL-addressable, shareable,
+  identical after a reload. Nothing about `GameRow`, its ordering or its paging changes; the filter
+  narrows which rows are fetched, never how a row renders (criterion 264: filter, drill-through and
+  the plain list all share one component).
+  - ⚠️ **Stage 4 follow-up (post-merge doc pass): entry points.** Shipped Stage 4 only required this
+    to be reachable by URL (criterion 262); nothing in the app linked to it. Two links were added,
+    deliberately **not** on the venue or roster pages themselves:
+    - **The venue page is not one of them.** Its own "{Venue}'s games" section (above) already *is*
+      this filtered view, rendered through the identical `GameRow` — "not a fourth list format," in
+      this very document's own words. A "See only these games" button there would point at a page
+      showing the exact same rows in a different wrapper. Same reasoning for **the roster page**'s
+      own games list, one component removed (`RosterGameRow`, not `GameRow` — it just omits the
+      redundant roster name), so it isn't touched either.
+    - **`PlaceRow` (places index)** gets the link instead — **"See only these games"**, a second,
+      independently-tappable `EntityLink` to `/games?location={id}`, layered over the row's existing
+      stretched link the same way its pencil button already is. Shown only for a venue with at least
+      one game (never on a never-used venue, which already reads `PLACES_UNUSED_CAPTION`). This one
+      *is* a genuinely different vantage than tapping through to `/places/{id}`: a quick jump straight
+      to the raw list, skipping that venue's own stat blocks and "Players here" table.
+    - **`ByRosterRow` (player page, "By roster" section)** gets the roster equivalent — same label,
+      to `/games?roster={id}`. Deliberately **not** `ByVenueRow` in the same section, even though it's
+      the structurally identical row: a roster is an exact-match player set (criterion 139), so every
+      game `?roster={id}` returns necessarily includes this player — no mismatch. A venue has no such
+      guarantee (other groups play there too), so the same link on `ByVenueRow` would silently show
+      this player games they weren't part of, inside a section whose entire point is *this player's*
+      numbers. `PlaceRow` above is the honest home for that link instead.
+  - **The `AppBar`'s context line states the active filter and the count**, replacing the ordinary
+    "Five Crowns Ledger" context, verbatim from the templates below — **never only a chip or a colour
+    change** (criterion 272). Directly under the top button row (in the same slot `PlaceRowActions`'
+    reveal or a rename form would occupy — here, simply the next row down), a full-width `ghost`
+    **"Clear filter"** button appears **only while a filter is active**, returning to the plain
+    `/games` in one tap. `IndexNav` and `StatsNavLink` still render underneath it, unconditionally,
+    same "always reachable" precedent as every other state of this screen.
+  - **A valid filter matching zero games** (criterion 263) replaces the game list with a `Card`
+    stating the same filter clause used in the context line, without the count, as its bold line —
+    **"No games match this filter."** / *"{Filter clause}."* — never an error, never a blank list.
+  - **An unknown, deleted or malformed `location`/`roster` value** (criterion 263) renders the app's
+    own 404 screen — the same "made-up id" precedent every entity page in this app already sets —
+    rather than a second empty-state shape, so there is exactly one way this app says "that doesn't
+    exist" anywhere in it.
+  - **`?location=none`** filters to games with no location (criterion 251): its own filter clause is
+    simply **"No location"**, with no "At" prefix — it is already a complete label everywhere else
+    this app uses it, and prefixing it would be the one place that label stopped matching itself.
+
+- **`/stats` gains two time tables (M3 Stage 4, criteria 265–267).** Two new sections, **"Day of the
+  week"** then **"Time of year"**, placed after the existing "Averages" section — the catalogue's
+  existing four sections (trend, villains, disasters, averages) are unchanged above them, nothing
+  re-explained, nothing moved. Each is a plain `Card`-shaped section holding a list of `TimeSliceRow`s
+  (component inventory, above): **seven rows, Monday through Sunday**, or **twelve, January through
+  December**, always in that fixed calendar order, every row always rendered even at zero games. A
+  one-line sample statement sits above each list — *"Games played and the mean final score posted, by
+  day of the week."* / *"Games played and the mean final score posted, by calendar month."* ⚠️ **No
+  best-day or worst-month marker, no highlight, no reordering by score, no line, curve, trend arrow or
+  projection, and no per-player cross-tab on either table** (criterion 267, decision 21's rule for the
+  eleven-hand trend applied to the same kind of number) — these are two lists of facts, not a claim
+  about when anyone plays well.
+
+- **The board gains its thirteenth row — home advantage (M3 Stage 4, criteria 253–254, 268–270).**
+  `RecordCard`, `ArchiveLine`, `BoardNav`, `StatsNavLink` and criterion 181's joint-holder grammar are
+  all unchanged; only the home-advantage variant documented in the component inventory above is new,
+  and it is a copy grammar, not a new visual shape.
+  - **Order**: home advantage is the **last** card, after Stage 3's five — the founder's four, the
+    stalwart, Stage 2's drought and nearly man, Stage 3's five, then home advantage, keeping every
+    stage's cards contiguous (criterion 235's own precedent, extended: "a card's position tells you
+    which stage computes it").
+  - **The board now carries thirteen records.** ⚠️ **Legibility at thirteen is a founder review point,
+    not a QA pass** (criterion 270, following criterion 218's finding at seven and 235's at twelve) —
+    the mockup shows the full thirteen-card scroll at 375px so the founder can react to it directly;
+    nothing is pre-emptively collapsed, tabbed, or hidden behind a "show more" control.
+  - **Its drill-through** (criterion 269) reuses the ordinary board-record drill-through unchanged —
+    see the component inventory entry above.
 
 ## Review screen law
 
@@ -1266,6 +1392,29 @@ verified, confirmed, correct, looks right* or *all good*.
 | `PersonalGameCard` label — worst | Worst game |
 | Roster page, table average label | Table average |
 | Roster page, member average label | avg |
+| No-data value (a stat with no games behind it — a never-used venue's average, an empty day/month row) | `NO_DATA_VALUE`: – |
+| Venue page, `AppBar` back label | Back to places |
+| Venue page, players-here heading | Players here |
+| Venue page, players-here sample line | Everyone who's played at {venue}, most games here first. |
+| Venue page, games-list heading | {Venue}'s games |
+| Venue page, zero games | No games here yet. / Nothing saved so far happened at {venue}. |
+| Player page, by-venue heading | By venue |
+| Player page, by-venue sample line | This player's wins, win rate and average score at each venue they've played at. |
+| Games filter clause — venue | At {venue} |
+| Games filter clause — no location | No location *(no "At" prefix — already a complete label)* |
+| Games filter clause — roster | with {roster} *(lower-case when combined; capitalised — "With {roster}" — when it is the only clause)* |
+| Games filter, `AppBar` context | {Clause}[, {clause}] · {n} games |
+| Games filter, clear button | Clear filter |
+| Games filter, zero matches | No games match this filter. / {Clause}[, {clause}]. |
+| Games filter, entry points | See only these games |
+| `/stats`, day-of-week heading | Day of the week |
+| `/stats`, day-of-week sample line | Games played and the mean final score posted, by day of the week. |
+| `/stats`, time-of-year heading | Time of year |
+| `/stats`, time-of-year sample line | Games played and the mean final score posted, by calendar month. |
+| Record title — home advantage | Home advantage |
+| Record unit — home advantage | points *(percentage points — never a `%` sign)* |
+| Home advantage, holder line | {Player}, {Venue} |
+| Home advantage, sample sentence | won {n} of {m} there, {p} of {q} elsewhere |
 
 No toast is used for save in Stage 2 — the confirmation is the game view itself, reached by
 redirect, carrying the banner text above.

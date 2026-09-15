@@ -1,15 +1,19 @@
 /**
  * The records board — PRD criteria 179–191, 196, extended by Stage 2 with
- * two more rows (the drought, 213, and the nearly man, 216) and by Stage 3
- * with five single-event records (criteria 228–235): best/worst game ever,
- * the catastrophe, cleanest sheet and biggest hammering.
+ * two more rows (the drought, 213, and the nearly man, 216), by Stage 3 with
+ * five single-event records (criteria 228–235): best/worst game ever, the
+ * catastrophe, cleanest sheet and biggest hammering, and by Stage 4 with a
+ * thirteenth, home advantage (criteria 253–254, 268–269).
  *
  * `getBoard()` is the board's one entry point: **still exactly three bounded
  * queries** (every game, every `game_player` row, every `round_score` row) —
- * neither Stage 2 nor Stage 3 adds a query of its own (criteria 219, 248) —
- * then everything else — winners, second places, streaks, droughts,
- * averages, rounds won, single-event extremes, who holds what — is worked
- * out from those same rows in memory using `lib/scoring`'s pure definitions.
+ * neither Stage 2, Stage 3 nor Stage 4 adds a query of its own (criteria 219,
+ * 248, 273) — then everything else — winners, second places, streaks,
+ * droughts, averages, rounds won, single-event extremes, home advantage, who
+ * holds what — is worked out from those same rows in memory using
+ * `lib/scoring`'s pure definitions. Stage 4 only widens query 1's own
+ * `SELECT` list with `game.location_id` (already stored since Milestone 1) —
+ * not a fourth query.
  *
  * ⚠️ **Stage 3's five records are a different animal from the other seven**
  * (spec decision 17) and are returned separately, on `singleEventRecords`,
@@ -17,9 +21,13 @@
  * instances — the same player can appear twice, once per game — not unique
  * players with a career game count, so `RecordHolder`'s shape (which a
  * single-event holder would either lie about or leave blank) never applies
- * to them. A caller building the twelve-card board concatenates both arrays
- * in `docs/DESIGN-SYSTEM.md`'s fixed order (criterion 235); this module
- * doesn't impose an order across the two collections itself.
+ * to them. ⚠️ **Home advantage is a third animal again** (Stage 4): its
+ * holder unit is a (player, venue) pair, so it gets its own `homeAdvantage`
+ * field rather than fitting into either array — see `HomeAdvantageBoardRecord`'s
+ * own doc comment. A caller building the thirteen-card board concatenates
+ * `records`, `singleEventRecords` and `homeAdvantage` in `docs/DESIGN-SYSTEM.md`'s
+ * fixed order (criteria 235, 270); this module doesn't impose an order across
+ * them itself.
  *
  * ⚠️ **Nothing here is cached, precomputed or summarised** (criterion 189): a
  * delete, an edit or a merge (both M2 features) is reflected on the very next
@@ -65,6 +73,7 @@ import {
   compareNewestFirst,
   determineWinners,
   handLabel,
+  homeAdvantage,
   longestDrought,
   longestStreak,
   roundsWon,
@@ -76,6 +85,8 @@ import {
   type FinalScoreInstance,
   type HammeringInstance,
   type HandLabel,
+  type HomeAdvantageCandidate,
+  type HomeAdvantageHolder,
   type PlayerScore,
   type StreakGame,
 } from "@/lib/scoring";
@@ -104,6 +115,17 @@ export interface RecordHolder {
 export interface RecordGame {
   id: string;
   playedOn: string;
+  /**
+   * The tie-break for two games sharing a `playedOn` date — carried through
+   * so a caller merging more than one already-sorted `games` array (home
+   * advantage's drill-through, `app/records/[key]/page.tsx`, is the one
+   * caller that does) can re-sort the union with the same `ChronologicalRow`
+   * comparator (`lib/scoring/chronology.ts`) everything else in this app
+   * uses, rather than a `playedOn`-only comparator that falls back to
+   * insertion order on a tie. Not rendered by `GameRow` — an internal detail,
+   * not part of `GameRowProps`.
+   */
+  createdAt: string;
   /** Null renders as "No location", same as the games list. */
   locationName: string | null;
   rosterId: string;
@@ -237,6 +259,27 @@ export interface BoardRecord {
   games: RecordGame[];
 }
 
+/**
+ * Home advantage (criteria 253–254, 268–269) — the board's thirteenth
+ * record, and a third *different* animal from the other twelve: its holder
+ * unit is a (player, venue) **pair**, not a unique player (like the seven
+ * Stage 1/2 records) and not a (player, game[, hand]) instance (like Stage
+ * 3's five) — so it gets its own field on `Board` rather than being forced
+ * into either existing array's shape. `docs/DESIGN-SYSTEM.md`'s fixed card
+ * order still places it **last**, after Stage 3's five, when a caller
+ * concatenates `records`, `singleEventRecords` and this one into the
+ * board's thirteen cards.
+ */
+export interface HomeAdvantageBoardRecord {
+  /** `null` iff `holders` is empty (criterion 254: nobody with a positive gap). */
+  gapPercentagePoints: number | null;
+  /** Every (player, venue) pair tied for the highest gap, alphabetical by player then venue. */
+  holders: (HomeAdvantageHolder & {
+    /** This pair's own drill-through (criterion 269): the holder's own games at this venue, newest first. A one-row list is correct, not padded. */
+    games: RecordGame[];
+  })[];
+}
+
 export type Board =
   | { empty: true }
   | {
@@ -248,12 +291,16 @@ export type Board =
       records: BoardRecord[];
       /** Stage 3's five single-event records (criteria 228–232) — see this module's doc comment for why they're a separate array. */
       singleEventRecords: SingleEventBoardRecord[];
+      /** Stage 4's thirteenth record (criteria 253–254, 268–269) — see `HomeAdvantageBoardRecord`'s own doc comment for why it isn't folded into either array above. */
+      homeAdvantage: HomeAdvantageBoardRecord;
     };
 
 export interface BoardGameRow {
   id: string;
   playedOn: string;
   createdAt: string;
+  /** Stage 4: needed to group a player's own games by venue for home advantage (criterion 253) — `null` for a game with no location (criterion 251). */
+  locationId: string | null;
   locationName: string | null;
   rosterId: string;
   rosterName: string | null;
@@ -320,6 +367,7 @@ export async function getBoardData(): Promise<BoardData> {
       id: game.id,
       playedOn: game.playedOn,
       createdAt: game.createdAt,
+      locationId: game.locationId,
       locationName: location.name,
       rosterId: game.rosterId,
       rosterName: roster.name,
@@ -489,6 +537,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     return {
       id: g.id,
       playedOn: g.playedOn,
+      createdAt: g.createdAt,
       locationName: g.locationName,
       rosterId: g.rosterId,
       rosterName: rosterNameByGame.get(gameId)!,
@@ -771,6 +820,88 @@ export async function getBoard(data?: BoardData): Promise<Board> {
     (i) => toRecordGame(i.gameId, { singleEventValue: i.margin }),
   );
 
+  // ================================================================
+  // Stage 4's thirteenth record — home advantage (criteria 253–254, 268–269).
+  // A third assembly path again (spec decision, this stage): the holder unit
+  // is a (player, venue) pair, so neither `buildRecord`'s player-keyed map
+  // nor `buildSingleEventRecord`'s (player, game[, hand]) shape fits. No new
+  // query: every input below is `gamesByPlayer` and `gamesById` (already
+  // built above from this call's own three queries), just regrouped by venue.
+  // ================================================================
+
+  // Per player: their own tallies at each known venue, and their own known-
+  // venue totals (criterion 253: "elsewhere" is every *other* known venue,
+  // never a game with no location — criterion 251's narrowing, applied here).
+  interface VenueTally {
+    locationName: string;
+    wins: number;
+    games: number;
+    /**
+     * This (player, venue) pair's own game ids, built up alongside the tally
+     * above — read straight back during holder assembly (below) instead of
+     * re-filtering this player's whole game history a second time for the
+     * same pair (code review: the two passes were computing the same thing).
+     */
+    gameIds: string[];
+  }
+  const venueTalliesByPlayer = new Map<string, Map<string, VenueTally>>();
+  const knownVenueTotalByPlayer = new Map<string, { wins: number; games: number }>();
+
+  for (const [playerId, games] of gamesByPlayer) {
+    const byVenue = new Map<string, VenueTally>();
+    let totalWins = 0;
+    let totalGames = 0;
+    for (const g of games) {
+      const locationId = gamesById.get(g.gameId)!.locationId;
+      if (!locationId) continue; // criterion 251: unlocated games are in neither side.
+      totalGames += 1;
+      if (g.won) totalWins += 1;
+      const tally = byVenue.get(locationId) ?? {
+        locationName: gamesById.get(g.gameId)!.locationName ?? "",
+        wins: 0,
+        games: 0,
+        gameIds: [],
+      };
+      tally.games += 1;
+      if (g.won) tally.wins += 1;
+      tally.gameIds.push(g.gameId);
+      byVenue.set(locationId, tally);
+    }
+    venueTalliesByPlayer.set(playerId, byVenue);
+    knownVenueTotalByPlayer.set(playerId, { wins: totalWins, games: totalGames });
+  }
+
+  const homeAdvantageCandidates: HomeAdvantageCandidate[] = [];
+  for (const [playerId, byVenue] of venueTalliesByPlayer) {
+    const total = knownVenueTotalByPlayer.get(playerId)!;
+    for (const [locationId, tally] of byVenue) {
+      homeAdvantageCandidates.push({
+        playerId,
+        displayName: displayNameByPlayer.get(playerId)!,
+        locationId,
+        locationName: tally.locationName,
+        hereWins: tally.wins,
+        hereGames: tally.games,
+        elsewhereWins: total.wins - tally.wins,
+        elsewhereGames: total.games - tally.games,
+      });
+    }
+  }
+
+  const homeAdvantageResult = homeAdvantage(homeAdvantageCandidates);
+  const homeAdvantageHolders: HomeAdvantageBoardRecord["holders"] = homeAdvantageResult.holders.map((h) => {
+    const games = (venueTalliesByPlayer.get(h.playerId)?.get(h.locationId)?.gameIds ?? [])
+      .slice()
+      .sort(sortNewestFirst)
+      .map((id) => toRecordGame(id));
+    return { ...h, games };
+  });
+
+  const homeAdvantageRecord: HomeAdvantageBoardRecord = {
+    gapPercentagePoints: homeAdvantageResult.gapPercentagePoints,
+    holders: homeAdvantageHolders,
+  };
+
   return {
     empty: false,
     archiveGameCount: gameRows.length,
@@ -783,6 +914,7 @@ export async function getBoard(data?: BoardData): Promise<Board> {
       cleanestSheetRecord,
       biggestHammeringRecord,
     ],
+    homeAdvantage: homeAdvantageRecord,
   };
 }
 

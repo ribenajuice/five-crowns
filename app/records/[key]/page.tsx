@@ -4,10 +4,12 @@ import { requireGroupSession } from "@/lib/auth/session";
 import { AppBar } from "@/components/AppBar";
 import { GameRow } from "@/components/GameRow";
 import { getBoard, type BoardRecordKey, type SingleEventRecordKey } from "@/lib/board/queries";
+import { compareNewestFirst } from "@/lib/scoring/chronology";
 import {
   RECORD_TITLES,
   SINGLE_EVENT_RECORD_TITLES,
   drillThroughHeading,
+  homeAdvantageDisplayFacts,
   recordDisplayFacts,
   roundsWonRowAnnotation,
   singleEventDisplayFacts,
@@ -107,6 +109,58 @@ async function renderSingleEventDrillThrough(key: SingleEventRecordKey) {
   );
 }
 
+/**
+ * Home advantage's own drill-through (criteria 268–269) — the ordinary
+ * board-record pattern, unchanged: `drillThroughHeading` for the `AppBar`
+ * title, "{value} {unit}, {sample}" for its context line (the whole claim,
+ * including the elsewhere figure). ⚠️ **A joint holder's pairs each drill
+ * through to their own venue's games** (criterion 269) — merged here into
+ * the one list this route renders (every row already states its own venue
+ * name via `GameRow`'s own `locationName`), newest first, deduplicated by id
+ * in case two pairs happen to share a game.
+ */
+async function renderHomeAdvantageDrillThrough() {
+  const board = await getBoard();
+  if (board.empty) notFound();
+
+  const record = board.homeAdvantage;
+  const facts = homeAdvantageDisplayFacts(record);
+  if (!facts) notFound();
+
+  const context = `${facts.value} ${facts.unit}, ${facts.sample}`;
+
+  const byId = new Map<string, (typeof record.holders)[number]["games"][number]>();
+  for (const holder of record.holders) {
+    for (const g of holder.games) byId.set(g.id, g);
+  }
+  const games = [...byId.values()].sort(compareNewestFirst);
+
+  return (
+    <>
+      <AppBar
+        title={drillThroughHeading(facts.title, facts.holderNames)}
+        context={context}
+        back={{ href: "/", label: "Back to the board" }}
+      />
+      <main className="mx-auto w-full max-w-wide px-4 py-6">
+        <div className="flex flex-col gap-2">
+          {games.map((g) => (
+            <GameRow
+              key={g.id}
+              id={g.id}
+              playedOn={g.playedOn}
+              locationName={g.locationName}
+              rosterId={g.rosterId}
+              rosterName={g.rosterName}
+              winners={g.winners}
+            />
+          ))}
+        </div>
+      </main>
+    </>
+  );
+}
+
 export default async function RecordDrillThroughPage({
   params,
 }: {
@@ -115,6 +169,9 @@ export default async function RecordDrillThroughPage({
   await requireGroupSession();
   const { key } = await params;
 
+  if (key === "homeAdvantage") {
+    return renderHomeAdvantageDrillThrough();
+  }
   if (isSingleEventRecordKey(key)) {
     return renderSingleEventDrillThrough(key);
   }

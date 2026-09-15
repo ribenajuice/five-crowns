@@ -20,6 +20,25 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-15 — Milestone 3 Stage 4: open question 9 answered at the founder's checkpoint
+
+- **Context**: Stage 4's spec (criteria 250–280) un-parked open question 9 — the one open question
+  in Milestone 3 that changes what gets built rather than how it reads: whether venue numbers (home
+  advantage, average score at a place, etc.) get a dedicated page per venue, a filter on the games
+  list, or both. The spec was written to its stated default, (c), but flagged for a checkpoint
+  before the branch opened, since a per-venue page is a new page type (its own empty state, 404,
+  navigation) and not something to build on an assumed answer.
+- **Decision**: the founder confirmed **(c) — both a venue page and a filter**. Criteria 260 and 261
+  (the venue page at `/places/{id}` and its per-player table) are built as specced; nothing is
+  struck.
+- **Alternatives**: (a), a filter only, was the cheaper option (no new page type, two criteria
+  struck) but not chosen. (b), a venue page with no filter shortcut, was on the table as a third
+  shape but not recommended, since the filter costs a query string on a list that already exists.
+- **Consequences**: no criteria change from what was already specced — Stage 4 builds exactly as
+  written. This entry exists purely to record that the founder was actually asked rather than the
+  team assuming the default silently, the same discipline Stage 3's two checkpoint questions
+  followed.
+
 ## 2026-09-15 — Milestone 3 Stage 3: `/stats` doesn't re-render a card the board already shows
 
 - **Context**: QA found that criterion 241, as originally worded, required best game ever and worst
@@ -67,6 +86,122 @@ Format:
 - **Consequences**: no code or criterion changes — both decisions matched what was already specced
   as the default, so this entry exists purely to record that the founder was actually asked rather
   than the team assuming silently. Stage 3 build proceeds exactly as specced.
+
+## 2026-09-14 — Milestone 3 Stage 4: home advantage keeps no floor, and a game with no venue is shown rather than dropped
+
+- **Context**: Stage 4 (place, time and the filters) was specced immediately after Stage 3 on the same
+  day, before any of Stages 2–4 starts, completing Milestone 3 at criterion level. PRD criteria
+  **250–280**, including the **milestone-closing audits at 275–280**. Almost nothing in this stage is
+  a new definition — a venue slice is Stage 1's and Stage 3's aggregates handed a different set of
+  games — which left exactly three things to reason about, plus one founder question that had been
+  parked since the milestone opened. **First, home advantage.** The PRD's own sketch said it "needs
+  enough games at that venue to mean anything", written when the board still withheld; the founder
+  deleted every floor project-wide on the same day (open question 6). **Second, a game with no
+  location.** Criterion 188 says every game counts towards every number and names an unlocated game
+  as counting alike — a sentence that cannot hold for a number scoped to a place. **Third, what the
+  day-of-week and time-of-year slices actually render as**, given the PRD frames them as "already
+  bought and paid for" rather than a visualisation investment. **Fourth, open question 9** — what
+  "location as a filter" means on screen — which is the only question in this milestone whose answer
+  changes what gets built.
+- **Decision**:
+  1. ⚠️ **Home advantage carries no minimum-games floor, and it is not an exception to the
+     project-wide deletion of floors.** Stage 2 faced the identical temptation and refused it ("a
+     minimum number of shared games before a nemesis is named — rejected as a re-introduction of the
+     withholding the founder deleted"), and the same answer holds. **Three definitional guards stand
+     in place of a floor**, none of them a sample threshold: a player with **no other known venue**
+     has no gap and contributes no pair; a gap of **zero or less** never holds the title at any
+     sample size (criterion 199's zero-rate rule, same problem); and **both sides of the comparison
+     are printed with their own samples** — "won 4 of 6 there, 2 of 14 elsewhere" — so the record
+     cannot be read without its sample. ⚠️ **Stated plainly rather than buried**: in a small archive a
+     one-game venue will usually *win* this record, because 100% beats any real pattern. That is a
+     true statement about a small archive and is rendered as one, exactly as *most wins in a row —
+     Sam, 1* is (PRD 184). **PRD 253–254.**
+  2. ⚠️ **A game with no location belongs to no venue, and criterion 188 is narrowed exactly once,
+     here.** The narrowing is **made visible rather than footnoted**: every by-venue table carries a
+     final **"No location"** row using M1's own existing label, so the rows still sum to the games
+     actually played. That row is **not a venue** — no home advantage, no venue page, not in the
+     places index. The containment invariant (by-venue rows + "No location" row = games played,
+     PRD 258) is what makes the narrowing provable rather than assertable. Same shape as PRD 233's
+     narrowing of 182, and **the only other one in the milestone**. **PRD 251.**
+  3. **"Elsewhere" means other *known* venues, not "every other game".** A game whose venue nobody
+     remembers is not evidence about any venue, including the one it is being compared against.
+     **PRD 253.**
+  4. **The time slices are two plain tables that claim nothing.** Seven fixed rows Monday–Sunday and
+     twelve fixed rows January–December, each with games and the mean score posted, each empty row
+     shown as a zero rather than omitted. **No best-day marker, no ordering by score, no line, no
+     copy saying where or when anyone plays best** — decision 21's rule for the eleven-hand trend,
+     applied to the same kind of number. **Months, not seasons**: the founder is in Australia, so a
+     season label is wrong for half the archive. **No per-player cross-tab** — six players by twelve
+     months is 72 cells on a 375px screen, and "already bought and paid for" is a statement about
+     cost, not a licence to build a matrix. **PRD 265–267.**
+  5. ⚠️ **The weekday and month are derived from the stored `YYYY-MM-DD` with no timezone
+     conversion**, never by constructing a timestamp whose UTC-versus-local reading can move a
+     Saturday game to Friday. QA-executable: the same game reads as Sunday with the browser in UTC,
+     Australia/Adelaide and America/Los_Angeles. **PRD 255.**
+  6. **Per-player-by-venue lives on both the player page and the venue page, from one shared
+     function**, exactly as Stage 2 did per-roster win rates (decision 15, PRD 208–209), with a
+     criterion asserting the two sides agree to the decimal place. Neither is the "real" one.
+     **PRD 256–257.**
+  7. ⚠️ **Open question 9 is specced to its stated default (c) and the cut line is named rather than
+     implied.** If the founder answers **(a), a filter only**, **PRD 260 and 261 are struck in place**
+     like 147 and never renumbered, the venue-level numbers move to a places section on `/stats`, and
+     **nothing else in the stage changes**. Raised at the checkpoint rather than assumed silently,
+     because it is the only answer in this milestone that costs a **screen** rather than a sentence.
+  8. **"Location as a filter across the analytics" *is* the venue page and the by-venue sections.**
+     No global venue selector on `/stats` or on the board: it would multiply every number in the
+     milestone by every venue, need a sample statement per cell, and put the board's "One screen.
+     All-time." promise in tension with itself. The filter is on the **games list**, where a filter is
+     a list of games; the analytics are sliced by having a page per place. **PRD 262–264.**
+  9. **The milestone-closing audits are real criteria, not a checklist item.** M2's 167–171 land as
+     **PRD 275–279**, plus **280** for the two promises no single stage can prove: `lib/db/migrations/`
+     untouched across all four stages, and a delete-and-merge sweep proving **every** number in the
+     milestone moves — all thirteen board records, every section of the player, roster and venue
+     pages, the places index and every table on `/stats`. ⚠️ **Playwright moving into PR CI lands here
+     too** (decision 10's own revisit-if) and deliberately **carries no product criterion**.
+- **Alternatives**:
+  - *A minimum games-at-venue floor for home advantage* — the PRD's own original sketch, and
+    **rejected**: it reintroduces under a new name the withholding the founder deleted the same day,
+    and Stage 2 already rejected the identical move for the nemesis. The argument for it is real
+    (a one-game venue usually wins the record) and is answered by printing both samples, not by
+    hiding the holder. **Revisit-if is recorded below.**
+  - *Fold unlocated games into "elsewhere"* — rejected: it would let games with no known venue decide
+    a comparison between two venues, which is the opposite of what the record claims to measure.
+  - *Drop unlocated games silently from the by-venue tables* — rejected: the rows would then not sum
+    to games played and nothing on screen would say why. The "No location" row costs one row and
+    makes the gap visible and testable.
+  - *A second board record for the venue a player is reliably terrible at* — rejected: the by-venue
+    table already shows it, and the board is at thirteen with open question 12 live.
+  - *Seasons, quarters or a holiday flag for the time-of-year slice* — rejected: hemisphere-dependent,
+    argued-about definitions for a slice whose entire appeal is that it needed no new capture.
+    Christmas is a December row.
+  - *A per-player day-of-week or month cross-tab* — rejected on proportionality, not cost, and it is
+    retroactive whenever the founder does ask for it.
+  - *A global venue filter on `/stats` and the board* — rejected, see decision 8.
+  - *Marking the best day or worst month* — rejected: a max marker on a table of dates invites a
+    causal read the numbers do not support, unlike criterion 239's worst-hand marker, which marks a
+    fact about one player's own row.
+- **Consequences**:
+  - **31 criteria, PRD 250–280**, of which **six close the milestone** and **two (260, 261) are
+    conditional on open question 9**. ⚠️ **Milestone 3 is now fully specced at criterion level and
+    nothing after 280 is reserved.** **No schema change, nothing cached, nothing captured** — like all
+    three stages before it.
+  - ⚠️ **This is the stage that spends what Milestone 1 banked.** `location_id` and `played_on` were
+    captured in M1 explicitly so this stage would be possible; day-of-week and time-of-year need no
+    new field and apply to the first saved game retroactively. It is the clearest evidence the
+    "capture dimensions early, build reports whenever" principle earned its keep.
+  - **The board reaches thirteen records**, which is the count open question 12 was really about,
+    informed by criterion 218's finding at seven and 235's at twelve. Cutting a card stays the
+    founder's call and costs one deletion.
+  - **Criterion 188 now has exactly one named narrowing** (251, venue-scoped numbers) alongside 233's
+    (single-event records). Criterion 271 requires QA to confirm the narrowing reaches no other
+    number: the archive count, the time tables and every Stage 1–3 record still include unlocated
+    games.
+  - **Revisit if**: a home advantage held on a one-game venue is actually quoted at the table as
+    though it were a pattern — that is the evidence a floor would have needed and has never had, and
+    it is the same revisit-if the 2026-09-14 withholding ADR set for the board as a whole; or the
+    founder answers open question 9 as (a), in which case 260 and 261 are struck and the venue
+    numbers move to `/stats`; or a clock time is ever captured on a game, which would make a
+    time-of-day slice possible and is a capture change, not a report.
 
 ## 2026-09-14 — Milestone 3 Stage 3: a single-event record states a date, and the trend claims nothing
 

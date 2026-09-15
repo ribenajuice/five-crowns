@@ -42,6 +42,7 @@ vi.mock("@/lib/players/rivalry", () => ({
   nemesisFromHeadToHead: vi.fn(),
   getPlayerRosterStats: vi.fn(),
   getPlayerStreaks: vi.fn(),
+  getPlayerVenueStats: vi.fn(),
 }));
 
 vi.mock("@/lib/players/distributions", () => ({
@@ -57,6 +58,11 @@ const NO_STREAKS = {
   longestWinningStreak: { length: 0, games: [] },
   drought: { length: 0, games: [] },
 };
+/** `getPlayerVenueStats`'s real contract (criterion 258): always at least the
+ *  "No location" row, even at zero games — never truly `[]`. */
+const NO_LOCATION_ONLY_VENUE_STATS = [
+  { locationId: null, locationName: null, gamesPlayed: 0, wins: 0, winRate: 0, average: null },
+];
 
 /** Sets every Stage 2 rivalry function to its empty/no-holder default —
  *  called before every test so the pre-Stage-2 tests below need no changes
@@ -75,13 +81,20 @@ const NO_DISTRIBUTIONS = {
 };
 
 async function mockEmptyRivalry() {
-  const { getPlayerGameFacts, getPlayerHeadToHead, nemesisFromHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
-    await import("@/lib/players/rivalry");
+  const {
+    getPlayerGameFacts,
+    getPlayerHeadToHead,
+    nemesisFromHeadToHead,
+    getPlayerRosterStats,
+    getPlayerStreaks,
+    getPlayerVenueStats,
+  } = await import("@/lib/players/rivalry");
   vi.mocked(getPlayerGameFacts).mockResolvedValue([]);
   vi.mocked(getPlayerHeadToHead).mockResolvedValue([]);
   vi.mocked(nemesisFromHeadToHead).mockReturnValue(NO_NEMESIS);
   vi.mocked(getPlayerRosterStats).mockResolvedValue([]);
   vi.mocked(getPlayerStreaks).mockResolvedValue(NO_STREAKS);
+  vi.mocked(getPlayerVenueStats).mockResolvedValue(NO_LOCATION_ONLY_VENUE_STATS);
 
   const { getPlayerDistributions } = await import("@/lib/players/distributions");
   vi.mocked(getPlayerDistributions).mockResolvedValue(
@@ -287,7 +300,7 @@ describe("/players/{id} — fetches game facts once, not once per rivalry sectio
     const { getPlayerPage } = await import("@/lib/players/queries");
     vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
 
-    const { getPlayerGameFacts, getPlayerHeadToHead, getPlayerRosterStats, getPlayerStreaks } =
+    const { getPlayerGameFacts, getPlayerHeadToHead, getPlayerRosterStats, getPlayerStreaks, getPlayerVenueStats } =
       await import("@/lib/players/rivalry");
     const facts = [{ gameId: "g1" }] as unknown as Awaited<ReturnType<typeof getPlayerGameFacts>>;
     vi.mocked(getPlayerGameFacts).mockResolvedValueOnce(facts);
@@ -299,6 +312,7 @@ describe("/players/{id} — fetches game facts once, not once per rivalry sectio
     expect(getPlayerHeadToHead).toHaveBeenCalledWith("p1", facts);
     expect(getPlayerRosterStats).toHaveBeenCalledWith("p1", facts);
     expect(getPlayerStreaks).toHaveBeenCalledWith("p1", facts);
+    expect(getPlayerVenueStats).toHaveBeenCalledWith("p1", facts);
   });
 });
 
@@ -555,6 +569,12 @@ describe("/players/{id} — By roster section (M3 Stage 2, criteria 207–210)",
     expect(html).toContain("/rosters/r1");
     expect(html).toContain("80.0%");
     expect(html).toContain("4 of 5");
+
+    // Stage 4 follow-up: each roster row also links straight into that
+    // roster's own filtered games list, not just its roster page.
+    expect(html).toContain("See only these games");
+    expect(html).toContain("/games?roster=r1");
+    expect(html).toContain("/games?roster=r2");
   });
 
   it("no by-roster section renders for a player with no roster rows (defensive — never reachable with real games)", async () => {
@@ -568,6 +588,90 @@ describe("/players/{id} — By roster section (M3 Stage 2, criteria 207–210)",
     });
     const html = renderToStaticMarkup(element);
     expect(html).not.toContain("By roster");
+  });
+});
+
+describe("/players/{id} — By venue section (M3 Stage 4, criteria 256–258)", () => {
+  it("renders one row per venue, the venue page's own href, this player's average there, and a final plain 'No location' row", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerVenueStats } = await import("@/lib/players/rivalry");
+    vi.mocked(getPlayerVenueStats).mockResolvedValueOnce([
+      {
+        locationId: "loc1",
+        locationName: "Player E's",
+        gamesPlayed: 6,
+        wins: 4,
+        winRate: 2 / 3,
+        average: 48.5,
+      },
+      {
+        locationId: "loc2",
+        locationName: "The Lake House",
+        gamesPlayed: 2,
+        wins: 0,
+        winRate: 0,
+        average: 61.5,
+      },
+      { locationId: null, locationName: null, gamesPlayed: 1, wins: 1, winRate: 1, average: 39 },
+    ]);
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("By venue");
+    expect(html).toContain("/places/loc1");
+    expect(html).toContain("66.7%");
+    expect(html).toContain("4 of 6");
+    expect(html).toContain("48.5");
+
+    // The final "No location" row: plain text, never a link (criterion 251).
+    expect(html).toContain("No location");
+    expect(html).toContain("100.0%");
+    expect(html).toContain("39.0");
+  });
+
+  it("⚠️ criterion 251: 'No location' never renders as an `EntityLink` — no `/places/` href beside it", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerVenueStats } = await import("@/lib/players/rivalry");
+    vi.mocked(getPlayerVenueStats).mockResolvedValueOnce([
+      { locationId: null, locationName: null, gamesPlayed: 9, wins: 5, winRate: 5 / 9, average: 50 },
+    ]);
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("No location");
+    expect(html).not.toContain("/places/null");
+  });
+
+  it("⚠️ criterion 258: a player whose only games have no location still gets the section, never a vanished heading", async () => {
+    const { getPlayerPage } = await import("@/lib/players/queries");
+    vi.mocked(getPlayerPage).mockResolvedValueOnce(populatedPlayer());
+
+    const { getPlayerVenueStats } = await import("@/lib/players/rivalry");
+    vi.mocked(getPlayerVenueStats).mockResolvedValueOnce([
+      { locationId: null, locationName: null, gamesPlayed: 9, wins: 5, winRate: 5 / 9, average: 50 },
+    ]);
+
+    const { default: PlayerPage } = await import("@/app/players/[id]/page");
+    const element = await PlayerPage({
+      params: Promise.resolve({ id: "p1" }),
+      searchParams: noSearchParams,
+    });
+    const html = renderToStaticMarkup(element);
+    expect(html).toContain("By venue");
   });
 });
 

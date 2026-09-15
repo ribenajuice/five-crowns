@@ -1,9 +1,8 @@
 /**
- * `PlaceRow` — Stage 4 (`PlaceRowActions`, criterion 163): the pencil's
- * `aria-label` changed from "Rename {place}" to "Edit {place}", since it no
- * longer commits to one action on tap. Static-markup smoke test only — this
- * project has no React Testing Library / jsdom set up to simulate the click
- * that reveals the chooser (`tests/players/page.test.ts`'s header comment).
+ * `PlaceRow` — Stage 3, extended Stage 4 (criteria 259, 163). Static-markup
+ * smoke test only — this project has no React Testing Library / jsdom set up
+ * to simulate the click that reveals the chooser
+ * (`tests/players/page.test.ts`'s header comment).
  */
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -20,13 +19,52 @@ describe("PlaceRow, at rest", () => {
     expect(html).not.toContain("Rename The Deck");
   });
 
-  it("is pixel-identical to Stage 3 at rest otherwise: name, count and one pencil button", () => {
+  it("⚠️ criterion 259: the whole row is now a Link to /places/{id}", () => {
     const html = renderToStaticMarkup(
-      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 0 }),
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 2 }),
+    );
+    expect(html).toContain('href="/places/loc1"');
+  });
+
+  it("⚠️ criterion 259: a used venue shows its table average with its dual sample", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, {
+        id: "loc1",
+        name: "The Deck",
+        gamesPlayed: 2,
+        tableAverage: { average: 61.5, gamesPlayed: 2, scoresCount: 8 },
+      }),
+    );
+    expect(html).toContain("61.5");
+    expect(html).toContain("2 games");
+    expect(html).toContain("8 scores");
+  });
+
+  it("⚠️ criterion 259: a never-used venue shows the no-data string, never a zero average", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 0, tableAverage: null }),
     );
     expect(html).toContain("The Deck");
     expect(html).toContain("Never used yet");
+    expect(html).toContain("–");
+    expect(html).not.toContain("0.0");
     // The chooser's rows aren't rendered until the pencil is tapped.
     expect(html).not.toContain("Merge with another place");
+  });
+
+  it("Stage 4 follow-up: a used venue links straight into its own filtered games list", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 2 }),
+    );
+    expect(html).toContain("See only these games");
+    expect(html).toContain('href="/games?location=loc1"');
+  });
+
+  it("Stage 4 follow-up: a never-used venue gets no link into an always-empty filtered list", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaceRow, { id: "loc1", name: "The Deck", gamesPlayed: 0, tableAverage: null }),
+    );
+    expect(html).not.toContain("See only these games");
+    expect(html).not.toContain("/games?location=loc1");
   });
 });

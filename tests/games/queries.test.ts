@@ -3,11 +3,34 @@
  * photo (criterion 12's shape, reused here).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { setupTestDb, teardownTestDb } from "../helpers/db";
 import { createColumnPhoto, setUpDraft } from "../helpers/draft";
 import { SHEET_01, SHEET_02 } from "../fixtures/sheets";
+
+// ---------------------------------------------------------------------------
+// Query-count instrumentation (criterion 273) — same proxy pattern as
+// `tests/board/queries.test.ts`'s own proof for `getBoard()`.
+// ---------------------------------------------------------------------------
+let selectCallCount = 0;
+
+vi.mock("@/lib/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db")>();
+  return {
+    ...actual,
+    getDb: () => {
+      const real = actual.getDb();
+      return new Proxy(real, {
+        get(target, prop, _receiver) {
+          if (prop === "select") selectCallCount++;
+          const value = Reflect.get(target as object, prop);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    },
+  };
+});
 
 // See tests/games/save.test.ts for why `.data/photos` is never cleaned up here.
 beforeAll(async () => {
@@ -146,5 +169,212 @@ describe("getGame — criterion 70", () => {
 
     const detail = await getGame(gameId);
     expect(detail!.closeUps).toEqual([]);
+  });
+});
+
+/* ======================================================================
+ * Stage 4 — the games list's venue and roster filter (criteria 262–264).
+ * ====================================================================== */
+
+describe("resolveGamesFilter and listGames(filter) — criteria 262–263", () => {
+  beforeAll(async () => {
+    await teardownTestDb();
+    await setupTestDb();
+  });
+
+  it("resolves a real venue and roster, and combines both into one filter", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["Filt Amy", "Filt Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-01-01",
+      locationName: "Filter venue",
+      players: [
+        { playerId: players["Filt Amy"]!, finalScore: 40 },
+        { playerId: players["Filt Bo"]!, finalScore: 60 },
+      ],
+    });
+    // A second game, same roster, no location — must not match the venue filter.
+    await seedGame({
+      playedOn: "2026-01-08",
+      players: [
+        { playerId: players["Filt Amy"]!, finalScore: 40 },
+        { playerId: players["Filt Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    const { listGames, resolveGamesFilter } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+    const venueId = (await listPlaces()).find((p) => p.name === "Filter venue")!.id;
+
+    const games = await listGames();
+    const rosterId = games.find((g) => g.locationName === "Filter venue")!.rosterId;
+
+    const resolved = await resolveGamesFilter({ location: venueId, roster: rosterId });
+    expect(resolved).not.toBeNull();
+    expect(resolved!.location).toEqual({ kind: "venue", id: venueId, name: "Filter venue" });
+    expect(resolved!.roster!.id).toBe(rosterId);
+
+    const filtered = await listGames({ location: resolved!.location, rosterId: resolved!.roster!.id });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]!.locationName).toBe("Filter venue");
+  });
+
+  it("`location=none` filters to games with no location (criterion 251)", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["NoLoc Amy", "NoLoc Bo"]);
+    const seedGame = createGameSeeder();
+    await seedGame({
+      playedOn: "2026-02-01",
+      players: [
+        { playerId: players["NoLoc Amy"]!, finalScore: 40 },
+        { playerId: players["NoLoc Bo"]!, finalScore: 60 },
+      ],
+      // No locationName — deliberately unlocated.
+    });
+
+    const { listGames, resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ location: "none" });
+    expect(resolved).toEqual({ location: { kind: "none" } });
+
+    const filtered = await listGames({ location: resolved!.location });
+    expect(filtered.every((g) => g.locationName === null)).toBe(true);
+    expect(filtered.some((g) => g.playedOn === "2026-02-01")).toBe(true);
+  });
+
+  it("⚠️ an unknown location id resolves to null — the caller's own 404 signal, never a silent fallback", async () => {
+    const { resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ location: "00000000-0000-0000-0000-000000000000" });
+    expect(resolved).toBeNull();
+  });
+
+  it("⚠️ an unknown roster id resolves to null", async () => {
+    const { resolveGamesFilter } = await import("@/lib/games/queries");
+    const resolved = await resolveGamesFilter({ roster: "00000000-0000-0000-0000-000000000000" });
+    expect(resolved).toBeNull();
+  });
+
+  it("a valid filter matching zero games returns an empty list, not an error", async () => {
+    // A brand-new, never-used location.
+    const { getDb } = await import("@/lib/db");
+    const { location } = await import("@/lib/db/schema");
+    const { randomUUID } = await import("node:crypto");
+    const id = randomUUID();
+    await getDb()
+      .insert(location)
+      .values({ id, name: "Unused filter venue", slug: `unused-filter-${id.slice(-8)}`, nameKey: "unused filter venue" });
+
+    const { listGames } = await import("@/lib/games/queries");
+    const filtered = await listGames({ location: { kind: "venue", id, name: "Unused filter venue" } });
+    expect(filtered).toEqual([]);
+  });
+
+  it("order, row format and paging are unchanged when a filter is applied", async () => {
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const players = await createPlayers(["Order Amy", "Order Bo"]);
+    const seedGame = createGameSeeder();
+    for (const playedOn of ["2026-03-01", "2026-03-08"]) {
+      await seedGame({
+        playedOn,
+        locationName: "Order venue",
+        players: [
+          { playerId: players["Order Amy"]!, finalScore: 40 },
+          { playerId: players["Order Bo"]!, finalScore: 60 },
+        ],
+      });
+    }
+
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+    const venueId = (await listPlaces()).find((p) => p.name === "Order venue")!.id;
+
+    const filtered = await listGames({ location: { kind: "venue", id: venueId, name: "Order venue" } });
+    expect(filtered.map((g) => g.playedOn)).toEqual(["2026-03-08", "2026-03-01"]);
+    expect(filtered[0]).toHaveProperty("winners");
+    expect(filtered[0]).toHaveProperty("winningScore");
+  });
+});
+
+describe("listGames(filter) — the query count does not grow with the archive or the venue count (criterion 273)", () => {
+  it("issues the same number of queries at 10 matching games and at 60", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+
+    const players = await createPlayers(["QCount Filt Amy", "QCount Filt Bo"]);
+    const seedGame = createGameSeeder();
+
+    async function seedAndCount(extraGames: number): Promise<number> {
+      for (let i = 0; i < extraGames; i++) {
+        await seedGame({
+          playedOn: `2026-05-${String((i % 27) + 1).padStart(2, "0")}`,
+          locationName: "QCount filter venue",
+          players: [
+            { playerId: players["QCount Filt Amy"]!, finalScore: 40 + i },
+            { playerId: players["QCount Filt Bo"]!, finalScore: 60 + i },
+          ],
+        });
+      }
+      const venueId = (await listPlaces()).find((p) => p.name === "QCount filter venue")!.id;
+      selectCallCount = 0;
+      await listGames({ location: { kind: "venue", id: venueId, name: "QCount filter venue" } });
+      return selectCallCount;
+    }
+
+    const queriesAt10 = await seedAndCount(10);
+    const queriesAt60 = await seedAndCount(50); // cumulative: 10 + 50 = 60 games total
+
+    expect(queriesAt10).toBeGreaterThan(0);
+    expect(queriesAt60).toBe(queriesAt10);
+  });
+
+  it("issues the same number of queries at 2 venues in the archive and at 6", async () => {
+    await teardownTestDb();
+    await setupTestDb();
+    const { createPlayers } = await import("../helpers/draft");
+    const { createGameSeeder } = await import("../helpers/board");
+    const { listGames } = await import("@/lib/games/queries");
+    const { listPlaces } = await import("@/lib/locations/queries");
+
+    const players = await createPlayers(["QCount2 Amy", "QCount2 Bo"]);
+    const seedGame = createGameSeeder();
+
+    await seedGame({
+      playedOn: "2026-06-01",
+      locationName: "QCount2 filter venue",
+      players: [
+        { playerId: players["QCount2 Amy"]!, finalScore: 40 },
+        { playerId: players["QCount2 Bo"]!, finalScore: 60 },
+      ],
+    });
+
+    async function addVenuesAndCount(newVenues: number): Promise<number> {
+      for (let i = 0; i < newVenues; i++) {
+        await seedGame({
+          playedOn: `2026-07-${String(i + 1).padStart(2, "0")}`,
+          locationName: `QCount2 other venue ${i}`,
+          players: [
+            { playerId: players["QCount2 Amy"]!, finalScore: 40 + i },
+            { playerId: players["QCount2 Bo"]!, finalScore: 60 + i },
+          ],
+        });
+      }
+      const venueId = (await listPlaces()).find((p) => p.name === "QCount2 filter venue")!.id;
+      selectCallCount = 0;
+      await listGames({ location: { kind: "venue", id: venueId, name: "QCount2 filter venue" } });
+      return selectCallCount;
+    }
+
+    const queriesAt2 = await addVenuesAndCount(1); // 1 (seeded above) + 1 = 2 venues total
+    const queriesAt6 = await addVenuesAndCount(4); // 2 + 4 = 6 venues total
+
+    expect(queriesAt2).toBeGreaterThan(0);
+    expect(queriesAt6).toBe(queriesAt2);
   });
 });

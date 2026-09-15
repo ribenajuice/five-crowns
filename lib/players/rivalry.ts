@@ -39,12 +39,14 @@ import {
   longestStreak,
   nemesis as computeNemesis,
   rosterDisplayName,
+  venueBreakdown,
   type HeadToHeadGame,
   type NemesisCandidate,
   type NemesisResult,
   type PlayerScore,
   type Streak,
   type StreakGame,
+  type VenueParticipation,
 } from "@/lib/scoring";
 
 /** One other participant in a game this player was also in. */
@@ -58,6 +60,8 @@ export interface PlayerGameFact {
   gameId: string;
   playedOn: string;
   createdAt: string;
+  /** Stage 4: needed to group this player's own games by venue (criterion 256) — `null` for a game with no location (criterion 251). */
+  locationId: string | null;
   locationName: string | null;
   rosterId: string;
   rosterName: string;
@@ -136,6 +140,7 @@ export async function getPlayerGameFacts(playerId: string): Promise<PlayerGameFa
         id: game.id,
         playedOn: game.playedOn,
         createdAt: game.createdAt,
+        locationId: game.locationId,
         locationName: location.name,
         rosterId: game.rosterId,
         rosterName: roster.name,
@@ -173,6 +178,7 @@ export async function getPlayerGameFacts(playerId: string): Promise<PlayerGameFa
       gameId: g.id,
       playedOn: g.playedOn,
       createdAt: g.createdAt,
+      locationId: g.locationId,
       locationName: g.locationName,
       rosterId: g.rosterId,
       rosterName: g.rosterName ?? rosterDisplayName(participants.map((p) => p.displayName)),
@@ -419,4 +425,77 @@ export async function getPlayerStreaks(
     longestWinningStreak: toDetail(longestStreak(streakGames)),
     drought: toDetail(longestDrought(streakGames)),
   };
+}
+
+/* ----------------------------------------------------- by venue (256-258) */
+
+export interface PlayerVenueStat {
+  /** `null` renders as the fixed "No location" row (criterion 251). */
+  locationId: string | null;
+  locationName: string | null;
+  gamesPlayed: number;
+  wins: number;
+  /** `wins / gamesPlayed`, a fraction 0–1. */
+  winRate: number;
+  /** `null` only for a "No location" row with zero games — every real row (including a zero-game "No location" one is never the average's own reason to be null; that only happens when `gamesPlayed` is 0). */
+  average: number | null;
+}
+
+/**
+ * This player's own by-venue breakdown (criteria 256, 258) — one row per
+ * venue they've played at, plus a "No location" row **always last, always
+ * present**, even at zero games, so the containment invariant (criterion 258:
+ * these rows plus that one sum to `gamesPlayed`) is visible whether or not
+ * this player has ever played an unlocated game.
+ *
+ * Built on `venueBreakdown` (`lib/scoring`, criterion 250) — the identical
+ * function `lib/locations/queries.ts`'s `getVenuePage` calls from the venue's
+ * own side (decision 29): neither caller re-derives a mean or a win rate.
+ *
+ * `gameFacts` is `getPlayerGameFacts(playerId)`'s own result — pass it in
+ * when the caller already has it; left out, this fetches it itself.
+ */
+export async function getPlayerVenueStats(
+  playerId: string,
+  gameFacts?: readonly PlayerGameFact[],
+): Promise<PlayerVenueStat[]> {
+  const facts = gameFacts ?? (await getPlayerGameFacts(playerId));
+
+  const participations: VenueParticipation[] = facts.map((f) => ({
+    locationId: f.locationId,
+    locationName: f.locationName,
+    playerId,
+    finalScore: f.finalScore,
+    won: f.won,
+  }));
+
+  const breakdown = venueBreakdown(participations);
+
+  const venueRows: PlayerVenueStat[] = breakdown
+    .filter((b) => b.locationId !== null)
+    .map((b) => ({
+      locationId: b.locationId,
+      locationName: b.locationName,
+      gamesPlayed: b.gamesPlayed,
+      wins: b.wins,
+      winRate: b.winRate,
+      average: b.average,
+    }))
+    .sort(
+      (a, b) => b.gamesPlayed - a.gamesPlayed || compareDisplayNames(a.locationName!, b.locationName!),
+    );
+
+  const noLocation = breakdown.find((b) => b.locationId === null);
+  const noLocationRow: PlayerVenueStat = noLocation
+    ? {
+        locationId: null,
+        locationName: null,
+        gamesPlayed: noLocation.gamesPlayed,
+        wins: noLocation.wins,
+        winRate: noLocation.winRate,
+        average: noLocation.average,
+      }
+    : { locationId: null, locationName: null, gamesPlayed: 0, wins: 0, winRate: 0, average: null };
+
+  return [...venueRows, noLocationRow];
 }

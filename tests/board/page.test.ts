@@ -44,6 +44,7 @@ function game(id: string, playedOn: string, overrides: Partial<Record<string, un
   return {
     id,
     playedOn,
+    createdAt: `${playedOn}T00:00:00.000Z`,
     locationName: "The Deck",
     rosterId: "r1",
     rosterName: "Thursday crew",
@@ -67,6 +68,7 @@ function minimalBoard(): Board {
       { key: "mostRoundsWon", value: 5, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
       { key: "stalwart", value: 1, holders: [holder("Player A", 1)], games: [game("g1", "2026-01-01")] },
     ],
+    homeAdvantage: { gapPercentagePoints: null, holders: [] },
     singleEventRecords: [],
   };
 }
@@ -94,6 +96,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -163,6 +166,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 3,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -193,6 +197,7 @@ describe("/ — early days (criteria 182, 183)", () => {
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 2,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: true,
       records: [
@@ -218,6 +223,7 @@ describe("/ — steady state at and past EARLY_DAYS_BELOW (criterion 183: absent
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 10,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [
@@ -264,6 +270,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [
         {
           key: "worstGameEver",
@@ -303,6 +310,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [
         {
           key: "bestGameEver",
@@ -342,6 +350,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
         { key: "mostRoundsWon", value: null, holders: [], games: [] },
         { key: "stalwart", value: null, holders: [], games: [] },
       ],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [
         {
           key: "catastrophe",
@@ -367,6 +376,7 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
       empty: false,
       archiveGameCount: 20,
       earlyDays: false,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       records: [
         { key: "mostWins", value: null, holders: [], games: [] },
@@ -384,12 +394,155 @@ describe("/ — Stage 3's five single-event cards (criteria 228–235)", () => {
   });
 });
 
+describe("/ — the thirteenth card, home advantage (M3 Stage 4, criteria 253–254, 268–270)", () => {
+  function minimalRecords() {
+    return [
+      { key: "mostWins" as const, value: null, holders: [], games: [] },
+      { key: "mostWinsInARow" as const, value: null, holders: [], games: [] },
+      { key: "lowestAverageScore" as const, value: null, holders: [], games: [] },
+      { key: "mostRoundsWon" as const, value: null, holders: [], games: [] },
+      { key: "stalwart" as const, value: null, holders: [], games: [] },
+    ];
+  }
+
+  it("renders the ordinary card: the player, the venue named, the gap in points, both sides of the sample", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 41.7,
+        holders: [
+          {
+            playerId: "p1",
+            displayName: "Sam",
+            locationId: "loc1",
+            locationName: "Player E's",
+            here: { wins: 4, games: 6, ratePercent: 66.7 },
+            elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+            gapPercentagePoints: 41.7,
+            games: [game("g1", "2026-09-05")],
+          },
+        ],
+      },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Home advantage");
+    expect(html).toContain("Sam, Player E&#x27;s");
+    expect(html).toContain("+41.7");
+    expect(html).toContain("points");
+    expect(html).toContain("won 4 of 6 there, 2 of 14 elsewhere");
+    expect(html).not.toContain("+41.7%");
+    expect(html).toContain("/records/homeAdvantage");
+  });
+
+  it("⚠️ criterion 254: joint holders list every (player, venue) pair, each with its own two-sided sample", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 41.7,
+        holders: [
+          {
+            playerId: "p2",
+            displayName: "Player A",
+            locationId: "loc2",
+            locationName: "The Lake House",
+            here: { wins: 3, games: 5, ratePercent: 60 },
+            elsewhere: { wins: 1, games: 17, ratePercent: 5.9 },
+            gapPercentagePoints: 41.7,
+            games: [game("g2", "2026-08-01")],
+          },
+          {
+            playerId: "p1",
+            displayName: "Sam",
+            locationId: "loc1",
+            locationName: "Player E's",
+            here: { wins: 4, games: 6, ratePercent: 66.7 },
+            elsewhere: { wins: 2, games: 14, ratePercent: 14.3 },
+            gapPercentagePoints: 41.7,
+            games: [game("g1", "2026-09-05")],
+          },
+        ],
+      },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Player A, The Lake House &amp; Sam, Player E&#x27;s");
+    expect(html).toContain("Player A — won 3 of 5 there, 1 of 17 elsewhere");
+    expect(html).toContain("Sam — won 4 of 6 there, 2 of 14 elsewhere");
+  });
+
+  it("⚠️ criterion 254: nobody with a positive gap renders the ordinary no-holder sentence, crowning nobody", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Home advantage");
+    expect(html).toContain("Nobody&#x27;s done this yet.");
+  });
+
+  it("⚠️ criterion 254: a one-game venue is shown holding it plainly, with no hedge", async () => {
+    const { getBoard } = await import("@/lib/board/queries");
+    vi.mocked(getBoard).mockResolvedValueOnce({
+      empty: false,
+      archiveGameCount: 20,
+      earlyDays: false,
+      records: minimalRecords(),
+      singleEventRecords: [],
+      homeAdvantage: {
+        gapPercentagePoints: 100,
+        holders: [
+          {
+            playerId: "p3",
+            displayName: "Player D",
+            locationId: "loc3",
+            locationName: "The Rec Hall",
+            here: { wins: 1, games: 1, ratePercent: 100 },
+            elsewhere: { wins: 0, games: 3, ratePercent: 0 },
+            gapPercentagePoints: 100,
+            games: [game("g3", "2026-07-01")],
+          },
+        ],
+      },
+    });
+
+    const { default: Home } = await import("@/app/page");
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Player D, The Rec Hall");
+    expect(html).toContain("won 1 of 1 there, 0 of 3 elsewhere");
+  });
+});
+
 describe("/ — every card links to its own drill-through", () => {
   it("each record's href is /records/{key}", async () => {
     const { getBoard } = await import("@/lib/board/queries");
     vi.mocked(getBoard).mockResolvedValueOnce({
       empty: false,
       archiveGameCount: 12,
+      homeAdvantage: { gapPercentagePoints: null, holders: [] },
       singleEventRecords: [],
       earlyDays: false,
       records: [

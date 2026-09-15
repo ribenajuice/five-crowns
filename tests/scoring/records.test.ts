@@ -13,6 +13,7 @@ import {
   cleanestSheet,
   handsBledOn,
   headToHead,
+  homeAdvantage,
   longestDrought,
   longestStreak,
   nemesis,
@@ -20,6 +21,7 @@ import {
   roundsWon,
   roundWinners,
   secondPlace,
+  venueBreakdown,
   winningMargin,
   worstGameEver,
   zeroHandCountsByPlayerGame,
@@ -27,9 +29,11 @@ import {
   type GameHandScoreRow,
   type HammeringInstance,
   type HeadToHeadGame,
+  type HomeAdvantageCandidate,
   type NemesisCandidate,
   type SingleHandInstance,
   type StreakGame,
+  type VenueParticipation,
 } from "@/lib/scoring";
 import {
   PLAYER_A,
@@ -577,6 +581,188 @@ describe("nemesis — criteria 199–201", () => {
     // because on screen both read "19.4%".
     expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zed"]);
     expect(result.aboveRatePercent).toBeCloseTo(19.4, 1);
+  });
+});
+
+describe("venueBreakdown — criterion 250 (one shared function, two rendering contexts)", () => {
+  it("groups by (venue, player): a player's own participations yield one row per venue", () => {
+    const rows: VenueParticipation[] = [
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-1", finalScore: 40, won: true },
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-1", finalScore: 60, won: false },
+      { locationId: "loc-b", locationName: "Bo's", playerId: "p-1", finalScore: 50, won: true },
+      { locationId: null, locationName: null, playerId: "p-1", finalScore: 70, won: false },
+    ];
+    const result = venueBreakdown(rows);
+    expect(result).toHaveLength(3);
+
+    const atA = result.find((r) => r.locationId === "loc-a")!;
+    expect(atA.gamesPlayed).toBe(2);
+    expect(atA.wins).toBe(1);
+    expect(atA.winRate).toBeCloseTo(0.5, 5);
+    expect(atA.average).toBe(50);
+
+    const noLocation = result.find((r) => r.locationId === null)!;
+    expect(noLocation.gamesPlayed).toBe(1);
+    expect(noLocation.wins).toBe(0);
+  });
+
+  it("groups by (venue, player): one venue's own participations yield one row per player", () => {
+    const rows: VenueParticipation[] = [
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-1", finalScore: 40, won: true },
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-2", finalScore: 60, won: false },
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-1", finalScore: 30, won: true },
+    ];
+    const result = venueBreakdown(rows);
+    expect(result).toHaveLength(2);
+    const p1 = result.find((r) => r.playerId === "p-1")!;
+    expect(p1.gamesPlayed).toBe(2);
+    expect(p1.wins).toBe(2);
+    expect(p1.average).toBe(35);
+  });
+
+  it("never determines a winner itself — a `won` of false is simply not tallied", () => {
+    const rows: VenueParticipation[] = [
+      { locationId: "loc-a", locationName: "Alex's", playerId: "p-1", finalScore: 100, won: false },
+    ];
+    const result = venueBreakdown(rows);
+    expect(result[0]!.wins).toBe(0);
+    expect(result[0]!.winRate).toBe(0);
+  });
+});
+
+describe("homeAdvantage — criteria 253–254", () => {
+  function candidate(overrides: Partial<HomeAdvantageCandidate>): HomeAdvantageCandidate {
+    return {
+      playerId: "p-sam",
+      displayName: "Sam",
+      locationId: "loc-e",
+      locationName: "Player E's",
+      hereWins: 0,
+      hereGames: 0,
+      elsewhereWins: 0,
+      elsewhereGames: 0,
+      ...overrides,
+    };
+  }
+
+  it("QA's own worked example: 3 of 4 at one venue, 1 of 8 elsewhere", () => {
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({ hereWins: 3, hereGames: 4, elsewhereWins: 1, elsewhereGames: 8 }),
+    ];
+    const result = homeAdvantage(candidates);
+    expect(result.holders).toHaveLength(1);
+    const holder = result.holders[0]!;
+    expect(holder.here).toEqual({ wins: 3, games: 4, ratePercent: 75 });
+    expect(holder.elsewhere).toEqual({ wins: 1, games: 8, ratePercent: 12.5 });
+    expect(holder.gapPercentagePoints).toBeCloseTo(62.5, 1);
+    expect(result.gapPercentagePoints).toBeCloseTo(62.5, 1);
+  });
+
+  it("⚠️ a player with no games at any other known venue contributes no pair at all", () => {
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({ hereWins: 4, hereGames: 4, elsewhereWins: 0, elsewhereGames: 0 }),
+    ];
+    expect(homeAdvantage(candidates)).toEqual({ holders: [], gapPercentagePoints: null });
+  });
+
+  it("⚠️ a gap of zero or less never holds the record, at any sample size", () => {
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({ hereWins: 2, hereGames: 4, elsewhereWins: 2, elsewhereGames: 4 }), // gap 0
+      candidate({
+        playerId: "p-jo",
+        displayName: "Jo",
+        hereWins: 1,
+        hereGames: 4,
+        elsewhereWins: 5,
+        elsewhereGames: 5,
+      }), // gap negative
+    ];
+    expect(homeAdvantage(candidates)).toEqual({ holders: [], gapPercentagePoints: null });
+  });
+
+  it("⚠️ a one-game venue is shown holding it, unhedged", () => {
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({ hereWins: 1, hereGames: 1, elsewhereWins: 0, elsewhereGames: 3 }),
+    ];
+    const result = homeAdvantage(candidates);
+    expect(result.holders).toHaveLength(1);
+    expect(result.holders[0]!.here).toEqual({ wins: 1, games: 1, ratePercent: 100 });
+    expect(result.holders[0]!.elsewhere).toEqual({ wins: 0, games: 3, ratePercent: 0 });
+    expect(result.holders[0]!.gapPercentagePoints).toBe(100);
+  });
+
+  it("joint holders: every (player, venue) pair on the highest gap, alphabetical by player then venue", () => {
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({
+        playerId: "p-zoe",
+        displayName: "Zoe",
+        locationId: "loc-z",
+        locationName: "Zoe's",
+        hereWins: 4,
+        hereGames: 4,
+        elsewhereWins: 0,
+        elsewhereGames: 4,
+      }),
+      candidate({
+        playerId: "p-amy",
+        displayName: "Amy",
+        locationId: "loc-a",
+        locationName: "Amy's",
+        hereWins: 4,
+        hereGames: 4,
+        elsewhereWins: 0,
+        elsewhereGames: 4,
+      }),
+      // The same player twice, at two different venues — both above may tie.
+      candidate({
+        playerId: "p-amy",
+        displayName: "Amy",
+        locationId: "loc-b",
+        locationName: "Bo's",
+        hereWins: 2,
+        hereGames: 4,
+        elsewhereWins: 1,
+        elsewhereGames: 4,
+      }),
+    ];
+    const result = homeAdvantage(candidates);
+    expect(result.holders.map((h) => `${h.displayName}/${h.locationName}`)).toEqual([
+      "Amy/Amy's",
+      "Zoe/Zoe's",
+    ]);
+  });
+
+  it("⚠️ ties are judged on the gap as displayed, to one decimal place", () => {
+    // 6/31 - 0 and 7/36 - 0, both rounding to the same displayed gap, mirroring
+    // nemesis's own sub-decimal tie-break test above.
+    const a = 6 / 31;
+    const b = 7 / 36;
+    expect(Math.round(a * 1000) / 10).toBe(Math.round(b * 1000) / 10);
+
+    const candidates: HomeAdvantageCandidate[] = [
+      candidate({
+        playerId: "p-zed",
+        displayName: "Zed",
+        hereWins: Math.round(a * 31),
+        hereGames: 31,
+        elsewhereWins: 0,
+        elsewhereGames: 5,
+      }),
+      candidate({
+        playerId: "p-amy",
+        displayName: "Amy",
+        hereWins: Math.round(b * 36),
+        hereGames: 36,
+        elsewhereWins: 0,
+        elsewhereGames: 5,
+      }),
+    ];
+    const result = homeAdvantage(candidates);
+    expect(result.holders.map((h) => h.displayName)).toEqual(["Amy", "Zed"]);
+  });
+
+  it("no candidates at all: the no-holder case", () => {
+    expect(homeAdvantage([])).toEqual({ holders: [], gapPercentagePoints: null });
   });
 });
 

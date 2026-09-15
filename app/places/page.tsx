@@ -52,7 +52,13 @@ export default async function PlacesIndexPage({
         ) : (
           <div className="flex flex-col gap-2">
             {places.map((p) => (
-              <PlaceRow key={p.id} id={p.id} name={p.name} gamesPlayed={p.gamesPlayed} />
+              <PlaceRow
+                key={p.id}
+                id={p.id}
+                name={p.name}
+                gamesPlayed={p.gamesPlayed}
+                tableAverage={p.tableAverage}
+              />
             ))}
           </div>
         )}
