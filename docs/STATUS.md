@@ -396,9 +396,10 @@
     targets, focus visibility) and other pixel-level review-screen behaviour are verified by reading the code,
     not by rendering it. Worth a Playwright smoke test in a later stage.
   - Small duplications code review flagged as cleanup, not bugs: an HMAC-hex helper duplicated between
-    `lib/photos/local-url.ts` and `lib/auth/ip-hash.ts`; `resolvePlayers` in `lib/games/save.ts` doing sequential
-    per-column DB lookups instead of one batched query; `lib/vision/usage-cap.ts` duplicating
-    `lib/photos/upload-cap.ts`'s atomic-increment pattern rather than sharing it.
+    `lib/photos/local-url.ts` and `lib/auth/ip-hash.ts`; `lib/vision/usage-cap.ts` duplicating
+    `lib/photos/upload-cap.ts`'s atomic-increment pattern rather than sharing it. ✅ **`resolvePlayers`'s
+    sequential per-column DB lookups were fixed** as part of Bug 1 (`docs/PRD.md`, criterion 320,
+    2026-09-23) — it and `writeGameRows` now batch, rather than loop, their database calls.
   - The admin cookie's `Path` changed from `/admin` to `/` in Stage 3 (fixing a real reachability bug) — a
     browser holding a pre-Stage-3 `Path=/admin` cookie may keep both until it expires. Harmless: revocation is
     checked from the token's own signed epoch, not cookie freshness, so this can't grant stale access.

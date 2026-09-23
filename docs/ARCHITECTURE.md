@@ -798,9 +798,10 @@ server-side exactly as the save does. Then, in **one transaction**:
    `(game_id, player_id)`, so a player removed from the game by criterion 118 has rows no UPDATE can
    reach — they would silently stay in the game, in the winner calculation and in every stat. This is
    what criterion 119's "replaces every round row" means concretely;
-5. attach any close-ups taken during this edit, with the save's two sweeps unchanged (the per-column
-   one and the criterion-71 orphan sweep for a column removed by a structural repair), scoped to this
-   draft and setting `game_id`;
+5. attach any close-ups taken during this edit, with the save's two sweeps unchanged (one batched
+   `UPDATE ... CASE` across every resolved column — a single statement since the 2026-09-23 latency fix,
+   previously one `UPDATE` per column — and the criterion-71 orphan sweep for a column removed by a
+   structural repair), scoped to this draft and setting `game_id`;
 6. **null the `player_id` of any close-up already on the game whose player is no longer in it**, so a
    reassigned column degrades to the fallback label the game view already renders rather than naming
    somebody who is not in the game;

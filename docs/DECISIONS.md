@@ -20,6 +20,55 @@ Format:
 > the rate before relying on a figure. The running-cost ceiling is **A$30/month** (originally
 > written as US$20).
 
+## 2026-09-23 — Promise.all inside db.transaction(): a real round-trip win here, not just style
+
+- **Context**: a `/code-review high` pass on the save-latency fix (Bug 1) suggested wrapping two
+  spots in `lib/games/resolve.ts` — `resolvePlayers`'s two independent batched lookups, and
+  `writeGameRows`'s three closing statements — in `Promise.all` inside their `db.transaction()`,
+  citing `lib/players/merge.ts`'s existing `Promise.all` (lines 348–351) as precedent. That
+  clashed with an earlier claim, from this same fix's original build, that Turso's HTTP driver
+  serializes concurrent calls on one `tx` with no real parallelism gain. The two claims couldn't
+  both be right, and "I investigated and decided" wasn't good enough a second time.
+- **Decision**: settled it by reading `@libsql/hrana-client`'s and `@libsql/client`'s actual
+  source in `node_modules`, then confirming with an instrumented fake `fetch` against the real
+  `@libsql/client/http` + `drizzle-orm/libsql/http` stack this app runs (not a toy driver). The
+  finding: this app's HTTP client only ever speaks Hrana **protocol v2** — `openHttp()` is never
+  given a `protocolVersion`, so it defaults to 2 and no version-negotiation request is ever made.
+  Under v2, `HranaTransaction.batch()` (`@libsql/client`'s `hrana.js`) makes **every statement
+  after a transaction's opening one `await` that opening statement's own round trip** before it's
+  even allowed onto the wire — v2 has no `isAutocommit` guard the client could use to skip that
+  wait, unlike v3. *But* once that wait is satisfied, any statements issued in the same JS tick
+  land in the driver's stream queue together and get coalesced by `HttpStream`'s
+  queue/flush-on-microtask logic (`stream.js`) into a single pipelined HTTP request. Measured
+  round trips (mocked `fetch`, 30 ms simulated latency each):
+  - Two statements as the *first* ones in a transaction (mirrors `merge.ts`'s existing
+    `Promise.all([survivorStillThere, loserStillThere])`, which runs with nothing before it):
+    **3 round trips either way** — `Promise.all` buys nothing there, because the very first
+    statement of a transaction can never overlap with anything (it *is* what the wait above is
+    waiting on). `merge.ts`'s `Promise.all` is harmless, established style, but not actually
+    faster today.
+  - The same two statements preceded by one earlier statement in the transaction (mirrors
+    `resolvePlayers`, which always runs after `resolveLocation`): **2 round trips sequential, 1
+    via `Promise.all`.**
+  - Three statements likewise preceded by earlier activity (mirrors `writeGameRows`, which runs
+    after `resolveLocation`/`resolvePlayers`/`upsertRoster`): **3 round trips sequential, 1 via
+    `Promise.all`.**
+  Applied `Promise.all` in both `resolve.ts` spots — real, measured wins in the position they
+  actually run in, not a guess and not mere consistency with `merge.ts`.
+- **Alternatives**: (a) leave both sequential, matching the original build's stated reasoning —
+  rejected, the reasoning was an overgeneralization: true for the first statement of a
+  transaction, false for every statement after it, and both `resolve.ts` spots are after it;
+  (b) apply it in `merge.ts` too for consistency — not done, since `merge.ts`'s `Promise.all` is
+  the *first* pair of statements in that transaction and the measurement shows no win there;
+  changing it would be style-only churn with no evidence behind it, so left alone.
+- **Consequences**: `resolvePlayers` now issues its nameKey lookup even on the (rare) path where
+  the id lookup is about to throw `InvalidReferenceError` — a harmless extra read inside a
+  transaction that's about to roll back. Statement *count* (and therefore
+  `tests/games/save-query-count.test.ts`) is unchanged; only concurrency changed. Revisit if this
+  app ever upgrades to a driver/config that negotiates Hrana v3 — the `isAutocommit` guard v3 adds
+  would change the "first statement" restriction this whole analysis hinges on, and the file's own
+  code comments point back here in that case.
+
 ## 2026-09-15 — Milestone 4 second slice: all seven open questions answered at the founder's checkpoint
 
 - **Context**: the four personality stats (PRD criteria **294–319**) were specced the same day and
