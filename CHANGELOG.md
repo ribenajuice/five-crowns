@@ -6,6 +6,17 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+### Fixed
+
+- **Pressing "Put it in the book" now finishes quickly, and never looks stuck.** Saving a game used
+  to leave the button showing "Putting it in the book…" for up to ten seconds with nothing else
+  happening — long enough that it looked frozen, and a refresh felt like the only option. Saving is
+  now much faster, and doesn't slow down on a bigger table. On the rare save that still takes a few
+  seconds, the button now says so — "Still putting it in the book — don't refresh, this can take a
+  few more seconds" — instead of going quiet. If you try to leave or refresh the page while a save is
+  still in progress, your browser now asks you to confirm first, so an impatient refresh can't lose
+  the moment.
+
 ## [Stage 12] - 2026-09-15
 
 Milestone 4's second slice: the four personality stats. Live in production.
