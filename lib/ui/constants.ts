@@ -32,6 +32,13 @@ export const JPEG_QUALITY_STEPS = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4] as const;
 /** PUT /api/drafts/{id}, debounced (PRD criterion 28). */
 export const AUTOSAVE_DEBOUNCE_MS = 1000;
 
+/**
+ * PRD criterion 322: how long a `POST /api/games` save runs before the busy
+ * label swaps to `SAVE_BUTTON_LONG_WAIT_MESSAGE` — "~3 seconds" per the
+ * acceptance criterion.
+ */
+export const SAVE_LONG_WAIT_DELAY_MS = 3000;
+
 /** The grid's row pitch, matching `--pitch` in app/globals.css. */
 export const REVIEW_ROW_PITCH_PX = 46;
 

@@ -2,7 +2,30 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-15 (PR #37 opened)
+- **Last updated**: 2026-09-23 (PR #38 merged, closing Milestone 4's named scope; PR #39 — a
+  dependabot dependency bump — open with failing CI, not investigated yet; [PR #40](https://github.com/ribenajuice/five-crowns/pull/40)
+  opened, fixing the reported "save button looks frozen" bug — see below)
+- **Currently in flight**: [PR #40](https://github.com/ribenajuice/five-crowns/pull/40) — fixes Bug 1
+  in `docs/PRD.md` ("Save looks frozen for ~10 seconds"), reported by the founder 2026-09-23: pressing
+  Save on the review screen after confirming all scores showed no response for ~10 seconds; the game
+  had actually saved, only found by refreshing. Root cause: 30+ sequential database round trips per
+  save, each ~110-130ms to the Tokyo database — genuinely slow, not stuck, with no feedback beyond a
+  static busy label. Fixed by batching the per-player database calls (round-trip count no longer
+  scales with player count) plus `Promise.all` over independent statements within the transaction
+  (an instrumented probe found Turso's Hrana v2 protocol only serializes a transaction's *opening*
+  statement, not later ones — recorded as an ADR in `docs/DECISIONS.md`), and by giving the Save
+  button honest feedback: a "still working, don't refresh" message past ~3s, and the browser's own
+  "leave this page?" warning while a save is genuinely in flight. `/code-review high` found and fixed
+  two real bugs QA's manual trace missed (the leave-page guard could stay armed past a completed save
+  during a slow post-success navigation; a leaked timer on in-app navigation away mid-save) — both
+  closed by folding two independent flags into one state machine so the bad states can't happen. A
+  security review found no blocking issues, including a re-check of the client-supplied-id validation
+  this file was previously flagged for. 1851 tests passing, lint and typecheck clean. **Needs the
+  founder's review and merge.** ⚠️ **Criterion 321** (a real warm-save timing number against
+  production) was **deliberately deferred by the founder** — getting it meant reading production
+  secrets, which this session stopped and asked about rather than doing unprompted; the founder chose
+  to ship without it and verify by feel once deployed. If the button still feels slow after this
+  ships, that's why, and it reopens.
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
   merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
   deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
@@ -65,10 +88,16 @@
   no data or error leakage. ⚠️ **Not yet verified**: the actual four new cards rendering correctly on the real
   board, since that sits behind the group password, which only the founder holds — same pattern as every prior
   stage's on-phone acceptance step.
-- **Currently in flight**: [PR #38](https://github.com/ribenajuice/five-crowns/pull/38) — docs-only wrap-up for
-  PR #37 (CHANGELOG entry promoted to a dated "live" heading; README's "Where it's at" section bumped to
-  seventeen records). CI green, **needs the founder's merge** — a normal review checkpoint, not a blocker on
-  anything else.
+- ✅ [PR #38](https://github.com/ribenajuice/five-crowns/pull/38) — docs-only wrap-up for PR #37 (CHANGELOG entry
+  promoted to a dated "live" heading; README's "Where it's at" section bumped to seventeen records). **Merged
+  2026-09-15.** This closes out Milestone 4's named scope (fun facts + the four personality stats) — the only
+  remaining Milestone 4 line is the open-ended "whatever the old sheets teach us once they're all entered,"
+  which isn't scoped to any criteria yet.
+- **Currently in flight**: [PR #39](https://github.com/ribenajuice/five-crowns/pull/39) — a Dependabot grouped
+  dependency bump (10 packages), opened 2026-09-16. Its own CI run **failed**. It's a large, non-trivial bump —
+  Next.js 15→16, TypeScript 5→7, ESLint 9→10, `@types/node` 22→26 — not a routine patch update, so it needs a
+  real review pass (likely devops-engineer or architect) rather than a reflex merge. Not investigated yet; not
+  blocking any other work.
 - **Previously in flight, now shipped**: Milestone 3 is complete, all four stages merged and live, and
   Milestone 4's first slice is merged and live too — see below.
   - ✅ [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
@@ -338,10 +367,12 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: nothing queued right now — Milestone 3 is complete and there are no open PRs. The next
-  build work is scoping the rest of Milestone 4 ("Personality and polish" — the four remaining personality
-  stats named in `docs/PRD.md`, whose wording is the founder's to give whenever they're built) once the
-  founder's ready to kick it off.
+- **Next up (as of 2026-09-23)**: Milestone 4's entire named scope (fun facts, then the four personality
+  stats) is now complete and live. Nothing is queued. The PRD's only remaining Milestone 4 line — "whatever
+  the old sheets teach us once they're all entered" — isn't scoped to acceptance criteria; it depends on the
+  founder actually entering the group's remaining old paper scoresheets first, since new stat ideas would
+  come out of what that history turns up. Until then, the highest-leverage next step is a product-manager
+  scoping pass to decide what Milestone 5 even is, once the founder has a direction in mind.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
@@ -387,9 +418,10 @@
     targets, focus visibility) and other pixel-level review-screen behaviour are verified by reading the code,
     not by rendering it. Worth a Playwright smoke test in a later stage.
   - Small duplications code review flagged as cleanup, not bugs: an HMAC-hex helper duplicated between
-    `lib/photos/local-url.ts` and `lib/auth/ip-hash.ts`; `resolvePlayers` in `lib/games/save.ts` doing sequential
-    per-column DB lookups instead of one batched query; `lib/vision/usage-cap.ts` duplicating
-    `lib/photos/upload-cap.ts`'s atomic-increment pattern rather than sharing it.
+    `lib/photos/local-url.ts` and `lib/auth/ip-hash.ts`; `lib/vision/usage-cap.ts` duplicating
+    `lib/photos/upload-cap.ts`'s atomic-increment pattern rather than sharing it. ✅ **`resolvePlayers`'s
+    sequential per-column DB lookups were fixed** as part of Bug 1 (`docs/PRD.md`, criterion 320,
+    2026-09-23) — it and `writeGameRows` now batch, rather than loop, their database calls.
   - The admin cookie's `Path` changed from `/admin` to `/` in Stage 3 (fixing a real reachability bug) — a
     browser holding a pre-Stage-3 `Path=/admin` cookie may keep both until it expires. Harmless: revocation is
     checked from the token's own signed epoch, not cookie freshness, so this can't grant stale access.

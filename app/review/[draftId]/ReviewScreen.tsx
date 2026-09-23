@@ -40,7 +40,7 @@ import {
 } from "@/lib/scoring";
 import { toGridColumns, type DraftColumn, type DraftState } from "@/lib/draft/state";
 import { createDebouncer, resolveAutosaveOutcome, type Debounced } from "@/lib/ui/autosave";
-import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/ui/constants";
+import { AUTOSAVE_DEBOUNCE_MS, SAVE_LONG_WAIT_DELAY_MS } from "@/lib/ui/constants";
 import {
   CROP_STEP_HEADING,
   FIX_SOMETHING_LINK,
@@ -92,7 +92,12 @@ interface PhotoState {
 }
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
-type SaveStatus = "idle" | "saving" | "error";
+// "saving-long" is a variant of "saving" (PRD criterion 322's long-wait
+// message), not a second independent flag — folding it in here, rather than
+// tracking it as its own boolean, makes "long-wait true but not actually
+// saving" unrepresentable. `isSaving` below treats the two as one for every
+// purpose except which helper line `SaveBar` shows.
+type SaveStatus = "idle" | "saving" | "saving-long" | "error";
 
 function labelForColumn(column: DraftColumn, players: PickListItem[]): string {
   if (column.newPlayerName) return column.newPlayerName;
@@ -166,6 +171,23 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
+  // PRD criterion 322: `saveLongWaitTimer` fires once the in-flight
+  // `POST /api/games` has been running for `SAVE_LONG_WAIT_DELAY_MS`, flipping
+  // `saveStatus` from "saving" to "saving-long" (only if it's still "saving" —
+  // a functional update, so a timer that fires after the fetch already
+  // resolved is a no-op rather than resurrecting a stale wait state). Cleared
+  // on every settle path in `handleSave`'s `finally`, and also on unmount
+  // (below) so a save that outlives an in-app navigation away from this
+  // screen can't fire `setSaveStatus` against an unmounted component.
+  const saveLongWaitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (saveLongWaitTimer.current) {
+        clearTimeout(saveLongWaitTimer.current);
+        saveLongWaitTimer.current = null;
+      }
+    };
+  }, []);
 
   // The model's own doubt, handed off from `AddGameFlow` via `sessionStorage`
   // for this one attempt only — never persisted on the draft (Stage 3), so a
@@ -312,6 +334,26 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
       window.removeEventListener("offline", goOffline);
     };
   }, []);
+
+  // PRD criterion 323: while the real `POST /api/games` save is in flight,
+  // guard a refresh or tab close with the browser's native "leave this page?"
+  // prompt — `saveStatus` only becomes `"saving"`/`"saving-long"` inside
+  // `handleSave` (never during ordinary autosave), so this never fires for
+  // the debounced `putDraft` PUT. Adding/removing the listener as an effect
+  // keyed on `saveStatus`, rather than inside `handleSave` itself, means it's
+  // also guaranteed gone the instant `saveStatus` moves to `"error"` or back
+  // to `"idle"`, on every path — including a slow post-success navigation,
+  // since the success path resets `saveStatus` to `"idle"` itself rather than
+  // relying on unmount — no separate cleanup call to remember.
+  useEffect(() => {
+    if (saveStatus !== "saving" && saveStatus !== "saving-long") return;
+    function warnBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [saveStatus]);
 
   // Initial load: the draft itself, plus the two pick-lists.
   useEffect(() => {
@@ -527,46 +569,72 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
     debouncedSave.current?.flush();
     setSaveStatus("saving");
     setSaveErrorMessage(null);
+    if (saveLongWaitTimer.current) clearTimeout(saveLongWaitTimer.current);
+    saveLongWaitTimer.current = setTimeout(() => {
+      // Only promote to "saving-long" if the save is still going — a stale
+      // timer whose fetch already resolved (and reset `saveStatus` away from
+      // "saving") is a no-op rather than resurrecting the long-wait message.
+      setSaveStatus((current) => (current === "saving" ? "saving-long" : current));
+    }, SAVE_LONG_WAIT_DELAY_MS);
 
-    const result = await fetchJson<{
-      gameId: string;
-      error?: { code: string; message: string };
-      issues?: ReturnType<typeof validateGrid>;
-    }>("/api/games", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ draftId, state: draft }),
-    });
+    try {
+      const result = await fetchJson<{
+        gameId: string;
+        error?: { code: string; message: string };
+        issues?: ReturnType<typeof validateGrid>;
+      }>("/api/games", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ draftId, state: draft }),
+      });
 
-    if (result.ok && result.body) {
-      router.push(`/games/${result.body.gameId}?saved=1`);
-      return;
-    }
+      if (result.ok && result.body) {
+        // PRD criterion 323: the save has actually finished — reset before
+        // (not after) `router.push`, since the App Router doesn't unmount
+        // this page synchronously. A slow RSC fetch for the destination page
+        // would otherwise leave `saveStatus` stuck at "saving" and the
+        // `beforeunload` guard armed for a save that already succeeded.
+        setSaveStatus("idle");
+        router.push(`/games/${result.body.gameId}?saved=1`);
+        return;
+      }
 
-    setSaveStatus("error");
-    if (result.body?.error?.code === "invalid_grid") {
-      // The server re-validates independently and never trusts the browser's
-      // own check — surface *its* issues (criterion: "handle 422 invalid_grid,
-      // show the issues"), falling back to the client's own read only if the
-      // shapes ever disagree.
-      const serverIssues = result.body.issues;
-      const message = serverIssues
-        ? saveBlockedMessage(serverIssues, (columnId) => {
-            const column = sortedColumns.find((c) => c.id === columnId);
-            return column ? labelForColumn(column, players) : "";
-          })
-        : null;
-      setSaveErrorMessage(message ?? "Something on this sheet still needs fixing — have another look above.");
-    } else if (result.body?.error?.code === "missing_photo") {
-      setSaveErrorMessage("This draft has no sheet photo to save with.");
-    } else if (result.body?.error?.code === "game_deleted") {
-      // PRD criterion 122: the edit's target game was deleted meanwhile.
-      // The server already refused the write — nothing here resurrects it,
-      // and the plain message says exactly what happened rather than
-      // implying a connectivity problem.
-      setSaveErrorMessage(GAME_DELETED_MID_EDIT_MESSAGE);
-    } else {
-      setSaveErrorMessage("That didn't save. Check your connection and try again.");
+      setSaveStatus("error");
+      if (result.body?.error?.code === "invalid_grid") {
+        // The server re-validates independently and never trusts the browser's
+        // own check — surface *its* issues (criterion: "handle 422 invalid_grid,
+        // show the issues"), falling back to the client's own read only if the
+        // shapes ever disagree.
+        const serverIssues = result.body.issues;
+        const message = serverIssues
+          ? saveBlockedMessage(serverIssues, (columnId) => {
+              const column = sortedColumns.find((c) => c.id === columnId);
+              return column ? labelForColumn(column, players) : "";
+            })
+          : null;
+        setSaveErrorMessage(message ?? "Something on this sheet still needs fixing — have another look above.");
+      } else if (result.body?.error?.code === "missing_photo") {
+        setSaveErrorMessage("This draft has no sheet photo to save with.");
+      } else if (result.body?.error?.code === "game_deleted") {
+        // PRD criterion 122: the edit's target game was deleted meanwhile.
+        // The server already refused the write — nothing here resurrects it,
+        // and the plain message says exactly what happened rather than
+        // implying a connectivity problem.
+        setSaveErrorMessage(GAME_DELETED_MID_EDIT_MESSAGE);
+      } else {
+        setSaveErrorMessage("That didn't save. Check your connection and try again.");
+      }
+    } finally {
+      // PRD criterion 322: the fetch has resolved (success or failure) — its
+      // pending long-wait timer (if it hasn't fired yet) is cleared here, on
+      // every path, including the redirect above (a `return` inside `try`
+      // still runs `finally`). `saveStatus` itself was already moved off
+      // "saving"/"saving-long" above (to "idle" on success, "error" on
+      // failure), so there's nothing left to reset here.
+      if (saveLongWaitTimer.current) {
+        clearTimeout(saveLongWaitTimer.current);
+        saveLongWaitTimer.current = null;
+      }
     }
   }
 
@@ -704,7 +772,8 @@ export function ReviewScreen({ draftId }: { draftId: string }) {
 
       <SaveBar
         disabled={!gridValidation.ok}
-        busy={saveStatus === "saving"}
+        busy={saveStatus === "saving" || saveStatus === "saving-long"}
+        longWait={saveStatus === "saving-long"}
         message={blockedMessage ?? PASSING_STATEMENT}
         onSave={handleSave}
       />
