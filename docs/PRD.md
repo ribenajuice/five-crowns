@@ -4452,6 +4452,54 @@ a rule they have chosen three times.
 - **Changing the fun-fact pool at all.** Criterion 302's conditional removal was resolved at the
   2026-09-15 checkpoint and **does not trigger** — the pool ships unchanged at eight generators.
 
+### Bug fixes
+
+*Defects in shipped milestones. Not new scope: each one restores behaviour a milestone already
+promised. Criteria continue the project-wide numbering.*
+
+#### Bug 1 — Save looks frozen for ~10 seconds (Milestone 1 review screen) — reported 2026-09-23
+
+**The problem.** The founder confirmed every score, pressed Save, and for about ten seconds the button
+showed its busy label and nothing else changed. It read as frozen, so they refreshed. The game had
+saved; the refresh found it and redirected. Their words: *"it would be nice if the button itself
+worked as expected."* A user who refreshes, closes the tab or re-enters the sheet because the app
+looked broken is the failure, even though no data was lost.
+
+**Cause (diagnosed, not guessed).** The save is correct but makes 30+ one-after-another database
+calls for a full table (several per player column), each ~110–130ms to the Tokyo database, plus a
+cold start of up to ~3.9s. ⚠️ **Assumption:** the ~10s figure is reasoned from code and earlier
+latency measurements, not from this incident's production logs. Criterion 321 makes the team measure
+it before claiming the fix.
+
+**Acceptance criteria**
+
+320. **The number of database calls in a save no longer grows with the number of players.** Per-player
+     writes are batched and independent lookups run together. QA compares a 2-player and a 7-player
+     save and gets the same count (or within a small fixed number). A unit test in CI locks it in.
+321. **A typical save is measurably faster.** The team records the current time for a warm save of a
+     full 7-player sheet *before* changing anything, then again after. Target: under **2 seconds**
+     warm (team default; the founder can change it). Both numbers go in `docs/STATUS.md`.
+322. **A long save never looks like a frozen one.** If a save is still running after ~3 seconds, the
+     busy label changes to a plain reassurance that it is still working and the page should not be
+     refreshed. No fake progress bar, no made-up percentages. Final copy comes from the tech-writer.
+     QA uses an artificially slowed save to check both states.
+323. **Leaving mid-save gets a warning.** While a save is in flight, refreshing or closing the tab
+     brings up the browser's standard "leave this page?" prompt. It goes away once the save finishes
+     or fails.
+324. ⚠️ **No change to the save's safety rules.** Idempotency, the concurrent-save guard and
+     server-side re-validation (as documented in `lib/games/save.ts`) are left exactly as they are.
+     Only the shape of the database calls changes. All existing save tests pass unmodified. QA
+     double-clicks Save and saves one draft from two tabs, and each time gets exactly one game.
+325. **Same result, byte for byte.** Saving the `sheet-01` fixture produces the same game, rounds,
+     roster, location and photo link as before the fix.
+
+**Out of scope** — moving the database region, keeping Lambdas warm (provisioned concurrency),
+redirecting before the save is confirmed, and step-by-step progress indicators. Each is a bigger
+decision than this bug needs. Reopen only if 321 misses its target.
+
+✅ **Approved by the founder, 2026-09-23**, including criterion 323 (the leave-page warning) as
+written — flagged at the spec checkpoint as the one new behaviour here, and kept.
+
 ### v2 and beyond (not now)
 
 Exports, sharing outside the group, multiple groups, live scoring, anything that knows the rules.

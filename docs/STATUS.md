@@ -2,7 +2,8 @@
 
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
-- **Last updated**: 2026-09-15 (PR #37 opened)
+- **Last updated**: 2026-09-23 (PR #38 merged, closing Milestone 4's named scope; PR #39 — a
+  dependabot dependency bump — open with failing CI, not investigated yet)
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
   merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
   deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
@@ -65,10 +66,16 @@
   no data or error leakage. ⚠️ **Not yet verified**: the actual four new cards rendering correctly on the real
   board, since that sits behind the group password, which only the founder holds — same pattern as every prior
   stage's on-phone acceptance step.
-- **Currently in flight**: [PR #38](https://github.com/ribenajuice/five-crowns/pull/38) — docs-only wrap-up for
-  PR #37 (CHANGELOG entry promoted to a dated "live" heading; README's "Where it's at" section bumped to
-  seventeen records). CI green, **needs the founder's merge** — a normal review checkpoint, not a blocker on
-  anything else.
+- ✅ [PR #38](https://github.com/ribenajuice/five-crowns/pull/38) — docs-only wrap-up for PR #37 (CHANGELOG entry
+  promoted to a dated "live" heading; README's "Where it's at" section bumped to seventeen records). **Merged
+  2026-09-15.** This closes out Milestone 4's named scope (fun facts + the four personality stats) — the only
+  remaining Milestone 4 line is the open-ended "whatever the old sheets teach us once they're all entered,"
+  which isn't scoped to any criteria yet.
+- **Currently in flight**: [PR #39](https://github.com/ribenajuice/five-crowns/pull/39) — a Dependabot grouped
+  dependency bump (10 packages), opened 2026-09-16. Its own CI run **failed**. It's a large, non-trivial bump —
+  Next.js 15→16, TypeScript 5→7, ESLint 9→10, `@types/node` 22→26 — not a routine patch update, so it needs a
+  real review pass (likely devops-engineer or architect) rather than a reflex merge. Not investigated yet; not
+  blocking any other work.
 - **Previously in flight, now shipped**: Milestone 3 is complete, all four stages merged and live, and
   Milestone 4's first slice is merged and live too — see below.
   - ✅ [PR #33](https://github.com/ribenajuice/five-crowns/pull/33) — **Milestone 4, first slice — fun
@@ -338,10 +345,12 @@
   `scripts/aws-bootstrap.sh` (needs founder AWS credentials) to actually apply PR #18's IAM tightening — the
   template merged, but a merge alone changes nothing in AWS, and the first deploy after that re-run should be
   watched.
-- **Next up**: nothing queued right now — Milestone 3 is complete and there are no open PRs. The next
-  build work is scoping the rest of Milestone 4 ("Personality and polish" — the four remaining personality
-  stats named in `docs/PRD.md`, whose wording is the founder's to give whenever they're built) once the
-  founder's ready to kick it off.
+- **Next up (as of 2026-09-23)**: Milestone 4's entire named scope (fun facts, then the four personality
+  stats) is now complete and live. Nothing is queued. The PRD's only remaining Milestone 4 line — "whatever
+  the old sheets teach us once they're all entered" — isn't scoped to acceptance criteria; it depends on the
+  founder actually entering the group's remaining old paper scoresheets first, since new stat ideas would
+  come out of what that history turns up. Until then, the highest-leverage next step is a product-manager
+  scoping pass to decide what Milestone 5 even is, once the founder has a direction in mind.
 - **Decisions made 2026-09-11** (all in `docs/DECISIONS.md`):
   - **Password hashes are `$`-free** (`scrypt:N:r:p:salt:hash`). Any local hash made before 2026-09-11 must be
     regenerated with `node scripts/hash-password.js`.
