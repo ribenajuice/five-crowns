@@ -4478,7 +4478,13 @@ it before claiming the fix.
      save and gets the same count (or within a small fixed number). A unit test in CI locks it in.
 321. **A typical save is measurably faster.** The team records the current time for a warm save of a
      full 7-player sheet *before* changing anything, then again after. Target: under **2 seconds**
-     warm (team default; the founder can change it). Both numbers go in `docs/STATUS.md`.
+     warm (team default; the founder can change it). Both numbers go in `docs/STATUS.md`. ⚠️ **Deferred
+     by founder decision, 2026-09-23**: getting a real number meant reading production secrets to reach
+     the live Tokyo database, which this session correctly refused to do without asking first. The
+     founder chose to ship without it rather than grant that access — the call count is already proven
+     flat (320) and independently verified by QA to have actually been the old bottleneck, and the real
+     proof is the founder noticing the button feels fast once this is deployed and used for real. If it
+     doesn't, this criterion is why, and reopens.
 322. **A long save never looks like a frozen one.** If a save is still running after ~3 seconds, the
      busy label changes to a plain reassurance that it is still working and the page should not be
      refreshed. No fake progress bar, no made-up percentages. Final copy comes from the tech-writer.
