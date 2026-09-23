@@ -6,6 +6,10 @@ production. Anything not yet deployed sits in an **Unreleased** section at the t
 
 ## [Unreleased]
 
+## [Stage 13] - 2026-09-23
+
+A single fix, verified live: saving a game no longer looks frozen.
+
 ### Fixed
 
 - **Pressing "Put it in the book" now finishes quickly, and never looks stuck.** Saving a game used
