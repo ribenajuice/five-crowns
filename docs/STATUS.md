@@ -3,7 +3,29 @@
 *Updated at the end of /kickoff, /feature, /ship, /deploy, and /status runs. This is the first file to read when resuming work.*
 
 - **Last updated**: 2026-09-23 (PR #38 merged, closing Milestone 4's named scope; PR #39 — a
-  dependabot dependency bump — open with failing CI, not investigated yet)
+  dependabot dependency bump — open with failing CI, not investigated yet; [PR #40](https://github.com/ribenajuice/five-crowns/pull/40)
+  opened, fixing the reported "save button looks frozen" bug — see below)
+- **Currently in flight**: [PR #40](https://github.com/ribenajuice/five-crowns/pull/40) — fixes Bug 1
+  in `docs/PRD.md` ("Save looks frozen for ~10 seconds"), reported by the founder 2026-09-23: pressing
+  Save on the review screen after confirming all scores showed no response for ~10 seconds; the game
+  had actually saved, only found by refreshing. Root cause: 30+ sequential database round trips per
+  save, each ~110-130ms to the Tokyo database — genuinely slow, not stuck, with no feedback beyond a
+  static busy label. Fixed by batching the per-player database calls (round-trip count no longer
+  scales with player count) plus `Promise.all` over independent statements within the transaction
+  (an instrumented probe found Turso's Hrana v2 protocol only serializes a transaction's *opening*
+  statement, not later ones — recorded as an ADR in `docs/DECISIONS.md`), and by giving the Save
+  button honest feedback: a "still working, don't refresh" message past ~3s, and the browser's own
+  "leave this page?" warning while a save is genuinely in flight. `/code-review high` found and fixed
+  two real bugs QA's manual trace missed (the leave-page guard could stay armed past a completed save
+  during a slow post-success navigation; a leaked timer on in-app navigation away mid-save) — both
+  closed by folding two independent flags into one state machine so the bad states can't happen. A
+  security review found no blocking issues, including a re-check of the client-supplied-id validation
+  this file was previously flagged for. 1851 tests passing, lint and typecheck clean. **Needs the
+  founder's review and merge.** ⚠️ **Criterion 321** (a real warm-save timing number against
+  production) was **deliberately deferred by the founder** — getting it meant reading production
+  secrets, which this session stopped and asked about rather than doing unprompted; the founder chose
+  to ship without it and verify by feel once deployed. If the button still feels slow after this
+  ships, that's why, and it reopens.
 - **Phase**: Milestone 1 is complete and live (Stage 5, [PR #19](https://github.com/ribenajuice/five-crowns/pull/19),
   merged 2026-09-13). **Milestone 2 is now complete and live in production** — all four stages merged and
   deployed. Its full delivery spec (87 criteria, 87–174, across four stages) is written in `docs/PRD.md`.
