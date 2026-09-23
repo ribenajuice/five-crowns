@@ -61,6 +61,18 @@ export const CROP_NOT_SET_BUTTON = "Set the crop";
 export const ADJUST_CROP_ARIA_LABEL = "Adjust crop";
 export const SAVE_BUTTON_LABEL = "Put it in the book";
 export const SAVE_BUTTON_BUSY_LABEL = "Putting it in the book…";
+/**
+ * PRD criterion 322: once a save has been running for ~3 seconds,
+ * `SAVE_BUTTON_BUSY_LABEL` is replaced by this plain reassurance — no fake
+ * progress bar, no invented percentage, just confirmation it hasn't stalled
+ * and an explicit ask not to refresh (the exact failure the founder hit).
+ * Same banned-word list as the rest of this screen (never *checked,
+ * validated, verified, confirmed, correct, looks right* or *all good*),
+ * though none of those apply here since this line makes no claim about the
+ * data at all — only that the save is still in progress.
+ */
+export const SAVE_BUTTON_LONG_WAIT_MESSAGE =
+  "Still putting it in the book — don't refresh, this can take a few more seconds.";
 export const PASSING_STATEMENT =
   "Not obviously wrong — that's the most this screen can promise.";
 export const TOO_FEW_PLAYERS_MESSAGE =

@@ -17,7 +17,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
@@ -149,55 +149,106 @@ export interface ResolvedColumn {
  * resolves onto a player already used in another column into `duplicate_player`
  * (criterion: caught *after* resolution, because before it a pending name and
  * an existing player's id are different `columnPlayerKey`s and look distinct).
+ *
+ * ⚠️ Save-latency fix (`docs/PRD.md` "Bug 1 — Save looks frozen", criterion
+ * 320): this used to be a per-column loop doing up to two awaited round trips
+ * each — the round-trip count grew with the number of players. It now does a
+ * fixed, small number of round trips regardless of table size: one batched
+ * lookup for every client-supplied `playerId`, one batched lookup for every
+ * pending name's `nameKey`, and — only if any pending name is genuinely
+ * new — one batched insert plus one batched re-read (the same
+ * insert-then-re-read shape the per-column loop used, for the same reason:
+ * `onConflictDoNothing` means the id that actually landed on a `nameKey` race
+ * might not be the id this call generated). Every `InvalidReferenceError` and
+ * every dedup/creation rule below is unchanged; only the number of statements
+ * it takes to enforce them is.
  */
 export async function resolvePlayers(
   tx: Tx,
   orderedColumns: DraftColumn[],
 ): Promise<ResolvedColumn[]> {
-  const newPlayerIdByKey = new Map<string, string>();
-  const resolved: ResolvedColumn[] = [];
+  // Existing players, referenced by a client-supplied id — one lookup for
+  // every id in the table, not one per column.
+  const uniquePlayerIds = [...new Set(orderedColumns.flatMap((c) => (c.playerId ? [c.playerId] : [])))];
+  const existingPlayerIds = new Set<string>();
+  if (uniquePlayerIds.length > 0) {
+    const rows = await tx
+      .select({ id: player.id })
+      .from(player)
+      .where(inArray(player.id, uniquePlayerIds));
+    for (const row of rows) existingPlayerIds.add(row.id as string);
+  }
+  // Checked in column order so the id reported on a bad reference matches
+  // what the old per-column loop would have thrown first.
+  for (const column of orderedColumns) {
+    if (column.playerId && !existingPlayerIds.has(column.playerId)) {
+      throw new InvalidReferenceError("player", column.playerId);
+    }
+  }
 
+  // Pending names — grouped by `nameKey` so two columns with the same new
+  // name still share one new player, exactly as the per-column cache did.
+  const nameKeyByColumnId = new Map<string, string>();
+  const nameByKey = new Map<string, string>();
+  for (const column of orderedColumns) {
+    if (column.playerId || !column.newPlayerName) continue;
+    const key = nameKey(column.newPlayerName);
+    nameKeyByColumnId.set(column.id, key);
+    // First occurrence wins, same as the old cache's first insert.
+    if (!nameByKey.has(key)) nameByKey.set(key, column.newPlayerName);
+  }
+
+  const newPlayerIdByKey = new Map<string, string>();
+  if (nameByKey.size > 0) {
+    const keys = [...nameByKey.keys()];
+    const existingRows = await tx.select().from(player).where(inArray(player.nameKey, keys));
+    for (const row of existingRows) {
+      newPlayerIdByKey.set(row.nameKey, row.id);
+    }
+
+    const missingKeys = keys.filter((key) => !newPlayerIdByKey.has(key));
+    if (missingKeys.length > 0) {
+      const generatedIdByKey = new Map<string, string>();
+      const toInsert = missingKeys.map((key) => {
+        const name = nameByKey.get(key)!;
+        const id = randomUUID();
+        generatedIdByKey.set(key, id);
+        return {
+          id,
+          displayName: name.trim(),
+          slug: uniqueSlug(name),
+          nameKey: key,
+        };
+      });
+
+      await tx.insert(player).values(toInsert).onConflictDoNothing({ target: player.nameKey });
+
+      const resolvedRows = await tx
+        .select()
+        .from(player)
+        .where(inArray(player.nameKey, missingKeys));
+      for (const row of resolvedRows) {
+        newPlayerIdByKey.set(row.nameKey, row.id);
+      }
+      // Defensive fallback, same as the old per-column loop's `?? newId` —
+      // shouldn't be reachable, but keeps every key resolved either way.
+      for (const key of missingKeys) {
+        if (!newPlayerIdByKey.has(key)) {
+          newPlayerIdByKey.set(key, generatedIdByKey.get(key)!);
+        }
+      }
+    }
+  }
+
+  const resolved: ResolvedColumn[] = [];
   for (const column of orderedColumns) {
     let playerId: string;
 
     if (column.playerId) {
-      const found = (
-        await tx.select().from(player).where(eq(player.id, column.playerId))
-      )[0];
-      if (!found) {
-        throw new InvalidReferenceError("player", column.playerId);
-      }
       playerId = column.playerId;
     } else if (column.newPlayerName) {
-      const key = nameKey(column.newPlayerName);
-      const cached = newPlayerIdByKey.get(key);
-      if (cached) {
-        playerId = cached;
-      } else {
-        const existing = (
-          await tx.select().from(player).where(eq(player.nameKey, key))
-        )[0];
-        if (existing) {
-          playerId = existing.id;
-        } else {
-          const newId = randomUUID();
-          await tx
-            .insert(player)
-            .values({
-              id: newId,
-              displayName: column.newPlayerName.trim(),
-              slug: uniqueSlug(column.newPlayerName),
-              nameKey: key,
-            })
-            .onConflictDoNothing({ target: player.nameKey });
-
-          const row = (
-            await tx.select().from(player).where(eq(player.nameKey, key))
-          )[0];
-          playerId = (row?.id as string) ?? newId;
-        }
-        newPlayerIdByKey.set(key, playerId);
-      }
+      const key = nameKeyByColumnId.get(column.id)!;
+      playerId = newPlayerIdByKey.get(key)!;
     } else {
       // validateGrid's unassigned_column check already rejected this shape.
       throw new Error("A column reached resolution with no player.");
@@ -292,9 +343,24 @@ export interface WriteGameRowsInput {
  * calling this (a fresh insert has nothing to delete); `saveGame` inserts the
  * `game` row itself and links the sheet photo with its own concurrent-save
  * guard. Those stay in each caller.
+ *
+ * ⚠️ Save-latency fix (`docs/PRD.md` "Bug 1 — Save looks frozen", criterion
+ * 320): this used to insert `game_player`, insert `round_score` and update
+ * `photo` once per column — three round trips per player. All three are now
+ * a single batched statement across every resolved column: one multi-row
+ * `game_player` insert, one multi-row `round_score` insert, and one `UPDATE
+ * photo ... CASE` that sets each matching row's `player_id` from the column
+ * it belongs to. `assertNoDuplicatePlayers` (already run on `resolved` before
+ * this is called, in both `saveGame` and `saveEditedGame`) is what keeps the
+ * `(game_id, player_id)` primary key safe for a multi-row insert. The
+ * per-column validity check (`final === null`) stays a plain in-memory loop —
+ * it never touched the database.
  */
 export async function writeGameRows(tx: Tx, input: WriteGameRowsInput): Promise<void> {
   const { gameId, draftId, resolved, valuesByColumnId, orderedColumns, validation } = input;
+
+  const gamePlayerRows: (typeof gamePlayer.$inferInsert)[] = [];
+  const roundScoreRows: (typeof roundScore.$inferInsert)[] = [];
 
   for (const { column, playerId } of resolved) {
     const values = valuesByColumnId.get(column.id) ?? [];
@@ -306,7 +372,7 @@ export async function writeGameRows(tx: Tx, input: WriteGameRowsInput): Promise<
       throw new InvalidGridError(validation);
     }
 
-    await tx.insert(gamePlayer).values({
+    gamePlayerRows.push({
       gameId,
       playerId,
       columnOrder: column.order,
@@ -314,30 +380,52 @@ export async function writeGameRows(tx: Tx, input: WriteGameRowsInput): Promise<
       finalScore: final,
     });
 
-    await tx.insert(roundScore).values(
-      values.map((value, index) => ({
+    for (const [index, value] of values.entries()) {
+      roundScoreRows.push({
         gameId,
         playerId,
         hand: index + 1,
         runningTotal: value as number,
         score: handScores[index] as number,
-      })),
+      });
+    }
+  }
+
+  if (gamePlayerRows.length > 0) {
+    await tx.insert(gamePlayer).values(gamePlayerRows);
+  }
+  if (roundScoreRows.length > 0) {
+    await tx.insert(roundScore).values(roundScoreRows);
+  }
+
+  // PRD criterion 71: every close-up taken during review (import or edit)
+  // attaches to this game and the player its column resolved to. One
+  // statement for every resolved column, rather than one per column: the
+  // `WHERE` already scopes to exactly this draft's surviving column ids, and
+  // the `CASE` picks the right `player_id` for whichever of those columns a
+  // given photo row actually belongs to.
+  //
+  // ⚠️ Security review: `column.id` comes from the request body (`state`),
+  // so the WHERE is scoped to `draftId` too — otherwise a crafted save
+  // naming another draft's column id could re-parent that draft's
+  // close-ups onto this game. `isNull(gameId)` also stops this from ever
+  // re-parenting a photo already attached to a previously saved game.
+  if (resolved.length > 0) {
+    const columnIds = resolved.map(({ column }) => column.id);
+    const playerIdCase = sql.join(
+      resolved.map(({ column, playerId }) => sql`WHEN ${column.id} THEN ${playerId}`),
+      sql` `,
     );
 
-    // PRD criterion 71: every close-up taken during review (import or edit)
-    // attaches to this game and the player its column resolved to.
-    //
-    // ⚠️ Security review: `column.id` comes from the request body (`state`),
-    // so the WHERE is scoped to `draftId` too — otherwise a crafted save
-    // naming another draft's column id could re-parent that draft's
-    // close-ups onto this game. `isNull(gameId)` also stops this from ever
-    // re-parenting a photo already attached to a previously saved game.
     await tx
       .update(photo)
-      .set({ gameId, playerId })
+      .set({
+        gameId,
+        playerId: sql`(CASE ${photo.draftColumnId} ${playerIdCase} END)`,
+      })
       .where(
         and(
-          eq(photo.draftColumnId, column.id),
+          inArray(photo.draftColumnId, columnIds),
           eq(photo.kind, "column"),
           eq(photo.draftId, draftId),
           isNull(photo.gameId),

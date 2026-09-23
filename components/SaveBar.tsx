@@ -7,16 +7,26 @@
  * Disabled only by the hard checks, never by an empty optional field.
  */
 
-import { SAVE_BUTTON_BUSY_LABEL, SAVE_BUTTON_LABEL } from "@/lib/ui/copy";
+import {
+  SAVE_BUTTON_BUSY_LABEL,
+  SAVE_BUTTON_LABEL,
+  SAVE_BUTTON_LONG_WAIT_MESSAGE,
+} from "@/lib/ui/copy";
 
 export function SaveBar({
   disabled,
   busy,
+  longWait = false,
   message,
   onSave,
 }: {
   disabled: boolean;
   busy: boolean;
+  /** PRD criterion 322: once a save has run for ~3s, the helper line below
+   *  the button swaps to `SAVE_BUTTON_LONG_WAIT_MESSAGE` in place of
+   *  `message` — the button label itself never changes further, only the
+   *  line beneath it. Ignored while `busy` is false. */
+  longWait?: boolean;
   message: string;
   onSave: () => void;
 }) {
@@ -33,7 +43,7 @@ export function SaveBar({
           {busy ? SAVE_BUTTON_BUSY_LABEL : SAVE_BUTTON_LABEL}
         </button>
         <p className="mt-2 text-center text-sm text-text-muted" role="status">
-          {message}
+          {busy && longWait ? SAVE_BUTTON_LONG_WAIT_MESSAGE : message}
         </p>
       </div>
     </div>
