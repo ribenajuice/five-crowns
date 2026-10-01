@@ -43,7 +43,7 @@ jobs:
       # v6 runs on Node 24 and needs runner v2.327.1+ — fine on GitHub-hosted
       # ubuntu-latest, worth knowing if this ever moves to a self-hosted runner.
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           # Falls back so a missing repo variable is a deploy in the right
